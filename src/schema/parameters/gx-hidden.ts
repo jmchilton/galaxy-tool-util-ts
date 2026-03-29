@@ -1,13 +1,14 @@
 import * as S from "@effect/schema/Schema";
 import type { HiddenParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
-import { safeFieldName, computeIsOptional, type DynamicSchemaInfo } from "./base.js";
+import { safeFieldName, computeIsOptional, type DynamicSchemaInfo, type GeneratorContext } from "./base.js";
 import { registerParameterType } from "./registry.js";
 import { applyValidators } from "../validators/registry.js";
 
 function generateHiddenSchema(
   param: unknown,
   stateRep: StateRepresentation,
+  _ctx: GeneratorContext,
 ): DynamicSchemaInfo {
   const p = param as HiddenParameterModel;
   const { name, alias } = safeFieldName(p.name);

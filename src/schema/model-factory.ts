@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema";
 import type { ToolParameterBundleModel, ToolParameterModel } from "./bundle-types.js";
 import type { StateRepresentation } from "./state-representations.js";
 import { getParameterGenerator } from "./parameters/registry.js";
-import type { DynamicSchemaInfo } from "./parameters/base.js";
+import type { DynamicSchemaInfo, GeneratorContext } from "./parameters/base.js";
 
 /**
  * Build an Effect Schema for a tool parameter bundle at a given state representation.
@@ -20,6 +20,18 @@ export function createFieldModel(
   return assembleStruct(infos);
 }
 
+/** Shared context passed to all generators, enabling container recursion. */
+const generatorContext: GeneratorContext = {
+  buildChildSchema(
+    params: ToolParameterModel[],
+    stateRep: StateRepresentation,
+  ): S.Schema.Any | undefined {
+    const infos = buildSchemaInfos(params, stateRep);
+    if (infos === undefined) return undefined;
+    return assembleStruct(infos);
+  },
+};
+
 /**
  * Build DynamicSchemaInfo for each parameter. Returns undefined if any
  * parameter type is unregistered.
@@ -32,7 +44,7 @@ function buildSchemaInfos(
   for (const param of params) {
     const generator = getParameterGenerator(param.parameter_type);
     if (!generator) return undefined;
-    infos.push(generator(param, stateRep));
+    infos.push(generator(param, stateRep, generatorContext));
   }
   return infos;
 }
@@ -53,7 +65,12 @@ function assembleStruct(infos: DynamicSchemaInfo[]): S.Schema.Any {
 
     // Apply key aliasing for _-prefixed params (safe_field_name escaping)
     if (info.alias) {
-      field = (field as S.PropertySignature.Any).pipe(S.fromKey(info.alias));
+      if (!info.isOptional) {
+        // Non-optional fields are plain Schema — wrap as PropertySignature first
+        field = S.propertySignature(field as S.Schema.Any).pipe(S.fromKey(info.alias));
+      } else {
+        field = (field as S.PropertySignature.Any).pipe(S.fromKey(info.alias));
+      }
     }
 
     fields[info.name] = field;

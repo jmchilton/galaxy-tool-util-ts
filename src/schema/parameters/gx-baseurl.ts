@@ -1,12 +1,13 @@
 import * as S from "@effect/schema/Schema";
 import type { BaseUrlParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
-import { safeFieldName, computeIsOptional, type DynamicSchemaInfo } from "./base.js";
+import { safeFieldName, computeIsOptional, type DynamicSchemaInfo, type GeneratorContext } from "./base.js";
 import { registerParameterType } from "./registry.js";
 
 function generateBaseUrlSchema(
   param: unknown,
   stateRep: StateRepresentation,
+  _ctx: GeneratorContext,
 ): DynamicSchemaInfo {
   const p = param as BaseUrlParameterModel;
   const { name, alias } = safeFieldName(p.name);

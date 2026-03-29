@@ -1,13 +1,14 @@
 import * as S from "@effect/schema/Schema";
 import type { IntegerParameterModel, InRangeValidatorModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
-import { safeFieldName, computeIsOptional, type DynamicSchemaInfo } from "./base.js";
+import { safeFieldName, computeIsOptional, type DynamicSchemaInfo, type GeneratorContext } from "./base.js";
 import { registerParameterType } from "./registry.js";
 import { applyValidators } from "../validators/registry.js";
 
 function generateIntegerSchema(
   param: unknown,
   stateRep: StateRepresentation,
+  _ctx: GeneratorContext,
 ): DynamicSchemaInfo {
   const p = param as IntegerParameterModel;
   const { name, alias } = safeFieldName(p.name);

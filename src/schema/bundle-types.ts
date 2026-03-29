@@ -99,8 +99,8 @@ export interface BooleanParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_boolean";
   type: "boolean";
   value: boolean;
-  truevalue: string;
-  falsevalue: string;
+  truevalue: string | null;
+  falsevalue: string | null;
 }
 
 export interface LabelValue {
@@ -202,24 +202,31 @@ export interface ConditionalWhen {
   is_default_when: boolean;
 }
 
-export interface ConditionalParameterModel {
-  parameter_type: "gx_conditional";
+// Container types share some base fields but not all (no `type`, `optional` varies)
+interface ContainerBaseFields {
   name: string;
+  hidden: boolean;
+  label: string | null;
+  help: string | null;
+  argument: string | null;
+  is_dynamic: boolean;
+}
+
+export interface ConditionalParameterModel extends ContainerBaseFields {
+  parameter_type: "gx_conditional";
   test_parameter: BooleanParameterModel | SelectParameterModel;
   whens: ConditionalWhen[];
 }
 
-export interface RepeatParameterModel {
+export interface RepeatParameterModel extends ContainerBaseFields {
   parameter_type: "gx_repeat";
-  name: string;
   parameters: ToolParameterModel[];
   min: number | null;
   max: number | null;
 }
 
-export interface SectionParameterModel {
+export interface SectionParameterModel extends ContainerBaseFields {
   parameter_type: "gx_section";
-  name: string;
   parameters: ToolParameterModel[];
 }
 
@@ -364,6 +371,13 @@ export function collectValidatorTypes(bundle: ToolParameterBundleModel): Set<str
       }
       if (p.parameter_type === "gx_conditional") {
         const cond = p as ConditionalParameterModel;
+        // Check test_parameter for validators too
+        const tp = cond.test_parameter;
+        if ("validators" in tp && Array.isArray(tp.validators)) {
+          for (const v of tp.validators as ValidatorModel[]) {
+            types.add(v.type);
+          }
+        }
         for (const when of cond.whens) {
           walk(when.parameters);
         }

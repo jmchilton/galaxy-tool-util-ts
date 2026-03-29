@@ -19,11 +19,23 @@ export interface DynamicSchemaInfo {
 }
 
 /**
+ * Context passed to generators, enabling container types to recurse
+ * into child parameters without circular imports on model-factory.
+ */
+export interface GeneratorContext {
+  buildChildSchema(
+    params: ToolParameterModel[],
+    stateRep: StateRepresentation,
+  ): S.Schema.Any | undefined;
+}
+
+/**
  * A function that generates schema info for a parameter given a state representation.
  */
 export type ParameterSchemaGenerator = (
   param: ToolParameterModel,
   stateRep: StateRepresentation,
+  ctx: GeneratorContext,
 ) => DynamicSchemaInfo;
 
 /**
