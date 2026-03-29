@@ -35,11 +35,7 @@ export function allowsBatching(rep: StateRepresentation): boolean {
 }
 
 export function usesStringIds(rep: StateRepresentation): boolean {
-  return (
-    rep === "request" ||
-    rep === "relaxed_request" ||
-    rep === "landing_request"
-  );
+  return rep === "request" || rep === "relaxed_request" || rep === "landing_request";
 }
 
 export function usesIntIds(rep: StateRepresentation): boolean {

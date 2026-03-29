@@ -92,7 +92,12 @@ export interface TextParameterModel extends BaseGalaxyParameterModel {
   area: boolean;
   value: string | null;
   default_options: LabelValue[];
-  validators: (RegexValidatorModel | LengthValidatorModel | ExpressionValidatorModel | EmptyFieldValidatorModel)[];
+  validators: (
+    | RegexValidatorModel
+    | LengthValidatorModel
+    | ExpressionValidatorModel
+    | EmptyFieldValidatorModel
+  )[];
 }
 
 export interface BooleanParameterModel extends BaseGalaxyParameterModel {
@@ -127,7 +132,12 @@ export interface HiddenParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_hidden";
   type: "hidden";
   value: string | null;
-  validators: (RegexValidatorModel | LengthValidatorModel | ExpressionValidatorModel | EmptyFieldValidatorModel)[];
+  validators: (
+    | RegexValidatorModel
+    | LengthValidatorModel
+    | ExpressionValidatorModel
+    | EmptyFieldValidatorModel
+  )[];
 }
 
 export interface DirectoryUriParameterModel extends BaseGalaxyParameterModel {
@@ -313,10 +323,7 @@ export type CwlParameterModel =
   | CwlNullParameterModel
   | CwlUnionParameterModel;
 
-export type ToolParameterModel =
-  | GalaxyParameterModel
-  | ContainerParameterModel
-  | CwlParameterModel;
+export type ToolParameterModel = GalaxyParameterModel | ContainerParameterModel | CwlParameterModel;
 
 // The top-level bundle
 export interface ToolParameterBundleModel {

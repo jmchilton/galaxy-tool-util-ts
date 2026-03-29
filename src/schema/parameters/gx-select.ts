@@ -1,7 +1,12 @@
 import * as S from "@effect/schema/Schema";
 import type { SelectParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
-import { safeFieldName, computeIsOptional, type DynamicSchemaInfo, type GeneratorContext } from "./base.js";
+import {
+  safeFieldName,
+  computeIsOptional,
+  type DynamicSchemaInfo,
+  type GeneratorContext,
+} from "./base.js";
 import { registerParameterType } from "./registry.js";
 
 function generateSelectSchema(

@@ -31,12 +31,10 @@ const FIXTURES_DIR = path.join(import.meta.dirname, "fixtures");
 const MODELS_DIR = path.join(FIXTURES_DIR, "parameter_models");
 
 // Load the specification YAML
-const specYaml = fs.readFileSync(
-  path.join(FIXTURES_DIR, "parameter_specification.yml"),
-  "utf-8",
-);
-const specification: Record<string, Record<string, unknown[]>> =
-  yaml.parse(specYaml, { merge: true });
+const specYaml = fs.readFileSync(path.join(FIXTURES_DIR, "parameter_specification.yml"), "utf-8");
+const specification: Record<string, Record<string, unknown[]>> = yaml.parse(specYaml, {
+  merge: true,
+});
 
 // Map spec keys to state representations
 const SPEC_KEY_TO_STATE_REP: Record<string, StateRepresentation> = {};
@@ -46,9 +44,7 @@ for (const rep of STATE_REPRESENTATIONS) {
 }
 
 /** Implemented state representations — expand as we go */
-const IMPLEMENTED_STATE_REPS = new Set<StateRepresentation>([
-  "request",
-]);
+const IMPLEMENTED_STATE_REPS = new Set<StateRepresentation>(["request"]);
 
 function loadBundle(toolName: string): ToolParameterBundleModel | undefined {
   const filePath = path.join(MODELS_DIR, `${toolName}.json`);
@@ -56,10 +52,7 @@ function loadBundle(toolName: string): ToolParameterBundleModel | undefined {
   return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
 
-function shouldSkipTool(
-  toolName: string,
-  bundle: ToolParameterBundleModel,
-): string | null {
+function shouldSkipTool(toolName: string, bundle: ToolParameterBundleModel): string | null {
   // Check all parameter types are registered
   const paramTypes = collectParameterTypes(bundle);
   for (const pt of paramTypes) {
@@ -86,10 +79,7 @@ function shouldSkipSpecKey(specKey: string): string | null {
   return null;
 }
 
-function validatePayload(
-  schema: S.Schema.Any,
-  payload: unknown,
-): Either.Either<unknown, unknown> {
+function validatePayload(schema: S.Schema.Any, payload: unknown): Either.Either<unknown, unknown> {
   return S.decodeUnknownEither(schema, { onExcessProperty: "error" })(payload);
 }
 
@@ -144,9 +134,7 @@ describe("parameter specification", () => {
             const result = validatePayload(schema, testCase);
             if (isValid) {
               if (Either.isLeft(result)) {
-                expect.fail(
-                  `Expected valid but got error: ${JSON.stringify(result.left)}`,
-                );
+                expect.fail(`Expected valid but got error: ${JSON.stringify(result.left)}`);
               }
             } else {
               if (Either.isRight(result)) {
@@ -213,7 +201,7 @@ describe("parameter specification", () => {
     const valTypes = registeredValidatorTypes();
     console.log(
       `\nSpec summary: ${totalPassed} passed, ${totalRun - totalPassed} failed, ` +
-      `${totalSkippedTools} tools skipped, ${totalSkippedKeys} keys skipped`,
+        `${totalSkippedTools} tools skipped, ${totalSkippedKeys} keys skipped`,
     );
     console.log(`Registered parameter types: ${[...paramTypes].join(", ") || "(none)"}`);
     console.log(`Registered validator types: ${[...valTypes].join(", ") || "(none)"}`);

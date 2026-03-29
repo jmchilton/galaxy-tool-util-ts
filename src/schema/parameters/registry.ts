@@ -13,9 +13,7 @@ export function registerParameterType(
   registry.set(parameterType, generator);
 }
 
-export function getParameterGenerator(
-  parameterType: string,
-): ParameterSchemaGenerator | undefined {
+export function getParameterGenerator(parameterType: string): ParameterSchemaGenerator | undefined {
   return registry.get(parameterType);
 }
 
