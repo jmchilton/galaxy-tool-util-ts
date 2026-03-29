@@ -9,10 +9,7 @@ import {
 } from "./base.js";
 import { registerParameterType } from "./registry.js";
 
-function collectValues(
-  options: DrillDownOption[],
-  leafOnly: boolean,
-): string[] {
+function collectValues(options: DrillDownOption[], leafOnly: boolean): string[] {
   const values: string[] = [];
   for (const opt of options) {
     const isLeaf = opt.options.length === 0;

@@ -24,9 +24,7 @@ function generateConditionalSchema(
   for (const when of p.whens) {
     const childInfos = ctx.buildChildSchemaInfos(when.parameters, stateRep);
     if (!childInfos) {
-      throw new Error(
-        `Failed to build child schemas for conditional branch ${when.discriminator}`,
-      );
+      throw new Error(`Failed to build child schemas for conditional branch ${when.discriminator}`);
     }
 
     // test_parameter is optional only in the default branch for non-requiresAllFields states
