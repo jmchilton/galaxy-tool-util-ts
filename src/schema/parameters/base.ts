@@ -27,6 +27,11 @@ export interface GeneratorContext {
     params: ToolParameterModel[],
     stateRep: StateRepresentation,
   ): S.Schema.Any | undefined;
+  buildChildSchemaInfos(
+    params: ToolParameterModel[],
+    stateRep: StateRepresentation,
+  ): DynamicSchemaInfo[] | undefined;
+  assembleStruct(infos: DynamicSchemaInfo[]): S.Schema.Any;
 }
 
 /**

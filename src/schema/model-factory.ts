@@ -30,6 +30,15 @@ const generatorContext: GeneratorContext = {
     if (infos === undefined) return undefined;
     return assembleStruct(infos);
   },
+  buildChildSchemaInfos(
+    params: ToolParameterModel[],
+    stateRep: StateRepresentation,
+  ): DynamicSchemaInfo[] | undefined {
+    return buildSchemaInfos(params, stateRep);
+  },
+  assembleStruct(infos: DynamicSchemaInfo[]): S.Schema.Any {
+    return assembleStruct(infos);
+  },
 };
 
 /**

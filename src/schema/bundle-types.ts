@@ -165,6 +165,7 @@ export interface DrillDownParameterModel extends BaseGalaxyParameterModel {
   type: "drill_down";
   multiple: boolean;
   options: DrillDownOption[];
+  hierarchy: "exact" | "recurse";
 }
 
 export interface DrillDownOption {
@@ -178,6 +179,7 @@ export interface DataColumnParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_data_column";
   type: "data_column";
   multiple: boolean;
+  value: number | number[] | null;
 }
 
 export interface GroupTagParameterModel extends BaseGalaxyParameterModel {
@@ -197,6 +199,8 @@ export interface DataCollectionParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_data_collection";
   type: "data_collection";
   collection_type: string | null;
+  extensions: string[];
+  value: unknown;
 }
 
 export interface RulesParameterModel extends BaseGalaxyParameterModel {
