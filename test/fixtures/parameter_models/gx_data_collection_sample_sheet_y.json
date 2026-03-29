@@ -1,0 +1,20 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_data_collection",
+      "hidden": false,
+      "label": "Input sample sheet collection",
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data_collection",
+      "collection_type": "sample_sheet",
+      "extensions": [
+        "data"
+      ],
+      "value": null
+    }
+  ]
+}

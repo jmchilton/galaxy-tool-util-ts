@@ -1,0 +1,27 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_text",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "text",
+      "area": false,
+      "default_value": "",
+      "default_options": [],
+      "validators": [
+        {
+          "type": "expression",
+          "message": "Value '%s' does not evaluate to True for ''foobar' in value'",
+          "implicit": false,
+          "negate": false,
+          "expression": "'foobar' in value"
+        }
+      ]
+    }
+  ]
+}

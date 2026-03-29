@@ -1,0 +1,44 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_select",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": true,
+      "type": "select",
+      "options": [
+        {
+          "label": "Ex1",
+          "value": "--ex1",
+          "selected": false
+        },
+        {
+          "label": "Ex2",
+          "value": "ex2",
+          "selected": false
+        },
+        {
+          "label": "Ex3",
+          "value": "--ex3",
+          "selected": false
+        },
+        {
+          "label": "Ex4",
+          "value": "--ex4",
+          "selected": false
+        },
+        {
+          "label": "Ex5",
+          "value": "ex5",
+          "selected": false
+        }
+      ],
+      "multiple": true,
+      "validators": []
+    }
+  ]
+}

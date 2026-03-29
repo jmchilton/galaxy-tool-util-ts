@@ -1,0 +1,16 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_genomebuild",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "genomebuild",
+      "multiple": true
+    }
+  ]
+}

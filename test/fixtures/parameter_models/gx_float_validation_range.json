@@ -1,0 +1,30 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_float",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "float",
+      "value": 1.0,
+      "min": null,
+      "max": null,
+      "validators": [
+        {
+          "type": "in_range",
+          "message": "Value ('%s') must fulfill (0.1 <= value < 9.8)",
+          "implicit": false,
+          "min": 0.1,
+          "max": 9.8,
+          "exclude_min": false,
+          "exclude_max": true,
+          "negate": false
+        }
+      ]
+    }
+  ]
+}

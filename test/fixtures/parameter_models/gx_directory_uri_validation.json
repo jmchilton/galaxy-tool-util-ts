@@ -1,0 +1,39 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_directory_uri",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "directory",
+      "validators": [
+        {
+          "type": "length",
+          "message": "Must have length of at least 10 and at most 45",
+          "implicit": false,
+          "min": 10,
+          "max": 45,
+          "negate": false
+        },
+        {
+          "type": "expression",
+          "message": "Value '%s' does not evaluate to True for ''api' in value'",
+          "implicit": false,
+          "negate": false,
+          "expression": "'api' in value"
+        },
+        {
+          "type": "regex",
+          "message": "Value '%s' does not match regular expression '^.*json$'",
+          "implicit": false,
+          "negate": false,
+          "expression": "^.*json$"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_integer",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "integer",
+      "value": 1,
+      "min": null,
+      "max": null,
+      "validators": [
+        {
+          "type": "in_range",
+          "message": "Value ('%s') must fulfill (0 <= value < 10)",
+          "implicit": false,
+          "min": 0,
+          "max": 10,
+          "exclude_min": false,
+          "exclude_max": true,
+          "negate": false
+        }
+      ]
+    }
+  ]
+}

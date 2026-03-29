@@ -1,0 +1,31 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_section",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "section",
+      "parameters": [
+        {
+          "name": "boolean_parameter",
+          "parameter_type": "gx_boolean",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "boolean",
+          "value": false,
+          "truevalue": null,
+          "falsevalue": null
+        }
+      ]
+    }
+  ]
+}

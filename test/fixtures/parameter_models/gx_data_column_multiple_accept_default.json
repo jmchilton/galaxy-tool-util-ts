@@ -1,0 +1,36 @@
+{
+  "parameters": [
+    {
+      "name": "ref_parameter",
+      "parameter_type": "gx_data",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data",
+      "extensions": [
+        "data"
+      ],
+      "multiple": false,
+      "min": null,
+      "max": null
+    },
+    {
+      "name": "parameter",
+      "parameter_type": "gx_data_column",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": true,
+      "type": "data_column",
+      "multiple": true,
+      "value": [
+        0
+      ]
+    }
+  ]
+}

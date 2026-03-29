@@ -1,0 +1,20 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_data_collection",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": true,
+      "type": "data_collection",
+      "collection_type": null,
+      "extensions": [
+        "data"
+      ],
+      "value": null
+    }
+  ]
+}

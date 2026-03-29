@@ -1,0 +1,20 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_data_collection",
+      "hidden": false,
+      "label": "Input record collection",
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data_collection",
+      "collection_type": "record",
+      "extensions": [
+        "data"
+      ],
+      "value": null
+    }
+  ]
+}

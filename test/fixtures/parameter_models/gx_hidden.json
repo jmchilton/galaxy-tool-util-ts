@@ -1,0 +1,17 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_hidden",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "hidden",
+      "value": "moo",
+      "validators": []
+    }
+  ]
+}

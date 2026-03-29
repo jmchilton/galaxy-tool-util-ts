@@ -1,0 +1,36 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_repeat",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "repeat",
+      "parameters": [
+        {
+          "name": "data_parameter",
+          "parameter_type": "gx_data",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "data",
+          "extensions": [
+            "data"
+          ],
+          "multiple": false,
+          "min": null,
+          "max": null
+        }
+      ],
+      "min": null,
+      "max": null
+    }
+  ]
+}

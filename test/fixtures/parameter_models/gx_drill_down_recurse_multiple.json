@@ -1,0 +1,83 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_drill_down",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "drill_down",
+      "options": [
+        {
+          "name": "a",
+          "value": "a",
+          "options": [
+            {
+              "name": "aa",
+              "value": "aa",
+              "options": [],
+              "selected": false
+            },
+            {
+              "name": "ab",
+              "value": "ab",
+              "options": [
+                {
+                  "name": "aba",
+                  "value": "aba",
+                  "options": [],
+                  "selected": false
+                },
+                {
+                  "name": "abb",
+                  "value": "abb",
+                  "options": [],
+                  "selected": false
+                }
+              ],
+              "selected": false
+            }
+          ],
+          "selected": false
+        },
+        {
+          "name": "b",
+          "value": "b",
+          "options": [
+            {
+              "name": "ba",
+              "value": "ba",
+              "options": [],
+              "selected": false
+            },
+            {
+              "name": "bb",
+              "value": "bb",
+              "options": [
+                {
+                  "name": "bba",
+                  "value": "bba",
+                  "options": [],
+                  "selected": false
+                },
+                {
+                  "name": "bbb",
+                  "value": "bbb",
+                  "options": [],
+                  "selected": false
+                }
+              ],
+              "selected": false
+            }
+          ],
+          "selected": false
+        }
+      ],
+      "multiple": true,
+      "hierarchy": "recurse"
+    }
+  ]
+}

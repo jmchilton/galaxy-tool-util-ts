@@ -1,0 +1,19 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_integer",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": true,
+      "type": "integer",
+      "value": 1,
+      "min": null,
+      "max": null,
+      "validators": []
+    }
+  ]
+}

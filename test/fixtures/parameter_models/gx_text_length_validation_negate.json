@@ -1,0 +1,28 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_text",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": true,
+      "type": "text",
+      "area": false,
+      "default_value": null,
+      "default_options": [],
+      "validators": [
+        {
+          "type": "length",
+          "message": "Must not have length of at least 2 and at most 10",
+          "implicit": false,
+          "min": 2,
+          "max": 10,
+          "negate": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_data",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": true,
+      "type": "data",
+      "extensions": [
+        "data"
+      ],
+      "multiple": true,
+      "min": null,
+      "max": null
+    }
+  ]
+}

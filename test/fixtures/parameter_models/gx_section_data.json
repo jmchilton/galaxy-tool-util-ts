@@ -1,0 +1,34 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_section",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "section",
+      "parameters": [
+        {
+          "name": "data_parameter",
+          "parameter_type": "gx_data",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "data",
+          "extensions": [
+            "data"
+          ],
+          "multiple": false,
+          "min": null,
+          "max": null
+        }
+      ]
+    }
+  ]
+}

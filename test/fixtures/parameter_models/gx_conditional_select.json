@@ -1,0 +1,106 @@
+{
+  "parameters": [
+    {
+      "name": "conditional_parameter",
+      "parameter_type": "gx_conditional",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "conditional",
+      "test_parameter": {
+        "name": "test_parameter",
+        "parameter_type": "gx_select",
+        "hidden": false,
+        "label": null,
+        "help": null,
+        "argument": null,
+        "is_dynamic": false,
+        "optional": false,
+        "type": "select",
+        "options": [
+          {
+            "label": "A",
+            "value": "a",
+            "selected": false
+          },
+          {
+            "label": "B",
+            "value": "b",
+            "selected": false
+          },
+          {
+            "label": "C",
+            "value": "c",
+            "selected": false
+          }
+        ],
+        "multiple": false,
+        "validators": []
+      },
+      "whens": [
+        {
+          "discriminator": "a",
+          "parameters": [
+            {
+              "name": "integer_parameter",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "integer",
+              "value": 1,
+              "min": null,
+              "max": null,
+              "validators": []
+            }
+          ],
+          "is_default_when": true
+        },
+        {
+          "discriminator": "b",
+          "parameters": [
+            {
+              "name": "boolean_parameter",
+              "parameter_type": "gx_boolean",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "boolean",
+              "value": false,
+              "truevalue": null,
+              "falsevalue": null
+            }
+          ],
+          "is_default_when": false
+        },
+        {
+          "discriminator": "c",
+          "parameters": [
+            {
+              "name": "color_parameter",
+              "parameter_type": "gx_color",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "color",
+              "value": "#aabbcc"
+            }
+          ],
+          "is_default_when": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "parameters": [
+    {
+      "name": "parameter",
+      "parameter_type": "gx_data_collection",
+      "hidden": false,
+      "label": "Input paired or paired_or_unpaired collection",
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data_collection",
+      "collection_type": "paired,paired_or_unpaired",
+      "extensions": [
+        "data"
+      ],
+      "value": null
+    }
+  ]
+}
