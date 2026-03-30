@@ -64,7 +64,7 @@ export class ToolCache {
       toolshedUrl: this.defaultToolshedUrl,
       trsToolId: toolId,
       version: toolVersion ?? null,
-      readableId: toolId,
+      readableId: toolIdFromTrs(this.defaultToolshedUrl, toolId),
     };
   }
 
