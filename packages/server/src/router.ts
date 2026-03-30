@@ -6,7 +6,7 @@ import {
   type StateRepresentation,
   type ToolParameterBundleModel,
 } from "@galaxy-tool-util/schema";
-import * as JSONSchema from "@effect/schema/JSONSchema";
+import * as JSONSchema from "effect/JSONSchema";
 import type { ServerConfig } from "./config.js";
 
 export interface ProxyContext {
@@ -196,5 +196,7 @@ export function createRequestHandler(ctx: ProxyContext) {
 
 export function createProxyServer(ctx: ProxyContext) {
   const handler = createRequestHandler(ctx);
-  return createServer(handler);
+  return createServer((req, res) => {
+    void handler(req, res);
+  });
 }

@@ -1,10 +1,24 @@
 {
   "name": "@galaxy-tool-util/core",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Galaxy tool cache, ToolShed client, and ParsedTool models",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
@@ -14,13 +28,12 @@
     "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
     "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
   },
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.5.0",
     "yaml": "^2.8.3"
   },
   "dependencies": {
-    "@effect/schema": "^0.75.5",
     "effect": "^3.21.0"
   }
 }

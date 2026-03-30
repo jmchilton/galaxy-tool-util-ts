@@ -1,4 +1,4 @@
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 import { ParsedTool } from "../models/parsed-tool.js";
 
 export class ToolFetchError extends Error {

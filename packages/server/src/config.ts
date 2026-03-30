@@ -1,4 +1,4 @@
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 import { readFile } from "node:fs/promises";
 import YAML from "yaml";
 

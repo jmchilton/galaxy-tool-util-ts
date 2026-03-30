@@ -1,15 +1,21 @@
 {
   "name": "galaxy-tool-util",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint",
+    "lint": "eslint packages/*/src/ packages/*/test/",
     "format": "pnpm -r format",
-    "format-fix": "pnpm -r format-fix"
+    "format-fix": "pnpm -r format-fix",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.6.0",
+    "@changesets/cli": "^2.30.0",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.1.0",
     "prettier": "^3.8.1",

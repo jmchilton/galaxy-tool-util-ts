@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 
 import { ToolCache, cacheKey, ParsedTool } from "@galaxy-tool-util/core";
 import { runAdd } from "../src/commands/add.js";
@@ -223,13 +223,15 @@ describe("CLI commands", () => {
       expect(schema).toHaveProperty("$schema");
     });
 
-    it("handles tools with unsupported JSON Schema annotations", async () => {
+    it("generates JSON Schema for complex tools", async () => {
       await seedCache(tmpDir);
       await runSchema("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0", {
         cacheDir: tmpDir,
       });
-      expect(process.exitCode).toBe(1);
-      expect(errSpy).toHaveBeenCalled();
+      expect(process.exitCode).toBeUndefined();
+      const output = logSpy.mock.calls[0][0];
+      const schema = JSON.parse(output);
+      expect(schema).toHaveProperty("$schema");
     });
 
     it("errors on unknown representation", async () => {

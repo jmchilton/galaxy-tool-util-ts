@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 
 import { parseToolshedToolId, cacheKey } from "../src/cache/index.js";
 import { ParsedTool } from "../src/models/parsed-tool.js";

@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:http";
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 
 import { ToolCache, cacheKey, ParsedTool } from "@galaxy-tool-util/core";
 import { createProxyContext, createRequestHandler } from "../src/router.js";
@@ -190,7 +190,7 @@ describe("Proxy Server", () => {
     expect(status).toBe(404);
   });
 
-  it("schema endpoint returns 500 for tools with unsupported JSON Schema types", async () => {
+  it("schema endpoint generates JSON Schema for complex tools", async () => {
     await seedTool(tmpDir, "devteam~fastqc~fastqc", "0.74+galaxy0", fastqcFixture);
     const handler = makeHandler();
     const { status, body } = await makeRequest(
@@ -198,8 +198,8 @@ describe("Proxy Server", () => {
       "GET",
       "/api/tools/devteam~fastqc~fastqc/versions/0.74%2Bgalaxy0/schema",
     );
-    expect(status).toBe(500);
-    expect(body.error).toContain("JSON Schema generation failed");
+    expect(status).toBe(200);
+    expect(body).toHaveProperty("$schema");
   });
 
   it("schema endpoint returns 404 for uncached tool", async () => {

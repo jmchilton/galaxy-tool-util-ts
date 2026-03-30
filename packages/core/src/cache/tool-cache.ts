@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 
 import { ParsedTool } from "../models/parsed-tool.js";
 import { CacheIndex } from "./cache-index.js";

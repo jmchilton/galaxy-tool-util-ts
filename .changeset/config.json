@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.3/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "jmchilton/galaxy-tool-util-ts" }
+  ],
+  "commit": false,
+  "fixed": [],
+  "linked": [
+    [
+      "@galaxy-tool-util/schema",
+      "@galaxy-tool-util/core",
+      "@galaxy-tool-util/cli",
+      "@galaxy-tool-util/server"
+    ]
+  ],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch"
+}

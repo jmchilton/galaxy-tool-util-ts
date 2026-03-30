@@ -1,4 +1,4 @@
-import * as S from "effect/Schema";
+import type * as S from "effect/Schema";
 import { registerValidatorType } from "./registry.js";
 
 /**

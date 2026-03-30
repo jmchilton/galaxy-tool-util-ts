@@ -1,4 +1,4 @@
-import * as S from "effect/Schema";
+import type * as S from "effect/Schema";
 import type { ToolParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
 import { requiresAllFields, allOptional } from "../state-representations.js";
