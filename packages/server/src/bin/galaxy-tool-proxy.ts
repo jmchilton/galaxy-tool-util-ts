@@ -19,9 +19,7 @@ for (let i = 0; i < args.length; i++) {
 
 async function main() {
   let config =
-    configPath && existsSync(configPath)
-      ? await loadConfig(configPath)
-      : defaultConfig();
+    configPath && existsSync(configPath) ? await loadConfig(configPath) : defaultConfig();
 
   if (port !== null) {
     config = { ...config, port };

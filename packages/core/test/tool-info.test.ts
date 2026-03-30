@@ -35,8 +35,7 @@ describe("ToolInfoService", () => {
       cacheDir: tmpDir,
       fetcher: countingFetch,
     });
-    const toolId =
-      "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
+    const toolId = "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
 
     // First call → API fetch
     const result = await service.getToolInfo(toolId);
@@ -84,14 +83,8 @@ describe("ToolInfoService", () => {
       cacheDir: tmpDir,
       fetcher: mockFetch({}, 500), // should not be called
     });
-    const toolId =
-      "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
-    const key = await service.addTool(
-      toolId,
-      "0.74+galaxy0",
-      fastqcFixture as any,
-      "local",
-    );
+    const toolId = "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
+    const key = await service.addTool(toolId, "0.74+galaxy0", fastqcFixture as any, "local");
     expect(key).toBeTruthy();
 
     const result = await service.getToolInfo(toolId);
@@ -104,8 +97,7 @@ describe("ToolInfoService", () => {
       cacheDir: tmpDir,
       fetcher: mockFetch(fastqcFixture),
     });
-    const toolId =
-      "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
+    const toolId = "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
     await service1.getToolInfo(toolId);
 
     // New instance — should read from disk
@@ -125,9 +117,7 @@ describe("ToolInfoService", () => {
   it("throws when no version available", async () => {
     const service = new ToolInfoService({ cacheDir: tmpDir });
     await expect(
-      service.getToolInfo(
-        "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc",
-      ),
+      service.getToolInfo("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc"),
     ).rejects.toThrow("No version");
   });
 });

@@ -37,8 +37,7 @@ export class ToolInfoService {
       this.sources = [
         {
           type: "toolshed",
-          url:
-            opts?.defaultToolshedUrl ?? this.cache.defaultToolshedUrl,
+          url: opts?.defaultToolshedUrl ?? this.cache.defaultToolshedUrl,
         },
       ];
       if (opts?.galaxyUrl) {
@@ -47,10 +46,7 @@ export class ToolInfoService {
     }
   }
 
-  async getToolInfo(
-    toolId: string,
-    toolVersion?: string | null,
-  ): Promise<ParsedTool | null> {
+  async getToolInfo(toolId: string, toolVersion?: string | null): Promise<ParsedTool | null> {
     const coords = this.cache.resolveToolCoordinates(toolId, toolVersion);
     if (coords.version === null) {
       throw new Error(`No version available for tool: ${toolId}`);
@@ -78,12 +74,7 @@ export class ToolInfoService {
           sourceLabel = "api";
           sourceUrl = `${source.url}/api/tools/${coords.trsToolId}/versions/${coords.version}`;
         } else {
-          parsedTool = await fetchFromGalaxy(
-            source.url,
-            toolId,
-            toolVersion,
-            this.fetcher,
-          );
+          parsedTool = await fetchFromGalaxy(source.url, toolId, toolVersion, this.fetcher);
           sourceLabel = "galaxy";
           sourceUrl = `${source.url}/api/tools/${encodeURIComponent(toolId)}/parsed`;
         }
@@ -118,14 +109,7 @@ export class ToolInfoService {
     const coords = this.cache.resolveToolCoordinates(toolId, toolVersion);
     const version = coords.version ?? toolVersion;
     const key = cacheKey(coords.toolshedUrl, coords.trsToolId, version);
-    await this.cache.saveTool(
-      key,
-      parsedTool,
-      coords.readableId,
-      version,
-      source,
-      sourceUrl,
-    );
+    await this.cache.saveTool(key, parsedTool, coords.readableId, version, source, sourceUrl);
     return key;
   }
 }

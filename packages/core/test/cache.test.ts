@@ -35,9 +35,7 @@ describe("parseToolshedToolId", () => {
   });
 
   it("parses tool ID without version", () => {
-    const result = parseToolshedToolId(
-      "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc",
-    );
+    const result = parseToolshedToolId("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc");
     expect(result).toEqual({
       toolshedUrl: "https://toolshed.g2.bx.psu.edu",
       trsToolId: "devteam~fastqc~fastqc",
@@ -52,30 +50,22 @@ describe("parseToolshedToolId", () => {
   });
 
   it("returns null for malformed repos path", () => {
-    expect(
-      parseToolshedToolId("toolshed.g2.bx.psu.edu/repos/owner/repo"),
-    ).toBeNull();
+    expect(parseToolshedToolId("toolshed.g2.bx.psu.edu/repos/owner/repo")).toBeNull();
   });
 });
 
 describe("toolIdFromTrs", () => {
   it("reconstructs readable tool ID", () => {
-    expect(
-      toolIdFromTrs("https://toolshed.g2.bx.psu.edu", "devteam~fastqc~fastqc"),
-    ).toBe("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc");
+    expect(toolIdFromTrs("https://toolshed.g2.bx.psu.edu", "devteam~fastqc~fastqc")).toBe(
+      "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc",
+    );
   });
 });
 
 describe("cacheKey", () => {
   it("matches Python implementation", () => {
-    const key = cacheKey(
-      "https://toolshed.g2.bx.psu.edu",
-      "devteam~fastqc~fastqc",
-      "0.74+galaxy0",
-    );
-    expect(key).toBe(
-      "4442926e78fe6e6574ffb9110be50f9b72cc3eb3b133e5435cf7b8658cd0a0f5",
-    );
+    const key = cacheKey("https://toolshed.g2.bx.psu.edu", "devteam~fastqc~fastqc", "0.74+galaxy0");
+    expect(key).toBe("4442926e78fe6e6574ffb9110be50f9b72cc3eb3b133e5435cf7b8658cd0a0f5");
   });
 });
 
@@ -170,26 +160,18 @@ describe("ToolCache", () => {
     );
     expect(coords.trsToolId).toBe("devteam~fastqc~fastqc");
     expect(coords.version).toBe("0.74+galaxy0");
-    expect(coords.readableId).toBe(
-      "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc",
-    );
+    expect(coords.readableId).toBe("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc");
   });
 
   it("resolveToolCoordinates for stock tool", () => {
     const coords = cache.resolveToolCoordinates("cat1", "1.0.0");
     expect(coords.trsToolId).toBe("cat1");
     expect(coords.version).toBe("1.0.0");
-    expect(coords.readableId).toBe(
-      "toolshed.g2.bx.psu.edu/repos/cat1",
-    );
+    expect(coords.readableId).toBe("toolshed.g2.bx.psu.edu/repos/cat1");
   });
 
   it("save + load round-trip", async () => {
-    const key = cacheKey(
-      "https://toolshed.g2.bx.psu.edu",
-      "devteam~fastqc~fastqc",
-      "0.74+galaxy0",
-    );
+    const key = cacheKey("https://toolshed.g2.bx.psu.edu", "devteam~fastqc~fastqc", "0.74+galaxy0");
     await cache.saveTool(
       key,
       sampleTool,
@@ -204,23 +186,12 @@ describe("ToolCache", () => {
   });
 
   it("hasCached returns true after save", async () => {
-    const toolId =
-      "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
+    const toolId = "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
     expect(cache.hasCached(toolId)).toBe(false);
 
     const coords = cache.resolveToolCoordinates(toolId);
-    const key = cacheKey(
-      coords.toolshedUrl,
-      coords.trsToolId,
-      coords.version!,
-    );
-    await cache.saveTool(
-      key,
-      sampleTool,
-      coords.readableId,
-      coords.version!,
-      "api",
-    );
+    const key = cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version!);
+    await cache.saveTool(key, sampleTool, coords.readableId, coords.version!, "api");
     expect(cache.hasCached(toolId)).toBe(true);
   });
 
@@ -242,8 +213,20 @@ describe("ToolCache", () => {
   });
 
   it("clearCache with prefix removes matching entries", async () => {
-    await cache.saveTool("k1", sampleTool, "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc", "1.0", "api");
-    await cache.saveTool("k2", sampleTool, "toolshed.g2.bx.psu.edu/repos/iuc/multiqc/multiqc", "1.0", "api");
+    await cache.saveTool(
+      "k1",
+      sampleTool,
+      "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc",
+      "1.0",
+      "api",
+    );
+    await cache.saveTool(
+      "k2",
+      sampleTool,
+      "toolshed.g2.bx.psu.edu/repos/iuc/multiqc/multiqc",
+      "1.0",
+      "api",
+    );
     await cache.clearCache("toolshed.g2.bx.psu.edu/repos/devteam");
     const remaining = cache.listCached();
     expect(remaining).toHaveLength(1);

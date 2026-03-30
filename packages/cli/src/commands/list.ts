@@ -21,16 +21,9 @@ export async function runList(opts: ListOptions): Promise<void> {
   }
 
   const header = ["Tool ID", "Version", "Source", "Cached At"];
-  const rows = entries.map((e) => [
-    e.tool_id,
-    e.tool_version,
-    e.source,
-    e.cached_at,
-  ]);
+  const rows = entries.map((e) => [e.tool_id, e.tool_version, e.source, e.cached_at]);
 
-  const widths = header.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => r[i].length)),
-  );
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
   const sep = widths.map((w) => "-".repeat(w)).join("  ");
 
   console.log(header.map((h, i) => h.padEnd(widths[i])).join("  "));

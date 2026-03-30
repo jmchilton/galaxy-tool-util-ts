@@ -4,10 +4,7 @@ export interface ClearOptions {
   cacheDir?: string;
 }
 
-export async function runClear(
-  prefix: string | undefined,
-  opts: ClearOptions,
-): Promise<void> {
+export async function runClear(prefix: string | undefined, opts: ClearOptions): Promise<void> {
   const cache = new ToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
   const before = cache.listCached().length;

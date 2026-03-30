@@ -22,9 +22,7 @@ export function parseToolshedToolId(toolId: string): ToolCoordinates | null {
   }
   const trsToolId = `${segments[0]}~${segments[1]}~${segments[2]}`;
   const toolVersion = segments.length > 3 ? segments[3] : null;
-  const toolshedUrl = toolshedBase.startsWith("http")
-    ? toolshedBase
-    : `https://${toolshedBase}`;
+  const toolshedUrl = toolshedBase.startsWith("http") ? toolshedBase : `https://${toolshedBase}`;
   return { toolshedUrl, trsToolId, toolVersion };
 }
 

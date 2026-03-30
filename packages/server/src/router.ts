@@ -15,9 +15,7 @@ export interface ProxyContext {
 }
 
 export function createProxyContext(config: ServerConfig): ProxyContext {
-  const enabledSources = config["galaxy.workflows.toolSources"].filter(
-    (s) => s.enabled,
-  );
+  const enabledSources = config["galaxy.workflows.toolSources"].filter((s) => s.enabled);
   const coreSources: CoreToolSource[] = enabledSources.map((s) => ({
     type: s.type,
     url: s.url,
@@ -36,10 +34,7 @@ type RouteMatch = {
   schema?: boolean;
 };
 
-function matchRoute(
-  method: string,
-  url: string,
-): { handler: string; params: RouteMatch } | null {
+function matchRoute(method: string, url: string): { handler: string; params: RouteMatch } | null {
   const path = url.split("?")[0];
 
   if (method === "GET" && path === "/api/tools") {
@@ -47,9 +42,7 @@ function matchRoute(
   }
 
   // /api/tools/:trs_id/versions/:version/schema
-  const schemaMatch = path.match(
-    /^\/api\/tools\/([^/]+)\/versions\/([^/]+)\/schema$/,
-  );
+  const schemaMatch = path.match(/^\/api\/tools\/([^/]+)\/versions\/([^/]+)\/schema$/);
   if (method === "GET" && schemaMatch) {
     return {
       handler: "toolSchema",
@@ -62,9 +55,7 @@ function matchRoute(
   }
 
   // /api/tools/:trs_id/versions/:version
-  const versionMatch = path.match(
-    /^\/api\/tools\/([^/]+)\/versions\/([^/]+)$/,
-  );
+  const versionMatch = path.match(/^\/api\/tools\/([^/]+)\/versions\/([^/]+)$/);
   if (method === "GET" && versionMatch) {
     return {
       handler: "getTool",
@@ -154,9 +145,7 @@ export function createRequestHandler(ctx: ProxyContext) {
             return;
           }
           const repName = queryParam(url, "representation") ?? "workflow_step";
-          if (
-            !STATE_REPRESENTATIONS.includes(repName as StateRepresentation)
-          ) {
+          if (!STATE_REPRESENTATIONS.includes(repName as StateRepresentation)) {
             json(res, 400, {
               error: `Unknown representation: ${repName}`,
               available: [...STATE_REPRESENTATIONS],
@@ -171,13 +160,9 @@ export function createRequestHandler(ctx: ProxyContext) {
           }
 
           const bundle: ToolParameterBundleModel = {
-            parameters:
-              tool.inputs as ToolParameterBundleModel["parameters"],
+            parameters: tool.inputs as ToolParameterBundleModel["parameters"],
           };
-          const effectSchema = createFieldModel(
-            bundle,
-            repName as StateRepresentation,
-          );
+          const effectSchema = createFieldModel(bundle, repName as StateRepresentation);
           if (!effectSchema) {
             json(res, 500, {
               error: "Could not generate schema — unsupported parameter types",

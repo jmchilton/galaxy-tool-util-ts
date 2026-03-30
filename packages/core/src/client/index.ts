@@ -1,5 +1,1 @@
-export {
-  fetchFromToolShed,
-  fetchFromGalaxy,
-  ToolFetchError,
-} from "./toolshed.js";
+export { fetchFromToolShed, fetchFromGalaxy, ToolFetchError } from "./toolshed.js";

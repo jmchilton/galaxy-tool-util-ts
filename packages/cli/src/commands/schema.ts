@@ -15,10 +15,7 @@ export interface SchemaOptions {
   cacheDir?: string;
 }
 
-export async function runSchema(
-  toolId: string,
-  opts: SchemaOptions,
-): Promise<void> {
+export async function runSchema(toolId: string, opts: SchemaOptions): Promise<void> {
   const repName = opts.representation ?? "workflow_step";
   if (!STATE_REPRESENTATIONS.includes(repName as StateRepresentation)) {
     console.error(
@@ -40,9 +37,7 @@ export async function runSchema(
   const key = cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
   const tool = await cache.loadCached(key);
   if (tool === null) {
-    console.error(
-      `Tool not found in cache: ${toolId}. Run 'galaxy-tool-cache add' first.`,
-    );
+    console.error(`Tool not found in cache: ${toolId}. Run 'galaxy-tool-cache add' first.`);
     process.exitCode = 1;
     return;
   }
@@ -53,9 +48,7 @@ export async function runSchema(
 
   const effectSchema = createFieldModel(bundle, stateRep as StateRepresentation);
   if (effectSchema === undefined) {
-    console.error(
-      `Could not generate schema — tool may contain unsupported parameter types.`,
-    );
+    console.error(`Could not generate schema — tool may contain unsupported parameter types.`);
     process.exitCode = 1;
     return;
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as S from "@effect/schema/Schema";
@@ -60,11 +60,7 @@ const simpleTool = {
 
 async function seedCache(cacheDir: string) {
   const cache = new ToolCache({ cacheDir });
-  const key = cacheKey(
-    "https://toolshed.g2.bx.psu.edu",
-    "devteam~fastqc~fastqc",
-    "0.74+galaxy0",
-  );
+  const key = cacheKey("https://toolshed.g2.bx.psu.edu", "devteam~fastqc~fastqc", "0.74+galaxy0");
   const parsed = S.decodeUnknownSync(ParsedTool)(fastqcFixture);
   await cache.saveTool(
     key,
@@ -79,11 +75,7 @@ async function seedCache(cacheDir: string) {
 
 async function seedSimpleTool(cacheDir: string) {
   const cache = new ToolCache({ cacheDir });
-  const key = cacheKey(
-    "https://toolshed.g2.bx.psu.edu",
-    "test~simple~simple_tool",
-    "1.0",
-  );
+  const key = cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
   const parsed = S.decodeUnknownSync(ParsedTool)(simpleTool);
   await cache.saveTool(
     key,
@@ -123,14 +115,11 @@ describe("CLI commands", () => {
           headers: { "Content-Type": "application/json" },
         })) as typeof fetch;
       try {
-        await runAdd(
-          "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0",
-          { cacheDir: tmpDir },
-        );
+        await runAdd("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0", {
+          cacheDir: tmpDir,
+        });
         expect(process.exitCode).toBeUndefined();
-        expect(logSpy).toHaveBeenCalledWith(
-          expect.stringContaining("FastQC"),
-        );
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("FastQC"));
       } finally {
         globalThis.fetch = originalFetch;
       }
@@ -138,17 +127,11 @@ describe("CLI commands", () => {
 
     it("reports failure when fetch fails", async () => {
       const originalFetch = globalThis.fetch;
-      globalThis.fetch = (async () =>
-        new Response("Not found", { status: 404 })) as typeof fetch;
+      globalThis.fetch = (async () => new Response("Not found", { status: 404 })) as typeof fetch;
       try {
-        await runAdd(
-          "toolshed.g2.bx.psu.edu/repos/nonexistent/tool/id/1.0",
-          { cacheDir: tmpDir },
-        );
+        await runAdd("toolshed.g2.bx.psu.edu/repos/nonexistent/tool/id/1.0", { cacheDir: tmpDir });
         expect(process.exitCode).toBe(1);
-        expect(errSpy).toHaveBeenCalledWith(
-          expect.stringContaining("Failed to fetch"),
-        );
+        expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to fetch"));
       } finally {
         globalThis.fetch = originalFetch;
       }
@@ -182,10 +165,9 @@ describe("CLI commands", () => {
   describe("info", () => {
     it("shows tool metadata", async () => {
       await seedCache(tmpDir);
-      await runInfo(
-        "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0",
-        { cacheDir: tmpDir },
-      );
+      await runInfo("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0", {
+        cacheDir: tmpDir,
+      });
       const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("FastQC");
       expect(output).toContain("Inputs:");
@@ -218,10 +200,10 @@ describe("CLI commands", () => {
   describe("schema", () => {
     it("generates JSON Schema to stdout", async () => {
       await seedSimpleTool(tmpDir);
-      await runSchema(
-        "toolshed.g2.bx.psu.edu/repos/test/simple/simple_tool/1.0",
-        { cacheDir: tmpDir, representation: "workflow_step" },
-      );
+      await runSchema("toolshed.g2.bx.psu.edu/repos/test/simple/simple_tool/1.0", {
+        cacheDir: tmpDir,
+        representation: "workflow_step",
+      });
       expect(process.exitCode).toBeUndefined();
       const output = logSpy.mock.calls[0][0];
       const schema = JSON.parse(output);
@@ -232,10 +214,10 @@ describe("CLI commands", () => {
     it("writes JSON Schema to file", async () => {
       await seedSimpleTool(tmpDir);
       const outFile = join(tmpDir, "schema.json");
-      await runSchema(
-        "toolshed.g2.bx.psu.edu/repos/test/simple/simple_tool/1.0",
-        { cacheDir: tmpDir, output: outFile },
-      );
+      await runSchema("toolshed.g2.bx.psu.edu/repos/test/simple/simple_tool/1.0", {
+        cacheDir: tmpDir,
+        output: outFile,
+      });
       const raw = await readFile(outFile, "utf-8");
       const schema = JSON.parse(raw);
       expect(schema).toHaveProperty("$schema");
@@ -243,20 +225,19 @@ describe("CLI commands", () => {
 
     it("handles tools with unsupported JSON Schema annotations", async () => {
       await seedCache(tmpDir);
-      await runSchema(
-        "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0",
-        { cacheDir: tmpDir },
-      );
+      await runSchema("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0", {
+        cacheDir: tmpDir,
+      });
       expect(process.exitCode).toBe(1);
       expect(errSpy).toHaveBeenCalled();
     });
 
     it("errors on unknown representation", async () => {
       await seedCache(tmpDir);
-      await runSchema(
-        "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0",
-        { cacheDir: tmpDir, representation: "nonexistent" },
-      );
+      await runSchema("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0", {
+        cacheDir: tmpDir,
+        representation: "nonexistent",
+      });
       expect(process.exitCode).toBe(1);
     });
 

@@ -97,25 +97,13 @@ describe("fetchFromGalaxy", () => {
         headers: { "Content-Type": "application/json" },
       });
     };
-    await fetchFromGalaxy(
-      "https://usegalaxy.org",
-      "cat1",
-      "1.0.0",
-      captureFetch,
-    );
-    expect(capturedUrl).toBe(
-      "https://usegalaxy.org/api/tools/cat1/parsed?tool_version=1.0.0",
-    );
+    await fetchFromGalaxy("https://usegalaxy.org", "cat1", "1.0.0", captureFetch);
+    expect(capturedUrl).toBe("https://usegalaxy.org/api/tools/cat1/parsed?tool_version=1.0.0");
   });
 
   it("throws ToolFetchError on failure", async () => {
     await expect(
-      fetchFromGalaxy(
-        "https://usegalaxy.org",
-        "nonexistent",
-        null,
-        mockFetchError(404),
-      ),
+      fetchFromGalaxy("https://usegalaxy.org", "nonexistent", null, mockFetchError(404)),
     ).rejects.toThrow(ToolFetchError);
   });
 });

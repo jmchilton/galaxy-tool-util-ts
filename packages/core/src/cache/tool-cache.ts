@@ -7,16 +7,9 @@ import * as S from "@effect/schema/Schema";
 import { ParsedTool } from "../models/parsed-tool.js";
 import { CacheIndex } from "./cache-index.js";
 import { cacheKey } from "./cache-key.js";
-import {
-  parseToolshedToolId,
-  toolIdFromTrs,
-} from "./tool-id.js";
+import { parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
 
-export const DEFAULT_CACHE_DIR = join(
-  homedir(),
-  ".galaxy",
-  "tool_info_cache",
-);
+export const DEFAULT_CACHE_DIR = join(homedir(), ".galaxy", "tool_info_cache");
 export const CACHE_DIR_ENV_VAR = "GALAXY_TOOL_CACHE_DIR";
 export const DEFAULT_TOOLSHED_URL = "https://toolshed.g2.bx.psu.edu";
 export const TOOLSHED_URL_ENV_VAR = "GALAXY_TOOLSHED_URL";
@@ -41,16 +34,11 @@ export class ToolCache {
   constructor(opts?: { cacheDir?: string; defaultToolshedUrl?: string }) {
     this.cacheDir = getCacheDir(opts?.cacheDir);
     this.defaultToolshedUrl =
-      opts?.defaultToolshedUrl ??
-      process.env[TOOLSHED_URL_ENV_VAR] ??
-      DEFAULT_TOOLSHED_URL;
+      opts?.defaultToolshedUrl ?? process.env[TOOLSHED_URL_ENV_VAR] ?? DEFAULT_TOOLSHED_URL;
     this.index = new CacheIndex(this.cacheDir);
   }
 
-  resolveToolCoordinates(
-    toolId: string,
-    toolVersion?: string | null,
-  ): ResolvedCoordinates {
+  resolveToolCoordinates(toolId: string, toolVersion?: string | null): ResolvedCoordinates {
     const parsed = parseToolshedToolId(toolId);
     if (parsed !== null) {
       return {
@@ -90,12 +78,7 @@ export class ToolCache {
       const data = JSON.parse(raw);
       const parsedTool = S.decodeUnknownSync(ParsedTool)(data);
       if (!this.index.has(key)) {
-        await this.index.add(
-          key,
-          data.id ?? "unknown",
-          data.version ?? "unknown",
-          "unknown",
-        );
+        await this.index.add(key, data.id ?? "unknown", data.version ?? "unknown", "unknown");
       }
       this.memoryCache.set(key, parsedTool);
       return parsedTool;
@@ -141,9 +124,7 @@ export class ToolCache {
       this.memoryCache.clear();
     } else {
       const prefix = toolIdPrefix.replace(/\*$/, "");
-      const toRemove = this.index
-        .listAll()
-        .filter((e) => e.tool_id.startsWith(prefix));
+      const toRemove = this.index.listAll().filter((e) => e.tool_id.startsWith(prefix));
       for (const entry of toRemove) {
         const path = this.cachePath(entry.cache_key);
         if (existsSync(path)) await unlink(path);

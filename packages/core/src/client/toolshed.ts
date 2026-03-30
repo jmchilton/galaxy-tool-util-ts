@@ -1,6 +1,5 @@
 import * as S from "@effect/schema/Schema";
 import { ParsedTool } from "../models/parsed-tool.js";
-import { DEFAULT_TOOLSHED_URL } from "../cache/tool-cache.js";
 
 export class ToolFetchError extends Error {
   readonly _tag = "ToolFetchError";

@@ -5,10 +5,7 @@ import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
 import * as S from "@effect/schema/Schema";
 
-import {
-  parseToolshedToolId,
-  cacheKey,
-} from "../src/cache/index.js";
+import { parseToolshedToolId, cacheKey } from "../src/cache/index.js";
 import { ParsedTool } from "../src/models/parsed-tool.js";
 
 const SUPPORTED_FORMAT_VERSION = 1;
@@ -142,9 +139,7 @@ function resolvePath(inputs: unknown[], path: string): string | null {
         return null; // can't go deeper into a test param
       }
       // Otherwise it's a when-branch discriminator
-      const whenBranch = param.whens?.find(
-        (w: any) => String(w.discriminator) === nextSeg,
-      );
+      const whenBranch = param.whens?.find((w: any) => String(w.discriminator) === nextSeg);
       if (!whenBranch) return null;
       currentInputs = whenBranch.parameters;
       i += 2; // skip conditional name + discriminator
@@ -182,11 +177,7 @@ describe("Golden cache contract — toolshed tools", () => {
       });
 
       it("computes correct cache key", () => {
-        const key = cacheKey(
-          entry.expected_url,
-          entry.expected_trs_id,
-          entry.expected_version,
-        );
+        const key = cacheKey(entry.expected_url, entry.expected_trs_id, entry.expected_version);
         expect(key).toBe(entry.expected_cache_key);
       });
 
@@ -284,11 +275,7 @@ describe("Golden cache contract — version from separate arg", () => {
       });
 
       it("computes same cache key with separate version", () => {
-        const key = cacheKey(
-          entry.expected_url,
-          entry.expected_trs_id,
-          entry.expected_version,
-        );
+        const key = cacheKey(entry.expected_url, entry.expected_trs_id, entry.expected_version);
         expect(key).toBe(entry.expected_cache_key);
       });
 
@@ -303,19 +290,16 @@ describe("Golden cache contract — version from separate arg", () => {
 });
 
 describe("Golden cache contract — nested parameter structure", () => {
-  const allEntries = [
-    ...manifest.toolshed_tools,
-    ...manifest.stock_tools,
-  ].filter((e) => e.expected_nested_structure);
+  const allEntries = [...manifest.toolshed_tools, ...manifest.stock_tools].filter(
+    (e) => e.expected_nested_structure,
+  );
 
   for (const entry of allEntries) {
     describe(entry.tool_id, () => {
       const raw = loadGoldenTool(entry.expected_cache_key);
       const tool = S.decodeUnknownSync(ParsedTool)(raw);
 
-      for (const [path, expectedType] of Object.entries(
-        entry.expected_nested_structure!,
-      )) {
+      for (const [path, expectedType] of Object.entries(entry.expected_nested_structure!)) {
         it(`${path} → ${expectedType}`, () => {
           const actualType = resolvePath(tool.inputs, path);
           expect(actualType).not.toBeNull();
@@ -341,9 +325,7 @@ describe("Golden cache contract — nested parameter structure", () => {
 
 describe("Golden cache integrity", () => {
   it("all golden JSON files decode as valid ParsedTool", () => {
-    const indexRaw = JSON.parse(
-      readFileSync(join(CACHE_DIR, "index.json"), "utf-8"),
-    );
+    const indexRaw = JSON.parse(readFileSync(join(CACHE_DIR, "index.json"), "utf-8"));
     const keys = Object.keys(indexRaw.entries);
     expect(keys.length).toBeGreaterThan(0);
 
@@ -356,9 +338,7 @@ describe("Golden cache integrity", () => {
   });
 
   it("index entries match manifest cache keys", () => {
-    const indexRaw = JSON.parse(
-      readFileSync(join(CACHE_DIR, "index.json"), "utf-8"),
-    );
+    const indexRaw = JSON.parse(readFileSync(join(CACHE_DIR, "index.json"), "utf-8"));
     const indexKeys = new Set(Object.keys(indexRaw.entries));
 
     const manifestKeys = new Set<string>();
@@ -375,9 +355,7 @@ describe("Golden cache integrity", () => {
   });
 
   it("checksums.json matches actual file hashes", () => {
-    const checksums = JSON.parse(
-      readFileSync(join(CACHE_DIR, "checksums.json"), "utf-8"),
-    );
+    const checksums = JSON.parse(readFileSync(join(CACHE_DIR, "checksums.json"), "utf-8"));
 
     // Verify manifest hash
     const manifestHash = sha256File(MANIFEST_PATH);

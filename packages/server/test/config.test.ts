@@ -35,9 +35,7 @@ port: 9090
     expect(config["galaxy.workflows.toolSources"]).toHaveLength(2);
     expect(config["galaxy.workflows.toolSources"][0].type).toBe("toolshed");
     expect(config["galaxy.workflows.toolSources"][1].enabled).toBe(false);
-    expect(config["galaxy.workflows.toolCache"]?.directory).toBe(
-      "/tmp/test-cache",
-    );
+    expect(config["galaxy.workflows.toolCache"]?.directory).toBe("/tmp/test-cache");
     await rm(tmpDir, { recursive: true });
   });
 });

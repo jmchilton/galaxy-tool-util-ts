@@ -2,14 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createServer, type Server } from "node:http";
+import { createServer } from "node:http";
 import * as S from "@effect/schema/Schema";
 
 import { ToolCache, cacheKey, ParsedTool } from "@galaxy-tool-util/core";
-import {
-  createProxyContext,
-  createRequestHandler,
-} from "../src/router.js";
+import { createProxyContext, createRequestHandler } from "../src/router.js";
 import { defaultConfig, type ServerConfig } from "../src/config.js";
 import fastqcFixture from "../../core/test/fixtures/fastqc-parsed-tool.json" with { type: "json" };
 
@@ -46,11 +43,7 @@ const simpleTool = {
 
 async function seedTool(cacheDir: string, trsId: string, version: string, toolData: unknown) {
   const cache = new ToolCache({ cacheDir });
-  const key = cacheKey(
-    "https://toolshed.g2.bx.psu.edu",
-    trsId,
-    version,
-  );
+  const key = cacheKey("https://toolshed.g2.bx.psu.edu", trsId, version);
   const parsed = S.decodeUnknownSync(ParsedTool)(toolData);
   await cache.saveTool(key, parsed, trsId, version, "api");
 }
@@ -63,7 +56,6 @@ function makeRequest(
   return new Promise((resolve, reject) => {
     const server = createServer(async (req, res) => {
       await handler(req, res);
-      const chunks: Buffer[] = [];
       // We need to read the response — but since we control the handler,
       // let's just close the server after response ends.
     });
@@ -168,11 +160,7 @@ describe("Proxy Server", () => {
   it("DELETE /api/tools/cache clears the cache", async () => {
     await seedTool(tmpDir, "devteam~fastqc~fastqc", "0.74+galaxy0", fastqcFixture);
     const handler = makeHandler();
-    const { status, body } = await makeRequest(
-      handler,
-      "DELETE",
-      "/api/tools/cache",
-    );
+    const { status, body } = await makeRequest(handler, "DELETE", "/api/tools/cache");
     expect(status).toBe(200);
     expect(body.status).toBe("cleared");
 
@@ -186,9 +174,7 @@ describe("Proxy Server", () => {
     const server = createServer(async (req, res) => {
       await handler(req, res);
     });
-    await new Promise<void>((resolve) =>
-      server.listen(0, "127.0.0.1", resolve),
-    );
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const addr = server.address() as { port: number };
     const res = await fetch(`http://127.0.0.1:${addr.port}/api/tools`, {
       method: "OPTIONS",

@@ -16,14 +16,10 @@ export const Citation = S.Struct({
 });
 
 /** Normalize empty string to null for description field. */
-const NullableDescription = S.transform(
-  S.NullOr(S.String),
-  S.NullOr(S.String),
-  {
-    decode: (val) => (val === "" ? null : val),
-    encode: (val) => val,
-  },
-);
+const NullableDescription = S.transform(S.NullOr(S.String), S.NullOr(S.String), {
+  decode: (val) => (val === "" ? null : val),
+  encode: (val) => val,
+});
 
 export const ParsedTool = S.Struct({
   id: S.String,

@@ -50,11 +50,7 @@ program
   .description("Export JSON Schema for a cached tool's parameters")
   .argument("<tool_id>", "Tool ID")
   .option("--version <ver>", "Tool version")
-  .option(
-    "--representation <rep>",
-    "State representation (e.g., workflow_step)",
-    "workflow_step",
-  )
+  .option("--representation <rep>", "State representation (e.g., workflow_step)", "workflow_step")
   .option("--output <file>", "Output file (default: stdout)")
   .option("--cache-dir <dir>", "Cache directory")
   .action(runSchema);
