@@ -10,3 +10,10 @@ export {
   collectValidatorTypes,
   type ToolParameterBundleModel,
 } from "./schema/index.js";
+
+export {
+  type GalaxyWorkflow,
+  GalaxyWorkflowSchema,
+  type NativeGalaxyWorkflow,
+  NativeGalaxyWorkflowSchema,
+} from "./workflow/index.js";

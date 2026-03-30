@@ -1,12 +1,30 @@
 {
   "name": "@galaxy-tool-util/cli",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "galaxy-tool-cache CLI — cache and inspect Galaxy tool metadata",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
     "galaxy-tool-cache": "dist/bin/galaxy-tool-cache.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "tsc",
@@ -17,13 +35,13 @@
     "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
     "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
   },
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "@effect/schema": "^0.75.5",
     "@galaxy-tool-util/core": "workspace:*",
     "@galaxy-tool-util/schema": "workspace:*",
     "commander": "^14.0.0",
-    "effect": "^3.21.0"
+    "effect": "^3.21.0",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@types/node": "^25.5.0"

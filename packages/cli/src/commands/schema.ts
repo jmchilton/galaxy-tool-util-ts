@@ -1,12 +1,13 @@
-import { ToolCache, cacheKey } from "@galaxy-tool-util/core";
+import { ToolCache } from "@galaxy-tool-util/core";
 import {
   createFieldModel,
   STATE_REPRESENTATIONS,
   type StateRepresentation,
   type ToolParameterBundleModel,
 } from "@galaxy-tool-util/schema";
-import * as JSONSchema from "@effect/schema/JSONSchema";
+import * as JSONSchema from "effect/JSONSchema";
 import { writeFile } from "node:fs/promises";
+import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
 export interface SchemaOptions {
   version?: string;
@@ -28,22 +29,19 @@ export async function runSchema(toolId: string, opts: SchemaOptions): Promise<vo
 
   const cache = new ToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
-  const coords = cache.resolveToolCoordinates(toolId, opts.version);
-  if (coords.version === null) {
-    console.error(`No version specified for tool: ${toolId}`);
-    process.exitCode = 1;
-    return;
-  }
-  const key = cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
-  const tool = await cache.loadCached(key);
-  if (tool === null) {
-    console.error(`Tool not found in cache: ${toolId}. Run 'galaxy-tool-cache add' first.`);
+  const result = await loadCachedTool(cache, toolId, opts.version);
+  if (isResolveError(result)) {
+    if (result.kind === "no_version") {
+      console.error(`No version specified for tool: ${toolId}`);
+    } else {
+      console.error(`Tool not found in cache: ${toolId}. Run 'galaxy-tool-cache add' first.`);
+    }
     process.exitCode = 1;
     return;
   }
 
   const bundle: ToolParameterBundleModel = {
-    parameters: tool.inputs as ToolParameterBundleModel["parameters"],
+    parameters: result.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
   const effectSchema = createFieldModel(bundle, stateRep as StateRepresentation);

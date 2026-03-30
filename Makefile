@@ -54,7 +54,47 @@ endif
 	cp $(PARAM_SPEC_SRC) $(PARAM_SPEC_DST)
 	@echo "Synced."
 
-sync: sync-golden sync-param-spec
+# Requires both GALAXY_ROOT and GXFORMAT2_ROOT. Run individual targets if you only have one.
+sync: sync-golden sync-param-spec sync-schema-sources
+
+# Sync schema-salad YAML sources from gxformat2 for workflow schema generation.
+# Set GXFORMAT2_ROOT to your gxformat2 checkout, e.g.:
+#   GXFORMAT2_ROOT=~/projects/worktrees/gxformat2/branch/abstraction_applications make sync-schema-sources
+SCHEMA_SRC_ROOT = $(GXFORMAT2_ROOT)/schema
+SCHEMA_DST = schema-sources
+
+sync-schema-sources:
+ifndef GXFORMAT2_ROOT
+	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
+endif
+	@test -d "$(SCHEMA_SRC_ROOT)/v19_09" || (echo "ERROR: $(SCHEMA_SRC_ROOT)/v19_09 not found" && exit 1)
+	@test -d "$(SCHEMA_SRC_ROOT)/native_v0_1" || (echo "ERROR: $(SCHEMA_SRC_ROOT)/native_v0_1 not found" && exit 1)
+	@echo "Syncing schema-salad sources from $(SCHEMA_SRC_ROOT)..."
+	rm -rf $(SCHEMA_DST)
+	mkdir -p $(SCHEMA_DST)/v19_09 $(SCHEMA_DST)/native_v0_1 $(SCHEMA_DST)/common
+	cp $(SCHEMA_SRC_ROOT)/v19_09/workflow.yml $(SCHEMA_DST)/v19_09/
+	cp $(SCHEMA_SRC_ROOT)/v19_09/Process.yml $(SCHEMA_DST)/v19_09/
+	@if [ -d "$(SCHEMA_SRC_ROOT)/v19_09/examples" ]; then cp -r $(SCHEMA_SRC_ROOT)/v19_09/examples $(SCHEMA_DST)/v19_09/; fi
+	cp $(SCHEMA_SRC_ROOT)/native_v0_1/workflow.yml $(SCHEMA_DST)/native_v0_1/
+	cp $(SCHEMA_SRC_ROOT)/common/common.yml $(SCHEMA_DST)/common/
+	@if [ -f "$(SCHEMA_SRC_ROOT)/common/steps_description.txt" ]; then cp $(SCHEMA_SRC_ROOT)/common/steps_description.txt $(SCHEMA_DST)/common/; fi
+	@if [ -d "$(SCHEMA_SRC_ROOT)/common/metaschema" ]; then cp -r $(SCHEMA_SRC_ROOT)/common/metaschema $(SCHEMA_DST)/common/; fi
+	@echo "Schema sources synced to $(SCHEMA_DST)/."
+
+# Generate TypeScript and Effect schemas from synced schema-salad YAML sources.
+# Requires schema-salad-plus-pydantic >= 0.1.5 (uv tool or pip install).
+# Set SCHEMA_SALAD_PLUS_PYDANTIC to override the command (default: schema-salad-plus-pydantic).
+SCHEMA_SALAD_PLUS_PYDANTIC ?= schema-salad-plus-pydantic
+WF_SCHEMA_DST = packages/schema/src/workflow
+
+generate-schemas:
+	@test -f "$(SCHEMA_DST)/v19_09/workflow.yml" || (echo "ERROR: schema sources not found — run 'make sync-schema-sources' first" && exit 1)
+	mkdir -p $(WF_SCHEMA_DST)
+	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format typescript "$(CURDIR)/$(SCHEMA_DST)/v19_09/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/gxformat2.ts"
+	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format effect-schema "$(CURDIR)/$(SCHEMA_DST)/v19_09/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/gxformat2.effect.ts"
+	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format typescript "$(CURDIR)/$(SCHEMA_DST)/native_v0_1/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/native.ts"
+	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format effect-schema "$(CURDIR)/$(SCHEMA_DST)/native_v0_1/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/native.effect.ts"
+	@echo "Generated workflow schemas in $(WF_SCHEMA_DST)/."
 
 # Verify golden fixtures match checksums (no GALAXY_ROOT needed, works in CI)
 verify-golden:
