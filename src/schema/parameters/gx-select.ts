@@ -1,6 +1,7 @@
 import * as S from "@effect/schema/Schema";
 import type { SelectParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
+import { allowsConnectedValue } from "../state-representations.js";
 import {
   safeFieldName,
   computeIsOptional,
@@ -28,9 +29,23 @@ function generateSelectSchema(
   }
 
   let schema: S.Schema.Any;
+  let connectedValueHandled = false;
+
   if (p.multiple) {
     // multiple: array of valid values, or null
-    schema = S.NullOr(S.Array(valueSchema));
+    let itemSchema = valueSchema;
+    // For workflow_step_linked, ConnectedValue is an array item alternative
+    if (allowsConnectedValue(stateRep)) {
+      const cv = S.Struct({ __class__: S.Literal("ConnectedValue") });
+      itemSchema = S.Union(valueSchema, cv);
+      connectedValueHandled = true;
+    }
+    if (stateRep === "test_case_xml") {
+      // test_case_xml also accepts comma-separated string
+      schema = S.Union(S.NullOr(S.Array(valueSchema)), S.String);
+    } else {
+      schema = S.NullOr(S.Array(itemSchema));
+    }
   } else if (p.optional) {
     schema = S.NullOr(valueSchema);
   } else {
@@ -40,7 +55,7 @@ function generateSelectSchema(
   // select always has a default (first option or explicit), so not request-requires
   const isOptional = computeIsOptional(stateRep, false);
 
-  return { name, alias, schema, isOptional };
+  return { name, alias, schema, isOptional, connectedValueHandled };
 }
 
 registerParameterType("gx_select", generateSelectSchema);

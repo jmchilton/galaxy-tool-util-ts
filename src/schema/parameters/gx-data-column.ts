@@ -19,7 +19,12 @@ function generateDataColumnSchema(
 
   let schema: S.Schema.Any;
   if (p.multiple) {
-    schema = S.Array(S.Int);
+    // test_case_xml uses comma-separated string for multiple columns
+    if (stateRep === "test_case_xml") {
+      schema = S.String;
+    } else {
+      schema = S.Array(S.Int);
+    }
   } else {
     schema = S.Int;
   }

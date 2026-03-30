@@ -16,6 +16,8 @@ export interface DynamicSchemaInfo {
   schema: S.Schema.Any;
   /** Whether the field is optional (can be absent from the object) */
   isOptional: boolean;
+  /** If true, generator already handled ConnectedValue wrapping — skip central wrapping */
+  connectedValueHandled?: boolean;
 }
 
 /**

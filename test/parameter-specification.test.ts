@@ -44,7 +44,20 @@ for (const rep of STATE_REPRESENTATIONS) {
 }
 
 /** Implemented state representations — expand as we go */
-const IMPLEMENTED_STATE_REPS = new Set<StateRepresentation>(["request"]);
+const IMPLEMENTED_STATE_REPS = new Set<StateRepresentation>([
+  "request",
+  "request_internal",
+  "request_internal_dereferenced",
+  "landing_request",
+  "landing_request_internal",
+  "job_internal",
+  "job_runtime",
+  "workflow_step",
+  "workflow_step_linked",
+  "test_case_xml",
+  "test_case_json",
+  "relaxed_request",
+]);
 
 function loadBundle(toolName: string): ToolParameterBundleModel | undefined {
   const filePath = path.join(MODELS_DIR, `${toolName}.json`);

@@ -55,6 +55,20 @@ export function allOptional(rep: StateRepresentation): boolean {
   return rep === "landing_request" || rep === "landing_request_internal";
 }
 
+export function isWorkflowStep(rep: StateRepresentation): boolean {
+  return rep === "workflow_step" || rep === "workflow_step_linked";
+}
+
+export function isTestCase(rep: StateRepresentation): boolean {
+  return rep === "test_case_xml" || rep === "test_case_json";
+}
+
 export function allowsUrlSources(rep: StateRepresentation): boolean {
-  return rep === "request_internal";
+  return (
+    rep === "request" ||
+    rep === "relaxed_request" ||
+    rep === "request_internal" ||
+    rep === "landing_request" ||
+    rep === "landing_request_internal"
+  );
 }

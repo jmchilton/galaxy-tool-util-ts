@@ -1,8 +1,14 @@
 import * as S from "@effect/schema/Schema";
 import type { ToolParameterBundleModel, ToolParameterModel } from "./bundle-types.js";
 import type { StateRepresentation } from "./state-representations.js";
+import { allowsConnectedValue } from "./state-representations.js";
 import { getParameterGenerator } from "./parameters/registry.js";
 import type { DynamicSchemaInfo, GeneratorContext } from "./parameters/base.js";
+
+/** Schema for Galaxy's ConnectedValue marker — used in workflow_step_linked */
+const ConnectedValueSchema: S.Schema.Any = S.Struct({
+  __class__: S.Literal("ConnectedValue"),
+});
 
 /**
  * Build an Effect Schema for a tool parameter bundle at a given state representation.
@@ -50,10 +56,17 @@ function buildSchemaInfos(
   stateRep: StateRepresentation,
 ): DynamicSchemaInfo[] | undefined {
   const infos: DynamicSchemaInfo[] = [];
+  const wrapConnected = allowsConnectedValue(stateRep);
   for (const param of params) {
     const generator = getParameterGenerator(param.parameter_type);
     if (!generator) return undefined;
-    infos.push(generator(param, stateRep, generatorContext));
+    const info = generator(param, stateRep, generatorContext);
+    // For workflow_step_linked, add ConnectedValue as alternative value
+    // (unless generator already handled it, e.g. for array types)
+    if (wrapConnected && !info.connectedValueHandled) {
+      info.schema = S.Union(info.schema, ConnectedValueSchema);
+    }
+    infos.push(info);
   }
   return infos;
 }

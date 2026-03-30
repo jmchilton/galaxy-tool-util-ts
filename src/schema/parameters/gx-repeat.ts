@@ -1,6 +1,7 @@
 import * as S from "@effect/schema/Schema";
 import type { RepeatParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
+import { allOptional } from "../state-representations.js";
 import {
   safeFieldName,
   computeIsOptional,
@@ -25,18 +26,20 @@ function generateRepeatSchema(
   const childStruct = ctx.assembleStruct(childInfos);
   let schema: S.Schema.Any = S.Array(childStruct);
 
-  // Apply min/max array length constraints
-  if (p.min !== null && p.min > 0) {
-    const min = p.min;
-    schema = (schema as S.Schema<readonly unknown[]>).pipe(
-      S.filter((arr: readonly unknown[]) => arr.length >= min),
-    ) as S.Schema.Any;
-  }
-  if (p.max !== null) {
-    const max = p.max;
-    schema = (schema as S.Schema<readonly unknown[]>).pipe(
-      S.filter((arr: readonly unknown[]) => arr.length <= max),
-    ) as S.Schema.Any;
+  // Apply min/max array length constraints (skip for all-optional state reps like landing_request)
+  if (!allOptional(stateRep)) {
+    if (p.min !== null && p.min > 0) {
+      const min = p.min;
+      schema = (schema as S.Schema<readonly unknown[]>).pipe(
+        S.filter((arr: readonly unknown[]) => arr.length >= min),
+      ) as S.Schema.Any;
+    }
+    if (p.max !== null) {
+      const max = p.max;
+      schema = (schema as S.Schema<readonly unknown[]>).pipe(
+        S.filter((arr: readonly unknown[]) => arr.length <= max),
+      ) as S.Schema.Any;
+    }
   }
 
   // Repeat is required in request only if children require values AND min > 0

@@ -23,8 +23,9 @@ function generateTextSchema(
   // Apply validators to the string before nullable wrapping
   schema = applyValidators(schema, p.validators);
 
-  // gx_text is typically optional=true with null default
-  if (p.optional) {
+  // gx_text is typically optional=true with null default.
+  // relaxed_request always allows null for text fields.
+  if (p.optional || stateRep === "relaxed_request") {
     schema = S.NullOr(schema);
   }
 
