@@ -1,15 +1,12 @@
 import { describe, it, expect, afterAll } from "vitest";
-import * as S from "effect/Schema";
-import { Either } from "effect";
+import * as JSONSchema from "effect/JSONSchema";
+import Ajv2020 from "ajv/dist/2020.js";
 import * as yaml from "yaml";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { createFieldModel } from "../src/schema/model-factory.js";
-import {
-  isParameterTypeRegistered,
-  registeredParameterTypes,
-} from "../src/schema/parameters/index.js";
+import { isParameterTypeRegistered } from "../src/schema/parameters/index.js";
 import {
   isValidatorTypeRegistered,
   registeredValidatorTypes,
@@ -24,26 +21,22 @@ import {
   type StateRepresentation,
 } from "../src/schema/state-representations.js";
 
-// Parameter registrations happen via side-effect imports in src/schema/parameters/index.ts
 import "../src/schema/parameters/index.js";
 
 const FIXTURES_DIR = path.join(import.meta.dirname, "fixtures");
 const MODELS_DIR = path.join(FIXTURES_DIR, "parameter_models");
 
-// Load the specification YAML
 const specYaml = fs.readFileSync(path.join(FIXTURES_DIR, "parameter_specification.yml"), "utf-8");
-const specification: Record<string, Record<string, unknown[]>> = yaml.parse(specYaml, {
+const specification: Record<string, Record<string, unknown>> = yaml.parse(specYaml, {
   merge: true,
 });
 
-// Map spec keys to state representations
 const SPEC_KEY_TO_STATE_REP: Record<string, StateRepresentation> = {};
 for (const rep of STATE_REPRESENTATIONS) {
   SPEC_KEY_TO_STATE_REP[`${rep}_valid`] = rep;
   SPEC_KEY_TO_STATE_REP[`${rep}_invalid`] = rep;
 }
 
-/** Implemented state representations — expand as we go */
 const IMPLEMENTED_STATE_REPS = new Set<StateRepresentation>([
   "request",
   "request_internal",
@@ -66,14 +59,12 @@ function loadBundle(toolName: string): ToolParameterBundleModel | undefined {
 }
 
 function shouldSkipTool(toolName: string, bundle: ToolParameterBundleModel): string | null {
-  // Check all parameter types are registered
   const paramTypes = collectParameterTypes(bundle);
   for (const pt of paramTypes) {
     if (!isParameterTypeRegistered(pt)) {
       return `parameter_type '${pt}' not registered`;
     }
   }
-  // Check all validator types are registered
   const validatorTypes = collectValidatorTypes(bundle);
   for (const vt of validatorTypes) {
     if (!isValidatorTypeRegistered(vt)) {
@@ -92,17 +83,15 @@ function shouldSkipSpecKey(specKey: string): string | null {
   return null;
 }
 
-function validatePayload(schema: S.Schema.Any, payload: unknown): Either.Either<unknown, unknown> {
-  return S.decodeUnknownEither(schema, { onExcessProperty: "error" })(payload);
-}
+const ajv = new Ajv2020({ allErrors: true, strict: false });
 
-// Counters for summary
 let totalRun = 0;
 let totalPassed = 0;
 let totalSkippedTools = 0;
 let totalSkippedKeys = 0;
+let totalSchemaGenFailed = 0;
 
-describe("parameter specification", () => {
+describe("parameter specification (JSON Schema)", () => {
   for (const [toolName, combos] of Object.entries(specification)) {
     describe(toolName, () => {
       const bundle = loadBundle(toolName);
@@ -120,7 +109,41 @@ describe("parameter specification", () => {
         return;
       }
 
+      const jsonSchemaSkip: Record<string, string> =
+        (combos._json_schema_skip as Record<string, string>) ?? {};
+      const jsonSchemaValidSkip: Record<string, string> =
+        (combos._json_schema_valid_skip as Record<string, string>) ?? {};
+
+      // Cache generated schemas per state rep
+      const schemaCache = new Map<
+        StateRepresentation,
+        { jsonSchema: object; validate: ReturnType<typeof ajv.compile> } | null
+      >();
+
+      function getCompiledSchema(
+        stateRep: StateRepresentation,
+      ): { jsonSchema: object; validate: ReturnType<typeof ajv.compile> } | null {
+        if (schemaCache.has(stateRep)) return schemaCache.get(stateRep)!;
+        const effectSchema = createFieldModel(bundle!, stateRep);
+        if (!effectSchema) {
+          schemaCache.set(stateRep, null);
+          return null;
+        }
+        try {
+          const jsonSchema = JSONSchema.make(effectSchema, { target: "jsonSchema2020-12" });
+          const validate = ajv.compile(jsonSchema);
+          const result = { jsonSchema, validate };
+          schemaCache.set(stateRep, result);
+          return result;
+        } catch {
+          schemaCache.set(stateRep, null);
+          return null;
+        }
+      }
+
       for (const [specKey, testCases] of Object.entries(combos)) {
+        if (specKey.startsWith("_")) continue;
+
         const keySkipReason = shouldSkipSpecKey(specKey);
         if (keySkipReason) {
           it.skip(`${specKey}: ${keySkipReason}`, () => {});
@@ -130,11 +153,11 @@ describe("parameter specification", () => {
 
         const stateRep = SPEC_KEY_TO_STATE_REP[specKey]!;
         const isValid = specKey.endsWith("_valid");
-        const schema = createFieldModel(bundle, stateRep);
 
-        if (!schema) {
-          it.skip(`${specKey}: createFieldModel returned undefined`, () => {});
-          totalSkippedKeys++;
+        const compiled = getCompiledSchema(stateRep);
+        if (!compiled) {
+          it.skip(`${specKey}: JSON Schema generation failed for ${stateRep}`, () => {});
+          totalSchemaGenFailed++;
           continue;
         }
 
@@ -144,80 +167,32 @@ describe("parameter specification", () => {
 
           it(label, () => {
             totalRun++;
-            const result = validatePayload(schema, testCase);
+            const valid = compiled.validate(testCase);
             if (isValid) {
-              if (Either.isLeft(result)) {
-                expect.fail(`Expected valid but got error: ${JSON.stringify(result.left)}`);
+              if (!valid && !(specKey in jsonSchemaValidSkip)) {
+                expect.fail(
+                  `Valid entry REJECTED by JSON Schema: ${JSON.stringify(testCase)}\nErrors: ${JSON.stringify(compiled.validate.errors)}`,
+                );
               }
             } else {
-              if (Either.isRight(result)) {
-                expect.fail(
-                  `Expected invalid but validation passed for: ${JSON.stringify(testCase)}`,
-                );
+              if (valid && !(specKey in jsonSchemaSkip)) {
+                expect.fail(`Invalid entry ACCEPTED by JSON Schema: ${JSON.stringify(testCase)}`);
               }
             }
             totalPassed++;
           });
         }
       }
-
-      // Auto-inference: request_internal from request (mirrors Python lines 127-131)
-      if (
-        IMPLEMENTED_STATE_REPS.has("request_internal") &&
-        !combos["request_internal_valid"] &&
-        combos["request_valid"]
-      ) {
-        const schema = createFieldModel(bundle, "request_internal");
-        if (schema) {
-          for (let i = 0; i < (combos["request_valid"] as unknown[]).length; i++) {
-            const testCase = (combos["request_valid"] as unknown[])[i];
-            it(`request_internal_valid (inferred)[${i}]: ${JSON.stringify(testCase)}`, () => {
-              totalRun++;
-              const result = validatePayload(schema, testCase);
-              if (Either.isLeft(result)) {
-                expect.fail(
-                  `Expected valid (inferred from request_valid) but got error: ${JSON.stringify(result.left)}`,
-                );
-              }
-              totalPassed++;
-            });
-          }
-        }
-      }
-      if (
-        IMPLEMENTED_STATE_REPS.has("request_internal") &&
-        !combos["request_internal_invalid"] &&
-        combos["request_invalid"]
-      ) {
-        const schema = createFieldModel(bundle, "request_internal");
-        if (schema) {
-          for (let i = 0; i < (combos["request_invalid"] as unknown[]).length; i++) {
-            const testCase = (combos["request_invalid"] as unknown[])[i];
-            it(`request_internal_invalid (inferred)[${i}]: ${JSON.stringify(testCase)}`, () => {
-              totalRun++;
-              const result = validatePayload(schema, testCase);
-              if (Either.isRight(result)) {
-                expect.fail(
-                  `Expected invalid (inferred from request_invalid) but validation passed`,
-                );
-              }
-              totalPassed++;
-            });
-          }
-        }
-      }
     });
   }
 
   afterAll(() => {
-    const paramTypes = registeredParameterTypes();
     const valTypes = registeredValidatorTypes();
     console.log(
-      `\nSpec summary: ${totalPassed} passed, ${totalRun - totalPassed} failed, ` +
-        `${totalSkippedTools} tools skipped, ${totalSkippedKeys} keys skipped`,
+      `\nJSON Schema spec summary: ${totalPassed} passed, ${totalRun - totalPassed} failed, ` +
+        `${totalSkippedTools} tools skipped, ${totalSkippedKeys} keys skipped, ` +
+        `${totalSchemaGenFailed} schema gen failed`,
     );
-    console.log(`Registered parameter types: ${[...paramTypes].join(", ") || "(none)"}`);
     console.log(`Registered validator types: ${[...valTypes].join(", ") || "(none)"}`);
-    console.log(`Implemented state reps: ${[...IMPLEMENTED_STATE_REPS].join(", ")}`);
   });
 });

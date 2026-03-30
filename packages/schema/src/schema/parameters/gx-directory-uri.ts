@@ -1,4 +1,4 @@
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 import type { DirectoryUriParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
 import {
@@ -19,7 +19,7 @@ function generateDirectoryUriSchema(
   const { name, alias } = safeFieldName(p.name);
 
   // Must start with a recognized URI scheme (gxfiles://, gximport://, etc.)
-  let schema: S.Schema.Any = S.String.pipe(S.filter((s: string) => /^gx[a-z]+:\/\//.test(s)));
+  let schema: S.Schema.Any = S.String.pipe(S.pattern(/^gx[a-z]+:\/\//));
 
   schema = applyValidators(schema, p.validators);
 

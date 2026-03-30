@@ -1,4 +1,4 @@
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 import type { DataParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
 import {
@@ -28,7 +28,7 @@ function generateDataSchema(
 
   if (isWorkflowStep(stateRep)) {
     // workflow_step: data is always absent. workflow_step_linked: ConnectedValue only (added centrally).
-    schema = S.Unknown.pipe(S.filter(() => false));
+    schema = S.Never.annotations({ jsonSchema: { not: {} } }) as unknown as S.Schema.Any;
   } else if (isTestCase(stateRep)) {
     // test_case: File with path or location (at least one required)
     const fileWithPath = S.Struct({ class: S.Literal("File"), path: S.String });
@@ -86,11 +86,8 @@ function generateDataSchema(
       }
       schema = S.Union(...parts);
     } else {
-      // Single: hda direct + optional dce/url/batch
-      const parts: S.Schema.Any[] = [hdaSource];
-      if (stateRep === "job_internal") {
-        parts.push(dceSource);
-      }
+      // Single: hda + dce direct + optional url/batch
+      const parts: S.Schema.Any[] = [hdaSource, dceSource];
       if (allowsUrlSources(stateRep)) {
         parts.push(urlSource);
       }

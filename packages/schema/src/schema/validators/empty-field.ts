@@ -1,15 +1,18 @@
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 import type { EmptyFieldValidatorModel } from "../bundle-types.js";
 import { registerValidatorType } from "./registry.js";
 
 function applyEmptyField(schema: S.Schema.Any, validator: unknown): S.Schema.Any {
   const v = validator as EmptyFieldValidatorModel;
   return (schema as S.Schema<string>).pipe(
-    S.filter((value: string) => {
-      // empty_field with negate=false means "field must NOT be empty"
-      const isEmpty = value.length === 0;
-      return v.negate ? isEmpty : !isEmpty;
-    }),
+    S.filter(
+      (value: string) => {
+        // empty_field with negate=false means "field must NOT be empty"
+        const isEmpty = value.length === 0;
+        return v.negate ? isEmpty : !isEmpty;
+      },
+      { jsonSchema: {} },
+    ),
   ) as S.Schema.Any;
 }
 

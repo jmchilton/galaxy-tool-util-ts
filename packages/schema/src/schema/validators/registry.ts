@@ -1,4 +1,4 @@
-import type * as S from "@effect/schema/Schema";
+import type * as S from "effect/Schema";
 
 /**
  * A function that applies a validator's constraint to an existing schema.

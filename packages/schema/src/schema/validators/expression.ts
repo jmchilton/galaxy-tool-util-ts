@@ -1,4 +1,4 @@
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 import type { ExpressionValidatorModel } from "../bundle-types.js";
 import { registerValidatorType } from "./registry.js";
 
@@ -36,14 +36,17 @@ function tryEvaluate(expression: string, value: string): boolean | undefined {
 function applyExpression(schema: S.Schema.Any, validator: unknown): S.Schema.Any {
   const v = validator as ExpressionValidatorModel;
   return (schema as S.Schema<string>).pipe(
-    S.filter((value: string) => {
-      const result = tryEvaluate(v.expression, value);
-      if (result === undefined) {
-        // Unrecognized expression — pass through (can't validate)
-        return true;
-      }
-      return v.negate ? !result : result;
-    }),
+    S.filter(
+      (value: string) => {
+        const result = tryEvaluate(v.expression, value);
+        if (result === undefined) {
+          // Unrecognized expression — pass through (can't validate)
+          return true;
+        }
+        return v.negate ? !result : result;
+      },
+      { jsonSchema: {} },
+    ),
   ) as S.Schema.Any;
 }
 

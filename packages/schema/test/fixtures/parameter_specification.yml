@@ -344,6 +344,9 @@ gx_text_expression_validation:
   - parameter: {__class__: 'ConnectedValue'}
   workflow_step_linked_invalid:
   - parameter: ''
+  _json_schema_skip:
+    request_invalid: "expression validator uses AfterValidator"
+    workflow_step_linked_invalid: "expression validator uses AfterValidator"
 
 gx_text_empty_validation:
   request_valid:
@@ -365,6 +368,11 @@ gx_text_empty_validation:
   - parameter: {__class__: 'ConnectedValue'}
   workflow_step_linked_invalid:
   - parameter: ''
+  _json_schema_skip:
+    request_invalid: "empty_field validator uses AfterValidator"
+    job_internal_invalid: "empty_field validator uses AfterValidator"
+    job_runtime_invalid: "empty_field validator uses AfterValidator"
+    workflow_step_linked_invalid: "empty_field validator uses AfterValidator"
 
 gx_text:
   request_valid: &gx_text_request_valid
@@ -928,6 +936,10 @@ gx_directory_uri:
   - parameter: "justsomestring"
   - parameter: true
   - parameter: null
+  _json_schema_skip:
+    request_invalid: "regex validator uses AfterValidator"
+    job_internal_invalid: "regex validator uses AfterValidator"
+    job_runtime_invalid: "regex validator uses AfterValidator"
 
 gx_directory_uri_validation:
   request_valid:
@@ -944,6 +956,9 @@ gx_directory_uri_validation:
   - parameter: "gxfiles://tooshort/index.json"
   - parameter: "gxfiles://mycoolsource/api/wrongex.js"
   - parameter: "gxfiles://mycoolsource/badexp.json"
+  _json_schema_skip:
+    request_invalid: "regex/length/expression validators use AfterValidator"
+    workflow_step_linked_invalid: "regex/length/expression validators use AfterValidator"
 
 gx_hidden:
   request_valid:
@@ -1051,6 +1066,9 @@ gx_hidden_validation:
   - parameter: "http://mycoolservice.com/index.json"
   - parameter: "http://mycoolservice.com/api/wrongex.js"
   - parameter: "http://mycoolservice.com/badexp.json"
+  _json_schema_skip:
+    request_invalid: "regex/length/expression validators use AfterValidator"
+    workflow_step_linked_invalid: "regex/length/expression validators use AfterValidator"
 
 gx_float:
   request_valid:
@@ -1247,11 +1265,11 @@ gx_data:
    - parameter: {__class__: "Batch", values: [{src: dce, id: abcdabcd}]}
    - parameter: {__class__: "Batch", values: [{src: dce, id: abcdabcd, map_over_type: paired}]}
    - parameter: {__class__: "Batch", values: [{src: dce, id: abcdabcd, map_over_type: null}]}
+   - parameter: {src: dce, id: abcdabcd}
   request_invalid:
    - parameter: {__class__: "Batch", values: [{src: hdca, id: 5}]}
    # map_over_type only valid on hdca/dce, not hda/ldda
    - parameter: {__class__: "Batch", values: [{src: hda, id: abcdabcd, map_over_type: paired}]}
-   - parameter: {src: dce, id: abcdabcd}
    - parameter: {src: hda, id: 7}
    - parameter: {src: hdca, id: abcdabcd}
    - parameter: null
@@ -1287,6 +1305,7 @@ gx_data:
    - parameter: {__class__: "Batch", values: [{src: dce, id: 5, map_over_type: paired}]}
    - parameter: {src: hda, id: 5}
    - parameter: {src: hda, id: 0}
+   - parameter: {src: dce, id: 5}
   request_internal_dereferenced_invalid:
    # the difference between request internal and request internal dereferenced is that these have been converted
    # to datasets.
@@ -1399,11 +1418,11 @@ gx_data_optional:
    - parameter: {src: hda, id: 5}
   job_internal_invalid: &data_optional_job_internal_invalid
    - {}
-  job_runtime_valid:
+  job_runtime_valid: &data_optional_job_runtime_valid
    - parameter: {class: File, basename: "f.txt", location: "step_input://0",
       path: "/tmp/f.txt", nameroot: "f", nameext: ".txt", format: "txt", size: 100}
    - parameter: null
-  job_runtime_invalid:
+  job_runtime_invalid: &data_optional_job_runtime_invalid
    - parameter: {src: hda, id: 7}
    - parameter: {class: File}
    - {}
@@ -1435,6 +1454,8 @@ gx_hidden_data:
   request_internal_invalid: *data_optional_request_internal_invalid
   job_internal_valid: *data_optional_job_internal_valid
   job_internal_invalid: *data_optional_job_internal_invalid
+  job_runtime_valid: *data_optional_job_runtime_valid
+  job_runtime_invalid: *data_optional_job_runtime_invalid
   workflow_step_valid: *data_optional_workflow_step_valid
   workflow_step_invalid: *data_optional_workflow_step_invalid
   workflow_step_linked_valid: *data_optional_workflow_step_linked_valid

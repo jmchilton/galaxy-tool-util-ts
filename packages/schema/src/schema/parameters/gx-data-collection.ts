@@ -1,4 +1,4 @@
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 import type { DataCollectionParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
 import { usesStringIds, isWorkflowStep, isTestCase } from "../state-representations.js";
@@ -123,7 +123,7 @@ function generateDataCollectionSchema(
 
   if (isWorkflowStep(stateRep)) {
     // workflow_step: absent only. workflow_step_linked: ConnectedValue (added centrally).
-    schema = S.Unknown.pipe(S.filter(() => false));
+    schema = S.Never.annotations({ jsonSchema: { not: {} } }) as unknown as S.Schema.Any;
   } else if (isTestCase(stateRep)) {
     schema = buildTestCaseCollectionSchema();
   } else if (stateRep === "job_runtime") {

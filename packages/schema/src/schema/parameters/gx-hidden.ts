@@ -1,4 +1,4 @@
-import * as S from "@effect/schema/Schema";
+import * as S from "effect/Schema";
 import type { HiddenParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
 import {
