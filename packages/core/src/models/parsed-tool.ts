@@ -15,11 +15,21 @@ export const Citation = S.Struct({
   content: S.String,
 });
 
+/** Normalize empty string to null for description field. */
+const NullableDescription = S.transform(
+  S.NullOr(S.String),
+  S.NullOr(S.String),
+  {
+    decode: (val) => (val === "" ? null : val),
+    encode: (val) => val,
+  },
+);
+
 export const ParsedTool = S.Struct({
   id: S.String,
   version: S.NullOr(S.String),
   name: S.String,
-  description: S.NullOr(S.String),
+  description: NullableDescription,
   inputs: S.Array(S.Unknown),
   outputs: S.Array(S.Unknown),
   citations: S.Array(Citation),
