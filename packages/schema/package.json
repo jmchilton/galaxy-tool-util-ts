@@ -1,0 +1,30 @@
+{
+  "name": "@galaxy-tool-util/schema",
+  "version": "1.0.0",
+  "description": "Effect Schema parameter types and validators for Galaxy tools",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ test/",
+    "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
+  },
+  "keywords": [
+    "galaxy",
+    "tool-util",
+    "schema"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "@effect/schema": "^0.75.5",
+    "effect": "^3.21.0"
+  },
+  "devDependencies": {
+    "yaml": "^2.8.3"
+  }
+}

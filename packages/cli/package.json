@@ -1,0 +1,31 @@
+{
+  "name": "@galaxy-tool-util/cli",
+  "version": "1.0.0",
+  "description": "galaxy-tool-cache CLI — cache and inspect Galaxy tool metadata",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "galaxy-tool-cache": "dist/bin/galaxy-tool-cache.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ test/",
+    "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@effect/schema": "^0.75.5",
+    "@galaxy-tool-util/core": "workspace:*",
+    "@galaxy-tool-util/schema": "workspace:*",
+    "commander": "^14.0.0",
+    "effect": "^3.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@galaxy-tool-util/server",
+  "version": "1.0.0",
+  "description": "Galaxy tool proxy server — caches and serves tool schemas",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "galaxy-tool-proxy": "dist/bin/galaxy-tool-proxy.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ test/",
+    "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@effect/schema": "^0.75.5",
+    "@galaxy-tool-util/core": "workspace:*",
+    "@galaxy-tool-util/schema": "workspace:*",
+    "effect": "^3.21.0",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0"
+  }
+}

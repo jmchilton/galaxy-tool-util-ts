@@ -1,30 +1,23 @@
-.PHONY: all lint format typecheck test check
+.PHONY: all lint format typecheck test check fix format-fix
 
 all: check test
 
-# Run ESLint
 lint:
-	npx eslint src/ test/
+	pnpm -r lint
 
-# Run Prettier (check mode — fails if unformatted)
 format:
-	npx prettier --check 'src/**/*.ts' 'test/**/*.ts'
+	pnpm -r format
 
-# Format in-place
 format-fix:
-	npx prettier --write 'src/**/*.ts' 'test/**/*.ts'
+	pnpm -r format-fix
 
-# Run TypeScript compiler in check mode
 typecheck:
-	npx tsc --noEmit
+	pnpm -r typecheck
 
-# Run tests
 test:
-	npx vitest run
+	pnpm -r test
 
-# All static checks (no tests)
 check: lint format typecheck
 
-# Fix all auto-fixable issues
 fix: format-fix
-	npx eslint --fix src/ test/
+	pnpm -r lint -- --fix

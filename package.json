@@ -1,35 +1,20 @@
 {
   "name": "galaxy-tool-util",
-  "version": "1.0.0",
-  "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "private": true,
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit && vitest run",
-    "test:watch": "vitest"
-  },
-  "keywords": [
-    "galaxy",
-    "tool-util",
-    "schema"
-  ],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
-  "dependencies": {
-    "@effect/schema": "^0.75.5",
-    "effect": "^3.21.0"
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format",
+    "format-fix": "pnpm -r format-fix"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.5.0",
     "eslint": "^10.1.0",
     "prettier": "^3.8.1",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.57.2",
-    "vitest": "^4.1.2",
-    "yaml": "^2.8.3"
+    "vitest": "^4.1.2"
   }
 }
