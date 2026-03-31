@@ -15,15 +15,22 @@
  *   - value: exact equality
  *   - value_contains: substring containment
  *   - value_set: unordered set comparison
+ *
+ * Special case:
+ *   - assertions may be omitted or empty: operation succeeding is the test
+ *   - expect_error: true: operation must raise an exception
  */
 
 import { describe, it, expect } from "vitest";
 import * as yaml from "yaml";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { Schema } from "effect";
 
 import { normalizedFormat2 } from "../src/workflow/normalized/format2.js";
 import { normalizedNative } from "../src/workflow/normalized/native.js";
+import { GalaxyWorkflowSchema } from "../src/workflow/raw/gxformat2.effect.js";
+import { NativeGalaxyWorkflowSchema } from "../src/workflow/raw/native.effect.js";
 
 // --- Directories ---
 
@@ -33,6 +40,40 @@ const WORKFLOWS_DIR = path.join(FIXTURES_DIR, "workflows");
 const FORMAT2_DIR = path.join(WORKFLOWS_DIR, "format2");
 const NATIVE_DIR = path.join(WORKFLOWS_DIR, "native");
 
+// --- Validation helpers ---
+// Schema-salad schemas require a `class` discriminator that real files may omit.
+// Inject it when missing, matching the CLI validate-workflow behavior.
+
+function _withClass(raw: unknown, cls: string): unknown {
+  const obj = raw as Record<string, unknown>;
+  if ("class" in obj) return obj;
+  return { ...obj, class: cls };
+}
+
+function validateFormat2(raw: unknown): unknown {
+  return Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "ignore" })(
+    _withClass(raw, "GalaxyWorkflow"),
+  );
+}
+
+function validateFormat2Strict(raw: unknown): unknown {
+  return Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "error" })(
+    _withClass(raw, "GalaxyWorkflow"),
+  );
+}
+
+function validateNative(raw: unknown): unknown {
+  return Schema.decodeUnknownSync(NativeGalaxyWorkflowSchema, { onExcessProperty: "ignore" })(
+    _withClass(raw, "NativeGalaxyWorkflow"),
+  );
+}
+
+function validateNativeStrict(raw: unknown): unknown {
+  return Schema.decodeUnknownSync(NativeGalaxyWorkflowSchema, { onExcessProperty: "error" })(
+    _withClass(raw, "NativeGalaxyWorkflow"),
+  );
+}
+
 // --- Operations ---
 
 type Operation = (raw: unknown) => unknown;
@@ -40,6 +81,10 @@ type Operation = (raw: unknown) => unknown;
 const OPERATIONS: Record<string, Operation> = {
   normalized_format2: normalizedFormat2,
   normalized_native: normalizedNative,
+  validate_format2: validateFormat2,
+  validate_format2_strict: validateFormat2Strict,
+  validate_native: validateNative,
+  validate_native_strict: validateNativeStrict,
 };
 
 const UNSUPPORTED_OPERATIONS = new Set([
@@ -186,7 +231,8 @@ interface Assertion {
 interface TestCase {
   fixture: string;
   operation: string;
-  assertions: Assertion[];
+  assertions?: Assertion[];
+  expect_error?: boolean;
 }
 
 function loadExpectations(): [string, TestCase][] {
@@ -208,7 +254,9 @@ const ALL_CASES = loadExpectations();
 
 describe("declarative normalized workflow tests", () => {
   for (const [testId, testCase] of ALL_CASES) {
-    const { fixture, operation, assertions } = testCase;
+    const { fixture, operation } = testCase;
+    const expectError = testCase.expect_error ?? false;
+    const assertions = testCase.assertions ?? [];
 
     if (UNSUPPORTED_OPERATIONS.has(operation)) {
       it.skip(`${testId} (unsupported operation: ${operation})`, () => {});
@@ -224,6 +272,12 @@ describe("declarative normalized workflow tests", () => {
 
     it(testId, () => {
       const raw = loadWorkflow(fixture);
+
+      if (expectError) {
+        expect(() => OPERATIONS[operation](raw)).toThrow();
+        return;
+      }
+
       const wf = OPERATIONS[operation](raw);
 
       for (const assertion of assertions) {
