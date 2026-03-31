@@ -122,6 +122,9 @@ describe("parameter specification", () => {
       }
 
       for (const [specKey, testCases] of Object.entries(combos)) {
+        // Metadata keys (e.g. _json_schema_skip) are not test cases — skip silently
+        if (specKey.startsWith("_")) continue;
+
         const keySkipReason = shouldSkipSpecKey(specKey);
         if (keySkipReason) {
           it.skip(`${specKey}: ${keySkipReason}`, () => {});
