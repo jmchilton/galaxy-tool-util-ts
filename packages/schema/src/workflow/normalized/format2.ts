@@ -240,8 +240,8 @@ function _normalizeStep(
   const stepOut = _normalizeStepOut(raw.out);
   const run = _resolveRun(raw.run, subworkflows);
 
-  // Resolve $link references in state: replace {$link: "x"} with
-  // {__class__: "ConnectedValue"} and add corresponding in entries
+  // Resolve $link references in state: strip linked keys from state
+  // and add corresponding in entries for downstream connection injection
   const linkInputs: NormalizedFormat2StepInput[] = [];
   const state = raw.state != null
     ? _resolveLinks(raw.state as Record<string, unknown>, linkInputs)
@@ -351,8 +351,15 @@ function _resolveRun(
 
 /**
  * Walk a state dict looking for {$link: "source"} objects.
- * Replace each with {__class__: "ConnectedValue"} and collect
- * a corresponding step input entry {id: key, source: value}.
+ * Strip each from state and collect a corresponding step input
+ * entry {id: key, source: value}.  The downstream validation
+ * path re-injects ConnectedValue markers via the parameter-tree-
+ * aware injectConnectionsIntoState(), so normalization should not
+ * place ConnectedValue objects into state itself.
+ *
+ * This is a structural (non-parameter-aware) walk matching the
+ * Python gxformat2 behavior — $link is a format-level construct
+ * resolved before tool definitions are available.
  */
 function _resolveLinks(
   state: Record<string, unknown>,
@@ -363,7 +370,6 @@ function _resolveLinks(
     if (val && typeof val === "object" && !Array.isArray(val)) {
       const obj = val as Record<string, unknown>;
       if ("$link" in obj) {
-        result[key] = { __class__: "ConnectedValue" };
         linkInputs.push({ id: key, source: obj.$link as string });
       } else {
         result[key] = _resolveLinks(obj, linkInputs);

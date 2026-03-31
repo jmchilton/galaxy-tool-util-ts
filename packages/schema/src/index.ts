@@ -36,4 +36,10 @@ export {
   type NormalizedNativeWorkflow,
   type NormalizedNativeStep,
   type ToolReference,
+  injectConnectionsIntoState,
+  flatStatePath,
+  keysStartingWith,
+  repeatInputsToArray,
+  selectWhichWhen,
+  scanForReplacements,
 } from "./workflow/index.js";

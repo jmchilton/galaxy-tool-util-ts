@@ -44,3 +44,16 @@ export {
   UNLABELED_INPUT_PREFIX,
   UNLABELED_STEP_PREFIX,
 } from "./normalized/index.js";
+
+export {
+  injectConnectionsIntoState,
+  flatStatePath,
+  keysStartingWith,
+  repeatInputsToArray,
+  selectWhichWhen,
+} from "./state-merge.js";
+
+export {
+  scanForReplacements,
+  type ReplacementClassification,
+} from "./replacement-scan.js";
