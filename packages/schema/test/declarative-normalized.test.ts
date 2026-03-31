@@ -29,6 +29,10 @@ import { Schema } from "effect";
 
 import { normalizedFormat2 } from "../src/workflow/normalized/format2.js";
 import { normalizedNative } from "../src/workflow/normalized/native.js";
+import { toFormat2 } from "../src/workflow/normalized/toFormat2.js";
+import { toNative } from "../src/workflow/normalized/toNative.js";
+import { ensureFormat2, ensureNative } from "../src/workflow/normalized/ensure.js";
+import { expandedFormat2, expandedNative } from "../src/workflow/normalized/expanded.js";
 import { GalaxyWorkflowSchema } from "../src/workflow/raw/gxformat2.effect.js";
 import { NativeGalaxyWorkflowSchema } from "../src/workflow/raw/native.effect.js";
 
@@ -85,15 +89,15 @@ const OPERATIONS: Record<string, Operation> = {
   validate_format2_strict: validateFormat2Strict,
   validate_native: validateNative,
   validate_native_strict: validateNativeStrict,
+  to_format2: toFormat2,
+  to_native: toNative,
+  ensure_format2: ensureFormat2,
+  ensure_native: ensureNative,
+  expanded_format2: expandedFormat2,
+  expanded_native: expandedNative,
 };
 
-const UNSUPPORTED_OPERATIONS = new Set([
-  "expanded_format2",
-  "expanded_native",
-  "to_format2",
-  "to_native",
-  "ensure_format2",
-  "ensure_native",
+const UNSUPPORTED_OPERATIONS = new Set<string>([
 ]);
 
 // --- Python field alias mapping ---
@@ -102,6 +106,7 @@ const UNSUPPORTED_OPERATIONS = new Set([
 const FIELD_ALIASES: Record<string, string> = {
   in_: "in",
   type_: "type",
+  format_version: "format-version",
 };
 
 // --- Fixture loading ---

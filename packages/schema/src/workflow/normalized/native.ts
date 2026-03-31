@@ -87,7 +87,7 @@ export function normalizedNative(raw: unknown): NormalizedNativeWorkflow {
   const tags = _normalizeTags(wf.tags);
   const uniqueTools = _collectUniqueTools(steps);
 
-  return {
+  const result: NormalizedNativeWorkflow = {
     name: wf.name as string | null | undefined,
     a_galaxy_workflow: (wf.a_galaxy_workflow as string) ?? "true",
     "format-version": (wf["format-version"] as string) ?? "0.1",
@@ -100,6 +100,13 @@ export function normalizedNative(raw: unknown): NormalizedNativeWorkflow {
     steps,
     unique_tools: uniqueTools,
   };
+
+  // Pass through comments if present (used by toFormat2 conversion)
+  if (wf.comments != null) {
+    (result as Record<string, unknown>).comments = wf.comments;
+  }
+
+  return result;
 }
 
 // --- Internal helpers ---

@@ -143,7 +143,7 @@ function _normalizeWorkflow(
   const steps = _normalizeSteps(raw.steps, subworkflows);
   const uniqueTools = _collectUniqueTools(steps);
 
-  return {
+  const result: NormalizedFormat2Workflow = {
     class: "GalaxyWorkflow",
     label: (raw.label as string | null) ?? null,
     doc: _joinDoc(raw.doc),
@@ -157,6 +157,13 @@ function _normalizeWorkflow(
     release: raw.release as string | undefined,
     unique_tools: uniqueTools,
   };
+
+  // Pass through comments if present (used by toNative conversion)
+  if (raw.comments != null) {
+    (result as Record<string, unknown>).comments = raw.comments;
+  }
+
+  return result;
 }
 
 function _normalizeInputs(raw: unknown): NormalizedFormat2Input[] {
