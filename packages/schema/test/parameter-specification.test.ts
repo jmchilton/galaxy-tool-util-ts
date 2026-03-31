@@ -54,6 +54,7 @@ const IMPLEMENTED_STATE_REPS = new Set<StateRepresentation>([
   "job_runtime",
   "workflow_step",
   "workflow_step_linked",
+  "workflow_step_native",
   "test_case_xml",
   "test_case_json",
   "relaxed_request",

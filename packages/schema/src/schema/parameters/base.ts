@@ -1,7 +1,33 @@
-import type * as S from "effect/Schema";
+import * as S from "effect/Schema";
 import type { ToolParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
 import { requiresAllFields, allOptional } from "../state-representations.js";
+
+/**
+ * Native int: accepts strict int or string that parses as integer.
+ * Mirrors Python's NativeInt = Annotated[Union[StrictInt, StrictStr], AfterValidator(_validate_string_contains_int)]
+ */
+export const NativeInt: S.Schema.Any = S.Union(
+  S.Int,
+  S.String.pipe(
+    S.filter((s: string) => {
+      if (!/^-?\d+$/.test(s)) return `String '${s}' is not a valid integer`;
+    }),
+  ),
+);
+
+/**
+ * Native float: accepts strict int, strict float, or string that parses as number.
+ * Mirrors Python's NativeFloat = Annotated[Union[StrictInt, StrictFloat, StrictStr], AfterValidator(_validate_string_contains_number)]
+ */
+export const NativeFloat: S.Schema.Any = S.Union(
+  S.Number.pipe(S.finite()),
+  S.String.pipe(
+    S.filter((s: string) => {
+      if (isNaN(Number(s)) || s.trim() === "") return `String '${s}' is not a valid number`;
+    }),
+  ),
+);
 
 /**
  * Analogous to Python's DynamicModelInformation.

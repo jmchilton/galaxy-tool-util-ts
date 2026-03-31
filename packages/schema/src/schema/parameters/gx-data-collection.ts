@@ -1,7 +1,8 @@
 import * as S from "effect/Schema";
 import type { DataCollectionParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
-import { usesStringIds, isWorkflowStep, isTestCase } from "../state-representations.js";
+import { usesStringIds, isWorkflowStep, isTestCase, allowsConnectedOrRuntimeValue } from "../state-representations.js";
+import { ConnectedOrRuntimeValueSchema } from "../model-factory.js";
 import {
   safeFieldName,
   computeIsOptional,
@@ -121,7 +122,16 @@ function generateDataCollectionSchema(
 
   let schema: S.Schema.Any;
 
-  if (isWorkflowStep(stateRep)) {
+  let connectedValueHandled = false;
+
+  if (allowsConnectedOrRuntimeValue(stateRep)) {
+    // Native: ConnectedValue or RuntimeValue only
+    schema = ConnectedOrRuntimeValueSchema;
+    if (p.optional) {
+      schema = S.NullOr(schema);
+    }
+    connectedValueHandled = true;
+  } else if (isWorkflowStep(stateRep)) {
     // workflow_step: absent only. workflow_step_linked: ConnectedValue (added centrally).
     schema = S.Never.annotations({ jsonSchema: { not: {} } }) as unknown as S.Schema.Any;
   } else if (isTestCase(stateRep)) {
@@ -157,7 +167,7 @@ function generateDataCollectionSchema(
     schema = parts.length === 1 ? parts[0] : S.Union(...parts);
   }
 
-  if (p.optional && !isWorkflowStep(stateRep)) {
+  if (p.optional && !isWorkflowStep(stateRep) && !connectedValueHandled) {
     schema = S.NullOr(schema);
   }
 
@@ -170,7 +180,7 @@ function generateDataCollectionSchema(
     isOptional = computeIsOptional(stateRep, requestRequiresValue);
   }
 
-  return { name, alias, schema, isOptional };
+  return { name, alias, schema, isOptional, connectedValueHandled };
 }
 
 registerParameterType("gx_data_collection", generateDataCollectionSchema);

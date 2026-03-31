@@ -1,7 +1,8 @@
 import * as S from "effect/Schema";
 import type { SelectParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
-import { allowsConnectedValue } from "../state-representations.js";
+import { allowsConnectedValue, allowsConnectedOrRuntimeValue } from "../state-representations.js";
+import { ConnectedOrRuntimeValueSchema } from "../model-factory.js";
 import {
   safeFieldName,
   computeIsOptional,
@@ -31,7 +32,22 @@ function generateSelectSchema(
   let schema: S.Schema.Any;
   let connectedValueHandled = false;
 
-  if (p.multiple) {
+  if (allowsConnectedOrRuntimeValue(stateRep)) {
+    // Native: multiple selects can also be comma-delimited strings
+    if (p.multiple) {
+      schema = S.Union(
+        S.Array(valueSchema),
+        S.String, // comma-delimited
+      );
+    } else {
+      schema = valueSchema;
+    }
+    if (p.optional || p.multiple) {
+      schema = S.NullOr(schema);
+    }
+    schema = S.Union(schema, ConnectedOrRuntimeValueSchema);
+    connectedValueHandled = true;
+  } else if (p.multiple) {
     // multiple: array of valid values, or null
     let itemSchema = valueSchema;
     // For workflow_step_linked, ConnectedValue is an array item alternative

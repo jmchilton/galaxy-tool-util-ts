@@ -1,7 +1,7 @@
 import * as S from "effect/Schema";
 import type { ConditionalParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
-import { requiresAllFields } from "../state-representations.js";
+import { requiresAllFields, allowsConnectedOrRuntimeValue } from "../state-representations.js";
 import {
   safeFieldName,
   computeIsOptional,
@@ -9,6 +9,11 @@ import {
   type GeneratorContext,
 } from "./base.js";
 import { registerParameterType } from "./registry.js";
+
+/** Check if a conditional's test_parameter is boolean-typed */
+function isBooleanTest(p: ConditionalParameterModel): boolean {
+  return p.test_parameter.parameter_type === "gx_boolean";
+}
 
 function generateConditionalSchema(
   param: unknown,
@@ -18,6 +23,8 @@ function generateConditionalSchema(
   const p = param as ConditionalParameterModel;
   const { name, alias } = safeFieldName(p.name);
   const testParam = safeFieldName(p.test_parameter.name);
+  const isBoolean = isBooleanTest(p);
+  const isNative = allowsConnectedOrRuntimeValue(stateRep);
 
   const branchSchemas: S.Schema.Any[] = [];
 
@@ -30,10 +37,22 @@ function generateConditionalSchema(
     // test_parameter is optional only in the default branch for non-requiresAllFields states
     const testParamOptional = !requiresAllFields(stateRep) && when.is_default_when;
 
+    // For native + boolean test, discriminator accepts both bool and string form
+    let testSchema: S.Schema.Any;
+    if (isBoolean && isNative) {
+      const strForm = String(when.discriminator).toLowerCase();
+      testSchema = S.Union(
+        S.Literal(when.discriminator as any),
+        S.Literal(strForm as any),
+      );
+    } else {
+      testSchema = S.Literal(when.discriminator as any);
+    }
+
     const testParamInfo: DynamicSchemaInfo = {
       name: testParam.name,
       alias: testParam.alias,
-      schema: S.Literal(when.discriminator as any),
+      schema: testSchema,
       isOptional: testParamOptional,
     };
 

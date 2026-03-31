@@ -1,7 +1,7 @@
 import * as S from "effect/Schema";
 import type { ToolParameterBundleModel, ToolParameterModel } from "./bundle-types.js";
 import type { StateRepresentation } from "./state-representations.js";
-import { allowsConnectedValue } from "./state-representations.js";
+import { allowsConnectedValue, allowsConnectedOrRuntimeValue } from "./state-representations.js";
 import { getParameterGenerator } from "./parameters/registry.js";
 import type { DynamicSchemaInfo, GeneratorContext } from "./parameters/base.js";
 
@@ -9,6 +9,17 @@ import type { DynamicSchemaInfo, GeneratorContext } from "./parameters/base.js";
 const ConnectedValueSchema: S.Schema.Any = S.Struct({
   __class__: S.Literal("ConnectedValue"),
 });
+
+/** Schema for Galaxy's RuntimeValue marker — used in workflow_step_native */
+const RuntimeValueSchema: S.Schema.Any = S.Struct({
+  __class__: S.Literal("RuntimeValue"),
+});
+
+/** ConnectedValue + RuntimeValue union — used in workflow_step_native */
+export const ConnectedOrRuntimeValueSchema: S.Schema.Any = S.Union(
+  ConnectedValueSchema,
+  RuntimeValueSchema,
+);
 
 /**
  * Build an Effect Schema for a tool parameter bundle at a given state representation.
@@ -57,6 +68,7 @@ function buildSchemaInfos(
 ): DynamicSchemaInfo[] | undefined {
   const infos: DynamicSchemaInfo[] = [];
   const wrapConnected = allowsConnectedValue(stateRep);
+  const wrapNative = allowsConnectedOrRuntimeValue(stateRep);
   for (const param of params) {
     const generator = getParameterGenerator(param.parameter_type);
     if (!generator) return undefined;
@@ -65,6 +77,11 @@ function buildSchemaInfos(
     // (unless generator already handled it, e.g. for array types)
     if (wrapConnected && !info.connectedValueHandled) {
       info.schema = S.Union(info.schema, ConnectedValueSchema);
+    }
+    // For workflow_step_native, add ConnectedValue+RuntimeValue as alternative
+    // (unless generator already handled it)
+    if (wrapNative && !info.connectedValueHandled) {
+      info.schema = S.Union(info.schema, ConnectedOrRuntimeValueSchema);
     }
     infos.push(info);
   }

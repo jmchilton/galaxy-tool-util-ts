@@ -1,6 +1,8 @@
 import * as S from "effect/Schema";
 import type { HiddenParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
+import { allowsConnectedOrRuntimeValue } from "../state-representations.js";
+import { ConnectedOrRuntimeValueSchema } from "../model-factory.js";
 import {
   safeFieldName,
   computeIsOptional,
@@ -20,16 +22,27 @@ function generateHiddenSchema(
 
   let schema: S.Schema.Any = S.String;
   schema = applyValidators(schema, p.validators);
+  let connectedValueHandled = false;
 
-  if (p.optional) {
+  if (allowsConnectedOrRuntimeValue(stateRep)) {
+    schema = S.Union(schema, ConnectedOrRuntimeValueSchema);
+    connectedValueHandled = true;
+    // Force optional for non-optional hidden params in native
+    if (!p.optional) {
+      schema = S.NullOr(schema);
+    }
+  } else if (p.optional) {
     schema = S.NullOr(schema);
   }
 
   // Hidden params with a value set don't require user input
-  const requestRequiresValue = !p.optional && p.value === null;
+  let requestRequiresValue = !p.optional && p.value === null;
+  if (allowsConnectedOrRuntimeValue(stateRep) && !p.optional) {
+    requestRequiresValue = false;
+  }
   const isOptional = computeIsOptional(stateRep, requestRequiresValue);
 
-  return { name, alias, schema, isOptional };
+  return { name, alias, schema, isOptional, connectedValueHandled };
 }
 
 registerParameterType("gx_hidden", generateHiddenSchema);

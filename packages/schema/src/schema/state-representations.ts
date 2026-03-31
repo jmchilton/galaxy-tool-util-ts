@@ -11,6 +11,7 @@ export const STATE_REPRESENTATIONS = [
   "test_case_json",
   "workflow_step",
   "workflow_step_linked",
+  "workflow_step_native",
 ] as const;
 
 export type StateRepresentation = (typeof STATE_REPRESENTATIONS)[number];
@@ -51,12 +52,16 @@ export function allowsConnectedValue(rep: StateRepresentation): boolean {
   return rep === "workflow_step_linked";
 }
 
+export function allowsConnectedOrRuntimeValue(rep: StateRepresentation): boolean {
+  return rep === "workflow_step_native";
+}
+
 export function allOptional(rep: StateRepresentation): boolean {
   return rep === "landing_request" || rep === "landing_request_internal";
 }
 
 export function isWorkflowStep(rep: StateRepresentation): boolean {
-  return rep === "workflow_step" || rep === "workflow_step_linked";
+  return rep === "workflow_step" || rep === "workflow_step_linked" || rep === "workflow_step_native";
 }
 
 export function isTestCase(rep: StateRepresentation): boolean {

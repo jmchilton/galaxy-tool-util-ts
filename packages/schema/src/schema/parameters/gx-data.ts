@@ -7,7 +7,9 @@ import {
   allowsUrlSources,
   isWorkflowStep,
   isTestCase,
+  allowsConnectedOrRuntimeValue,
 } from "../state-representations.js";
+import { ConnectedOrRuntimeValueSchema } from "../model-factory.js";
 import {
   safeFieldName,
   computeIsOptional,
@@ -26,7 +28,16 @@ function generateDataSchema(
 
   let schema: S.Schema.Any;
 
-  if (isWorkflowStep(stateRep)) {
+  let connectedValueHandled = false;
+
+  if (allowsConnectedOrRuntimeValue(stateRep)) {
+    // Native: ConnectedValue or RuntimeValue only
+    schema = ConnectedOrRuntimeValueSchema;
+    if (p.optional) {
+      schema = S.NullOr(schema);
+    }
+    connectedValueHandled = true;
+  } else if (isWorkflowStep(stateRep)) {
     // workflow_step: data is always absent. workflow_step_linked: ConnectedValue only (added centrally).
     schema = S.Never.annotations({ jsonSchema: { not: {} } }) as unknown as S.Schema.Any;
   } else if (isTestCase(stateRep)) {
@@ -98,7 +109,7 @@ function generateDataSchema(
     }
   }
 
-  if (p.optional && !isWorkflowStep(stateRep)) {
+  if (p.optional && !isWorkflowStep(stateRep) && !connectedValueHandled) {
     schema = S.NullOr(schema);
   }
 
@@ -112,7 +123,7 @@ function generateDataSchema(
     isOptional = computeIsOptional(stateRep, requestRequiresValue);
   }
 
-  return { name, alias, schema, isOptional };
+  return { name, alias, schema, isOptional, connectedValueHandled };
 }
 
 registerParameterType("gx_data", generateDataSchema);
