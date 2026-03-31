@@ -26,3 +26,4 @@ import "./gx-data.js";
 import "./gx-data-collection.js";
 import "./gx-data-column.js";
 import "./gx-group-tag.js";
+import "./gx-rules.js";

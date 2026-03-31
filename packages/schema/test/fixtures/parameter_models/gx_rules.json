@@ -1,0 +1,15 @@
+{
+  "parameters": [
+    {
+      "name": "rules",
+      "parameter_type": "gx_rules",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "rules"
+    }
+  ]
+}

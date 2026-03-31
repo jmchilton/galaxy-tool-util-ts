@@ -4375,3 +4375,55 @@ cwl_directory:
    - parameter: true
    - parameter: 5
    - parameter: "5"
+
+gx_rules:
+  request_valid:
+    - rules: {rules: [{type: add_column_metadata, value: identifier0}], mapping: [{type: list_identifiers, columns: [0]}]}
+    - rules: {rules: [], mapping: []}
+    - rules: {rules: [{type: sort, target_column: 0, numeric: false}], mapping: [{type: list_identifiers, columns: [0]}, {type: paired_identifier, columns: [1]}]}
+  request_invalid:
+    - rules: null
+    - rules: "not a rules object"
+    - rules: 5
+    - {}
+    - rules: {rules: []}
+    - rules: {mapping: []}
+    - rules: {rules: "not a list", mapping: []}
+    - rules: {rules: [], mapping: [{type: list_identifiers}]}
+  workflow_step_valid:
+    - rules: {rules: [{type: add_column_metadata, value: identifier0}], mapping: [{type: list_identifiers, columns: [0]}]}
+  workflow_step_invalid:
+    - rules: null
+    - rules: "not a rules object"
+    - rules: 5
+    - {}
+  workflow_step_linked_valid:
+    - rules: {rules: [{type: add_column_metadata, value: identifier0}], mapping: [{type: list_identifiers, columns: [0]}]}
+  workflow_step_linked_invalid:
+    - rules: null
+    - rules: "not a rules object"
+    - rules: 5
+    - {}
+  workflow_step_native_valid:
+    - rules: {rules: [{type: add_column_metadata, value: identifier0}], mapping: [{type: list_identifiers, columns: [0]}]}
+    - rules: {rules: [], mapping: [], extra_field: true}
+    - rules: {__class__: ConnectedValue}
+    - rules: {__class__: RuntimeValue}
+  workflow_step_native_invalid:
+    - rules: null
+    - rules: "not a rules object"
+    - rules: 5
+    - {}
+    - rules: {__class__: ConnectedValue2}
+  job_internal_valid:
+    - rules: {rules: [{type: add_column_metadata, value: identifier0}], mapping: [{type: list_identifiers, columns: [0]}]}
+  job_internal_invalid:
+    - rules: null
+    - {}
+    - rules: "not a rules object"
+  job_runtime_valid:
+    - rules: {rules: [{type: add_column_metadata, value: identifier0}], mapping: [{type: list_identifiers, columns: [0]}]}
+  job_runtime_invalid:
+    - rules: null
+    - {}
+    - rules: "not a rules object"
