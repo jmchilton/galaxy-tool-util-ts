@@ -28,7 +28,17 @@ function generateConditionalSchema(
 
   const branchSchemas: S.Schema.Any[] = [];
 
-  for (const when of p.whens) {
+  // Boolean conditionals with only one branch: synthesize empty branch for
+  // missing discriminator. is_default_when=false is safe — the synthesized
+  // branch has no child params, so requiring the test param value is correct.
+  const definedDiscriminators = new Set(p.whens.map((w) => w.discriminator));
+  let whens = p.whens;
+  if (isBoolean && p.whens.length === 1) {
+    const missing = !definedDiscriminators.has(true) ? true : false;
+    whens = [...p.whens, { discriminator: missing, parameters: [], is_default_when: false }];
+  }
+
+  for (const when of whens) {
     const childInfos = ctx.buildChildSchemaInfos(when.parameters, stateRep);
     if (!childInfos) {
       throw new Error(`Failed to build child schemas for conditional branch ${when.discriminator}`);

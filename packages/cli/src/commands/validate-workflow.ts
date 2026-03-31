@@ -39,7 +39,7 @@ function formatIssues(error: ParseResult.ParseError): string[] {
   return issues.map((i) => `${i.path.join(".")}: ${i.message}`);
 }
 
-interface StepValidationResult {
+export interface StepValidationResult {
   stepLabel: string;
   toolId: string;
   toolVersion: string | null;
@@ -147,7 +147,7 @@ export async function runValidateWorkflow(
 
 // --- Native validation ---
 
-async function validateNativeSteps(
+export async function validateNativeSteps(
   data: Record<string, unknown>,
   cache: ToolCache,
   prefix = "",

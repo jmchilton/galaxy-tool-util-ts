@@ -21,7 +21,7 @@ function generateSelectSchema(
 
   // Build literal union from static options
   let valueSchema: S.Schema.Any;
-  if (p.options.length > 0) {
+  if (p.options && p.options.length > 0) {
     const literals = p.options.map((o) => S.Literal(o.value));
     valueSchema = S.Union(...literals);
   } else {

@@ -118,7 +118,7 @@ export interface SelectParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_select";
   type: "select";
   multiple: boolean;
-  options: LabelValue[];
+  options: LabelValue[] | null;
   validators: ValidatorModel[];
 }
 
