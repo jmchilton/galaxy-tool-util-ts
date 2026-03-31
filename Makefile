@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync verify-golden
+.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden
 
 all: check test
 
@@ -54,8 +54,40 @@ endif
 	cp $(PARAM_SPEC_SRC) $(PARAM_SPEC_DST)
 	@echo "Synced."
 
+# Sync workflow fixture files from gxformat2 for declarative normalization tests.
+#   GXFORMAT2_ROOT=~/projects/worktrees/gxformat2/branch/docs make sync-workflow-fixtures
+WF_EXAMPLES_SRC = $(GXFORMAT2_ROOT)/gxformat2/examples
+WF_FIXTURES_DST = packages/schema/test/fixtures/workflows
+
+sync-workflow-fixtures:
+ifndef GXFORMAT2_ROOT
+	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
+endif
+	@test -d "$(WF_EXAMPLES_SRC)/format2" || (echo "ERROR: $(WF_EXAMPLES_SRC)/format2 not found" && exit 1)
+	@test -d "$(WF_EXAMPLES_SRC)/native" || (echo "ERROR: $(WF_EXAMPLES_SRC)/native not found" && exit 1)
+	@echo "Syncing workflow fixtures from $(WF_EXAMPLES_SRC)..."
+	mkdir -p $(WF_FIXTURES_DST)/format2 $(WF_FIXTURES_DST)/native
+	cp $(WF_EXAMPLES_SRC)/format2/synthetic-*.gxwf.yml $(WF_FIXTURES_DST)/format2/
+	cp $(WF_EXAMPLES_SRC)/native/synthetic-*.ga $(WF_FIXTURES_DST)/native/
+	@echo "Synced $$(ls $(WF_FIXTURES_DST)/format2/*.gxwf.yml $(WF_FIXTURES_DST)/native/*.ga | wc -l | tr -d ' ') workflow fixtures."
+
+# Sync expectation YAML files from gxformat2 for declarative normalization tests.
+#   GXFORMAT2_ROOT=~/projects/worktrees/gxformat2/branch/docs make sync-workflow-expectations
+WF_EXPECTATIONS_SRC = $(GXFORMAT2_ROOT)/gxformat2/examples/expectations
+WF_EXPECTATIONS_DST = packages/schema/test/fixtures/expectations
+
+sync-workflow-expectations:
+ifndef GXFORMAT2_ROOT
+	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
+endif
+	@test -d "$(WF_EXPECTATIONS_SRC)" || (echo "ERROR: $(WF_EXPECTATIONS_SRC) not found" && exit 1)
+	@echo "Syncing expectation files from $(WF_EXPECTATIONS_SRC)..."
+	mkdir -p $(WF_EXPECTATIONS_DST)
+	cp $(WF_EXPECTATIONS_SRC)/*.yml $(WF_EXPECTATIONS_DST)/
+	@echo "Synced $$(ls $(WF_EXPECTATIONS_DST)/*.yml | wc -l | tr -d ' ') expectation files."
+
 # Requires both GALAXY_ROOT and GXFORMAT2_ROOT. Run individual targets if you only have one.
-sync: sync-golden sync-param-spec sync-schema-sources
+sync: sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations
 
 # Sync schema-salad YAML sources from gxformat2 for workflow schema generation.
 # Set GXFORMAT2_ROOT to your gxformat2 checkout, e.g.:
@@ -85,7 +117,7 @@ endif
 # Requires schema-salad-plus-pydantic >= 0.1.5 (uv tool or pip install).
 # Set SCHEMA_SALAD_PLUS_PYDANTIC to override the command (default: schema-salad-plus-pydantic).
 SCHEMA_SALAD_PLUS_PYDANTIC ?= schema-salad-plus-pydantic
-WF_SCHEMA_DST = packages/schema/src/workflow
+WF_SCHEMA_DST = packages/schema/src/workflow/raw
 
 generate-schemas:
 	@test -f "$(SCHEMA_DST)/v19_09/workflow.yml" || (echo "ERROR: schema sources not found — run 'make sync-schema-sources' first" && exit 1)
