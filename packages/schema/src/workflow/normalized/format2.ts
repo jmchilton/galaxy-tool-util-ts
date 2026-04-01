@@ -240,12 +240,16 @@ function _normalizeStep(
   const stepOut = _normalizeStepOut(raw.out);
   const run = _resolveRun(raw.run, subworkflows);
 
-  // Resolve $link references in state: strip linked keys from state
-  // and add corresponding in entries for downstream connection injection
-  const linkInputs: NormalizedFormat2StepInput[] = [];
+  // Resolve $link references in state: replace with ConnectedValue and
+  // collect corresponding in entries for downstream connection injection
+  const linkConnections: Map<string, string[]> = new Map();
   const state = raw.state != null
-    ? _resolveLinks(raw.state as Record<string, unknown>, linkInputs)
+    ? _resolveLinks(raw.state as Record<string, unknown>, "", linkConnections) as NormalizedFormat2Step["state"]
     : raw.state as NormalizedFormat2Step["state"];
+  const linkInputs: NormalizedFormat2StepInput[] = [];
+  for (const [key, sources] of linkConnections) {
+    linkInputs.push({ id: key, source: sources.length === 1 ? sources[0] : sources as any });
+  }
 
   // Merge explicit in entries with link-derived entries (explicit first)
   const existingIds = new Set(stepIn.map((i) => i.id));
@@ -348,42 +352,60 @@ function _resolveRun(
     if ("@import" in dict && typeof dict["@import"] === "string") {
       return dict["@import"];
     }
+    // User-defined tool — pass through as-is
+    if (dict.class === "GalaxyUserTool") {
+      return dict as any;
+    }
     // Inline workflow definition
     return _normalizeWorkflow(dict, subworkflows);
   }
   return null;
 }
 
+const _CONNECTED_VALUE: Record<string, string> = { __class__: "ConnectedValue" };
+
 /**
- * Walk a state dict looking for {$link: "source"} objects.
- * Strip each from state and collect a corresponding step input
- * entry {id: key, source: value}.  The downstream validation
- * path re-injects ConnectedValue markers via the parameter-tree-
- * aware injectConnectionsIntoState(), so normalization should not
- * place ConnectedValue objects into state itself.
+ * Walk a state value replacing {$link: "source"} with ConnectedValue markers
+ * and collecting connections keyed by pipe-separated state paths.
  *
- * This is a structural (non-parameter-aware) walk matching the
- * Python gxformat2 behavior — $link is a format-level construct
+ * Matches Python gxformat2 _resolve_links — $link is a format-level construct
  * resolved before tool definitions are available.
  */
 function _resolveLinks(
-  state: Record<string, unknown>,
-  linkInputs: NormalizedFormat2StepInput[],
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(state)) {
-    if (val && typeof val === "object" && !Array.isArray(val)) {
-      const obj = val as Record<string, unknown>;
-      if ("$link" in obj) {
-        linkInputs.push({ id: key, source: obj.$link as string });
-      } else {
-        result[key] = _resolveLinks(obj, linkInputs);
-      }
-    } else {
-      result[key] = val;
+  value: unknown,
+  key: string,
+  connections: Map<string, string[]>,
+): unknown {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    if ("$link" in obj) {
+      const sources = connections.get(key) ?? [];
+      sources.push(obj.$link as string);
+      connections.set(key, sources);
+      return { ..._CONNECTED_VALUE };
     }
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      const childKey = key ? `${key}|${k}` : k;
+      result[k] = _resolveLinks(v, childKey, connections);
+    }
+    return result;
   }
-  return result;
+
+  if (Array.isArray(value)) {
+    return value.map((v, i) => {
+      if (v && typeof v === "object" && !Array.isArray(v) && "$link" in (v as Record<string, unknown>)) {
+        const sources = connections.get(key) ?? [];
+        sources.push((v as Record<string, unknown>).$link as string);
+        connections.set(key, sources);
+        return null;
+      }
+      const childKey = `${key}_${i}`;
+      return _resolveLinks(v, childKey, connections);
+    });
+  }
+
+  return value;
 }
 
 function _parseToolState(raw: unknown): Record<string, unknown> | null | undefined {
@@ -421,7 +443,7 @@ function _collectToolsRecursive(
     if (step.tool_id != null) {
       into.add({ tool_id: step.tool_id, tool_version: step.tool_version ?? null });
     }
-    if (step.run && typeof step.run === "object") {
+    if (step.run && typeof step.run === "object" && (step.run as any).class === "GalaxyWorkflow") {
       const sub = step.run as NormalizedFormat2Workflow;
       _collectToolsRecursive(sub.steps as readonly NormalizedFormat2Step[], into);
     }

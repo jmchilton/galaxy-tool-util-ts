@@ -332,7 +332,8 @@ function _buildToolStep(
   const postJobActions = _buildPostJobActions(step.out);
   const connectedPaths = new Set(Object.keys(inputConnections));
 
-  const toolId = step.tool_id ?? undefined;
+  const isUserDefinedTool = toolRepresentation != null;
+  const toolId = isUserDefinedTool ? null : (step.tool_id ?? undefined);
 
   return {
     id: orderIndex,
@@ -345,6 +346,7 @@ function _buildToolStep(
     tool_shed_repository: step.tool_shed_repository as NormalizedNativeStep["tool_shed_repository"],
     tool_state: toolState,
     tool_representation: toolRepresentation,
+    tool_uuid: isUserDefinedTool ? null : (step.uuid ?? undefined),
     input_connections: inputConnections,
     post_job_actions: postJobActions,
     position: _defaultPosition(step.position, orderIndex),
@@ -590,14 +592,26 @@ function _buildNativeComments(
   wf: NormalizedFormat2Workflow,
   ctx: ConversionContext,
 ): Record<string, unknown>[] | undefined {
-  const rawComments = (wf as Record<string, unknown>).comments;
-  if (!rawComments || !Array.isArray(rawComments) || rawComments.length === 0) {
+  const rawCommentsValue = (wf as Record<string, unknown>).comments;
+  if (!rawCommentsValue) return undefined;
+
+  // Normalize dict-style comments to array
+  let rawComments: Record<string, unknown>[];
+  if (Array.isArray(rawCommentsValue)) {
+    if (rawCommentsValue.length === 0) return undefined;
+    rawComments = rawCommentsValue as Record<string, unknown>[];
+  } else if (typeof rawCommentsValue === "object") {
+    rawComments = Object.entries(rawCommentsValue as Record<string, unknown>).map(
+      ([label, comment]) => ({ ...(comment as Record<string, unknown>), label }),
+    );
+    if (rawComments.length === 0) return undefined;
+  } else {
     return undefined;
   }
 
   const commentLabelMap = new Map<string, number>();
   for (let i = 0; i < rawComments.length; i++) {
-    const c = rawComments[i] as Record<string, unknown>;
+    const c = rawComments[i];
     if (c.label) {
       commentLabelMap.set(c.label as string, i);
     }

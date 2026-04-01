@@ -73,6 +73,7 @@ export const NormalizedNativeStepSchema = Schema.Struct({
   workflow_outputs: Schema.Array(NativeWorkflowOutputSchema),
   post_job_actions: Schema.Record({ key: Schema.String, value: NativePostJobActionSchema }),
   subworkflow: Schema.optional(Schema.NullOr(NormalizedNativeWorkflowSchema)),
+  tool_uuid: Schema.optional(Schema.NullOr(Schema.String)),
   tool_representation: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
   in: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
   connected_paths: Schema.Set(Schema.String),
@@ -148,17 +149,25 @@ function _normalizeStep(step: Record<string, unknown>): NormalizedNativeStep {
     tool_shed_repository: step.tool_shed_repository as NormalizedNativeStep["tool_shed_repository"],
     uuid: step.uuid as string | null | undefined,
     errors: step.errors as string | null | undefined,
-    position: step.position as NormalizedNativeStep["position"],
+    position: _normalizePosition(step.position as NormalizedNativeStep["position"]),
     input_connections: inputConnections,
     inputs: ((step.inputs as NormalizedNativeStep["inputs"]) ?? []),
     outputs: ((step.outputs as NormalizedNativeStep["outputs"]) ?? []),
     workflow_outputs: ((step.workflow_outputs as NormalizedNativeStep["workflow_outputs"]) ?? []),
     post_job_actions: ((step.post_job_actions as NormalizedNativeStep["post_job_actions"]) ?? {}),
     subworkflow,
+    tool_uuid: step.tool_uuid as string | null | undefined,
     tool_representation: step.tool_representation as NormalizedNativeStep["tool_representation"],
     in: step.in as NormalizedNativeStep["in"],
     connected_paths: connectedPaths,
   };
+}
+
+function _normalizePosition(
+  position: NormalizedNativeStep["position"],
+): NormalizedNativeStep["position"] {
+  if (position == null) return position;
+  return { top: position.top, left: position.left };
 }
 
 function _parseToolState(raw: unknown): Record<string, unknown> {

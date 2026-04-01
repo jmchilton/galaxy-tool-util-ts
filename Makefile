@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden
+.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations
 
 all: check test
 
@@ -85,6 +85,70 @@ endif
 	mkdir -p $(WF_EXPECTATIONS_DST)
 	cp $(WF_EXPECTATIONS_SRC)/*.yml $(WF_EXPECTATIONS_DST)/
 	@echo "Synced $$(ls $(WF_EXPECTATIONS_DST)/*.yml | wc -l | tr -d ' ') expectation files."
+
+# Check whether synced files have diverged from their upstream sources (no overwrites).
+check-sync-workflow-fixtures:
+ifndef GXFORMAT2_ROOT
+	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
+endif
+	@echo "Checking workflow fixtures..."
+	@ok=true; \
+	for f in $(WF_EXAMPLES_SRC)/format2/synthetic-*.gxwf.yml; do \
+		base=$$(basename "$$f"); \
+		local=$(WF_FIXTURES_DST)/format2/$$base; \
+		if [ -f "$$local" ] && ! diff -q "$$f" "$$local" >/dev/null 2>&1; then \
+			echo "DIVERGED: $$base"; ok=false; \
+		elif [ ! -f "$$local" ]; then \
+			echo "MISSING:  $$base"; ok=false; \
+		fi; \
+	done; \
+	for f in $(WF_EXAMPLES_SRC)/native/synthetic-*.ga; do \
+		base=$$(basename "$$f"); \
+		local=$(WF_FIXTURES_DST)/native/$$base; \
+		if [ -f "$$local" ] && ! diff -q "$$f" "$$local" >/dev/null 2>&1; then \
+			echo "DIVERGED: $$base"; ok=false; \
+		elif [ ! -f "$$local" ]; then \
+			echo "MISSING:  $$base"; ok=false; \
+		fi; \
+	done; \
+	for f in $(WF_FIXTURES_DST)/format2/synthetic-*.gxwf.yml; do \
+		base=$$(basename "$$f"); \
+		if [ ! -f "$(WF_EXAMPLES_SRC)/format2/$$base" ]; then \
+			echo "EXTRA:    $$base (not in gxformat2)"; ok=false; \
+		fi; \
+	done; \
+	for f in $(WF_FIXTURES_DST)/native/synthetic-*.ga; do \
+		base=$$(basename "$$f"); \
+		if [ ! -f "$(WF_EXAMPLES_SRC)/native/$$base" ]; then \
+			echo "EXTRA:    $$base (not in gxformat2)"; ok=false; \
+		fi; \
+	done; \
+	if $$ok; then echo "Workflow fixtures in sync."; else echo "Run 'make sync-workflow-fixtures' to update."; exit 1; fi
+
+check-sync-workflow-expectations:
+ifndef GXFORMAT2_ROOT
+	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
+endif
+	@echo "Checking expectation files..."
+	@ok=true; \
+	for f in $(WF_EXPECTATIONS_SRC)/*.yml; do \
+		base=$$(basename "$$f"); \
+		local=$(WF_EXPECTATIONS_DST)/$$base; \
+		if [ -f "$$local" ] && ! diff -q "$$f" "$$local" >/dev/null 2>&1; then \
+			echo "DIVERGED: $$base"; ok=false; \
+		elif [ ! -f "$$local" ]; then \
+			echo "MISSING:  $$base"; ok=false; \
+		fi; \
+	done; \
+	for f in $(WF_EXPECTATIONS_DST)/*.yml; do \
+		base=$$(basename "$$f"); \
+		if [ ! -f "$(WF_EXPECTATIONS_SRC)/$$base" ]; then \
+			echo "EXTRA:    $$base (not in gxformat2)"; ok=false; \
+		fi; \
+	done; \
+	if $$ok; then echo "Expectation files in sync."; else echo "Run 'make sync-workflow-expectations' to update."; exit 1; fi
+
+check-sync: check-sync-workflow-fixtures check-sync-workflow-expectations
 
 # Requires both GALAXY_ROOT and GXFORMAT2_ROOT. Run individual targets if you only have one.
 sync: sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations
