@@ -1,0 +1,10 @@
+class: GalaxyWorkflow
+inputs:
+  x: data
+outputs: {}
+steps:
+  nested:
+    run:
+      "@import": inner.gxwf.yml
+    in:
+      x: x

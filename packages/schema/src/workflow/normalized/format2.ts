@@ -343,8 +343,13 @@ function _resolveRun(
     return raw;
   }
   if (typeof raw === "object") {
+    const dict = raw as Record<string, unknown>;
+    // @import reference → pass through as string path for expansion to resolve
+    if ("@import" in dict && typeof dict["@import"] === "string") {
+      return dict["@import"];
+    }
     // Inline workflow definition
-    return _normalizeWorkflow(raw as Record<string, unknown>, subworkflows);
+    return _normalizeWorkflow(dict, subworkflows);
   }
   return null;
 }

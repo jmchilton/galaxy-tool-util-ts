@@ -30,10 +30,14 @@ export { ensureFormat2, ensureNative } from "./ensure.js";
 export {
   expandedFormat2,
   expandedNative,
+  isTrsUrl,
+  MAX_EXPANSION_DEPTH,
   type ExpandedFormat2Workflow,
   type ExpandedFormat2Step,
   type ExpandedNativeWorkflow,
   type ExpandedNativeStep,
+  type RefResolver,
+  type ExpansionOptions,
 } from "./expanded.js";
 export { flattenCommentData, unflattenCommentData } from "./comments.js";
 export {

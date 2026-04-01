@@ -80,7 +80,7 @@ function validateNativeStrict(raw: unknown): unknown {
 
 // --- Operations ---
 
-type Operation = (raw: unknown) => unknown;
+type Operation = (raw: unknown) => unknown | Promise<unknown>;
 
 const OPERATIONS: Record<string, Operation> = {
   normalized_format2: normalizedFormat2,
@@ -93,8 +93,8 @@ const OPERATIONS: Record<string, Operation> = {
   to_native: toNative,
   ensure_format2: ensureFormat2,
   ensure_native: ensureNative,
-  expanded_format2: expandedFormat2,
-  expanded_native: expandedNative,
+  expanded_format2: (raw: unknown) => expandedFormat2(raw),
+  expanded_native: (raw: unknown) => expandedNative(raw),
 };
 
 const UNSUPPORTED_OPERATIONS = new Set<string>([
@@ -275,15 +275,29 @@ describe("declarative normalized workflow tests", () => {
       continue;
     }
 
-    it(testId, () => {
+    it(testId, async () => {
       const raw = loadWorkflow(fixture);
 
       if (expectError) {
-        expect(() => OPERATIONS[operation](raw)).toThrow();
+        let result: unknown;
+        try {
+          result = OPERATIONS[operation](raw);
+        } catch {
+          // Sync throw — test passes
+          return;
+        }
+        // If we got here, the operation didn't throw synchronously.
+        // It might have returned a rejecting Promise.
+        if (result instanceof Promise) {
+          await expect(result).rejects.toThrow();
+        } else {
+          // Operation returned a value without throwing — fail the test
+          expect.unreachable("Expected operation to throw");
+        }
         return;
       }
 
-      const wf = OPERATIONS[operation](raw);
+      const wf = await Promise.resolve(OPERATIONS[operation](raw));
 
       for (const assertion of assertions) {
         const obj = navigate(wf, assertion.path);
