@@ -1,8 +1,12 @@
 # @galaxy-tool-util/cli
 
-`galaxy-tool-cache` — CLI for caching and inspecting Galaxy tool metadata.
+Two CLI tools:
+- **`galaxy-tool-cache`** — cache and inspect Galaxy tool metadata
+- **`galaxy-workflow-validate`** — validate Galaxy workflow files
 
-## Commands
+## galaxy-tool-cache
+
+### Commands
 
 ### `add <tool_id>`
 
@@ -84,25 +88,25 @@ galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
 | `--output <file>` | Write to file instead of stdout |
 | `--cache-dir <dir>` | Override cache directory |
 
-### `validate-workflow <file>`
+## galaxy-workflow-validate
 
-Validate a Galaxy workflow file. Checks structure and optionally validates tool state against cached tool schemas.
+Standalone CLI for validating Galaxy workflow files. Checks structure and optionally validates tool state against cached tool schemas.
 
 ```bash
 # Full validation (structure + tool state)
-galaxy-tool-cache validate-workflow my-workflow.ga
+galaxy-workflow-validate my-workflow.ga
 
 # Format2 workflow
-galaxy-tool-cache validate-workflow my-workflow.gxwf.yml
+galaxy-workflow-validate my-workflow.gxwf.yml
 
 # Skip tool state validation
-galaxy-tool-cache validate-workflow my-workflow.ga --no-tool-state
+galaxy-workflow-validate my-workflow.ga --no-tool-state
 
 # JSON Schema validation backend
-galaxy-tool-cache validate-workflow my-workflow.ga --mode json-schema
+galaxy-workflow-validate my-workflow.ga --mode json-schema
 
 # Offline mode with pre-exported schemas
-galaxy-tool-cache validate-workflow my-workflow.ga \
+galaxy-workflow-validate my-workflow.ga \
   --mode json-schema \
   --tool-schema-dir ./schemas/
 ```

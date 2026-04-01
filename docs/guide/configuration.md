@@ -9,7 +9,9 @@
 
 ## CLI Flags
 
-All `galaxy-tool-cache` commands accept `--cache-dir <dir>` to override the cache directory. Command-specific flags:
+### galaxy-tool-cache
+
+All commands accept `--cache-dir <dir>` to override the cache directory.
 
 | Command | Flag | Default | Description |
 |---|---|---|---|
@@ -20,10 +22,16 @@ All `galaxy-tool-cache` commands accept `--cache-dir <dir>` to override the cach
 | `schema` | `--version <ver>` | — | Tool version |
 | `schema` | `--representation <rep>` | `workflow_step` | State representation |
 | `schema` | `--output <file>` | stdout | Output file |
-| `validate-workflow` | `--format <fmt>` | auto-detect | `native` or `format2` |
-| `validate-workflow` | `--no-tool-state` | `false` | Skip tool state validation |
-| `validate-workflow` | `--mode <mode>` | `effect` | `effect` or `json-schema` |
-| `validate-workflow` | `--tool-schema-dir <dir>` | — | Pre-exported schema directory |
+
+### galaxy-workflow-validate
+
+| Flag | Default | Description |
+|---|---|---|
+| `--format <fmt>` | auto-detect | `native` or `format2` |
+| `--no-tool-state` | `false` | Skip tool state validation |
+| `--cache-dir <dir>` | `~/.galaxy/tool_info_cache` | Tool cache directory |
+| `--mode <mode>` | `effect` | `effect` or `json-schema` |
+| `--tool-schema-dir <dir>` | — | Pre-exported schema directory |
 
 ## Server Config (YAML)
 

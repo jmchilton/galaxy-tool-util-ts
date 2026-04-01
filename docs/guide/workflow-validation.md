@@ -13,10 +13,10 @@ Workflow validation has two layers:
 
 ```bash
 # Full validation (structure + tool state)
-galaxy-tool-cache validate-workflow my-workflow.ga
+galaxy-workflow-validate my-workflow.ga
 
 # Structure only
-galaxy-tool-cache validate-workflow my-workflow.ga --no-tool-state
+galaxy-workflow-validate my-workflow.ga --no-tool-state
 ```
 
 ### Format Detection
@@ -33,13 +33,13 @@ Two backends are available for tool state validation:
 
 **Effect mode** (default):
 ```bash
-galaxy-tool-cache validate-workflow my-workflow.ga --mode effect
+galaxy-workflow-validate my-workflow.ga --mode effect
 ```
 Uses Effect Schema directly for validation. Full type-level validation with rich error messages.
 
 **JSON Schema mode**:
 ```bash
-galaxy-tool-cache validate-workflow my-workflow.ga --mode json-schema
+galaxy-workflow-validate my-workflow.ga --mode json-schema
 ```
 Exports Effect Schemas to JSON Schema, then validates with Ajv. Useful for interop with other JSON Schema tools.
 
@@ -54,7 +54,7 @@ galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
   --output schemas/fastqc-0.74.json
 
 # Step 2: Validate using pre-exported schemas
-galaxy-tool-cache validate-workflow my-workflow.ga \
+galaxy-workflow-validate my-workflow.ga \
   --mode json-schema \
   --tool-schema-dir ./schemas/
 ```

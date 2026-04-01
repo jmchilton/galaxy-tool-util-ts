@@ -56,16 +56,16 @@ Validate a Galaxy workflow file's structure and optionally its tool state:
 
 ```bash
 # Validate structure + tool state (auto-detects format)
-galaxy-tool-cache validate-workflow my-workflow.ga
+galaxy-workflow-validate my-workflow.ga
 
 # Format2 workflow
-galaxy-tool-cache validate-workflow my-workflow.gxwf.yml
+galaxy-workflow-validate my-workflow.gxwf.yml
 
 # Skip tool state validation
-galaxy-tool-cache validate-workflow my-workflow.ga --no-tool-state
+galaxy-workflow-validate my-workflow.ga --no-tool-state
 
 # Use JSON Schema validation backend
-galaxy-tool-cache validate-workflow my-workflow.ga --mode json-schema
+galaxy-workflow-validate my-workflow.ga --mode json-schema
 ```
 
 ### Run the Proxy Server

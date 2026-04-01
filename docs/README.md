@@ -24,7 +24,7 @@ galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --versi
 galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
 
 # Validate a Galaxy workflow
-galaxy-tool-cache validate-workflow my-workflow.ga
+galaxy-workflow-validate my-workflow.ga
 ```
 
 ## Programmatic Usage

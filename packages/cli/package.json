@@ -4,7 +4,8 @@
   "description": "galaxy-tool-cache CLI — cache and inspect Galaxy tool metadata",
   "type": "module",
   "bin": {
-    "galaxy-tool-cache": "dist/bin/galaxy-tool-cache.js"
+    "galaxy-tool-cache": "dist/bin/galaxy-tool-cache.js",
+    "galaxy-workflow-validate": "dist/bin/galaxy-workflow-validate.js"
   },
   "exports": {
     ".": {
