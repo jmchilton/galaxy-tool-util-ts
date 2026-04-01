@@ -39,6 +39,7 @@
   "dependencies": {
     "@galaxy-tool-util/core": "workspace:*",
     "@galaxy-tool-util/schema": "workspace:*",
+    "ajv": "^8.18.0",
     "commander": "^14.0.0",
     "effect": "^3.21.0",
     "yaml": "^2.8.3"

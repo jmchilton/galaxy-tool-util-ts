@@ -21,10 +21,14 @@ import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
 export type WorkflowFormat = "format2" | "native";
 
+export type ValidationMode = "effect" | "json-schema";
+
 export interface ValidateWorkflowOptions {
   format?: string;
   toolState?: boolean;
   cacheDir?: string;
+  mode?: ValidationMode;
+  toolSchemaDir?: string;
 }
 
 function detectFormat(data: Record<string, unknown>): WorkflowFormat {
@@ -71,9 +75,15 @@ export async function runValidateWorkflow(
       ? opts.format
       : detectFormat(data);
 
-  console.log(`Detected format: ${format}`);
+  const mode: ValidationMode = opts.mode === "json-schema" ? "json-schema" : "effect";
+  console.log(`Detected format: ${format}, mode: ${mode}`);
 
-  // --- structural validation ---
+  if (mode === "json-schema") {
+    const { runValidateWorkflowJsonSchema } = await import("./validate-workflow-json-schema.js");
+    return runValidateWorkflowJsonSchema(data, format, opts);
+  }
+
+  // --- structural validation (effect mode) ---
   const validationData = { ...data };
   if (format === "native" && !("class" in validationData)) {
     validationData.class = "NativeGalaxyWorkflow";
@@ -98,7 +108,7 @@ export async function runValidateWorkflow(
     console.log(`Structural validation: OK`);
   }
 
-  // --- tool state validation ---
+  // --- tool state validation (effect mode) ---
   if (opts.toolState === false) {
     process.exitCode = structOk ? 0 : 1;
     return;
