@@ -13,8 +13,8 @@ import {
   createFieldModel,
   GalaxyWorkflowSchema,
   NativeGalaxyWorkflowSchema,
-  normalizedNative,
-  normalizedFormat2,
+  expandedNative,
+  expandedFormat2,
   injectConnectionsIntoState,
   scanForReplacements,
   type NormalizedNativeStep,
@@ -23,6 +23,7 @@ import {
   type NormalizedFormat2Workflow,
   type ToolParameterBundleModel,
   type StateRepresentation,
+  type ExpansionOptions,
 } from "@galaxy-tool-util/schema";
 import * as JSONSchema from "effect/JSONSchema";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -155,6 +156,7 @@ export async function runValidateWorkflowJsonSchema(
   data: Record<string, unknown>,
   format: WorkflowFormat,
   opts: ValidateWorkflowOptions,
+  expansionOpts?: ExpansionOptions,
 ): Promise<void> {
   // --- structural validation ---
   const validationData = { ...data };
@@ -195,9 +197,9 @@ export async function runValidateWorkflowJsonSchema(
 
   let results: StepValidationResult[];
   if (format === "native") {
-    results = await validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir);
+    results = await validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir, "", expansionOpts);
   } else {
-    results = await validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir);
+    results = await validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, "", expansionOpts);
   }
 
   if (results.length === 0) {
@@ -238,9 +240,10 @@ export async function validateNativeStepsJsonSchema(
   cache: ToolCache,
   toolSchemaDir?: string,
   prefix = "",
+  expansionOpts?: ExpansionOptions,
 ): Promise<StepValidationResult[]> {
-  const normalized = normalizedNative(data);
-  return _validateNativeWorkflowJsonSchema(normalized, cache, toolSchemaDir, prefix);
+  const expanded = await expandedNative(data, expansionOpts);
+  return _validateNativeWorkflowJsonSchema(expanded, cache, toolSchemaDir, prefix);
 }
 
 async function _validateNativeWorkflowJsonSchema(
@@ -326,9 +329,10 @@ export async function validateFormat2StepsJsonSchema(
   cache: ToolCache,
   toolSchemaDir?: string,
   prefix = "",
+  expansionOpts?: ExpansionOptions,
 ): Promise<StepValidationResult[]> {
-  const normalized = normalizedFormat2(data);
-  return _validateFormat2WorkflowJsonSchema(normalized, cache, toolSchemaDir, prefix);
+  const expanded = await expandedFormat2(data, expansionOpts);
+  return _validateFormat2WorkflowJsonSchema(expanded, cache, toolSchemaDir, prefix);
 }
 
 async function _validateFormat2WorkflowJsonSchema(

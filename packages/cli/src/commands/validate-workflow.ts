@@ -3,8 +3,8 @@ import {
   createFieldModel,
   GalaxyWorkflowSchema,
   NativeGalaxyWorkflowSchema,
-  normalizedNative,
-  normalizedFormat2,
+  expandedNative,
+  expandedFormat2,
   injectConnectionsIntoState,
   scanForReplacements,
   type NormalizedNativeStep,
@@ -12,12 +12,15 @@ import {
   type NormalizedFormat2Step,
   type NormalizedFormat2Workflow,
   type ToolParameterBundleModel,
+  type ExpansionOptions,
 } from "@galaxy-tool-util/schema";
 import * as ParseResult from "effect/ParseResult";
 import * as S from "effect/Schema";
 import { readFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import * as YAML from "yaml";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
+import { createDefaultResolver } from "./url-resolver.js";
 
 export type WorkflowFormat = "format2" | "native";
 
@@ -78,9 +81,15 @@ export async function runValidateWorkflow(
   const mode: ValidationMode = opts.mode === "json-schema" ? "json-schema" : "effect";
   console.log(`Detected format: ${format}, mode: ${mode}`);
 
+  // Build expansion options for resolving external subworkflow references
+  const workflowDirectory = dirname(filePath);
+  const expansionOpts: ExpansionOptions = {
+    resolver: createDefaultResolver({ workflowDirectory }),
+  };
+
   if (mode === "json-schema") {
     const { runValidateWorkflowJsonSchema } = await import("./validate-workflow-json-schema.js");
-    return runValidateWorkflowJsonSchema(data, format, opts);
+    return runValidateWorkflowJsonSchema(data, format, opts, expansionOpts);
   }
 
   // --- structural validation (effect mode) ---
@@ -119,9 +128,9 @@ export async function runValidateWorkflow(
 
   let results: StepValidationResult[];
   if (format === "native") {
-    results = await validateNativeSteps(data, cache);
+    results = await validateNativeSteps(data, cache, "", expansionOpts);
   } else {
-    results = await validateFormat2Steps(data, cache);
+    results = await validateFormat2Steps(data, cache, "", expansionOpts);
   }
 
   if (results.length === 0) {
@@ -161,9 +170,10 @@ export async function validateNativeSteps(
   data: Record<string, unknown>,
   cache: ToolCache,
   prefix = "",
+  expansionOpts?: ExpansionOptions,
 ): Promise<StepValidationResult[]> {
-  const normalized = normalizedNative(data);
-  return _validateNativeWorkflow(normalized, cache, prefix);
+  const expanded = await expandedNative(data, expansionOpts);
+  return _validateNativeWorkflow(expanded, cache, prefix);
 }
 
 async function _validateNativeWorkflow(
@@ -251,9 +261,10 @@ async function validateFormat2Steps(
   data: Record<string, unknown>,
   cache: ToolCache,
   prefix = "",
+  expansionOpts?: ExpansionOptions,
 ): Promise<StepValidationResult[]> {
-  const normalized = normalizedFormat2(data);
-  return _validateFormat2Workflow(normalized, cache, prefix);
+  const expanded = await expandedFormat2(data, expansionOpts);
+  return _validateFormat2Workflow(expanded, cache, prefix);
 }
 
 async function _validateFormat2Workflow(
