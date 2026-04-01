@@ -14,17 +14,34 @@ import { registerParameterType } from "./registry.js";
 /**
  * Mirrors Python RulesMapping(BaseModel) with extra="allow":
  *   type: str, columns: List[StrictInt]
+ * Runtime filter validates required fields; JSON Schema annotation provides
+ * structural validation. Extra properties allowed via onExcessProperty: "ignore".
  */
-function isValidMapping(v: unknown): boolean {
-  if (!v || typeof v !== "object") return false;
-  const m = v as Record<string, unknown>;
-  return typeof m.type === "string" && Array.isArray(m.columns) && m.columns.every((c) => Number.isInteger(c));
-}
+const RulesMappingSchema = S.Record({ key: S.String, value: S.Unknown }).pipe(
+  S.filter((obj: { readonly [x: string]: unknown }) => {
+    const m = obj as Record<string, unknown>;
+    if (typeof m.type !== "string") return "type must be a string";
+    if (!Array.isArray(m.columns) || !m.columns.every((c) => Number.isInteger(c))) {
+      return "columns must be an integer array";
+    }
+    return undefined;
+  }, {
+    jsonSchema: {
+      type: "object",
+      required: ["type", "columns"],
+      properties: {
+        type: { type: "string" },
+        columns: { type: "array", items: { type: "integer" } },
+      },
+    },
+  }),
+);
 
 /**
  * Mirrors Python RulesModel(BaseModel) with extra="allow":
  *   rules: List[Dict[str, Any]], mapping: List[RulesMapping]
- * Uses a filter to allow extra properties (Python extra="allow").
+ * Runtime filter validates structure; JSON Schema annotation provides
+ * structural validation. Extra properties allowed.
  */
 const RulesModelSchema: S.Schema.Any = S.Record({ key: S.String, value: S.Unknown }).pipe(
   S.filter((obj: { readonly [x: string]: unknown }) => {
@@ -32,9 +49,36 @@ const RulesModelSchema: S.Schema.Any = S.Record({ key: S.String, value: S.Unknow
     if (!Array.isArray(o.rules)) return "rules must be an array";
     if (!Array.isArray(o.mapping)) return "mapping must be an array";
     for (const m of o.mapping) {
-      if (!isValidMapping(m)) return "each mapping must have type:string and columns:int[]";
+      if (!m || typeof m !== "object") return "each mapping must be an object";
+      const mapping = m as Record<string, unknown>;
+      if (typeof mapping.type !== "string") return "each mapping must have type:string";
+      if (!Array.isArray(mapping.columns) || !mapping.columns.every((c) => Number.isInteger(c as number))) {
+        return "each mapping must have columns:int[]";
+      }
     }
     return undefined;
+  }, {
+    jsonSchema: {
+      type: "object",
+      required: ["rules", "mapping"],
+      properties: {
+        rules: {
+          type: "array",
+          items: { type: "object" },
+        },
+        mapping: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["type", "columns"],
+            properties: {
+              type: { type: "string" },
+              columns: { type: "array", items: { type: "integer" } },
+            },
+          },
+        },
+      },
+    },
   }),
 );
 
