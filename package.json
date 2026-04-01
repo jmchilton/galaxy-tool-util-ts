@@ -11,14 +11,19 @@
     "format-fix": "pnpm -r format-fix",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish"
+    "release": "pnpm build && changeset publish",
+    "docs:api": "typedoc",
+    "docs:dev": "pnpm docsify serve docs",
+    "docs:build": "pnpm run build && pnpm run docs:api"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.30.0",
     "@eslint/js": "^10.0.1",
+    "docsify-cli": "^4.4.4",
     "eslint": "^10.1.0",
     "prettier": "^3.8.1",
+    "typedoc": "^0.28.18",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.57.2",
     "vitest": "^4.1.2"

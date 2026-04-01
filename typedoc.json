@@ -1,0 +1,11 @@
+{
+  "entryPoints": ["packages/schema", "packages/core", "packages/cli", "packages/server"],
+  "entryPointStrategy": "packages",
+  "out": "docs/api/typedoc",
+  "json": "docs/api/typedoc.json",
+  "name": "galaxy-tool-util API",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "readme": "none",
+  "hideGenerator": false
+}

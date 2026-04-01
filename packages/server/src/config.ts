@@ -2,6 +2,7 @@ import * as S from "effect/Schema";
 import { readFile } from "node:fs/promises";
 import YAML from "yaml";
 
+/** Schema for a tool source entry in the server config. */
 export const ToolSource = S.Struct({
   type: S.Union(S.Literal("toolshed"), S.Literal("galaxy")),
   url: S.String,
@@ -13,6 +14,7 @@ export const CacheConfig = S.Struct({
   directory: S.optional(S.String),
 });
 
+/** Effect Schema for the proxy server YAML configuration file. */
 export const ServerConfig = S.Struct({
   "galaxy.workflows.toolSources": S.optionalWith(S.Array(ToolSource), {
     default: () => [],
@@ -25,12 +27,14 @@ export const ServerConfig = S.Struct({
 });
 export type ServerConfig = S.Schema.Type<typeof ServerConfig>;
 
+/** Load and validate a YAML config file against the {@link ServerConfig} schema. */
 export async function loadConfig(configPath: string): Promise<ServerConfig> {
   const raw = await readFile(configPath, "utf-8");
   const parsed = YAML.parse(raw);
   return S.decodeUnknownSync(ServerConfig)(parsed);
 }
 
+/** Create a default server config (empty sources, port 8080, localhost). */
 export function defaultConfig(): ServerConfig {
   return S.decodeUnknownSync(ServerConfig)({});
 }

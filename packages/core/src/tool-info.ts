@@ -3,11 +3,13 @@ import { ToolCache } from "./cache/tool-cache.js";
 import { cacheKey } from "./cache/cache-key.js";
 import { fetchFromToolShed, fetchFromGalaxy } from "./client/toolshed.js";
 
+/** A remote source for fetching tool metadata. */
 export interface ToolSource {
   type: "toolshed" | "galaxy";
   url: string;
 }
 
+/** Options for constructing a {@link ToolInfoService}. */
 export interface ToolInfoOptions {
   cacheDir?: string;
   defaultToolshedUrl?: string;
@@ -18,6 +20,10 @@ export interface ToolInfoOptions {
   fetcher?: typeof fetch;
 }
 
+/**
+ * High-level service for fetching Galaxy tool metadata with automatic caching.
+ * Tries configured sources in order and caches on first successful fetch.
+ */
 export class ToolInfoService {
   readonly cache: ToolCache;
   private readonly sources: ToolSource[];

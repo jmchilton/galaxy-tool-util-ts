@@ -5,12 +5,23 @@
  * Or with scheme: https://toolshed.g2.bx.psu.edu/repos/owner/repo/tool_name/version
  */
 
+/** Parsed components of a ToolShed tool ID. */
 export interface ToolCoordinates {
+  /** ToolShed base URL (with https:// scheme). */
   toolshedUrl: string;
+  /** TRS-style tool ID: `owner~repo~tool_name`. */
   trsToolId: string;
+  /** Tool version, or null if not present in the ID. */
   toolVersion: string | null;
 }
 
+/**
+ * Parse a full ToolShed tool ID into its components.
+ * Accepts both scheme-prefixed and bare formats:
+ * - `toolshed.g2.bx.psu.edu/repos/owner/repo/tool_name/version`
+ * - `https://toolshed.g2.bx.psu.edu/repos/owner/repo/tool_name/version`
+ * @returns Parsed coordinates, or null if the ID doesn't match the ToolShed format.
+ */
 export function parseToolshedToolId(toolId: string): ToolCoordinates | null {
   if (!toolId.includes("/repos/")) {
     return null;
@@ -26,6 +37,7 @@ export function parseToolshedToolId(toolId: string): ToolCoordinates | null {
   return { toolshedUrl, trsToolId, toolVersion };
 }
 
+/** Reconstruct a human-readable tool ID from a ToolShed URL and TRS tool ID. */
 export function toolIdFromTrs(toolshedUrl: string, trsToolId: string): string {
   const parts = trsToolId.split("~");
   const base = toolshedUrl.replace("https://", "").replace("http://", "");

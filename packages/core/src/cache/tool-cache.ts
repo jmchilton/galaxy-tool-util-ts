@@ -9,11 +9,16 @@ import { CacheIndex } from "./cache-index.js";
 import { cacheKey } from "./cache-key.js";
 import { parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
 
+/** Default cache directory: `~/.galaxy/tool_info_cache`. */
 export const DEFAULT_CACHE_DIR = join(homedir(), ".galaxy", "tool_info_cache");
+/** Environment variable to override the cache directory. */
 export const CACHE_DIR_ENV_VAR = "GALAXY_TOOL_CACHE_DIR";
+/** Default Galaxy ToolShed URL. */
 export const DEFAULT_TOOLSHED_URL = "https://toolshed.g2.bx.psu.edu";
+/** Environment variable to override the default ToolShed URL. */
 export const TOOLSHED_URL_ENV_VAR = "GALAXY_TOOLSHED_URL";
 
+/** Resolve cache directory: explicit override > env var > default. */
 export function getCacheDir(override?: string): string {
   return override ?? process.env[CACHE_DIR_ENV_VAR] ?? DEFAULT_CACHE_DIR;
 }
@@ -25,6 +30,10 @@ interface ResolvedCoordinates {
   readableId: string;
 }
 
+/**
+ * Two-layer cache (memory + filesystem) for parsed Galaxy tool metadata.
+ * Resolves tool IDs to cache keys, loads/saves tool JSON, and manages the cache index.
+ */
 export class ToolCache {
   readonly cacheDir: string;
   readonly defaultToolshedUrl: string;

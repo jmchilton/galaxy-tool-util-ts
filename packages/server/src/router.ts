@@ -9,11 +9,13 @@ import {
 import * as JSONSchema from "effect/JSONSchema";
 import type { ServerConfig } from "./config.js";
 
+/** Shared context for the proxy server — holds config and the ToolInfoService. */
 export interface ProxyContext {
   config: ServerConfig;
   service: ToolInfoService;
 }
 
+/** Build a ProxyContext from config — initializes ToolInfoService with configured sources. */
 export function createProxyContext(config: ServerConfig): ProxyContext {
   const enabledSources = config["galaxy.workflows.toolSources"].filter((s) => s.enabled);
   const coreSources: CoreToolSource[] = enabledSources.map((s) => ({
@@ -95,6 +97,7 @@ function cors(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
+/** Create the async request handler that routes to tool cache/schema endpoints. */
 export function createRequestHandler(ctx: ProxyContext) {
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     cors(res);
@@ -194,6 +197,7 @@ export function createRequestHandler(ctx: ProxyContext) {
   };
 }
 
+/** Create an HTTP server wired to the proxy request handler. */
 export function createProxyServer(ctx: ProxyContext) {
   const handler = createRequestHandler(ctx);
   return createServer((req, res) => {

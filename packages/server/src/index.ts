@@ -1,3 +1,12 @@
+/**
+ * @module @galaxy-tool-util/server
+ *
+ * HTTP proxy server mirroring a subset of the ToolShed API.
+ * Caches and serves tool schemas with CORS support.
+ */
+
+/** Load a YAML config file and validate it against the ServerConfig schema. */
 export { loadConfig, defaultConfig, ServerConfig, ToolSource } from "./config.js";
+/** Create a proxy context (ToolInfoService + config) and HTTP server. */
 export { createProxyContext, createProxyServer, createRequestHandler } from "./router.js";
 export type { ProxyContext } from "./router.js";

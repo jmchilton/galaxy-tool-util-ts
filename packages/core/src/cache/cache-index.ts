@@ -2,18 +2,26 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+/** Metadata for a single cached tool entry. */
 export interface CacheIndexEntry {
   tool_id: string;
   tool_version: string;
+  /** How the tool was fetched: "api" (ToolShed), "galaxy", or "local". */
   source: string;
   source_url: string;
+  /** ISO 8601 timestamp of when the tool was cached. */
   cached_at: string;
 }
 
+/** Serialized cache index structure (persisted as index.json). */
 export interface CacheIndexData {
   entries: Record<string, CacheIndexEntry>;
 }
 
+/**
+ * Manages the cache index file (index.json) that tracks metadata about cached tools.
+ * Supports lazy loading, add/remove, and listing operations.
+ */
 export class CacheIndex {
   private indexPath: string;
   private entries: Record<string, CacheIndexEntry> | null = null;
