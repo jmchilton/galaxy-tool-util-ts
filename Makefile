@@ -69,6 +69,7 @@ endif
 	mkdir -p $(WF_FIXTURES_DST)/format2 $(WF_FIXTURES_DST)/native
 	cp $(WF_EXAMPLES_SRC)/format2/synthetic-*.gxwf.yml $(WF_FIXTURES_DST)/format2/
 	cp $(WF_EXAMPLES_SRC)/native/synthetic-*.ga $(WF_FIXTURES_DST)/native/
+	cp $(WF_EXAMPLES_SRC)/native/real-*.ga $(WF_FIXTURES_DST)/native/
 	@echo "Synced $$(ls $(WF_FIXTURES_DST)/format2/*.gxwf.yml $(WF_FIXTURES_DST)/native/*.ga | wc -l | tr -d ' ') workflow fixtures."
 
 # Sync expectation YAML files from gxformat2 for declarative normalization tests.
@@ -139,7 +140,7 @@ endif
 			echo "MISSING:  $$base"; ok=false; \
 		fi; \
 	done; \
-	for f in $(WF_EXAMPLES_SRC)/native/synthetic-*.ga; do \
+	for f in $(WF_EXAMPLES_SRC)/native/synthetic-*.ga $(WF_EXAMPLES_SRC)/native/real-*.ga; do \
 		base=$$(basename "$$f"); \
 		local=$(WF_FIXTURES_DST)/native/$$base; \
 		if [ -f "$$local" ] && ! diff -q "$$f" "$$local" >/dev/null 2>&1; then \
@@ -154,7 +155,7 @@ endif
 			echo "EXTRA:    $$base (not in gxformat2)"; ok=false; \
 		fi; \
 	done; \
-	for f in $(WF_FIXTURES_DST)/native/synthetic-*.ga; do \
+	for f in $(WF_FIXTURES_DST)/native/synthetic-*.ga $(WF_FIXTURES_DST)/native/real-*.ga; do \
 		base=$$(basename "$$f"); \
 		if [ ! -f "$(WF_EXAMPLES_SRC)/native/$$base" ]; then \
 			echo "EXTRA:    $$base (not in gxformat2)"; ok=false; \

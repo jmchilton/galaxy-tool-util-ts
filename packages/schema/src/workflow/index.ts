@@ -73,3 +73,11 @@ export {
 export { cleanWorkflow } from "./clean.js";
 
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
+
+export {
+  LintContext,
+  lintNative,
+  lintFormat2,
+  lintWorkflow,
+  type LintResult,
+} from "./lint.js";

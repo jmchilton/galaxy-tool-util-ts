@@ -91,4 +91,13 @@ export {
   /** Detect whether a workflow dict is native (.ga) or format2 (.gxwf.yml). */
   detectFormat,
   type WorkflowFormat,
+  /** Lint context for tracking errors and warnings during workflow linting. */
+  LintContext,
+  /** Lint a native Galaxy workflow (.ga format). */
+  lintNative,
+  /** Lint a Format2 Galaxy workflow (.gxwf.yml format). */
+  lintFormat2,
+  /** Lint a workflow, auto-detecting format. */
+  lintWorkflow,
+  type LintResult,
 } from "./workflow/index.js";
