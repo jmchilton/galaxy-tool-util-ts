@@ -319,7 +319,7 @@ describe("validate-workflow (connection-aware)", () => {
       await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
 
       const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
-      const errors = errSpy.mock.calls.map((c) => c[0]).join("\n");
+      const _errors = errSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });

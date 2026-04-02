@@ -8,12 +8,10 @@ import type {
   NormalizedNativeWorkflow,
   NormalizedNativeStep,
 } from "./native.js";
-import { normalizedNative } from "./native.js";
 import type {
   NormalizedFormat2Workflow,
   NormalizedFormat2Step,
   NormalizedFormat2Input,
-  NormalizedFormat2StepInput,
   NormalizedFormat2StepOutput,
 } from "./format2.js";
 import { normalizedFormat2 } from "./format2.js";

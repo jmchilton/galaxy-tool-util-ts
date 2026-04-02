@@ -96,7 +96,6 @@ export async function runValidateWorkflow(
     validationData.class = "GalaxyWorkflow";
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const schema: S.Schema<any> =
     format === "native" ? NativeGalaxyWorkflowSchema : GalaxyWorkflowSchema;
   const decode = S.decodeUnknownEither(schema, { onExcessProperty: "ignore" });
@@ -239,7 +238,6 @@ async function _validateNativeStep(
     return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const validate = S.decodeUnknownEither(fieldModel as S.Schema<any>, {
     onExcessProperty: "ignore",
   });
@@ -327,7 +325,6 @@ async function _validateFormat2Step(
     return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const baseValidate = S.decodeUnknownEither(baseModel as S.Schema<any>, {
     onExcessProperty: "ignore",
   });
@@ -363,7 +360,6 @@ async function _validateFormat2Step(
       return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
       onExcessProperty: "ignore",
     });

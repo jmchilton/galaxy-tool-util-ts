@@ -17,7 +17,7 @@ import { registerParameterType } from "./registry.js";
  * Runtime filter validates required fields; JSON Schema annotation provides
  * structural validation. Extra properties allowed via onExcessProperty: "ignore".
  */
-const RulesMappingSchema = S.Record({ key: S.String, value: S.Unknown }).pipe(
+const _RulesMappingSchema = S.Record({ key: S.String, value: S.Unknown }).pipe(
   S.filter((obj: { readonly [x: string]: unknown }) => {
     const m = obj as Record<string, unknown>;
     if (typeof m.type !== "string") return "type must be a string";

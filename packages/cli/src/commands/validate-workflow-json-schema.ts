@@ -33,9 +33,7 @@ import { join } from "node:path";
 import type { ValidateWorkflowOptions, WorkflowFormat, StepValidationResult } from "./validate-workflow.js";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ajv = new Ajv({ allErrors: true, strict: false }) as any;
 
 // --- structural schema cache (generated once) ---

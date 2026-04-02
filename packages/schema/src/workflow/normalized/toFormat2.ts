@@ -17,7 +17,6 @@ import type {
   NormalizedFormat2StepInput,
   NormalizedFormat2StepOutput,
 } from "./format2.js";
-import { normalizedFormat2 } from "./format2.js";
 import { flattenCommentData } from "./comments.js";
 import {
   UNLABELED_INPUT_PREFIX,
