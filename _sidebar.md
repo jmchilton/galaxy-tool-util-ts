@@ -1,0 +1,23 @@
+- [Home](/)
+- [Getting Started](getting-started.md)
+- **Packages**
+  - [Schema](packages/schema.md)
+  - [Core](packages/core.md)
+  - [CLI](packages/cli.md)
+  - [Tool Cache Proxy](packages/tool-cache-proxy.md)
+- **Guides**
+  - [Workflow Validation](guide/workflow-validation.md)
+  - [Tool Caching](guide/tool-caching.md)
+  - [Proxy Server Setup](guide/proxy-server.md)
+  - [Configuration](guide/configuration.md)
+- **Architecture**
+  - [Overview](architecture/overview.md)
+  - [Parameter Schema System](architecture/parameter-schemas.md)
+  - [Effect Schema Usage](architecture/effect-schema.md)
+- **API Reference**
+  - [Overview](api/README.md)
+  - [TypeDoc Reference](api/typedoc/index.html)
+- **Development**
+  - [Contributing](development/contributing.md)
+  - [Testing](development/testing.md)
+  - [Building](development/building.md)
