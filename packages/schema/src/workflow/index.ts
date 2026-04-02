@@ -69,3 +69,7 @@ export {
   type LegacyEncodingHit,
   type LegacyEncodingScanResult,
 } from "./legacy-encoding.js";
+
+export { cleanWorkflow } from "./clean.js";
+
+export { detectFormat, type WorkflowFormat } from "./detect-format.js";

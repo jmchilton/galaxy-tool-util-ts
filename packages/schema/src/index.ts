@@ -86,4 +86,9 @@ export {
   type LegacyEncodingClassification,
   type LegacyEncodingHit,
   type LegacyEncodingScanResult,
+  /** Clean a workflow — strip stale keys, decode legacy tool_state encoding. */
+  cleanWorkflow,
+  /** Detect whether a workflow dict is native (.ga) or format2 (.gxwf.yml). */
+  detectFormat,
+  type WorkflowFormat,
 } from "./workflow/index.js";

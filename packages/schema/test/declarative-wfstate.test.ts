@@ -16,7 +16,9 @@ import * as ParseResult from "effect/ParseResult";
 import { ToolCache, cacheKey, type ParsedTool } from "@galaxy-tool-util/core";
 
 import {
+  cleanWorkflow,
   createFieldModel,
+  detectFormat,
   injectConnectionsIntoState,
   stripConnectedValues,
   scanForReplacements,
@@ -304,15 +306,6 @@ async function validateFormat2Workflow(
   return results;
 }
 
-// --- Detect workflow format ---
-
-function detectFormat(data: Record<string, unknown>): "native" | "format2" {
-  if ("a_galaxy_workflow" in data) return "native";
-  if (data.class === "GalaxyWorkflow") return "format2";
-  if ("format-version" in data) return "native";
-  return "format2";
-}
-
 // --- Operations ---
 
 type Operation = (raw: unknown) => unknown | Promise<unknown>;
@@ -349,15 +342,34 @@ async function validateOp(wfDict: unknown): Promise<unknown> {
   return workflow;
 }
 
+function cleanOp(wfDict: unknown): unknown {
+  const workflow = structuredClone(wfDict as Record<string, unknown>);
+  return cleanWorkflow(workflow);
+}
+
+async function validateCleanOp(wfDict: unknown): Promise<unknown> {
+  // Clean an internal copy, then validate it — return original on success
+  const cleaned = cleanWorkflow(structuredClone(wfDict as Record<string, unknown>));
+  await validateOp(cleaned);
+  return wfDict;
+}
+
+async function cleanThenValidateOp(wfDict: unknown): Promise<unknown> {
+  // Mutating clean, then validate — return the cleaned workflow
+  const cleaned = cleanWorkflow(structuredClone(wfDict as Record<string, unknown>));
+  await validateOp(cleaned);
+  return cleaned;
+}
+
 const OPERATIONS: Record<string, Operation> = {
   validate: validateOp,
+  clean: cleanOp,
+  validate_clean: validateCleanOp,
+  clean_then_validate: cleanThenValidateOp,
 };
 
 const UNSUPPORTED_OPERATIONS = new Set<string>([
-  "clean",
-  "validate_clean",
   "export_format2",
-  "clean_then_validate",
 ]);
 
 

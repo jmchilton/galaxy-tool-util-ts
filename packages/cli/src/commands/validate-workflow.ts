@@ -1,6 +1,7 @@
 import { ToolCache } from "@galaxy-tool-util/core";
 import {
   createFieldModel,
+  detectFormat,
   GalaxyWorkflowSchema,
   NativeGalaxyWorkflowSchema,
   expandedNative,
@@ -14,6 +15,7 @@ import {
   type NormalizedFormat2Workflow,
   type ToolParameterBundleModel,
   type ExpansionOptions,
+  type WorkflowFormat,
 } from "@galaxy-tool-util/schema";
 import * as ParseResult from "effect/ParseResult";
 import * as S from "effect/Schema";
@@ -23,7 +25,7 @@ import * as YAML from "yaml";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 import { createDefaultResolver } from "./url-resolver.js";
 
-export type WorkflowFormat = "format2" | "native";
+export type { WorkflowFormat } from "@galaxy-tool-util/schema";
 
 export type ValidationMode = "effect" | "json-schema";
 
@@ -33,13 +35,6 @@ export interface ValidateWorkflowOptions {
   cacheDir?: string;
   mode?: ValidationMode;
   toolSchemaDir?: string;
-}
-
-function detectFormat(data: Record<string, unknown>): WorkflowFormat {
-  if ("a_galaxy_workflow" in data) return "native";
-  if (data.class === "GalaxyWorkflow") return "format2";
-  if ("format-version" in data) return "native";
-  return "format2";
 }
 
 function formatIssues(error: ParseResult.ParseError): string[] {
