@@ -99,5 +99,9 @@ export {
   lintFormat2,
   /** Lint a workflow, auto-detecting format. */
   lintWorkflow,
+  /** Lint best practices for a Format2 Galaxy workflow. */
+  lintBestPracticesFormat2,
+  /** Lint best practices for a native Galaxy workflow. */
+  lintBestPracticesNative,
   type LintResult,
 } from "./workflow/index.js";

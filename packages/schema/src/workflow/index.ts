@@ -79,5 +79,7 @@ export {
   lintNative,
   lintFormat2,
   lintWorkflow,
+  lintBestPracticesFormat2,
+  lintBestPracticesNative,
   type LintResult,
 } from "./lint.js";

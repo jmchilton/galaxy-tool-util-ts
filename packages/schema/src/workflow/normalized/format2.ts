@@ -162,6 +162,10 @@ function _normalizeWorkflow(
   if (raw.comments != null) {
     (result as Record<string, unknown>).comments = raw.comments;
   }
+  // Pass through creator if present (used by best practices linting)
+  if (raw.creator != null) {
+    (result as Record<string, unknown>).creator = raw.creator;
+  }
 
   return result;
 }
@@ -225,7 +229,12 @@ function _normalizeSteps(
   const result: NormalizedFormat2Step[] = [];
   for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
     if (val && typeof val === "object") {
-      result.push(_normalizeStep(val as Record<string, unknown>, key, subworkflows));
+      let stepDict = val as Record<string, unknown>;
+      // Map-form steps: key becomes both id and label (if no explicit label)
+      if (!("label" in stepDict)) {
+        stepDict = { ...stepDict, label: key };
+      }
+      result.push(_normalizeStep(stepDict, key, subworkflows));
     }
   }
   return result;

@@ -12,6 +12,7 @@
  * Assertion modes:
  *   - value: exact equality
  *   - value_contains: substring containment
+ *   - value_any_contains: any element in a list contains substring
  *   - value_set: unordered set comparison
  *   - value_type: type check (dict → object, list → array, str → string)
  *   - value_truthy: value is truthy
@@ -87,6 +88,13 @@ export function assertValue(actual: unknown, expected: unknown): void {
 export function assertValueContains(actual: unknown, expected: string): void {
   expect(typeof actual).toBe("string");
   expect(actual as string).toContain(expected);
+}
+
+export function assertValueAnyContains(actual: unknown, expected: string): void {
+  expect(Array.isArray(actual)).toBe(true);
+  const arr = actual as unknown[];
+  const found = arr.some((item) => typeof item === "string" && item.includes(expected));
+  expect(found).toBe(true);
 }
 
 export function assertValueSet(actual: unknown, expectedItems: unknown[]): void {
@@ -165,6 +173,7 @@ export interface Assertion {
   path: unknown[];
   value?: unknown;
   value_contains?: string;
+  value_any_contains?: string;
   value_set?: unknown[];
   value_type?: string;
   value_truthy?: boolean;
@@ -208,6 +217,8 @@ export function runAssertions(result: unknown, assertions: Assertion[]): void {
       assertValue(obj, assertion.value);
     } else if ("value_contains" in assertion) {
       assertValueContains(obj, assertion.value_contains!);
+    } else if ("value_any_contains" in assertion) {
+      assertValueAnyContains(obj, assertion.value_any_contains!);
     } else if ("value_set" in assertion) {
       assertValueSet(obj, assertion.value_set!);
     } else if ("value_type" in assertion) {

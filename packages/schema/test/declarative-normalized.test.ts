@@ -20,7 +20,12 @@ import { toFormat2 } from "../src/workflow/normalized/toFormat2.js";
 import { toNative } from "../src/workflow/normalized/toNative.js";
 import { ensureFormat2, ensureNative } from "../src/workflow/normalized/ensure.js";
 import { expandedFormat2, expandedNative } from "../src/workflow/normalized/expanded.js";
-import { lintFormat2, lintNative } from "../src/workflow/lint.js";
+import {
+  lintFormat2,
+  lintNative,
+  lintBestPracticesFormat2,
+  lintBestPracticesNative,
+} from "../src/workflow/lint.js";
 import { GalaxyWorkflowSchema } from "../src/workflow/raw/gxformat2.effect.js";
 import { NativeGalaxyWorkflowSchema } from "../src/workflow/raw/native.effect.js";
 
@@ -100,6 +105,10 @@ const OPERATIONS: Record<string, Operation> = {
   expanded_native: (raw: unknown) => expandedNative(raw),
   lint_format2: (raw: unknown) => lintFormat2(raw as Record<string, unknown>),
   lint_native: (raw: unknown) => lintNative(raw as Record<string, unknown>),
+  lint_best_practices_format2: (raw: unknown) =>
+    lintBestPracticesFormat2(raw as Record<string, unknown>),
+  lint_best_practices_native: (raw: unknown) =>
+    lintBestPracticesNative(raw as Record<string, unknown>),
 };
 
 const UNSUPPORTED_OPERATIONS = new Set<string>([]);
