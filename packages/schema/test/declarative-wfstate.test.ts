@@ -13,7 +13,7 @@ import * as path from "node:path";
 import * as S from "effect/Schema";
 import * as ParseResult from "effect/ParseResult";
 
-import { ToolCache, cacheKey, type ParsedTool } from "@galaxy-tool-util/core";
+import { ToolCache, cacheKey, getCacheDir, type ParsedTool } from "@galaxy-tool-util/core";
 
 import {
   cleanWorkflow,
@@ -36,6 +36,14 @@ import { loadExpectations, runAssertions } from "./declarative-test-utils.js";
 const FIXTURES_DIR = path.join(import.meta.dirname, "fixtures", "workflow-state");
 const EXPECTATIONS_DIR = path.join(FIXTURES_DIR, "expectations");
 const WF_FIXTURES_DIR = path.join(FIXTURES_DIR, "fixtures");
+
+// Operations that require a populated tool cache to produce meaningful results
+const CACHE_DEPENDENT_OPERATIONS = new Set(["validate", "validate_clean", "clean_then_validate"]);
+
+function toolCacheAvailable(): boolean {
+  const dir = getCacheDir();
+  return fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(".json"));
+}
 
 // --- Tool info resolution ---
 // Uses the default ToolCache (~/.galaxy/tool_info_cache), mirroring Galaxy's
@@ -418,6 +426,11 @@ describe("declarative workflow_state tests", () => {
 
     if (UNSUPPORTED_OPERATIONS.has(operation)) {
       it.skip(`${testId} (unsupported operation: ${operation})`, () => {});
+      continue;
+    }
+
+    if (CACHE_DEPENDENT_OPERATIONS.has(operation) && !toolCacheAvailable()) {
+      it.skip(`${testId} (tool cache not populated)`, () => {});
       continue;
     }
 
