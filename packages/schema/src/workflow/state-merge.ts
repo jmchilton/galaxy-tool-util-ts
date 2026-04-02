@@ -257,3 +257,80 @@ function _mergeParam(
     }
   }
 }
+
+// --- ConnectedValue stripping ---
+
+function _isConnectedValue(value: unknown): boolean {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value as Record<string, unknown>).__class__ === "ConnectedValue"
+  );
+}
+
+/**
+ * Strip ConnectedValue markers from a state dict using the parameter tree.
+ *
+ * Walks conditionals, repeats, and sections so nested markers inside
+ * container parameters are removed. Mutates `state` in-place.
+ */
+export function stripConnectedValues(
+  toolInputs: ToolParameterModel[],
+  state: Record<string, unknown>,
+): void {
+  for (const toolInput of toolInputs) {
+    _stripParam(toolInput, state);
+  }
+}
+
+function _stripParam(
+  toolInput: ToolParameterModel,
+  state: Record<string, unknown>,
+  prefix?: string,
+): void {
+  const name = toolInput.name;
+  const parameterType = toolInput.parameter_type;
+
+  if (parameterType === "gx_conditional") {
+    const conditional = toolInput as ConditionalParameterModel;
+    const conditionalState = state[name] as Record<string, unknown> | undefined;
+    if (conditionalState == null) return;
+
+    const statePath = flatStatePath(name, prefix);
+    _stripParam(conditional.test_parameter, conditionalState, statePath);
+
+    const when = selectWhichWhen(conditional, conditionalState);
+    if (when != null) {
+      for (const whenParameter of when.parameters) {
+        _stripParam(whenParameter, conditionalState, statePath);
+      }
+    }
+  } else if (parameterType === "gx_repeat") {
+    const repeat = toolInput as RepeatParameterModel;
+    const repeatStateArray = state[name] as Record<string, unknown>[] | undefined;
+    if (!Array.isArray(repeatStateArray)) return;
+
+    const statePath = flatStatePath(name, prefix);
+    for (let i = 0; i < repeatStateArray.length; i++) {
+      const instancePrefix = `${statePath}_${i}`;
+      for (const repeatParameter of repeat.parameters) {
+        _stripParam(repeatParameter, repeatStateArray[i], instancePrefix);
+      }
+    }
+  } else if (parameterType === "gx_section") {
+    const section = toolInput as SectionParameterModel;
+    const sectionState = state[name] as Record<string, unknown> | undefined;
+    if (sectionState == null) return;
+
+    const statePath = flatStatePath(name, prefix);
+    for (const sectionParameter of section.parameters) {
+      _stripParam(sectionParameter, sectionState, statePath);
+    }
+  } else {
+    // Leaf parameter
+    if (_isConnectedValue(state[name])) {
+      delete state[name];
+    }
+  }
+}

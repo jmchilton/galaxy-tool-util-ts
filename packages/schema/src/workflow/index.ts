@@ -51,6 +51,7 @@ export {
 
 export {
   injectConnectionsIntoState,
+  stripConnectedValues,
   flatStatePath,
   keysStartingWith,
   repeatInputsToArray,

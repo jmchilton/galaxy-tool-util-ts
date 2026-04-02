@@ -57,6 +57,8 @@ export {
   type ToolReference,
   /** Merge step connection info into tool_state for validation. */
   injectConnectionsIntoState,
+  /** Strip ConnectedValue markers from state using parameter tree. */
+  stripConnectedValues,
   /** Flatten a nested parameter path to a dot-separated string. */
   flatStatePath,
   keysStartingWith,

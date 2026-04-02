@@ -6,6 +6,7 @@ import {
   expandedNative,
   expandedFormat2,
   injectConnectionsIntoState,
+  stripConnectedValues,
   scanForReplacements,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
@@ -319,13 +320,13 @@ async function _validateFormat2Step(
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  // Get state from step.state or step.tool_state
-  const rawState = step.state ?? step.tool_state ?? {};
-  const state = rawState as Record<string, unknown>;
+  // Get state from step.state or step.tool_state.
+  // Deep-copy and strip ConnectedValue markers left by $link normalization —
+  // these are captured in step.in and will be injected during linked validation.
+  const state = structuredClone((step.state ?? step.tool_state ?? {}) as Record<string, unknown>);
+  stripConnectedValues(bundle.parameters, state);
 
   // Level 1: Validate base state against workflow_step
-  // $link entries are stripped during normalization (not replaced with
-  // ConnectedValue), so state is clean for base validation.
   const baseModel = createFieldModel(bundle, "workflow_step");
   if (!baseModel) {
     return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
