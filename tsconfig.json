@@ -4,6 +4,6 @@
     { "path": "packages/schema" },
     { "path": "packages/core" },
     { "path": "packages/cli" },
-    { "path": "packages/server" }
+    { "path": "packages/tool-cache-proxy" }
   ]
 }

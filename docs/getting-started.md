@@ -74,7 +74,7 @@ Serve tool schemas over HTTP (useful as a sidecar for the Galaxy workflow editor
 
 ```bash
 # Install
-npm install -g @galaxy-tool-util/server
+npm install -g @galaxy-tool-util/tool-cache-proxy
 
 # Run with defaults (localhost:8080)
 galaxy-tool-proxy

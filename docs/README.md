@@ -9,7 +9,7 @@ TypeScript toolkit for working with Galaxy tool metadata. Cache tools from the T
 | [`@galaxy-tool-util/schema`](packages/schema.md) | Effect Schema definitions for Galaxy parameter types and workflow models | `@galaxy-tool-util/schema` |
 | [`@galaxy-tool-util/core`](packages/core.md) | Tool cache, ToolShed/Galaxy API client, ParsedTool model | `@galaxy-tool-util/core` |
 | [`@galaxy-tool-util/cli`](packages/cli.md) | `galaxy-tool-cache` CLI for caching and inspecting tools | `@galaxy-tool-util/cli` |
-| [`@galaxy-tool-util/server`](packages/server.md) | HTTP proxy server mirroring ToolShed API with YAML config | `@galaxy-tool-util/server` |
+| [`@galaxy-tool-util/tool-cache-proxy`](packages/tool-cache-proxy.md) | HTTP proxy server mirroring ToolShed API with YAML config | `@galaxy-tool-util/tool-cache-proxy` |
 
 ## Quick Start
 

@@ -11,7 +11,7 @@ The Galaxy workflow editor needs tool schemas to validate step parameters, but q
 ## Quick Start
 
 ```bash
-npm install -g @galaxy-tool-util/server
+npm install -g @galaxy-tool-util/tool-cache-proxy
 galaxy-tool-proxy
 # Listening on 127.0.0.1:8080
 ```

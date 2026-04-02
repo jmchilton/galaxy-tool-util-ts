@@ -1,11 +1,11 @@
-# @galaxy-tool-util/server
+# @galaxy-tool-util/tool-cache-proxy
 
 Galaxy tool proxy server -- caches and serves tool schemas.
 
 ## Installation
 
 ```bash
-npm install @galaxy-tool-util/server
+npm install @galaxy-tool-util/tool-cache-proxy
 ```
 
 ## Usage

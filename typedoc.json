@@ -1,5 +1,5 @@
 {
-  "entryPoints": ["packages/schema", "packages/core", "packages/cli", "packages/server"],
+  "entryPoints": ["packages/schema", "packages/core", "packages/cli", "packages/tool-cache-proxy"],
   "entryPointStrategy": "packages",
   "out": "docs/api/typedoc",
   "json": "docs/api/typedoc.json",

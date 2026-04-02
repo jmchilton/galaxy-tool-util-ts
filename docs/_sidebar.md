@@ -4,7 +4,7 @@
   - [Schema](packages/schema.md)
   - [Core](packages/core.md)
   - [CLI](packages/cli.md)
-  - [Server](packages/server.md)
+  - [Tool Cache Proxy](packages/tool-cache-proxy.md)
 - **Guides**
   - [Workflow Validation](guide/workflow-validation.md)
   - [Tool Caching](guide/tool-caching.md)

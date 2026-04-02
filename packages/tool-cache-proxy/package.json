@@ -1,7 +1,7 @@
 {
-  "name": "@galaxy-tool-util/server",
+  "name": "@galaxy-tool-util/tool-cache-proxy",
   "version": "0.1.0",
-  "description": "Galaxy tool proxy server — caches and serves tool schemas",
+  "description": "Galaxy tool cache proxy server — caches and serves tool schemas over HTTP",
   "type": "module",
   "bin": {
     "galaxy-tool-proxy": "dist/bin/galaxy-tool-proxy.js"
@@ -16,7 +16,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
-    "directory": "packages/server"
+    "directory": "packages/tool-cache-proxy"
   },
   "publishConfig": {
     "access": "public",

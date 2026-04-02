@@ -1,5 +1,5 @@
 /**
- * @module @galaxy-tool-util/server
+ * @module @galaxy-tool-util/tool-cache-proxy
  *
  * HTTP proxy server mirroring a subset of the ToolShed API.
  * Caches and serves tool schemas with CORS support.

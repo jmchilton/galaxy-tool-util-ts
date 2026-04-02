@@ -9,7 +9,7 @@ pnpm monorepo with 4 packages:
 - **schema** — Effect Schema definitions for all Galaxy parameter types
 - **core** — ParsedTool model, cache layer, ToolShed/Galaxy API client
 - **cli** — `galaxy-tool-cache` CLI (add/list/info/clear/schema)
-- **server** — proxy server mirroring ToolShed API with YAML config + CORS
+- **tool-cache-proxy** — proxy server mirroring ToolShed API with YAML config + CORS
 
 ## Setup
 

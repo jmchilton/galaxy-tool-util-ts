@@ -50,7 +50,7 @@ CLI command implementations (also usable programmatically).
 | `runSchema(toolId, opts)` | Export JSON Schema |
 | `runValidateWorkflow(file, opts)` | Validate a workflow file |
 
-## @galaxy-tool-util/server
+## @galaxy-tool-util/tool-cache-proxy
 
 HTTP proxy server components.
 

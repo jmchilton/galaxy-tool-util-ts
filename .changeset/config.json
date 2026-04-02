@@ -11,7 +11,7 @@
       "@galaxy-tool-util/schema",
       "@galaxy-tool-util/core",
       "@galaxy-tool-util/cli",
-      "@galaxy-tool-util/server"
+      "@galaxy-tool-util/tool-cache-proxy"
     ]
   ],
   "access": "public",

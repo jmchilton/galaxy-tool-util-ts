@@ -1,4 +1,4 @@
-# @galaxy-tool-util/server
+# @galaxy-tool-util/tool-cache-proxy
 
 `galaxy-tool-proxy` — HTTP proxy server that caches and serves Galaxy tool schemas. Mirrors a subset of the ToolShed API with CORS support, intended as a sidecar for the Galaxy workflow editor or other clients that need tool metadata.
 
@@ -89,7 +89,7 @@ All responses include permissive CORS headers:
 ## Programmatic Usage
 
 ```typescript
-import { loadConfig, createProxyContext, createProxyServer } from "@galaxy-tool-util/server";
+import { loadConfig, createProxyContext, createProxyServer } from "@galaxy-tool-util/tool-cache-proxy";
 
 const config = await loadConfig("proxy-config.yml");
 const ctx = createProxyContext(config);
