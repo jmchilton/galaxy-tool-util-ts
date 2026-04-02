@@ -81,4 +81,9 @@ export {
   type ExpandedNativeStep,
   type RefResolver,
   type ExpansionOptions,
+  /** Scan native workflow tool_state for legacy parameter encoding signals. */
+  scanToolState,
+  type LegacyEncodingClassification,
+  type LegacyEncodingHit,
+  type LegacyEncodingScanResult,
 } from "./workflow/index.js";

@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations
+.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations
 
 all: check test
 
@@ -86,6 +86,43 @@ endif
 	cp $(WF_EXPECTATIONS_SRC)/*.yml $(WF_EXPECTATIONS_DST)/
 	@echo "Synced $$(ls $(WF_EXPECTATIONS_DST)/*.yml | wc -l | tr -d ' ') expectation files."
 
+# Sync workflow_state fixtures from Galaxy repo (3 source locations).
+#   GALAXY_ROOT=~/projects/worktrees/galaxy/branch/wf_tool_state make sync-wfstate-fixtures
+WFSTATE_SRC = $(GALAXY_ROOT)/test/unit/tool_util/workflow_state
+WFSTATE_IWC_SRC = $(GALAXY_ROOT)/test/unit/workflows/iwc
+WFSTATE_FWDATA_SRC = $(GALAXY_ROOT)/lib/galaxy_test/base/data
+WFSTATE_DST = packages/schema/test/fixtures/workflow-state
+
+sync-wfstate-fixtures:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@test -d "$(WFSTATE_SRC)/fixtures" || (echo "ERROR: $(WFSTATE_SRC)/fixtures not found" && exit 1)
+	@echo "Syncing workflow_state fixtures from Galaxy..."
+	mkdir -p $(WFSTATE_DST)/fixtures
+	cp $(WFSTATE_SRC)/fixtures/synthetic-cat1-clean.ga $(WFSTATE_DST)/fixtures/
+	cp $(WFSTATE_SRC)/fixtures/synthetic-cat1-stale.ga $(WFSTATE_DST)/fixtures/
+	cp $(WFSTATE_SRC)/fixtures/synthetic-cat1.gxwf.yml $(WFSTATE_DST)/fixtures/
+	cp $(WFSTATE_IWC_SRC)/RepeatMasking-Workflow.ga $(WFSTATE_DST)/fixtures/
+	cp $(WFSTATE_IWC_SRC)/rnaseq-sr.ga $(WFSTATE_DST)/fixtures/
+	cp $(WFSTATE_FWDATA_SRC)/test_workflow_1.ga $(WFSTATE_DST)/fixtures/
+	cp $(WFSTATE_FWDATA_SRC)/test_workflow_2.ga $(WFSTATE_DST)/fixtures/
+	@echo "Synced $$(ls $(WFSTATE_DST)/fixtures/* | wc -l | tr -d ' ') workflow_state fixtures."
+
+# Sync workflow_state expectation YAMLs from Galaxy repo.
+#   GALAXY_ROOT=~/projects/worktrees/galaxy/branch/wf_tool_state make sync-wfstate-expectations
+WFSTATE_EXPECT_SRC = $(WFSTATE_SRC)/expectations
+
+sync-wfstate-expectations:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@test -d "$(WFSTATE_EXPECT_SRC)" || (echo "ERROR: $(WFSTATE_EXPECT_SRC) not found" && exit 1)
+	@echo "Syncing workflow_state expectations from $(WFSTATE_EXPECT_SRC)..."
+	mkdir -p $(WFSTATE_DST)/expectations
+	cp $(WFSTATE_EXPECT_SRC)/*.yml $(WFSTATE_DST)/expectations/
+	@echo "Synced $$(ls $(WFSTATE_DST)/expectations/*.yml | wc -l | tr -d ' ') expectation files."
+
 # Check whether synced files have diverged from their upstream sources (no overwrites).
 check-sync-workflow-fixtures:
 ifndef GXFORMAT2_ROOT
@@ -148,10 +185,83 @@ endif
 	done; \
 	if $$ok; then echo "Expectation files in sync."; else echo "Run 'make sync-workflow-expectations' to update."; exit 1; fi
 
-check-sync: check-sync-workflow-fixtures check-sync-workflow-expectations
+check-sync-wfstate-fixtures:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@echo "Checking workflow_state fixtures..."
+	@ok=true; \
+	for f in synthetic-cat1-clean.ga synthetic-cat1-stale.ga synthetic-cat1.gxwf.yml; do \
+		src=$(WFSTATE_SRC)/fixtures/$$f; \
+		local=$(WFSTATE_DST)/fixtures/$$f; \
+		if [ -f "$$local" ] && ! diff -q "$$src" "$$local" >/dev/null 2>&1; then \
+			echo "DIVERGED: $$f"; ok=false; \
+		elif [ ! -f "$$local" ]; then \
+			echo "MISSING:  $$f"; ok=false; \
+		fi; \
+	done; \
+	for f in RepeatMasking-Workflow.ga rnaseq-sr.ga; do \
+		src=$(WFSTATE_IWC_SRC)/$$f; \
+		local=$(WFSTATE_DST)/fixtures/$$f; \
+		if [ -f "$$local" ] && ! diff -q "$$src" "$$local" >/dev/null 2>&1; then \
+			echo "DIVERGED: $$f"; ok=false; \
+		elif [ ! -f "$$local" ]; then \
+			echo "MISSING:  $$f"; ok=false; \
+		fi; \
+	done; \
+	for f in test_workflow_1.ga test_workflow_2.ga; do \
+		src=$(WFSTATE_FWDATA_SRC)/$$f; \
+		local=$(WFSTATE_DST)/fixtures/$$f; \
+		if [ -f "$$local" ] && ! diff -q "$$src" "$$local" >/dev/null 2>&1; then \
+			echo "DIVERGED: $$f"; ok=false; \
+		elif [ ! -f "$$local" ]; then \
+			echo "MISSING:  $$f"; ok=false; \
+		fi; \
+	done; \
+	if $$ok; then echo "Workflow_state fixtures in sync."; else echo "Run 'make sync-wfstate-fixtures' to update."; exit 1; fi
+
+check-sync-wfstate-expectations:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@echo "Checking workflow_state expectations..."
+	@ok=true; \
+	for f in $(WFSTATE_EXPECT_SRC)/*.yml; do \
+		base=$$(basename "$$f"); \
+		local=$(WFSTATE_DST)/expectations/$$base; \
+		if [ -f "$$local" ] && ! diff -q "$$f" "$$local" >/dev/null 2>&1; then \
+			echo "DIVERGED: $$base"; ok=false; \
+		elif [ ! -f "$$local" ]; then \
+			echo "MISSING:  $$base"; ok=false; \
+		fi; \
+	done; \
+	for f in $(WFSTATE_DST)/expectations/*.yml; do \
+		base=$$(basename "$$f"); \
+		if [ ! -f "$(WFSTATE_EXPECT_SRC)/$$base" ]; then \
+			echo "EXTRA:    $$base (not in Galaxy)"; ok=false; \
+		fi; \
+	done; \
+	if $$ok; then echo "Workflow_state expectations in sync."; else echo "Run 'make sync-wfstate-expectations' to update."; exit 1; fi
+
+# Run whichever check-sync targets are possible given available env vars.
+check-sync:
+	@failed=false; \
+	if [ -n "$(GXFORMAT2_ROOT)" ]; then \
+		$(MAKE) check-sync-workflow-fixtures || failed=true; \
+		$(MAKE) check-sync-workflow-expectations || failed=true; \
+	else \
+		echo "SKIP: check-sync-workflow-{fixtures,expectations} (GXFORMAT2_ROOT not set)"; \
+	fi; \
+	if [ -n "$(GALAXY_ROOT)" ]; then \
+		$(MAKE) check-sync-wfstate-fixtures || failed=true; \
+		$(MAKE) check-sync-wfstate-expectations || failed=true; \
+	else \
+		echo "SKIP: check-sync-wfstate-{fixtures,expectations} (GALAXY_ROOT not set)"; \
+	fi; \
+	if $$failed; then exit 1; fi
 
 # Requires both GALAXY_ROOT and GXFORMAT2_ROOT. Run individual targets if you only have one.
-sync: sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations
+sync: sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations
 
 # Sync schema-salad YAML sources from gxformat2 for workflow schema generation.
 # Set GXFORMAT2_ROOT to your gxformat2 checkout, e.g.:

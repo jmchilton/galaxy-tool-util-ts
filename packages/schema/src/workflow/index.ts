@@ -62,3 +62,10 @@ export {
   scanForReplacements,
   type ReplacementClassification,
 } from "./replacement-scan.js";
+
+export {
+  scanToolState,
+  type LegacyEncodingClassification,
+  type LegacyEncodingHit,
+  type LegacyEncodingScanResult,
+} from "./legacy-encoding.js";

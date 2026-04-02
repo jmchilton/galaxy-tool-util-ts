@@ -38,6 +38,7 @@
     "effect": "^3.21.0"
   },
   "devDependencies": {
+    "@galaxy-tool-util/core": "workspace:*",
     "ajv": "^8.18.0",
     "yaml": "^2.8.3"
   }
