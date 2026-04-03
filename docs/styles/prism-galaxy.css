@@ -1,0 +1,104 @@
+/* Prism.js Galaxy Dark Theme
+ * Dark code blocks matching Galaxy's --galaxy-dark (#2c3143) background.
+ * Palette derived from Galaxy Core CSS custom property blues/greens/oranges. */
+
+code[class*="language-"],
+pre[class*="language-"] {
+  color: #d3d6e2;
+  text-shadow: none;
+  font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+  direction: ltr;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  line-height: 1.6;
+  tab-size: 2;
+  hyphens: none;
+}
+
+/* Token colors — Galaxy palette */
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #717ba2;
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: #a2a9c2;
+}
+
+.token.namespace {
+  opacity: 0.8;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #ff9b2f; /* orange-500 */
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #98e192; /* green-400 */
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #ffe848; /* yellow-400 */
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #48a1dd; /* blue-400 */
+}
+
+.token.function,
+.token.class-name {
+  color: #ffd700; /* galaxy gold */
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #ffae52; /* orange-400 */
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.entity {
+  cursor: help;
+}
+
+/* Line highlighting */
+pre[data-line] {
+  position: relative;
+}
+
+.line-highlight {
+  background: rgba(37, 83, 123, 0.2);
+  border-left: 3px solid var(--galaxy-gold, #ffd700);
+  margin-top: 0;
+}
