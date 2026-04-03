@@ -93,7 +93,8 @@ async function precheckNativeWorkflow(
     // Recurse into subworkflows
     if (stepDef.type === "subworkflow" && stepDef.subworkflow) {
       const sub = await precheckNativeWorkflow(
-        stepDef.subworkflow as Record<string, unknown>, toolInfo,
+        stepDef.subworkflow as Record<string, unknown>,
+        toolInfo,
       );
       if (!sub.canProcess) return sub;
       continue;
@@ -108,7 +109,11 @@ async function precheckNativeWorkflow(
     // Mirror Galaxy's precheck: parse string tool_state, then scan the
     // parsed dict for per-parameter legacy encoding signals using tool info.
     if (typeof toolState === "string") {
-      try { toolState = JSON.parse(toolState); } catch { continue; }
+      try {
+        toolState = JSON.parse(toolState);
+      } catch {
+        continue;
+      }
     }
     if (typeof toolState !== "object" || toolState === null) continue;
 
@@ -152,7 +157,11 @@ async function validateNativeStep(
 
   let toolState = stepDef.tool_state;
   if (typeof toolState === "string") {
-    try { toolState = JSON.parse(toolState); } catch { /* keep as-is */ }
+    try {
+      toolState = JSON.parse(toolState);
+    } catch {
+      /* keep as-is */
+    }
   }
   if (!toolState || typeof toolState !== "object") {
     return { step: stepLabel, toolId, status: "skip", errors: ["no tool_state"] };
@@ -160,7 +169,8 @@ async function validateNativeStep(
 
   // Skip if replacement parameters detected
   const replacementScan = scanForReplacements(
-    bundle.parameters, toolState as Record<string, unknown>,
+    bundle.parameters,
+    toolState as Record<string, unknown>,
   );
   if (replacementScan === "yes") {
     return { step: stepLabel, toolId, status: "skip", errors: ["replacement parameters"] };
@@ -208,7 +218,9 @@ async function validateNativeWorkflow(
 
     if (stepDef.type === "subworkflow" && stepDef.subworkflow) {
       const subResults = await validateNativeWorkflow(
-        stepDef.subworkflow as Record<string, unknown>, toolInfo, `${stepLabel}.`,
+        stepDef.subworkflow as Record<string, unknown>,
+        toolInfo,
+        `${stepLabel}.`,
       );
       results.push(...subResults);
       continue;
@@ -262,7 +274,9 @@ async function validateFormat2Step(
   const connections: Record<string, unknown> = {};
   for (const stepInput of step.in) {
     if (stepInput.id && stepInput.source) {
-      connections[stepInput.id] = Array.isArray(stepInput.source) ? stepInput.source : [stepInput.source];
+      connections[stepInput.id] = Array.isArray(stepInput.source)
+        ? stepInput.source
+        : [stepInput.source];
     }
   }
   if (Object.keys(connections).length > 0) {
@@ -302,7 +316,9 @@ async function validateFormat2Workflow(
 
     if (step.run && typeof step.run === "object") {
       const subResults = await validateFormat2Workflow(
-        step.run as Record<string, unknown>, toolInfo, `${stepLabel}.`,
+        step.run as Record<string, unknown>,
+        toolInfo,
+        `${stepLabel}.`,
       );
       results.push(...subResults);
       continue;
@@ -376,10 +392,7 @@ const OPERATIONS: Record<string, Operation> = {
   clean_then_validate: cleanThenValidateOp,
 };
 
-const UNSUPPORTED_OPERATIONS = new Set<string>([
-  "export_format2",
-]);
-
+const UNSUPPORTED_OPERATIONS = new Set<string>(["export_format2"]);
 
 // --- Fixture loading ---
 
@@ -402,8 +415,10 @@ function loadWorkflow(name: string): unknown {
 // --- Test runner ---
 
 function expectationsExist(): boolean {
-  return fs.existsSync(EXPECTATIONS_DIR) &&
-    fs.readdirSync(EXPECTATIONS_DIR).some((f) => f.endsWith(".yml"));
+  return (
+    fs.existsSync(EXPECTATIONS_DIR) &&
+    fs.readdirSync(EXPECTATIONS_DIR).some((f) => f.endsWith(".yml"))
+  );
 }
 
 describe("declarative workflow_state tests", () => {

@@ -1,7 +1,12 @@
 import * as S from "effect/Schema";
 import type { DataCollectionParameterModel } from "../bundle-types.js";
 import type { StateRepresentation } from "../state-representations.js";
-import { usesStringIds, isWorkflowStep, isTestCase, allowsConnectedOrRuntimeValue } from "../state-representations.js";
+import {
+  usesStringIds,
+  isWorkflowStep,
+  isTestCase,
+  allowsConnectedOrRuntimeValue,
+} from "../state-representations.js";
 import { ConnectedOrRuntimeValueSchema } from "../model-factory.js";
 import {
   safeFieldName,

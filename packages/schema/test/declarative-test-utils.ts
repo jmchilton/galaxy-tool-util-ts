@@ -52,9 +52,7 @@ export function navigate(obj: unknown, pathElements: unknown[]): unknown {
       if (!Array.isArray(current)) {
         throw new Error(`Expected array for find-in-list, got ${typeof current}`);
       }
-      const found = current.find(
-        (item: Record<string, unknown>) => item[resolvedField] === value,
-      );
+      const found = current.find((item: Record<string, unknown>) => item[resolvedField] === value);
       if (found === undefined) {
         throw new Error(
           `No item with ${resolvedField}=${JSON.stringify(value)} in array of ${current.length}`,
@@ -106,10 +104,14 @@ export function assertValueSet(actual: unknown, expectedItems: unknown[]): void 
     const firstExpected = expectedItems[0];
     if (typeof firstExpected === "object" && firstExpected !== null) {
       const actualSet = new Set(
-        [...actual].map((item) => JSON.stringify(Object.entries(item as Record<string, unknown>).sort())),
+        [...actual].map((item) =>
+          JSON.stringify(Object.entries(item as Record<string, unknown>).sort()),
+        ),
       );
       const expectedSet = new Set(
-        expectedItems.map((item) => JSON.stringify(Object.entries(item as Record<string, unknown>).sort())),
+        expectedItems.map((item) =>
+          JSON.stringify(Object.entries(item as Record<string, unknown>).sort()),
+        ),
       );
       expect(actualSet).toEqual(expectedSet);
     } else {
@@ -123,10 +125,14 @@ export function assertValueSet(actual: unknown, expectedItems: unknown[]): void 
     const firstExpected = expectedItems[0];
     if (typeof firstExpected === "object" && firstExpected !== null) {
       const actualSet = new Set(
-        actual.map((item) => JSON.stringify(Object.entries(item as Record<string, unknown>).sort())),
+        actual.map((item) =>
+          JSON.stringify(Object.entries(item as Record<string, unknown>).sort()),
+        ),
       );
       const expectedSet = new Set(
-        expectedItems.map((item) => JSON.stringify(Object.entries(item as Record<string, unknown>).sort())),
+        expectedItems.map((item) =>
+          JSON.stringify(Object.entries(item as Record<string, unknown>).sort()),
+        ),
       );
       expect(actualSet).toEqual(expectedSet);
     } else {
@@ -191,7 +197,10 @@ export interface TestCase {
 
 export function loadExpectations(expectationsDir: string): [string, TestCase][] {
   const cases: [string, TestCase][] = [];
-  const files = fs.readdirSync(expectationsDir).filter((f) => f.endsWith(".yml")).sort();
+  const files = fs
+    .readdirSync(expectationsDir)
+    .filter((f) => f.endsWith(".yml"))
+    .sort();
   for (const fname of files) {
     const content = fs.readFileSync(path.join(expectationsDir, fname), "utf-8");
     const suite = yaml.parse(content) as Record<string, TestCase>;
@@ -208,7 +217,11 @@ export function runAssertions(result: unknown, assertions: Assertion[]): void {
   for (const assertion of assertions) {
     if ("value_absent" in assertion) {
       let obj: unknown;
-      try { obj = navigate(result, assertion.path); } catch { continue; }
+      try {
+        obj = navigate(result, assertion.path);
+      } catch {
+        continue;
+      }
       assertValueAbsent(obj);
       continue;
     }

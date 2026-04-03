@@ -51,10 +51,7 @@ function generateConditionalSchema(
     let testSchema: S.Schema.Any;
     if (isBoolean && isNative) {
       const strForm = String(when.discriminator).toLowerCase();
-      testSchema = S.Union(
-        S.Literal(when.discriminator as any),
-        S.Literal(strForm as any),
-      );
+      testSchema = S.Union(S.Literal(when.discriminator as any), S.Literal(strForm as any));
     } else {
       testSchema = S.Literal(when.discriminator as any);
     }

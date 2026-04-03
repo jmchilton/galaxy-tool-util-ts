@@ -74,7 +74,9 @@ export const NormalizedNativeStepSchema = Schema.Struct({
   post_job_actions: Schema.Record({ key: Schema.String, value: NativePostJobActionSchema }),
   subworkflow: Schema.optional(Schema.NullOr(NormalizedNativeWorkflowSchema)),
   tool_uuid: Schema.optional(Schema.NullOr(Schema.String)),
-  tool_representation: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
+  tool_representation: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
   in: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
   connected_paths: Schema.Set(Schema.String),
 });
@@ -151,10 +153,10 @@ function _normalizeStep(step: Record<string, unknown>): NormalizedNativeStep {
     errors: step.errors as string | null | undefined,
     position: _normalizePosition(step.position as NormalizedNativeStep["position"]),
     input_connections: inputConnections,
-    inputs: ((step.inputs as NormalizedNativeStep["inputs"]) ?? []),
-    outputs: ((step.outputs as NormalizedNativeStep["outputs"]) ?? []),
-    workflow_outputs: ((step.workflow_outputs as NormalizedNativeStep["workflow_outputs"]) ?? []),
-    post_job_actions: ((step.post_job_actions as NormalizedNativeStep["post_job_actions"]) ?? {}),
+    inputs: (step.inputs as NormalizedNativeStep["inputs"]) ?? [],
+    outputs: (step.outputs as NormalizedNativeStep["outputs"]) ?? [],
+    workflow_outputs: (step.workflow_outputs as NormalizedNativeStep["workflow_outputs"]) ?? [],
+    post_job_actions: (step.post_job_actions as NormalizedNativeStep["post_job_actions"]) ?? {},
     subworkflow,
     tool_uuid: step.tool_uuid as string | null | undefined,
     tool_representation: step.tool_representation as NormalizedNativeStep["tool_representation"],
@@ -207,9 +209,7 @@ function _normalizeTags(raw: unknown): readonly string[] {
   return [];
 }
 
-function _collectUniqueTools(
-  steps: NormalizedNativeWorkflow["steps"],
-): Set<ToolReference> {
+function _collectUniqueTools(steps: NormalizedNativeWorkflow["steps"]): Set<ToolReference> {
   const tools = new Set<ToolReference>();
   _collectToolsRecursive(steps, tools);
   return tools;

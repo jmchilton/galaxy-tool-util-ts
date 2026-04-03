@@ -61,7 +61,9 @@ export function allOptional(rep: StateRepresentation): boolean {
 }
 
 export function isWorkflowStep(rep: StateRepresentation): boolean {
-  return rep === "workflow_step" || rep === "workflow_step_linked" || rep === "workflow_step_native";
+  return (
+    rep === "workflow_step" || rep === "workflow_step_linked" || rep === "workflow_step_native"
+  );
 }
 
 export function isTestCase(rep: StateRepresentation): boolean {

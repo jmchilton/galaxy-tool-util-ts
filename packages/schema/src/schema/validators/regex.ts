@@ -30,9 +30,8 @@ export function stripPythonIdentityEscapes(pattern: string): string {
   // Match \\ (escaped backslash) first to skip it, then \X where X is not
   // an ECMA-262 syntax char or standard escape letter.
   // Standard escape letters: d, D, w, W, s, S, b, B, n, r, t, f, v, 0, c, x, u, p, P, k
-  return pattern.replace(
-    /\\\\|\\([^\\^$.*+?()[\]{}|dDwWsSnrtfv0cxupPkbB])/g,
-    (match, captured) => captured !== undefined ? captured : match,
+  return pattern.replace(/\\\\|\\([^\\^$.*+?()[\]{}|dDwWsSnrtfv0cxupPkbB])/g, (match, captured) =>
+    captured !== undefined ? captured : match,
   );
 }
 
@@ -91,9 +90,7 @@ function applyRegex(schema: S.Schema.Any, validator: unknown): S.Schema.Any {
       jsonAnnotation = { jsonSchema: {} };
     } else {
       const safe = jsonSchemaSafePattern(anchored);
-      jsonAnnotation = safe
-        ? { jsonSchema: { pattern: `(^$|${safe})` } }
-        : { jsonSchema: {} };
+      jsonAnnotation = safe ? { jsonSchema: { pattern: `(^$|${safe})` } } : { jsonSchema: {} };
     }
     return (schema as S.Schema<string>).pipe(
       S.filter((value: string) => value === "" || re.test(value), jsonAnnotation),

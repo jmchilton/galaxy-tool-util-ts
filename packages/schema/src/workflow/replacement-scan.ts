@@ -69,7 +69,10 @@ function _scanParams(
       if (condState) {
         // Check test parameter
         const testValue = condState[cond.test_parameter.name];
-        if (_isReplacementParam(testValue) && !_SKIP_TYPES.has(cond.test_parameter.parameter_type)) {
+        if (
+          _isReplacementParam(testValue) &&
+          !_SKIP_TYPES.has(cond.test_parameter.parameter_type)
+        ) {
           onHit(_classifyHit(cond.test_parameter.parameter_type));
         }
         // Check all when branches (scan all since we can't always determine the active branch)

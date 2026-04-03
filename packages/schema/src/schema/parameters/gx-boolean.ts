@@ -24,10 +24,7 @@ function generateBooleanSchema(
 
   if (allowsConnectedOrRuntimeValue(stateRep)) {
     // Native booleans can be actual bools or strings "true"/"false"/"True"/"False"
-    let nativeBool: S.Schema.Any = S.Union(
-      S.Boolean,
-      S.Literal("true", "false", "True", "False"),
-    );
+    let nativeBool: S.Schema.Any = S.Union(S.Boolean, S.Literal("true", "false", "True", "False"));
     if (p.optional) {
       nativeBool = S.NullOr(nativeBool);
     }

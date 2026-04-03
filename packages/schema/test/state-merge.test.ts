@@ -285,7 +285,9 @@ describe("injectConnectionsIntoState", () => {
     const connections = { "cond|blast_db": ["step0/output"] };
     const remaining = injectConnectionsIntoState(inputs, state, connections);
 
-    expect((state.cond as Record<string, unknown>).blast_db).toEqual({ __class__: "ConnectedValue" });
+    expect((state.cond as Record<string, unknown>).blast_db).toEqual({
+      __class__: "ConnectedValue",
+    });
     expect(remaining).toEqual({});
   });
 
@@ -350,6 +352,8 @@ describe("injectConnectionsIntoState", () => {
 
     injectConnectionsIntoState(inputs, state, connections);
     expect(state.advanced).toBeDefined();
-    expect((state.advanced as Record<string, unknown>).option).toEqual({ __class__: "ConnectedValue" });
+    expect((state.advanced as Record<string, unknown>).option).toEqual({
+      __class__: "ConnectedValue",
+    });
   });
 });

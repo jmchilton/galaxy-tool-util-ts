@@ -35,9 +35,7 @@ export class LintContext {
   }
 
   child(prefix: string): LintContext {
-    const fullPrefix = this._prefix
-      ? `${this._prefix.slice(0, -1)} > ${prefix}] `
-      : `[${prefix}] `;
+    const fullPrefix = this._prefix ? `${this._prefix.slice(0, -1)} > ${prefix}] ` : `[${prefix}] `;
     const ctx = new LintContext();
     ctx._prefix = fullPrefix;
     // Share message arrays with parent
@@ -361,9 +359,7 @@ function lintStepBestPractices(ctx: LintContext, step: NormalizedFormat2Step): v
 
   // untyped params in outputs (PJA equivalents)
   if (step.out && step.out.length > 0 && checkJsonForUntypedParams(step.out)) {
-    ctx.warn(
-      `Workflow step ${stepId} specifies an untyped parameter in the post-job actions.`,
-    );
+    ctx.warn(`Workflow step ${stepId} specifies an untyped parameter in the post-job actions.`);
   }
 }
 

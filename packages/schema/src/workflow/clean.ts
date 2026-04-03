@@ -62,7 +62,9 @@ function parseToolState(toolState: unknown): Record<string, unknown> | null {
       if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
         return decodeLegacyDict(parsed as Record<string, unknown>);
       }
-    } catch { /* not valid JSON */ }
+    } catch {
+      /* not valid JSON */
+    }
     return null;
   }
   if (toolState !== null && typeof toolState === "object" && !Array.isArray(toolState)) {

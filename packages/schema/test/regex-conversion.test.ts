@@ -69,7 +69,7 @@ describe("stripPythonIdentityEscapes", () => {
 
 describe("fixBracketCharClass", () => {
   it("converts []] to [\\]] (query_tabular pattern)", () => {
-    expect(fixBracketCharClass("[[]\\S+[^,\"]*[]]")).toBe("[[]\\S+[^,\"]*[\\]]");
+    expect(fixBracketCharClass('[[]\\S+[^,"]*[]]')).toBe('[[]\\S+[^,"]*[\\]]');
   });
 
   it("leaves normal character classes unchanged", () => {
@@ -106,7 +106,7 @@ describe("jsonSchemaSafePattern", () => {
   });
 
   it("fixes query_tabular pattern with []]", () => {
-    const pattern = "^([A-Za-z]\\w*|[[]\\S+[^,\"]*[]])$";
+    const pattern = '^([A-Za-z]\\w*|[[]\\S+[^,"]*[]])$';
     const safe = jsonSchemaSafePattern(pattern);
     expect(safe).not.toBeNull();
     expect(() => new RegExp(safe!, "u")).not.toThrow();
@@ -129,8 +129,8 @@ describe("end-to-end: known failing patterns compile under /u", () => {
     // samtools_stats
     "^[^\\s\\'\\\":]+(:\\d+(-\\d+){0,1}){0,1}$",
     // query_tabular (two variants with []])
-    "^([A-Za-z]\\w*|\\d+\\.?\\d*|[[]\\S+[^,\"]*[]])(\\s*,\\s*([A-Za-z]\\w*|\\d+\\.?\\d*|[[]\\S+[^,\"]*[]]))*\\s*$",
-    "^([A-Za-z]\\w*|[[]\\S+[^,\"]*[]])(\\s*,\\s*([A-Za-z]\\w*|[[]\\S+[^,\"]*[]]))*\\s*$",
+    '^([A-Za-z]\\w*|\\d+\\.?\\d*|[[]\\S+[^,"]*[]])(\\s*,\\s*([A-Za-z]\\w*|\\d+\\.?\\d*|[[]\\S+[^,"]*[]]))*\\s*$',
+    '^([A-Za-z]\\w*|[[]\\S+[^,"]*[]])(\\s*,\\s*([A-Za-z]\\w*|[[]\\S+[^,"]*[]]))*\\s*$',
   ];
 
   for (const pattern of knownPatterns) {

@@ -115,9 +115,7 @@ const UNSUPPORTED_OPERATIONS = new Set<string>([]);
 
 // Tests that fail due to YAML parser behavioral differences (JS coerces null keys
 // to string "null", Python keeps None which fails dict[str, ...] validation)
-const KNOWN_PARSER_DIVERGENCES = new Set<string>([
-  "test_unlinted_best_practices_rejected_format2",
-]);
+const KNOWN_PARSER_DIVERGENCES = new Set<string>(["test_unlinted_best_practices_rejected_format2"]);
 
 // --- Fixture loading ---
 

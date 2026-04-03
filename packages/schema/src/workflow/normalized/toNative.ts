@@ -4,10 +4,7 @@
  * Port of gxformat2/normalized/_conversion.py to_native + helpers.
  */
 
-import type {
-  NormalizedNativeWorkflow,
-  NormalizedNativeStep,
-} from "./native.js";
+import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./native.js";
 import type {
   NormalizedFormat2Workflow,
   NormalizedFormat2Step,
@@ -180,7 +177,9 @@ function _buildNativeWorkflow(
     (result as Record<string, unknown>).comments = comments;
   }
   if (wfAny.report) {
-    (result as Record<string, unknown>).report = { markdown: (wfAny.report as Record<string, unknown>).markdown };
+    (result as Record<string, unknown>).report = {
+      markdown: (wfAny.report as Record<string, unknown>).markdown,
+    };
   }
   if (wfAny.creator) {
     (result as Record<string, unknown>).creator = wfAny.creator;
@@ -191,10 +190,7 @@ function _buildNativeWorkflow(
 
 // --- Input step building ---
 
-function _buildInputStep(
-  inp: NormalizedFormat2Input,
-  orderIndex: number,
-): NormalizedNativeStep {
+function _buildInputStep(inp: NormalizedFormat2Input, orderIndex: number): NormalizedNativeStep {
   const rawLabel = inp.id || `Input ${orderIndex}`;
   const label = isUnlabeled(rawLabel) ? undefined : rawLabel;
 
@@ -237,7 +233,13 @@ function _buildInputStep(
   if (inp.default != null) toolState.default = inp.default;
 
   // Copy extra fields
-  for (const key of ["restrictions", "suggestions", "restrictOnConnections", "fields", "column_definitions"]) {
+  for (const key of [
+    "restrictions",
+    "suggestions",
+    "restrictOnConnections",
+    "fields",
+    "column_definitions",
+  ]) {
     if (key in (inp as Record<string, unknown>)) {
       toolState[key] = (inp as Record<string, unknown>)[key];
     }
@@ -246,7 +248,11 @@ function _buildInputStep(
   // Handle File class defaults: move to in_ nested default
   let inField: Record<string, unknown> | undefined;
   const defaultVal = inp.default;
-  if (defaultVal && typeof defaultVal === "object" && (defaultVal as Record<string, unknown>).class === "File") {
+  if (
+    defaultVal &&
+    typeof defaultVal === "object" &&
+    (defaultVal as Record<string, unknown>).class === "File"
+  ) {
     inField = { default: { default: defaultVal } };
     delete toolState.default;
   }
@@ -524,8 +530,14 @@ function _buildInputConnections(
 
 function _buildPostJobActions(
   outputs: readonly NormalizedFormat2StepOutput[],
-): Record<string, { action_type: string; output_name: string; action_arguments?: Record<string, unknown> }> {
-  const postJobActions: Record<string, { action_type: string; output_name: string; action_arguments?: Record<string, unknown> }> = {};
+): Record<
+  string,
+  { action_type: string; output_name: string; action_arguments?: Record<string, unknown> }
+> {
+  const postJobActions: Record<
+    string,
+    { action_type: string; output_name: string; action_arguments?: Record<string, unknown> }
+  > = {};
 
   for (const output of outputs) {
     const outputName = output.id;
@@ -621,8 +633,8 @@ function _buildNativeComments(
     nativeComment.id = i;
 
     if (nativeComment.child_steps && Array.isArray(nativeComment.child_steps)) {
-      nativeComment.child_steps = (nativeComment.child_steps as (string | number)[]).map(
-        (ref) => (typeof ref === "string" ? ctx.stepId(ref) : ref),
+      nativeComment.child_steps = (nativeComment.child_steps as (string | number)[]).map((ref) =>
+        typeof ref === "string" ? ctx.stepId(ref) : ref,
       );
     }
 
@@ -660,10 +672,7 @@ function _stepLabel(step: NormalizedFormat2Step): string | null | undefined {
   return null;
 }
 
-function _defaultPosition(
-  position: unknown,
-  orderIndex: number,
-): { left: number; top: number } {
+function _defaultPosition(position: unknown, orderIndex: number): { left: number; top: number } {
   if (position != null) return position as { left: number; top: number };
   return { left: 10 * orderIndex, top: 10 * orderIndex };
 }

@@ -101,9 +101,7 @@ describe("scanForReplacements", () => {
       argument: null,
       is_dynamic: false,
       test_parameter: selectParam("method") as any,
-      whens: [
-        { discriminator: "a", parameters: [intParam("val")], is_default_when: true },
-      ],
+      whens: [{ discriminator: "a", parameters: [intParam("val")], is_default_when: true }],
     };
     const state = { cond: { method: "a", val: "${num}" } };
     expect(scanForReplacements([cond], state)).toBe("yes");

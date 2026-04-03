@@ -65,7 +65,9 @@ describe("isTrsUrl", () => {
   });
 
   it("matches TRS URL with encoded tool_id", () => {
-    expect(isTrsUrl("https://toolshed.g2.bx.psu.edu/ga4gh/trs/v2/tools/%23workflow%2Ftool/versions/v1")).toBe(true);
+    expect(
+      isTrsUrl("https://toolshed.g2.bx.psu.edu/ga4gh/trs/v2/tools/%23workflow%2Ftool/versions/v1"),
+    ).toBe(true);
   });
 
   it("rejects plain URL", () => {
@@ -255,7 +257,9 @@ describe("resolver error propagation", () => {
     const failResolver: RefResolver = async () => {
       throw new Error("HTTP 404: Not Found");
     };
-    await expect(expandedFormat2(outer, { resolver: failResolver })).rejects.toThrow("HTTP 404: Not Found");
+    await expect(expandedFormat2(outer, { resolver: failResolver })).rejects.toThrow(
+      "HTTP 404: Not Found",
+    );
   });
 
   it("propagates resolver errors for native content_id", async () => {
@@ -268,7 +272,9 @@ describe("resolver error propagation", () => {
     const failResolver: RefResolver = async () => {
       throw new Error("network error");
     };
-    await expect(expandedNative(outer, { resolver: failResolver })).rejects.toThrow("network error");
+    await expect(expandedNative(outer, { resolver: failResolver })).rejects.toThrow(
+      "network error",
+    );
   });
 });
 
@@ -284,7 +290,9 @@ describe("cycle detection", () => {
       steps: { nested: { run: "https://example.com/self.yml", in: { x: "x" } } },
     });
     const resolver = mockResolver({ "https://example.com/self.yml": selfRef });
-    await expect(expandedFormat2(outer, { resolver })).rejects.toThrow("Circular subworkflow reference");
+    await expect(expandedFormat2(outer, { resolver })).rejects.toThrow(
+      "Circular subworkflow reference",
+    );
   });
 
   it("detects indirect circular reference", async () => {
@@ -301,7 +309,9 @@ describe("cycle detection", () => {
     const outer = minimalFormat2({
       steps: { sub: { run: "https://example.com/a.yml", in: { x: "x" } } },
     });
-    await expect(expandedFormat2(outer, { resolver })).rejects.toThrow("Circular subworkflow reference");
+    await expect(expandedFormat2(outer, { resolver })).rejects.toThrow(
+      "Circular subworkflow reference",
+    );
   });
 });
 

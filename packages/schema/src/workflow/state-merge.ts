@@ -28,10 +28,7 @@ export function flatStatePath(name: string, prefix?: string): string {
 }
 
 /** Filter a flat key→value map to keys starting with a given prefix. */
-export function keysStartingWith<T>(
-  map: Record<string, T>,
-  prefix: string,
-): Record<string, T> {
+export function keysStartingWith<T>(map: Record<string, T>, prefix: string): Record<string, T> {
   const result: Record<string, T> = {};
   for (const [key, value] of Object.entries(map)) {
     if (key.startsWith(prefix)) {
@@ -114,9 +111,8 @@ function _testValueMatchesDiscriminator(
   if (testParam.parameter_type === "gx_boolean") {
     // Boolean coercion: handle string "true"/"false"/"True"/"False" and actual booleans
     const boolValue = _coerceToBool(testValue);
-    const discBool = typeof discriminator === "boolean"
-      ? discriminator
-      : _coerceToBool(discriminator);
+    const discBool =
+      typeof discriminator === "boolean" ? discriminator : _coerceToBool(discriminator);
     return boolValue === discBool;
   }
   // Select: string comparison
@@ -241,13 +237,7 @@ function _mergeParam(
 
     const sectionConnections = keysStartingWith(branchConnections, statePath);
     for (const sectionParameter of section.parameters) {
-      _mergeParam(
-        connections,
-        sectionParameter,
-        sectionState,
-        statePath,
-        sectionConnections,
-      );
+      _mergeParam(connections, sectionParameter, sectionState, statePath, sectionConnections);
     }
   } else {
     // Leaf parameter

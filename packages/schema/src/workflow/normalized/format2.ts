@@ -42,7 +42,9 @@ export const NormalizedFormat2StepOutputSchema = Schema.Struct({
   hide: Schema.optional(Schema.NullOr(Schema.Boolean)),
   remove_tags: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
   rename: Schema.optional(Schema.NullOr(Schema.String)),
-  set_columns: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
+  set_columns: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
 });
 export type NormalizedFormat2StepOutput = typeof NormalizedFormat2StepOutputSchema.Type;
 
@@ -55,7 +57,9 @@ export const NormalizedFormat2InputSchema = Schema.Struct({
   default: Schema.optional(Schema.NullOr(Schema.Unknown)),
   format: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
   collection_type: Schema.optional(Schema.NullOr(Schema.String)),
-  position: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
+  position: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
 });
 export type NormalizedFormat2Input = typeof NormalizedFormat2InputSchema.Type;
 
@@ -78,7 +82,9 @@ export const NormalizedFormat2WorkflowSchema = Schema.Struct({
   steps: Schema.Array(Schema.suspend((): Schema.Schema<any> => NormalizedFormat2StepSchema)),
   tags: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
   uuid: Schema.optional(Schema.NullOr(Schema.String)),
-  report: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
+  report: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
   license: Schema.optional(Schema.NullOr(Schema.String)),
   release: Schema.optional(Schema.NullOr(Schema.String)),
   unique_tools: Schema.Set(ToolReferenceSchema),
@@ -91,15 +97,23 @@ export const NormalizedFormat2StepSchema = Schema.Struct({
   doc: Schema.optional(Schema.NullOr(Schema.String)),
   tool_id: Schema.optional(Schema.NullOr(Schema.String)),
   tool_version: Schema.optional(Schema.NullOr(Schema.String)),
-  tool_shed_repository: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
+  tool_shed_repository: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
   type: Schema.optional(Schema.NullOr(Schema.String)),
   run: Schema.optional(Schema.NullOr(Schema.Union(NormalizedFormat2WorkflowSchema, Schema.String))),
   in: Schema.Array(NormalizedFormat2StepInputSchema),
   out: Schema.Array(NormalizedFormat2StepOutputSchema),
-  state: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
-  tool_state: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
+  state: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
+  tool_state: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
   when: Schema.optional(Schema.NullOr(Schema.String)),
-  position: Schema.optional(Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown }))),
+  position: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
   errors: Schema.optional(Schema.NullOr(Schema.String)),
   uuid: Schema.optional(Schema.NullOr(Schema.String)),
   runtime_inputs: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
@@ -223,7 +237,7 @@ function _normalizeSteps(
   if (Array.isArray(raw)) {
     return raw.map((item, idx) => {
       const obj = item as Record<string, unknown>;
-      return _normalizeStep(obj, obj.id as string ?? String(idx), subworkflows);
+      return _normalizeStep(obj, (obj.id as string) ?? String(idx), subworkflows);
     });
   }
   const result: NormalizedFormat2Step[] = [];
@@ -252,12 +266,17 @@ function _normalizeStep(
   // Resolve $link references in state: replace with ConnectedValue and
   // collect corresponding in entries for downstream connection injection
   const linkConnections: Map<string, string[]> = new Map();
-  const state = raw.state != null
-    ? _resolveLinks(raw.state as Record<string, unknown>, "", linkConnections) as NormalizedFormat2Step["state"]
-    : raw.state as NormalizedFormat2Step["state"];
+  const state =
+    raw.state != null
+      ? (_resolveLinks(
+          raw.state as Record<string, unknown>,
+          "",
+          linkConnections,
+        ) as NormalizedFormat2Step["state"])
+      : (raw.state as NormalizedFormat2Step["state"]);
   const linkInputs: NormalizedFormat2StepInput[] = [];
   for (const [key, sources] of linkConnections) {
-    linkInputs.push({ id: key, source: sources.length === 1 ? sources[0] : sources as any });
+    linkInputs.push({ id: key, source: sources.length === 1 ? sources[0] : (sources as any) });
   }
 
   // Merge explicit in entries with link-derived entries (explicit first)
@@ -380,11 +399,7 @@ const _CONNECTED_VALUE: Record<string, string> = { __class__: "ConnectedValue" }
  * Matches Python gxformat2 _resolve_links — $link is a format-level construct
  * resolved before tool definitions are available.
  */
-function _resolveLinks(
-  value: unknown,
-  key: string,
-  connections: Map<string, string[]>,
-): unknown {
+function _resolveLinks(value: unknown, key: string, connections: Map<string, string[]>): unknown {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const obj = value as Record<string, unknown>;
     if ("$link" in obj) {
@@ -403,7 +418,12 @@ function _resolveLinks(
 
   if (Array.isArray(value)) {
     return value.map((v, i) => {
-      if (v && typeof v === "object" && !Array.isArray(v) && "$link" in (v as Record<string, unknown>)) {
+      if (
+        v &&
+        typeof v === "object" &&
+        !Array.isArray(v) &&
+        "$link" in (v as Record<string, unknown>)
+      ) {
         const sources = connections.get(key) ?? [];
         sources.push((v as Record<string, unknown>).$link as string);
         connections.set(key, sources);

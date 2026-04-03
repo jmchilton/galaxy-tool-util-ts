@@ -59,8 +59,7 @@ export interface ExpansionOptions {
 
 export const MAX_EXPANSION_DEPTH = 10;
 
-const TRS_URL_REGEX =
-  /^https?:\/\/.+\/ga4gh\/trs\/v2\/tools\/.+\/versions\/[^/]+/;
+const TRS_URL_REGEX = /^https?:\/\/.+\/ga4gh\/trs\/v2\/tools\/.+\/versions\/[^/]+/;
 
 // --- Helpers ---
 
@@ -205,10 +204,7 @@ async function _expandFormat2(
 
     if (step.run && typeof step.run === "object") {
       // Already-inlined subworkflow — recurse
-      expandedRun = await _expandFormat2(
-        step.run as NormalizedFormat2Workflow,
-        ctx,
-      );
+      expandedRun = await _expandFormat2(step.run as NormalizedFormat2Workflow, ctx);
     } else if (typeof step.run === "string") {
       // External reference (URL, file path, base64)
       const resolved = await ctx.resolve(step.run);

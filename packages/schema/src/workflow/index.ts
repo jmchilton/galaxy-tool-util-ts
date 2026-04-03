@@ -58,10 +58,7 @@ export {
   selectWhichWhen,
 } from "./state-merge.js";
 
-export {
-  scanForReplacements,
-  type ReplacementClassification,
-} from "./replacement-scan.js";
+export { scanForReplacements, type ReplacementClassification } from "./replacement-scan.js";
 
 export {
   scanToolState,

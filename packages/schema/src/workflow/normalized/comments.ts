@@ -21,7 +21,9 @@ const COMMENT_COMMON_FIELDS = ["type", "position", "size", "color"] as const;
  * Renames child_steps → contains_steps and child_comments → contains_comments.
  * Drops the `id` field.
  */
-export function flattenCommentData(nativeComment: Record<string, unknown>): Record<string, unknown> {
+export function flattenCommentData(
+  nativeComment: Record<string, unknown>,
+): Record<string, unknown> {
   const commentType = nativeComment.type as string;
   const result: Record<string, unknown> = {};
 
@@ -59,7 +61,9 @@ export function flattenCommentData(nativeComment: Record<string, unknown>): Reco
  * Collects type-specific top-level fields back into a nested `data` dict.
  * Renames contains_steps → child_steps and contains_comments → child_comments.
  */
-export function unflattenCommentData(format2Comment: Record<string, unknown>): Record<string, unknown> {
+export function unflattenCommentData(
+  format2Comment: Record<string, unknown>,
+): Record<string, unknown> {
   const commentType = format2Comment.type as string;
   const result: Record<string, unknown> = {};
 

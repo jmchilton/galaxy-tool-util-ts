@@ -23,7 +23,19 @@ File: an alias for data - there are subtle differences between a plain file, the
 data: a Galaxy dataset
 collection: a Galaxy dataset collection
  */
-export type GalaxyType = "null" | "boolean" | "int" | "long" | "float" | "double" | "string" | "integer" | "text" | "File" | "data" | "collection";
+export type GalaxyType =
+  | "null"
+  | "boolean"
+  | "int"
+  | "long"
+  | "float"
+  | "double"
+  | "string"
+  | "integer"
+  | "text"
+  | "File"
+  | "data"
+  | "collection";
 
 /**
  * Module types used by Galaxy steps. Galaxy's native format allows additional types such as data_input, data_input_collection, and parameter_type
@@ -48,7 +60,13 @@ export interface RecordField extends Documented {
   /** The name of the field */
   name: string;
   /** The field type */
-  type: PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
+  type:
+    | PrimitiveType
+    | RecordSchema
+    | EnumSchema
+    | ArraySchema
+    | string
+    | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
 }
 
 export interface RecordSchema {
@@ -70,7 +88,13 @@ export interface EnumSchema {
 
 export interface ArraySchema {
   /** Defines the type of the array elements. */
-  items: PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
+  items:
+    | PrimitiveType
+    | RecordSchema
+    | EnumSchema
+    | ArraySchema
+    | string
+    | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
   /** Must be `array` */
   type: "array";
 }
@@ -88,8 +112,7 @@ export interface Identified {
 /**
  * Define an input or output parameter to a process.
  */
-export interface Parameter extends Labeled, Documented, Identified {
-}
+export interface Parameter extends Labeled, Documented, Identified {}
 
 export interface InputParameter extends Parameter {
   /** The unique identifier for this object. */
@@ -118,9 +141,15 @@ directly executed.
  */
 export interface Process extends Identified, Labeled, Documented {
   /** Defines the input parameters of the process.  The process is ready to run when all required input parameters are associated with concrete values.  Input parameters include a schema for each paramet... */
-  inputs: Array<WorkflowInputParameter> | Record<string, WorkflowInputParameter | string> | Record<string, unknown>;
+  inputs:
+    | Array<WorkflowInputParameter>
+    | Record<string, WorkflowInputParameter | string>
+    | Record<string, unknown>;
   /** Defines the parameters representing the output of the process.  May be used to generate and/or validate the output object. */
-  outputs: Array<WorkflowOutputParameter> | Record<string, WorkflowOutputParameter | string> | Record<string, unknown>;
+  outputs:
+    | Array<WorkflowOutputParameter>
+    | Record<string, WorkflowOutputParameter | string>
+    | Record<string, unknown>;
 }
 
 export interface HasUUID {
@@ -220,7 +249,8 @@ Galaxy but shouldn't be written by humans.
 `state` can contained a typed map. Repeat values can be represented as YAML arrays. An alternative
 to representing `state` this way is defining inputs with default values.
  */
-export interface WorkflowStep extends Identified, Labeled, Documented, HasStepPosition, ReferencesTool, HasStepErrors, HasUUID {
+export interface WorkflowStep
+  extends Identified, Labeled, Documented, HasStepPosition, ReferencesTool, HasStepErrors, HasUUID {
   /** Defines the input parameters of the workflow step.  The process is ready to run when all required input parameters are associated with concrete values.  Input parameters include a schema for each p... */
   in?: Array<WorkflowStepInput> | Record<string, WorkflowStepInput | string> | null;
   /** Defines the parameters representing the output of the process.  May be used to generate and/or validate the output object.  This can also be called 'outputs' for legacy reasons - but the resulting ... */
@@ -428,7 +458,10 @@ export interface GalaxyWorkflow extends Process, HasUUID {
   /** Tags for the workflow. */
   tags?: Array<string> | null;
   /** Visual annotations for the workflow editor canvas. Comments are non-functional and do not affect workflow execution. May be specified as a list or as a mapping keyed by label. */
-  comments?: Array<TextComment | MarkdownComment | FrameComment | FreehandComment> | Record<string, TextComment | MarkdownComment | FrameComment | FreehandComment> | null;
+  comments?:
+    | Array<TextComment | MarkdownComment | FrameComment | FreehandComment>
+    | Record<string, TextComment | MarkdownComment | FrameComment | FreehandComment>
+    | null;
   /** Workflow creators. Can be schema.org Person (https://schema.org/Person) or Organization (https://schema.org/Organization) entities. */
   creator?: Array<CreatorPerson | CreatorOrganization> | null;
   /** Must be a valid license listed at https://spdx.org/licenses/ */
@@ -436,4 +469,3 @@ export interface GalaxyWorkflow extends Process, HasUUID {
   /** If listed should correspond to the release of the workflow in its source reposiory. */
   release?: null | string;
 }
-

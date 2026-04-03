@@ -4,10 +4,7 @@
  * Port of gxformat2/normalized/_conversion.py to_format2 + helpers.
  */
 
-import type {
-  NormalizedNativeWorkflow,
-  NormalizedNativeStep,
-} from "./native.js";
+import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./native.js";
 import { normalizedNative } from "./native.js";
 import type {
   NormalizedFormat2Workflow,
@@ -18,12 +15,7 @@ import type {
   NormalizedFormat2StepOutput,
 } from "./format2.js";
 import { flattenCommentData } from "./comments.js";
-import {
-  UNLABELED_INPUT_PREFIX,
-  UNLABELED_STEP_PREFIX,
-  isUnlabeled,
-  Labels,
-} from "./labels.js";
+import { UNLABELED_INPUT_PREFIX, UNLABELED_STEP_PREFIX, isUnlabeled, Labels } from "./labels.js";
 
 // Effect schemas produce deeply-readonly types. We build plain objects
 // and cast — runtime semantics are identical.
@@ -96,7 +88,8 @@ function _buildFormat2Workflow(wf: NormalizedNativeWorkflow): NormalizedFormat2W
     unique_tools: wf.unique_tools,
   };
   if (comments) result.comments = comments;
-  if (wfAny.report) result.report = { markdown: (wfAny.report as Record<string, unknown>).markdown };
+  if (wfAny.report)
+    result.report = { markdown: (wfAny.report as Record<string, unknown>).markdown };
   if (wfAny.creator) result.creator = wfAny.creator;
   return result as unknown as NormalizedFormat2Workflow;
 }
@@ -128,9 +121,15 @@ function _buildInputParam(step: NormalizedNativeStep): NormalizedFormat2Input {
 
   const ts = step.tool_state;
   for (const key of [
-    "collection_type", "optional", "format", "default",
-    "restrictions", "suggestions", "restrictOnConnections",
-    "fields", "column_definitions",
+    "collection_type",
+    "optional",
+    "format",
+    "default",
+    "restrictions",
+    "suggestions",
+    "restrictOnConnections",
+    "fields",
+    "column_definitions",
   ]) {
     if (key in ts) {
       if (key === "format") {
@@ -210,7 +209,8 @@ function _buildToolFormat2Step(
     doc: (step.annotation as string) || undefined,
     tool_id: step.tool_id ?? undefined,
     tool_version: step.tool_version ?? undefined,
-    tool_shed_repository: step.tool_shed_repository as NormalizedFormat2Step["tool_shed_repository"],
+    tool_shed_repository:
+      step.tool_shed_repository as NormalizedFormat2Step["tool_shed_repository"],
     in: inList,
     out: outList,
     tool_state: toolState,
@@ -340,11 +340,7 @@ function _buildFormat2StepInputs(
     const sources: string[] = [];
     for (const inputDef of defs) {
       const def = inputDef as Record<string, unknown>;
-      const source = _toSource(
-        def.output_name as string,
-        labelMap,
-        def.id as number,
-      );
+      const source = _toSource(def.output_name as string, labelMap, def.id as number);
       sources.push(source);
     }
 
@@ -353,9 +349,7 @@ function _buildFormat2StepInputs(
     if (inputName === "__NO_INPUT_OUTPUT_NAME__") {
       actualName = "$step";
       resolvedSources = sources.map((s) =>
-        s.includes("/__NO_INPUT_OUTPUT_NAME__")
-          ? s.split("/__NO_INPUT_OUTPUT_NAME__")[0]
-          : s,
+        s.includes("/__NO_INPUT_OUTPUT_NAME__") ? s.split("/__NO_INPUT_OUTPUT_NAME__")[0] : s,
       );
     }
 
@@ -423,11 +417,7 @@ function _buildFormat2StepOutputs(step: NormalizedNativeStep): NormalizedFormat2
 
 // --- Source reference ---
 
-function _toSource(
-  outputName: string,
-  labelMap: Map<string, string>,
-  stepId: number,
-): string {
+function _toSource(outputName: string, labelMap: Map<string, string>, stepId: number): string {
   const outputLabel = labelMap.get(String(stepId)) ?? String(stepId);
   if (outputName === "output") {
     return outputLabel;
