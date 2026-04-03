@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- Node.js >= 22
-- pnpm (for monorepo development) or npm/yarn (for consuming packages)
+- [Node.js](https://nodejs.org) >= 22
+- [pnpm](https://pnpm.io) (for monorepo development) or [npm](https://www.npmjs.com)/yarn (for consuming packages)
 
 ## Installation
 
@@ -21,7 +21,7 @@ npm install @galaxy-tool-util/schema @galaxy-tool-util/core
 
 ### Cache a Tool
 
-The CLI fetches tool metadata from the Galaxy ToolShed and stores it locally:
+The CLI fetches tool metadata from the [Galaxy ToolShed](https://toolshed.g2.bx.psu.edu) and stores it locally:
 
 ```bash
 galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
@@ -38,7 +38,7 @@ galaxy-tool-cache list --json
 
 ### Export a JSON Schema
 
-Generate a JSON Schema describing valid parameter values for a tool at a specific state representation:
+Generate a [JSON Schema](https://json-schema.org) describing valid parameter values for a tool at a specific [state representation](glossary#state-representations):
 
 ```bash
 # Default representation: workflow_step
@@ -52,7 +52,7 @@ galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
 
 ### Validate a Workflow
 
-Validate a Galaxy workflow file's structure and optionally its tool state:
+Validate a Galaxy workflow file's structure and optionally its [tool state](glossary#tool-state):
 
 ```bash
 # Validate structure + tool state (auto-detects format)

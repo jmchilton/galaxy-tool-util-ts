@@ -1,12 +1,12 @@
 # @galaxy-tool-util/schema
 
-Effect Schema definitions for Galaxy parameter types and workflow models. This is the core validation engine — it takes a tool's parameter definitions and produces typed schemas that can validate tool state and export to JSON Schema.
+[Effect Schema](https://effect.website/docs/schema/introduction) definitions for [Galaxy](https://galaxyproject.org) parameter types and workflow models. This is the core validation engine — it takes a tool's parameter definitions and produces typed schemas that can validate [tool state](glossary#tool-state) and export to [JSON Schema](https://json-schema.org).
 
 ## Parameter Schemas
 
 ### `createFieldModel(bundle, stateRepresentation)`
 
-The main entry point. Takes a tool's parameter bundle and a state representation, returns an Effect Schema that validates tool state for that representation.
+The main entry point. Takes a tool's parameter bundle and a [state representation](glossary#state-representations), returns an Effect Schema that validates tool state for that representation.
 
 ```typescript
 import { createFieldModel } from "@galaxy-tool-util/schema";
@@ -32,8 +32,8 @@ State representations control the shape of the generated schema. Different Galax
 | Representation | Description |
 |---|---|
 | `workflow_step` | Workflow editor step state — all fields optional, no connected values |
-| `workflow_step_linked` | Workflow step with connections — parameters can be `ConnectedValue` markers |
-| `workflow_step_native` | Native (.ga) workflow state — parameters can be `ConnectedValue` or `RuntimeValue` |
+| `workflow_step_linked` | Workflow step with connections — parameters can be [`ConnectedValue`](glossary#connected-value) markers |
+| `workflow_step_native` | Native (.ga) workflow state — parameters can be `ConnectedValue` or [`RuntimeValue`](glossary#runtime-value) |
 | `request` | API request with string-encoded IDs |
 | `request_internal` | Internal request with integer IDs |
 | `request_internal_dereferenced` | Dereferenced internal request |
@@ -106,7 +106,7 @@ const expanded = await expandedNative(rawWorkflow, { resolver });
 
 ### Workflow Utility Functions
 
-- `isTrsUrl(url)` — check if a string is a TRS (Tool Registry Service) URL
+- `isTrsUrl(url)` — check if a string is a [TRS](https://ga4gh.github.io/tool-registry-service-schemas/) (Tool Registry Service) URL
 - `injectConnectionsIntoState(step)` — merge connection info into step tool_state
 - `flatStatePath(keys)` — flatten nested parameter path to a dot-separated string
 - `scanForReplacements(state)` — find `${...}` replacement patterns in tool state

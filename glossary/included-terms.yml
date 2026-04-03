@@ -1,0 +1,12 @@
+# Terms to include in the generated glossary page.
+# Uses dotted key paths matching the YAML structure in galaxy-terms.yml
+# and tool-util-terms.yml. All tool-util terms are included by default;
+# list galaxy terms here that are actually referenced in these docs.
+#
+# To add a galaxy term: find its key path (e.g. galaxy.collections.mapOver)
+# and add it below. Run `make build-glossary` to regenerate.
+
+# All tool-util terms are auto-included (no need to list them here).
+
+# Galaxy terms relevant to these docs:
+# (none currently — add paths here as docs reference Galaxy concepts)

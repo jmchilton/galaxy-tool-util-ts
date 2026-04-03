@@ -1,12 +1,12 @@
 # Workflow Validation
 
-End-to-end guide for validating Galaxy workflow files using `galaxy-tool-util`.
+End-to-end guide for validating [Galaxy](https://galaxyproject.org) workflow files using `galaxy-tool-util`.
 
 ## Overview
 
 Workflow validation has two layers:
 
-1. **Structure validation** — does the workflow conform to the Galaxy workflow schema (format2 or native)?
+1. **Structure validation** — does the workflow conform to the Galaxy workflow schema ([Format2](glossary#format2) or native)?
 2. **Tool state validation** — does each step's `tool_state` match the expected parameter schema for that tool?
 
 ## CLI Usage
@@ -29,19 +29,19 @@ Override with `--format native` or `--format format2`.
 
 ### Validation Backends
 
-Two backends are available for tool state validation:
+Two backends are available for [tool state](glossary#tool-state) validation:
 
 **Effect mode** (default):
 ```bash
 galaxy-workflow-validate my-workflow.ga --mode effect
 ```
-Uses Effect Schema directly for validation. Full type-level validation with rich error messages.
+Uses [Effect](https://effect.website) Schema directly for validation. Full type-level validation with rich error messages.
 
 **JSON Schema mode**:
 ```bash
 galaxy-workflow-validate my-workflow.ga --mode json-schema
 ```
-Exports Effect Schemas to JSON Schema, then validates with Ajv. Useful for interop with other JSON Schema tools.
+Exports Effect Schemas to [JSON Schema](https://json-schema.org), then validates with [Ajv](https://ajv.js.org). Useful for interop with other JSON Schema tools.
 
 ### Offline Validation
 
@@ -121,4 +121,4 @@ const expanded = await expandedFormat2(rawYaml, {
 | `Unknown parameter type` | Tool uses a parameter type not yet registered in the schema package |
 | `Tool not found` | Tool not in cache and not fetchable from configured sources |
 | `Missing required property` | A required parameter is absent from tool_state (common in `job_internal` representation) |
-| `Expected string, got number` | Parameter value type mismatch for the chosen state representation |
+| `Expected string, got number` | Parameter value type mismatch for the chosen [state representation](glossary#state-representations) |

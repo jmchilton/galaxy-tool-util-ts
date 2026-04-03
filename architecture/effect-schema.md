@@ -2,11 +2,11 @@
 
 ## Why Effect Schema?
 
-This project uses [Effect Schema](https://effect.website/docs/schema/introduction) rather than Zod, io-ts, or other validation libraries for several reasons:
+This project uses [Effect Schema](https://effect.website/docs/schema/introduction) rather than [Zod](https://zod.dev), [io-ts](https://github.com/gcanti/io-ts), or other validation libraries for several reasons:
 
-- **Dual-purpose**: A single schema definition provides both runtime validation (`S.decodeUnknown`) and JSON Schema export (`JSONSchema.make`). No need to maintain parallel definitions.
-- **Composable**: Effect Schema supports unions, intersections, property signatures with aliases, and recursive types — all needed for Galaxy's complex parameter models.
-- **Effect ecosystem**: Integrates with Effect's error channel for structured error reporting.
+- **Dual-purpose**: A single schema definition provides both runtime validation (`S.decodeUnknown`) and [JSON Schema](https://json-schema.org) export (`JSONSchema.make`). No need to maintain parallel definitions.
+- **Composable**: Effect Schema supports unions, intersections, property signatures with aliases, and recursive types — all needed for [Galaxy](https://galaxyproject.org)'s complex parameter models.
+- **Effect ecosystem**: Integrates with [Effect](https://effect.website)'s error channel for structured error reporting.
 - **Type inference**: Full TypeScript type inference from schema definitions via `S.Schema.Type<typeof MySchema>`.
 
 ## Patterns Used
@@ -83,6 +83,6 @@ const effect = S.decodeUnknown(schema)(data);
 | Package | Usage |
 |---|---|
 | **schema** | Parameter type generators produce `S.Schema.Any`; workflow schemas defined as `S.Struct` |
-| **core** | `ParsedTool`, `CacheIndex`, `ServerConfig` all defined as Effect Schemas |
-| **server** | `ServerConfig` validated on load via `S.decodeUnknownSync`; JSON Schema served via `JSONSchema.make` |
+| **core** | [`ParsedTool`](glossary#parsed-tool), `CacheIndex`, `ServerConfig` all defined as Effect Schemas |
+| **tool-cache-proxy** | `ServerConfig` validated on load via `S.decodeUnknownSync`; JSON Schema served via `JSONSchema.make` |
 | **cli** | Schema export command uses `JSONSchema.make`; Effect mode validation uses `S.decodeUnknown` |

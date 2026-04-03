@@ -6,12 +6,12 @@ Core schema generation and workflow types.
 
 | Export | Description |
 |---|---|
-| `createFieldModel(bundle, stateRep)` | Build Effect Schema for tool parameters at a state representation |
+| `createFieldModel(bundle, stateRep)` | Build [Effect Schema](https://effect.website/docs/schema/introduction) for tool parameters at a state representation |
 | `STATE_REPRESENTATIONS` | Array of all valid state representation names |
 | `registeredParameterTypes()` | Set of all supported parameter types |
 | `isParameterTypeRegistered(type)` | Check if a parameter type has a generator |
 | `collectParameterTypes(bundle)` | Extract parameter types from a tool bundle |
-| `GalaxyWorkflowSchema` | Union schema for any Galaxy workflow format |
+| `GalaxyWorkflowSchema` | Union schema for any [Galaxy](https://galaxyproject.org) workflow format |
 | `NormalizedFormat2WorkflowSchema` | Schema for normalized format2 workflows |
 | `NormalizedNativeWorkflowSchema` | Schema for normalized native workflows |
 | `normalizedFormat2(wf)` | Normalize a raw format2 workflow |
@@ -47,7 +47,7 @@ CLI command implementations (also usable programmatically).
 | `runList(opts)` | List cached tools |
 | `runInfo(toolId, opts)` | Show tool metadata |
 | `runClear(prefix?, opts)` | Clear cache |
-| `runSchema(toolId, opts)` | Export JSON Schema |
+| `runSchema(toolId, opts)` | Export [JSON Schema](https://json-schema.org) |
 | `runValidateWorkflow(file, opts)` | Validate a workflow file |
 
 ## @galaxy-tool-util/tool-cache-proxy

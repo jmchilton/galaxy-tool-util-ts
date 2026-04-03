@@ -2,7 +2,7 @@
 
 ## Overview
 
-Galaxy tools define their parameters in XML (`<inputs>` section). When a tool is fetched from the ToolShed, these definitions are parsed into a `ToolParameterModel[]` array. The schema package converts these models into Effect Schemas that can validate parameter values.
+[Galaxy](https://galaxyproject.org) tools define their parameters in XML (`<inputs>` section). When a tool is fetched from the [ToolShed](https://toolshed.g2.bx.psu.edu), these definitions are parsed into a `ToolParameterModel[]` array. The schema package converts these models into [Effect Schemas](https://effect.website/docs/schema/introduction) that can validate parameter values.
 
 ## Pipeline
 
@@ -56,14 +56,14 @@ interface GeneratorContext {
 
 ## State Representation Effects
 
-The state representation controls several schema behaviors:
+The [state representation](glossary#state-representations) controls several schema behaviors:
 
 | Behavior | Affected Representations |
 |---|---|
 | All fields optional | `workflow_step`, `workflow_step_linked`, `workflow_step_native`, `landing_request`, `landing_request_internal` |
 | All fields required | `job_internal`, `job_runtime` |
-| ConnectedValue allowed | `workflow_step_linked` |
-| ConnectedValue + RuntimeValue allowed | `workflow_step_native` |
+| [ConnectedValue](glossary#connected-value) allowed | `workflow_step_linked` |
+| ConnectedValue + [RuntimeValue](glossary#runtime-value) allowed | `workflow_step_native` |
 | String-encoded IDs | `request`, `relaxed_request`, `landing_request` |
 | Integer IDs | `request_internal`, `request_internal_dereferenced`, `landing_request_internal`, `job_internal` |
 | Batching (list values) | `request`, `relaxed_request`, `request_internal`, `request_internal_dereferenced`, `landing_request`, `landing_request_internal` |
@@ -78,4 +78,4 @@ The generator receives the full `ToolParameterModel` and state representation, s
 
 ## Schema Sources
 
-The `schema-sources/` directory contains upstream YAML definitions from gxformat2 (synced via `make sync-schema-sources`). These define the workflow schema structure — not parameter types. Parameter type generators are hand-written in TypeScript.
+The `schema-sources/` directory contains upstream YAML definitions from [gxformat2](https://github.com/galaxyproject/gxformat2) (synced via `make sync-schema-sources`). These define the workflow schema structure — not parameter types. Parameter type generators are hand-written in TypeScript.

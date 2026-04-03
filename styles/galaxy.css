@@ -1,0 +1,437 @@
+/* Galaxy Design System — galaxy-tool-util docs
+ * Tokens aligned with Galaxy Core, Hub, and IWC design docs. */
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+
+:root {
+  --galaxy-primary: #25537b;
+  --galaxy-dark: #2c3143;
+  --galaxy-gold: #ffd700;
+  --galaxy-gold-dark: #d19e00;
+  --galaxy-light-bg: #edf4fa;
+  --galaxy-grey: #58585a;
+  --galaxy-grey-light: #f8f9fa;
+  --galaxy-border: #dee2e6;
+
+  --galaxy-font: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --galaxy-mono: Monaco, Menlo, Consolas, "Courier New", monospace;
+
+  --base-font-size: 16px;
+  --cover-max-width: 45em;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+
+body {
+  font-family: var(--galaxy-font);
+}
+
+/* Subtle grid background (workflow-editor mesh) */
+.content {
+  background-image:
+    linear-gradient(to right, rgba(37, 83, 123, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(37, 83, 123, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+
+.sidebar {
+  background-color: var(--galaxy-dark);
+  color: #d3d6e2;
+  border-right: none;
+}
+
+.sidebar > h1 {
+  color: #fff;
+  font-weight: 700;
+}
+
+.sidebar > h1 a {
+  color: #fff;
+}
+
+.sidebar > h1 a:hover {
+  color: var(--galaxy-gold);
+}
+
+.sidebar-nav {
+  padding: 0.5rem 1.2rem 1rem;
+}
+
+.sidebar-nav a {
+  color: #d3d6e2;
+  font-weight: 400;
+  border-bottom: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.sidebar-nav a:hover {
+  color: var(--galaxy-gold);
+}
+
+.sidebar-nav a.active {
+  color: #fff;
+  font-weight: 600;
+  border-right: 3px solid var(--galaxy-gold);
+}
+
+.sidebar-nav li.active > a {
+  color: #fff;
+  font-weight: 600;
+  border-right: 3px solid var(--galaxy-gold);
+}
+
+.sidebar-nav strong {
+  color: var(--galaxy-gold);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: block;
+  margin-top: 1.2rem;
+  margin-bottom: 0.3rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.25);
+}
+
+.sidebar-nav ul {
+  margin: 0;
+}
+
+.sidebar-nav ul ul a {
+  font-size: 0.9em;
+  color: #a2a9c2;
+}
+
+.sidebar-nav ul ul a:hover {
+  color: var(--galaxy-gold);
+}
+
+.sidebar-toggle {
+  background-color: var(--galaxy-dark);
+}
+
+.sidebar-toggle span {
+  background-color: #d3d6e2;
+}
+
+/* ── Sidebar Search ─────────────────────────────────────────── */
+
+.sidebar .search {
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 1.2rem 16px;
+}
+
+.sidebar .search input {
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #fff;
+  font-family: var(--galaxy-font);
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar .search input::placeholder {
+  color: #8992b2;
+}
+
+.sidebar .search input:focus {
+  border-color: var(--galaxy-gold);
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+  outline: none;
+}
+
+.sidebar .search .matching-post {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar .search a {
+  color: #d3d6e2;
+}
+
+.sidebar .search a:hover {
+  color: var(--galaxy-gold);
+}
+
+.sidebar .search h2 {
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.sidebar .search p {
+  color: #a2a9c2;
+  font-size: 0.8rem;
+}
+
+/* ── Navbar ──────────────────────────────────────────────────── */
+
+.app-nav {
+  margin: 0;
+  padding: 10px 20px;
+}
+
+.app-nav a {
+  color: var(--galaxy-dark);
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.app-nav a:hover {
+  color: var(--galaxy-primary);
+}
+
+/* ── Content ─────────────────────────────────────────────────── */
+
+.markdown-section {
+  max-width: 52rem;
+}
+
+.markdown-section h1 {
+  color: var(--galaxy-dark);
+  font-weight: 700;
+  margin-top: 2.5rem;
+}
+
+.markdown-section h2 {
+  color: var(--galaxy-dark);
+  font-weight: 600;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.2);
+  padding-bottom: 0.5rem;
+  margin-top: 2rem;
+}
+
+.markdown-section h3 {
+  color: var(--galaxy-grey);
+  font-weight: 600;
+  margin-top: 1.8rem;
+}
+
+.markdown-section h4,
+.markdown-section h5,
+.markdown-section h6 {
+  color: var(--galaxy-grey);
+}
+
+/* Links */
+.markdown-section a {
+  color: var(--galaxy-primary);
+  text-decoration: underline;
+  text-decoration-color: rgba(37, 83, 123, 0.35);
+  text-underline-offset: 2px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.markdown-section a:hover {
+  color: var(--galaxy-gold-dark);
+  text-decoration-color: var(--galaxy-gold-dark);
+}
+
+/* Inline code */
+.markdown-section code {
+  background-color: var(--galaxy-light-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--galaxy-mono);
+  font-size: 0.875em;
+  color: var(--galaxy-dark);
+}
+
+/* Code blocks */
+.markdown-section pre {
+  background-color: var(--galaxy-dark);
+  border: none;
+  border-radius: 8px;
+  padding: 1.2em 1.4em;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.markdown-section pre > code {
+  background-color: transparent;
+  padding: 0;
+  color: #d3d6e2;
+  font-size: 0.85em;
+  text-shadow: none;
+}
+
+/* Blockquotes */
+.markdown-section blockquote {
+  border-left: 4px solid var(--galaxy-gold);
+  background-color: rgba(255, 215, 0, 0.04);
+  padding: 0.8em 1.2em;
+  margin: 1.5em 0;
+  border-radius: 0 6px 6px 0;
+  color: var(--galaxy-grey);
+}
+
+.markdown-section blockquote p {
+  font-style: italic;
+  margin: 0;
+}
+
+/* Tables */
+.markdown-section table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5em 0;
+}
+
+.markdown-section th {
+  background-color: var(--galaxy-primary);
+  color: #fff;
+  font-weight: 600;
+  padding: 0.6em 1em;
+  text-align: left;
+  border: none;
+}
+
+.markdown-section td {
+  padding: 0.6em 1em;
+  border-bottom: 1px solid var(--galaxy-border);
+}
+
+.markdown-section tr:hover td {
+  background-color: var(--galaxy-light-bg);
+}
+
+/* Horizontal rules */
+.markdown-section hr {
+  border: none;
+  border-top: 2px solid var(--galaxy-border);
+  margin: 2em 0;
+}
+
+/* ── Coverpage ───────────────────────────────────────────────── */
+
+section.cover {
+  background: linear-gradient(135deg, var(--galaxy-dark) 0%, var(--galaxy-primary) 100%) !important;
+}
+
+/* Kill Docsify's default gradient mask */
+section.cover::before,
+section.cover::after {
+  display: none !important;
+}
+
+/* Grid overlay via the cover-main wrapper instead */
+section.cover .cover-main {
+  color: #fff;
+  position: relative;
+}
+
+section.cover .cover-main::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  z-index: -1;
+}
+
+section.cover h1,
+section.cover blockquote,
+section.cover .cover-main > p {
+  position: relative;
+  z-index: 1;
+}
+
+section.cover h1,
+section.cover h1 a,
+section.cover h1 a span {
+  color: var(--galaxy-gold) !important;
+  font-weight: 700;
+  text-decoration: none !important;
+  opacity: 1 !important;
+  font-size: 2.8rem !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  letter-spacing: -0.01em;
+}
+
+section.cover blockquote {
+  border-left: none;
+  background: transparent;
+}
+
+section.cover blockquote p {
+  color: rgba(255, 255, 255, 0.8);
+  font-style: normal;
+}
+
+/* Package name pills */
+section.cover blockquote + p {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--galaxy-mono);
+  font-size: 0.9em;
+  letter-spacing: 0.02em;
+}
+
+/* CTA buttons — all buttons get outlined style by default */
+section.cover .cover-main > p:last-child a,
+section.cover p a {
+  border-radius: 6px !important;
+  padding: 0.6em 1.8em !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+  text-decoration: none !important;
+  background-color: transparent !important;
+  color: #fff !important;
+  border: 2px solid rgba(255, 255, 255, 0.4) !important;
+}
+
+section.cover .cover-main > p:last-child a:hover,
+section.cover p a:hover {
+  border-color: var(--galaxy-gold) !important;
+  color: var(--galaxy-gold) !important;
+  background-color: transparent !important;
+}
+
+/* First button (Get Started) — gold filled */
+section.cover .cover-main > p:last-child a:first-child {
+  background-color: var(--galaxy-gold) !important;
+  color: var(--galaxy-dark) !important;
+  border: 2px solid var(--galaxy-gold) !important;
+}
+
+section.cover .cover-main > p:last-child a:first-child:hover {
+  background-color: #ffe60d !important;
+  border-color: #ffe60d !important;
+  color: var(--galaxy-dark) !important;
+}
+
+section.cover.show ~ .sidebar,
+section.cover.show ~ .sidebar-toggle {
+  display: none;
+}
+
+/* ── Docsify-specific overrides ──────────────────────────────── */
+
+/* GitHub corner */
+.github-corner svg {
+  fill: var(--galaxy-primary);
+}
+
+/* Progress bar */
+.progress {
+  background-color: var(--galaxy-gold);
+}
+
+/* Pagination */
+.docsify-pagination-container {
+  border-top: 2px solid var(--galaxy-border);
+}
+
+.pagination-item-label {
+  color: var(--galaxy-grey);
+}
+
+.pagination-item-title {
+  color: var(--galaxy-primary);
+}

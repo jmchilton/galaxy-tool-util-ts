@@ -4,8 +4,8 @@
 
 | Variable | Default | Used By | Description |
 |---|---|---|---|
-| `GALAXY_TOOL_CACHE_DIR` | `~/.galaxy/tool_info_cache` | core, cli, server | Override the tool cache directory |
-| `GALAXY_TOOLSHED_URL` | `https://toolshed.g2.bx.psu.edu` | core, cli | Override the default ToolShed URL |
+| `GALAXY_TOOL_CACHE_DIR` | `~/.galaxy/tool_info_cache` | core, cli, tool-cache-proxy | Override the [tool cache](glossary#tool-cache) directory |
+| `GALAXY_TOOLSHED_URL` | `https://toolshed.g2.bx.psu.edu` | core, cli | Override the default [ToolShed](https://toolshed.g2.bx.psu.edu) URL |
 
 ## CLI Flags
 
@@ -20,7 +20,7 @@ All commands accept `--cache-dir <dir>` to override the cache directory.
 | `list` | `--json` | `false` | JSON output |
 | `info` | `--version <ver>` | — | Tool version |
 | `schema` | `--version <ver>` | — | Tool version |
-| `schema` | `--representation <rep>` | `workflow_step` | State representation |
+| `schema` | `--representation <rep>` | `workflow_step` | [State representation](glossary#state-representations) |
 | `schema` | `--output <file>` | stdout | Output file |
 
 ### galaxy-workflow-validate
@@ -28,7 +28,7 @@ All commands accept `--cache-dir <dir>` to override the cache directory.
 | Flag | Default | Description |
 |---|---|---|
 | `--format <fmt>` | auto-detect | `native` or `format2` |
-| `--no-tool-state` | `false` | Skip tool state validation |
+| `--no-tool-state` | `false` | Skip [tool state](glossary#tool-state) validation |
 | `--cache-dir <dir>` | `~/.galaxy/tool_info_cache` | Tool cache directory |
 | `--mode <mode>` | `effect` | `effect` or `json-schema` |
 | `--tool-schema-dir <dir>` | — | Pre-exported schema directory |

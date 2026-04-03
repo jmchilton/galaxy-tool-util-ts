@@ -1,6 +1,6 @@
 # galaxy-tool-util
 
-TypeScript toolkit for working with Galaxy tool metadata. Cache tools from the ToolShed, generate Effect/JSON Schemas for tool parameters, validate workflows, and serve tool schemas over HTTP.
+TypeScript toolkit for working with [Galaxy](https://galaxyproject.org) tool metadata. Cache tools from the [ToolShed](https://toolshed.g2.bx.psu.edu), generate [Effect](https://effect.website)/[JSON Schemas](https://json-schema.org) for tool parameters, validate workflows, and serve tool schemas over HTTP.
 
 ## Packages
 

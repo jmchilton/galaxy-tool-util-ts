@@ -1,0 +1,111 @@
+# Project-specific glossary terms for galaxy-tool-util.
+# Hand-maintained — not synced from upstream.
+
+toolUtil:
+  trs: |
+    The Tool Registry Service (TRS) is a GA4GH standard API for discovering and retrieving
+    tools and workflows from registries. Galaxy's ToolShed implements a subset of TRS,
+    and this project's proxy server mirrors those endpoints for local caching.
+
+    More information can be found in the [GA4GH TRS specification](https://ga4gh.github.io/tool-registry-service-schemas/).
+
+  stateRepresentations: |
+    State representations define the shape of a tool's parameter values in different contexts.
+    Each representation has different rules about which fields are required, what ID formats are
+    used, and whether special markers like ConnectedValue are allowed. The full set is:
+
+    - **request** — API request from a client (string IDs, batching allowed, URL sources)
+    - **relaxed_request** — like request but with looser validation
+    - **request_internal** — API request after Galaxy resolves string IDs to integer IDs
+    - **request_internal_dereferenced** — request_internal with dereferenced dataset references
+    - **landing_request** / **landing_request_internal** — workflow landing page requests (all fields optional)
+    - **job_internal** — fully resolved state as seen by a running job (all fields required, integer IDs)
+    - **job_runtime** — like job_internal but at runtime
+    - **test_case_xml** / **test_case_json** — tool test case parameter values
+    - **workflow_step** — parameters stored in a workflow step (fields may be absent)
+    - **workflow_step_linked** — workflow_step with ConnectedValue markers for connected inputs
+    - **workflow_step_native** — workflow_step with both ConnectedValue and RuntimeValue markers
+
+  format2: |
+    Format2 (also called [gxformat2](https://github.com/galaxyproject/gxformat2)) is a YAML-based workflow definition format for Galaxy.
+    It is more human-readable and version-control-friendly than Galaxy's native JSON `.ga`
+    format. Format2 workflows use the `.gxwf.yml` extension.
+
+    This project validates and normalizes both format2 and native workflows, converting
+    between them via the schema package's normalization layer.
+
+  toolState: |
+    Tool state is the JSON object inside a workflow step that holds the parameter values
+    for a tool invocation. Its shape depends on the state representation — e.g. in
+    `workflow_step_linked`, connected parameters are replaced with `{"__class__": "ConnectedValue"}`.
+
+    Stale tool state occurs when a workflow references an older version of a tool whose
+    parameters have changed. The `galaxy-workflow-validate` CLI detects and reports these.
+
+  connectedValue: |
+    A ConnectedValue is a marker object `{"__class__": "ConnectedValue"}` that appears in
+    workflow step tool state when a parameter's value comes from a connection to another
+    step's output rather than being set directly. It is only valid in the
+    `workflow_step_linked` and `workflow_step_native` state representations.
+
+  runtimeValue: |
+    A RuntimeValue is a marker object `{"__class__": "RuntimeValue"}` that appears in
+    workflow step tool state when a parameter is designated to be supplied at workflow
+    invocation time rather than being fixed in the workflow definition. It is only valid
+    in the `workflow_step_native` state representation.
+
+  toolShedCoordinates: |
+    ToolShed coordinates uniquely identify a tool in Galaxy's Tool Shed ecosystem. A full
+    tool ID has the form `toolshed.g2.bx.psu.edu/repos/owner/repo/tool_id/version`:
+
+    - **toolshed host** — the ToolShed hostname (e.g. `toolshed.g2.bx.psu.edu`)
+    - **owner** — the repository owner (e.g. `bgruening`)
+    - **repo** — the repository name (e.g. `repeat_masker`)
+    - **tool_id** — the tool identifier, which may differ from the repo name (e.g. `repeatmasker_wrapper`)
+    - **version** — the tool version string (e.g. `4.1.5+galaxy0`)
+
+    The TRS-style tilde-delimited format `owner~repo~tool_id` is used for cache keys
+    and API paths. Note: both codebases currently label the third segment `tool_name` in
+    code comments, but it is actually the tool's XML id, not a display name.
+
+  parsedTool: |
+    ParsedTool is the normalized tool metadata model defined in `@galaxy-tool-util/core`.
+    It represents a Galaxy tool after fetching and parsing, containing the tool's parameter
+    definitions (as Effect Schemas), inputs, outputs, and metadata. ParsedTool instances
+    are what the tool cache stores and serves.
+
+  toolCache: |
+    The tool cache is a two-layer (memory + filesystem) cache for ParsedTool instances.
+    It stores fetched tool metadata locally so that repeated lookups (e.g. during workflow
+    validation) don't require network requests to Galaxy or ToolShed servers. The CLI
+    command `galaxy-tool-cache` populates the cache, and the proxy server serves from it.
+
+  toolCacheProxy: |
+    The tool-cache-proxy (formerly "server") is an HTTP server that mirrors a subset of
+    Galaxy's ToolShed API using locally cached tool data. It allows workflow editors and
+    validators to resolve tool metadata without direct access to a Galaxy instance or
+    ToolShed. Configured via YAML, it supports CORS and serves on a configurable port.
+
+  effectSchema: |
+    [Effect Schema](https://effect.website/docs/schema/introduction) is a TypeScript-first
+    schema declaration and validation library from the [Effect](https://effect.website)
+    ecosystem. This project uses it as the core representation for Galaxy tool parameter
+    types — each parameter type maps to an Effect Schema that can both validate data at
+    runtime and export to [JSON Schema](https://json-schema.org) for interoperability.
+
+  jsonSchema: |
+    [JSON Schema](https://json-schema.org) is a standard for describing the structure of
+    JSON data. In this project, Effect Schemas are exported to JSON Schema format using
+    `JSONSchema.make()` so they can be consumed by external validators like
+    [Ajv](https://ajv.js.org) or used by workflow editors that don't run Effect directly.
+
+  cors: |
+    Cross-Origin Resource Sharing ([CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS))
+    is an HTTP mechanism that allows a web page to make requests to a different origin
+    (domain/port) than the one it was served from. The tool-cache-proxy enables CORS so
+    browser-based workflow editors can query tool metadata from a local proxy server.
+
+  ga4gh: |
+    The Global Alliance for Genomics and Health ([GA4GH](https://www.ga4gh.org)) is an
+    international standards body for genomics and health-related data sharing. The TRS
+    (Tool Registry Service) specification used by Galaxy's ToolShed is a GA4GH standard.
