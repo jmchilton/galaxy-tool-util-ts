@@ -1,6 +1,6 @@
 # @galaxy-tool-util/tool-cache-proxy
 
-`galaxy-tool-proxy` — HTTP proxy server that caches and serves Galaxy tool schemas. Mirrors a subset of the ToolShed API with CORS support, intended as a sidecar for the Galaxy workflow editor or other clients that need tool metadata.
+`galaxy-tool-proxy` — HTTP proxy server that caches and serves [Galaxy](https://galaxyproject.org) tool schemas. Mirrors a subset of the [ToolShed](https://toolshed.g2.bx.psu.edu) API with CORS support, intended as a sidecar for the Galaxy workflow editor or other clients that need tool metadata.
 
 ## Usage
 
@@ -59,20 +59,20 @@ List all cached tools.
 
 Get parsed metadata for a specific tool. Fetches from configured sources if not cached.
 
-**Response:** `ParsedTool` JSON object.
+**Response:** [`ParsedTool`](glossary#parsed-tool) JSON object.
 
 ### `GET /api/tools/:trs_id/versions/:version/schema`
 
-Get a JSON Schema for a tool's parameters.
+Get a [JSON Schema](https://json-schema.org) for a tool's parameters.
 
 **Query parameters:**
-- `representation` — State representation (default: `workflow_step`). See [Schema docs](packages/schema.md) for available representations.
+- `representation` — [State representation](glossary#state-representations) (default: `workflow_step`). See [Schema docs](packages/schema.md) for available representations.
 
 **Response:** JSON Schema object.
 
 ### `DELETE /api/tools/cache`
 
-Clear the tool cache.
+Clear the [tool cache](glossary#tool-cache).
 
 **Query parameters:**
 - `prefix` — Only clear tools matching this prefix.

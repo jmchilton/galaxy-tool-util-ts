@@ -2,11 +2,11 @@
 
 ## Use Case
 
-The Galaxy workflow editor needs tool schemas to validate step parameters, but querying the ToolShed directly from the browser has CORS and performance issues. `galaxy-tool-proxy` acts as a local sidecar that:
+The [Galaxy](https://galaxyproject.org) workflow editor needs tool schemas to validate step parameters, but querying the [ToolShed](https://toolshed.g2.bx.psu.edu) directly from the browser has [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) and performance issues. `galaxy-tool-proxy` acts as a local sidecar that:
 
 - Fetches tool metadata from ToolShed/Galaxy on demand
 - Caches results locally
-- Serves JSON Schemas over a simple REST API with CORS enabled
+- Serves [JSON Schemas](https://json-schema.org) over a simple REST API with CORS enabled
 
 ## Quick Start
 

@@ -35,7 +35,7 @@ pnpm typecheck
 
 ## Publishing
 
-Uses Changesets for versioning. CI publishes automatically via GitHub Actions
+Uses [Changesets](https://github.com/changesets/changesets) for versioning. CI publishes automatically via [GitHub Actions](https://github.com/features/actions)
 when changesets are merged to `main`.
 
 ```bash
@@ -103,9 +103,9 @@ GitHub environment is shared.
 
 ## Generated Workflow Schemas
 
-Workflow schemas in `packages/schema/src/workflow/raw/` are generated from upstream [schema-salad](https://www.commonwl.org/v1.2/SchemaSalad.html) YAML definitions using [`schema-salad-plus-pydantic`](https://github.com/jmchilton/schema-salad-plus-pydantic). This tool reads the YAML type definitions and emits both TypeScript interfaces and Effect Schema definitions.
+Workflow schemas in `packages/schema/src/workflow/raw/` are generated from upstream [schema-salad](https://www.commonwl.org/v1.2/SchemaSalad.html) YAML definitions using [`schema-salad-plus-pydantic`](https://github.com/jmchilton/schema-salad-plus-pydantic). This tool reads the YAML type definitions and emits both TypeScript interfaces and [Effect Schema](https://effect.website/docs/schema/introduction) definitions.
 
-The source YAML files live in `schema-sources/` and are synced from the gxformat2 repo:
+The source YAML files live in `schema-sources/` and are synced from the [gxformat2](https://github.com/galaxyproject/gxformat2) repo:
 
 ```bash
 # Sync upstream schema-salad YAML sources

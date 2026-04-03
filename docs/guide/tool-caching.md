@@ -2,7 +2,7 @@
 
 ## Why Cache?
 
-Tool metadata fetched from the ToolShed or Galaxy instances is cached locally to:
+Tool metadata fetched from the [ToolShed](https://toolshed.g2.bx.psu.edu) or [Galaxy](https://galaxyproject.org) instances is cached locally to:
 - Avoid repeated network requests (ToolShed can be slow or rate-limited)
 - Enable offline validation and schema generation
 - Support CI/CD pipelines without network access

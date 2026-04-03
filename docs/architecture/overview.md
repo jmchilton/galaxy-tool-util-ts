@@ -47,10 +47,10 @@ ToolShed API / Galaxy API
 
 ## Key Design Decisions
 
-**Effect Schema over Zod/io-ts**: Effect Schema provides both runtime validation and JSON Schema export from a single definition. It also integrates with the broader Effect ecosystem for error handling and composition. See [Effect Schema Usage](architecture/effect-schema.md).
+**[Effect Schema](https://effect.website/docs/schema/introduction) over [Zod](https://zod.dev)/[io-ts](https://github.com/gcanti/io-ts)**: Effect Schema provides both runtime validation and [JSON Schema](https://json-schema.org) export from a single definition. It also integrates with the broader Effect ecosystem for error handling and composition. See [Effect Schema Usage](architecture/effect-schema.md).
 
-**State representations**: Galaxy tool parameters have different valid shapes depending on context (API request vs workflow step vs job execution). Rather than one schema per tool, the system generates schemas parameterized by state representation. See [Parameter Schema System](architecture/parameter-schemas.md).
+**[State representations](glossary#state-representations)**: [Galaxy](https://galaxyproject.org) tool parameters have different valid shapes depending on context (API request vs workflow step vs job execution). Rather than one schema per tool, the system generates schemas parameterized by state representation. See [Parameter Schema System](architecture/parameter-schemas.md).
 
-**Offline-first caching**: All tool metadata is cached to disk on first fetch. Subsequent operations never require network access. Cache keys are deterministic (ToolShed URL + TRS ID + version).
+**Offline-first caching**: All tool metadata is cached to disk on first fetch. Subsequent operations never require network access. Cache keys are deterministic ([ToolShed](https://toolshed.g2.bx.psu.edu) URL + [TRS](https://ga4gh.github.io/tool-registry-service-schemas/) ID + version).
 
 **ToolShed API compatibility**: The proxy server mirrors the ToolShed's TRS-based API paths, so clients that already speak ToolShed can point at the proxy with minimal changes.

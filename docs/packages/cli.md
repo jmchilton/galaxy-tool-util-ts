@@ -1,7 +1,7 @@
 # @galaxy-tool-util/cli
 
 Two CLI tools:
-- **`galaxy-tool-cache`** — cache and inspect Galaxy tool metadata
+- **`galaxy-tool-cache`** — cache and inspect [Galaxy](https://galaxyproject.org) tool metadata
 - **`galaxy-workflow-validate`** — validate Galaxy workflow files
 
 ## galaxy-tool-cache
@@ -10,7 +10,7 @@ Two CLI tools:
 
 ### `add <tool_id>`
 
-Fetch a tool from ToolShed or Galaxy and cache it locally.
+Fetch a tool from [ToolShed](https://toolshed.g2.bx.psu.edu) or Galaxy and cache it locally.
 
 ```bash
 galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
@@ -68,7 +68,7 @@ galaxy-tool-cache clear fastqc
 
 ### `schema <tool_id>`
 
-Export a JSON Schema for a tool's parameters at a given state representation.
+Export a [JSON Schema](https://json-schema.org) for a tool's parameters at a given [state representation](glossary#state-representations).
 
 ```bash
 # Default: workflow_step representation, stdout
@@ -90,7 +90,7 @@ galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
 
 ## galaxy-workflow-validate
 
-Standalone CLI for validating Galaxy workflow files. Checks structure and optionally validates tool state against cached tool schemas.
+Standalone CLI for validating Galaxy workflow files. Checks structure and optionally validates [tool state](glossary#tool-state) against cached tool schemas.
 
 ```bash
 # Full validation (structure + tool state)
@@ -113,7 +113,7 @@ galaxy-workflow-validate my-workflow.ga \
 
 | Option | Description |
 |---|---|
-| `--format <fmt>` | Force format: `native` or `format2` (auto-detected by default) |
+| `--format <fmt>` | Force format: `native` or [`format2`](glossary#format2) (auto-detected by default) |
 | `--no-tool-state` | Skip tool state validation |
 | `--cache-dir <dir>` | Tool cache directory |
 | `--mode <mode>` | Validation backend: `effect` (default) or `json-schema` |

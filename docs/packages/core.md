@@ -1,6 +1,6 @@
 # @galaxy-tool-util/core
 
-Tool cache, ToolShed/Galaxy API client, and ParsedTool model. Handles fetching tool metadata from remote sources and caching it locally for offline use.
+[Tool cache](glossary#tool-cache), [ToolShed](https://toolshed.g2.bx.psu.edu)/[Galaxy](https://galaxyproject.org) API client, and [ParsedTool](glossary#parsed-tool) model. Handles fetching tool metadata from remote sources and caching it locally for offline use.
 
 ## ToolInfoService
 
@@ -74,7 +74,7 @@ const entries = index.listAll(); // CacheIndexEntry[]
 
 ## ParsedTool
 
-Effect Schema model representing parsed tool metadata:
+[Effect Schema](https://effect.website/docs/schema/introduction) model representing parsed tool metadata:
 
 ```typescript
 interface ParsedTool {
@@ -98,7 +98,7 @@ interface ParsedTool {
 
 ### `fetchFromToolShed(url, trsToolId, version, fetcher?)`
 
-Fetch a tool from a ToolShed instance via TRS API.
+Fetch a tool from a ToolShed instance via [TRS](https://ga4gh.github.io/tool-registry-service-schemas/) API.
 
 ```typescript
 import { fetchFromToolShed } from "@galaxy-tool-util/core";
