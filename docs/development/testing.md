@@ -15,55 +15,41 @@ cd packages/core && pnpm test
 
 ## Fixture Syncing
 
-Test fixtures are synced from upstream Galaxy and gxformat2 repositories to ensure cross-language compatibility.
-
-### Golden Cache Fixtures
-
-Golden fixtures verify the TS cache layer produces identical results to Python for cache key computation, tool ID parsing, and ParsedTool deserialization.
+Test fixtures are synced from upstream Galaxy and gxformat2 repositories to ensure cross-language compatibility. To sync everything, regenerate schemas, and verify golden checksums in one step:
 
 ```bash
-GALAXY_ROOT=/path/to/galaxy make sync-golden
+GALAXY_ROOT=/path/to/galaxy GXFORMAT2_ROOT=/path/to/gxformat2 make sync
 ```
 
-Source: `$GALAXY_ROOT/test/unit/tool_util/workflow_state/`
+This runs all sync targets, regenerates the workflow Effect Schemas via `schema-salad-plus-pydantic`, and verifies golden fixture checksums. It requires checkouts of both [Galaxy](https://github.com/galaxyproject/galaxy) and [gxformat2](https://github.com/galaxyproject/gxformat2).
 
-### Parameter Specification
+### Individual Targets
 
-The parameter spec file defines expected validation behavior for all Galaxy parameter types across state representations.
+If you only have one of the two checkouts or want to sync a subset, the individual targets are available:
 
-```bash
-GALAXY_ROOT=/path/to/galaxy make sync-param-spec
-```
-
-Source: `$GALAXY_ROOT/test/unit/tool_util/parameter_specification.yml`
-
-### Workflow Fixtures
-
-Synthetic workflow files (format2 + native) for normalization and roundtrip tests.
-
-```bash
-GXFORMAT2_ROOT=/path/to/gxformat2 make sync-workflow-fixtures
-GXFORMAT2_ROOT=/path/to/gxformat2 make sync-workflow-expectations
-```
-
-### Schema Sources
-
-Schema-salad YAML definitions for workflow schema generation.
-
-```bash
-GXFORMAT2_ROOT=/path/to/gxformat2 make sync-schema-sources
-```
+| Target | Env Var | What it syncs |
+|---|---|---|
+| `sync-golden` | `GALAXY_ROOT` | Golden cache fixtures (cache keys, tool ID parsing, ParsedTool deserialization) |
+| `sync-param-spec` | `GALAXY_ROOT` | `parameter_specification.yml` (expected validation behavior per parameter type) |
+| `sync-wfstate-fixtures` | `GALAXY_ROOT` | Workflow state test workflows (synthetic, IWC, framework data) |
+| `sync-wfstate-expectations` | `GALAXY_ROOT` | Workflow state expectation YAMLs |
+| `sync-workflow-fixtures` | `GXFORMAT2_ROOT` | Synthetic workflow files (format2 + native) for normalization tests |
+| `sync-workflow-expectations` | `GXFORMAT2_ROOT` | Expectation YAMLs for workflow normalization |
+| `sync-schema-sources` | `GXFORMAT2_ROOT` | Schema-salad YAML definitions for workflow schema generation |
 
 ### Checking Sync Status
 
+Check if local fixtures have diverged from upstream without overwriting:
+
 ```bash
-# Check if fixtures have diverged from upstream
-GXFORMAT2_ROOT=/path/to/gxformat2 make check-sync
+GALAXY_ROOT=/path/to/galaxy GXFORMAT2_ROOT=/path/to/gxformat2 make check-sync
 ```
 
-## Verify Golden Checksums
+Skips checks for whichever env var is unset.
 
-Verify fixture integrity without needing a Galaxy checkout:
+### Verifying Golden Checksums
+
+Verify golden fixture integrity without needing a Galaxy checkout (works in CI):
 
 ```bash
 make verify-golden

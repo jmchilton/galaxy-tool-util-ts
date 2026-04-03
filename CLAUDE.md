@@ -35,17 +35,13 @@ pnpm changeset      # create changeset entry for releases
 - Tests import `describe`, `it`, `expect` explicitly from `vitest` (no globals)
 - Tests live in `packages/{pkg}/test/**/*.test.ts`
 
-## Fixture Syncing
+## Fixture Syncing & Schema Generation
 
-Test fixtures are synced from upstream Galaxy and gxformat2 repos via Makefile targets. Key env vars:
-- `GALAXY_ROOT` — path to Galaxy checkout (for golden cache, param spec, workflow_state fixtures)
-- `GXFORMAT2_ROOT` — path to gxformat2 checkout (for workflow fixtures, expectations, schema sources)
+`make sync` syncs all fixtures, regenerates workflow Effect Schemas, and verifies golden checksums. Requires both env vars:
+- `GALAXY_ROOT` — path to Galaxy checkout
+- `GXFORMAT2_ROOT` — path to gxformat2 checkout
 
-Run `make sync` with both set, or individual targets like `make sync-golden`, `make sync-param-spec`, etc.
-
-## Schema Generation
-
-Workflow Effect Schemas in `packages/schema/src/workflow/raw/` are auto-generated from schema-salad YAML via `schema-salad-plus-pydantic`. Regenerate with `make generate-schemas` after `make sync-schema-sources`.
+Individual targets (e.g. `make sync-golden`, `make sync-param-spec`) are available when you only have one checkout.
 
 ## Releases
 

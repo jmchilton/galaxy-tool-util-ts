@@ -84,5 +84,5 @@ const effect = S.decodeUnknown(schema)(data);
 |---|---|
 | **schema** | Parameter type generators produce `S.Schema.Any`; workflow schemas defined as `S.Struct` |
 | **core** | `ParsedTool`, `CacheIndex`, `ServerConfig` all defined as Effect Schemas |
-| **server** | `ServerConfig` validated on load via `S.decodeUnknownSync`; JSON Schema served via `JSONSchema.make` |
+| **tool-cache-proxy** | `ServerConfig` validated on load via `S.decodeUnknownSync`; JSON Schema served via `JSONSchema.make` |
 | **cli** | Schema export command uses `JSONSchema.make`; Effect mode validation uses `S.decodeUnknown` |

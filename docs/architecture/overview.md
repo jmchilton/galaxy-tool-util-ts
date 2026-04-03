@@ -8,7 +8,7 @@ galaxy-tool-util/
     schema/    → Effect Schema definitions for parameters + workflows
     core/      → ToolCache, ToolInfoService, API clients
     cli/       → galaxy-tool-cache CLI (Commander.js)
-    server/    → galaxy-tool-proxy HTTP server
+    tool-cache-proxy/  → galaxy-tool-proxy HTTP server
   schema-sources/  → Upstream YAML definitions (synced from gxformat2)
 ```
 
@@ -20,10 +20,10 @@ schema (no internal deps)
 core (depends on: schema via peer/dev)
   ↑
 cli (depends on: core, schema)
-server (depends on: core, schema)
+tool-cache-proxy (depends on: core, schema)
 ```
 
-`schema` is the foundation — it has no internal dependencies and defines the type system. `core` builds on it for caching and fetching. `cli` and `server` are consumers that provide different interfaces.
+`schema` is the foundation — it has no internal dependencies and defines the type system. `core` builds on it for caching and fetching. `cli` and `tool-cache-proxy` are consumers that provide different interfaces.
 
 ## Data Flow
 

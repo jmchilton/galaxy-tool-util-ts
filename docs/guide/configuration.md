@@ -4,7 +4,7 @@
 
 | Variable | Default | Used By | Description |
 |---|---|---|---|
-| `GALAXY_TOOL_CACHE_DIR` | `~/.galaxy/tool_info_cache` | core, cli, server | Override the tool cache directory |
+| `GALAXY_TOOL_CACHE_DIR` | `~/.galaxy/tool_info_cache` | core, cli, tool-cache-proxy | Override the tool cache directory |
 | `GALAXY_TOOLSHED_URL` | `https://toolshed.g2.bx.psu.edu` | core, cli | Override the default ToolShed URL |
 
 ## CLI Flags

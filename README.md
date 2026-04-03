@@ -2,6 +2,8 @@
 
 TypeScript port of Galaxy's `tool_util` — Effect Schema parameter types, tool cache, CLI, and proxy server.
 
+**[Documentation](https://jmchilton.github.io/galaxy-tool-util-ts/)**
+
 ## Structure
 
 pnpm monorepo with 4 packages:
@@ -25,17 +27,12 @@ make test     # run all tests
 make fix      # auto-fix lint + format issues
 ```
 
-## Golden Cache Fixtures
+## Fixture Syncing
 
-Cross-language contract tests use golden fixtures generated from real ToolShed API responses.
-The canonical source is in the Galaxy repo — sync them here with:
+Test fixtures are synced from upstream [Galaxy](https://github.com/galaxyproject/galaxy) and [gxformat2](https://github.com/galaxyproject/gxformat2) repos. Sync everything, regenerate schemas, and verify checksums in one step:
 
 ```bash
-GALAXY_ROOT=/path/to/galaxy make sync-golden
+GALAXY_ROOT=/path/to/galaxy GXFORMAT2_ROOT=/path/to/gxformat2 make sync
 ```
 
-`GALAXY_ROOT` should point to a Galaxy checkout containing the golden cache test data
-at `test/unit/tool_util/workflow_state/cache_golden/`.
-
-After syncing, run `make test` to verify the TS cache layer produces identical results
-to Python for cache key computation, tool ID parsing, and ParsedTool deserialization.
+See the [testing docs](https://jmchilton.github.io/galaxy-tool-util-ts/#/development/testing) for individual targets.

@@ -261,8 +261,17 @@ check-sync:
 	fi; \
 	if $$failed; then exit 1; fi
 
-# Requires both GALAXY_ROOT and GXFORMAT2_ROOT. Run individual targets if you only have one.
-sync: sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations
+# Full sync + regenerate + verify. Requires both GALAXY_ROOT and GXFORMAT2_ROOT.
+sync:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+ifndef GXFORMAT2_ROOT
+	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
+endif
+	$(MAKE) sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations
+	$(MAKE) generate-schemas
+	$(MAKE) verify-golden
 
 # Sync schema-salad YAML sources from gxformat2 for workflow schema generation.
 # Set GXFORMAT2_ROOT to your gxformat2 checkout, e.g.:

@@ -5,7 +5,7 @@
 Packages must be built in dependency order:
 
 ```
-schema → core → cli, server
+schema → core → cli, tool-cache-proxy
 ```
 
 `pnpm -r build` handles this automatically via the workspace dependency graph.
@@ -103,11 +103,22 @@ GitHub environment is shared.
 
 ## Generated Workflow Schemas
 
-Workflow schemas in `packages/schema/src/workflow/raw/` are generated from schema-salad YAML sources using `schema-salad-plus-pydantic`:
+Workflow schemas in `packages/schema/src/workflow/raw/` are generated from upstream [schema-salad](https://www.commonwl.org/v1.2/SchemaSalad.html) YAML definitions using [`schema-salad-plus-pydantic`](https://github.com/jmchilton/schema-salad-plus-pydantic). This tool reads the YAML type definitions and emits both TypeScript interfaces and Effect Schema definitions.
+
+The source YAML files live in `schema-sources/` and are synced from the gxformat2 repo:
 
 ```bash
+# Sync upstream schema-salad YAML sources
+GXFORMAT2_ROOT=/path/to/gxformat2 make sync-schema-sources
+
+# Regenerate TypeScript + Effect Schema definitions
 # Requires schema-salad-plus-pydantic >= 0.1.5
 make generate-schemas
 ```
 
-This produces both TypeScript types and Effect Schema definitions for format2 and native workflow formats.
+This produces four generated files covering format2 and native workflow formats:
+
+- `gxformat2.ts` / `gxformat2.effect.ts` — format2 workflow types and schemas
+- `native.ts` / `native.effect.ts` — native Galaxy workflow types and schemas
+
+These files should not be edited by hand — re-run the generation after syncing updated sources.
