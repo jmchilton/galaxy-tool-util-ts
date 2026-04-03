@@ -1,15 +1,15 @@
 /**
  * Parse and manipulate Galaxy toolshed tool IDs.
  *
- * Input format: toolshed.g2.bx.psu.edu/repos/owner/repo/tool_name/version
- * Or with scheme: https://toolshed.g2.bx.psu.edu/repos/owner/repo/tool_name/version
+ * Input format: toolshed.g2.bx.psu.edu/repos/owner/repo/tool_id/version
+ * Or with scheme: https://toolshed.g2.bx.psu.edu/repos/owner/repo/tool_id/version
  */
 
 /** Parsed components of a ToolShed tool ID. */
 export interface ToolCoordinates {
   /** ToolShed base URL (with https:// scheme). */
   toolshedUrl: string;
-  /** TRS-style tool ID: `owner~repo~tool_name`. */
+  /** TRS-style tool ID: `owner~repo~tool_id`. */
   trsToolId: string;
   /** Tool version, or null if not present in the ID. */
   toolVersion: string | null;
@@ -18,8 +18,8 @@ export interface ToolCoordinates {
 /**
  * Parse a full ToolShed tool ID into its components.
  * Accepts both scheme-prefixed and bare formats:
- * - `toolshed.g2.bx.psu.edu/repos/owner/repo/tool_name/version`
- * - `https://toolshed.g2.bx.psu.edu/repos/owner/repo/tool_name/version`
+ * - `toolshed.g2.bx.psu.edu/repos/owner/repo/tool_id/version`
+ * - `https://toolshed.g2.bx.psu.edu/repos/owner/repo/tool_id/version`
  * @returns Parsed coordinates, or null if the ID doesn't match the ToolShed format.
  */
 export function parseToolshedToolId(toolId: string): ToolCoordinates | null {
