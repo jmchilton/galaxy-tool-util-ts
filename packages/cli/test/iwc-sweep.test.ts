@@ -10,7 +10,10 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { ToolCache } from "@galaxy-tool-util/core";
-import { validateNativeSteps, type StepValidationResult } from "../src/commands/validate-workflow.js";
+import {
+  validateNativeSteps,
+  type StepValidationResult,
+} from "../src/commands/validate-workflow.js";
 import { validateNativeStepsJsonSchema } from "../src/commands/validate-workflow-json-schema.js";
 
 const IWC_DIR = process.env.GALAXY_TEST_IWC_DIRECTORY;
@@ -77,12 +80,19 @@ function runSweep(
         }
       }
 
-      console.log(`\nIWC sweep (${label}): ${validated} steps validated, ${skipped} skipped, ${failures.length} failed`);
-      console.log(`  across ${workflows.length} workflows${parseErrors ? `, ${parseErrors} parse errors` : ""}`);
+      console.log(
+        `\nIWC sweep (${label}): ${validated} steps validated, ${skipped} skipped, ${failures.length} failed`,
+      );
+      console.log(
+        `  across ${workflows.length} workflows${parseErrors ? `, ${parseErrors} parse errors` : ""}`,
+      );
 
       if (failures.length > 0) {
         const details = failures
-          .map((f) => `  ${f.workflow} [${f.step.stepLabel}] ${f.step.toolId}: ${f.step.errors.join("; ")}`)
+          .map(
+            (f) =>
+              `  ${f.workflow} [${f.step.stepLabel}] ${f.step.toolId}: ${f.step.errors.join("; ")}`,
+          )
           .join("\n");
         expect.fail(`${failures.length} validation failures:\n${details}`);
       }

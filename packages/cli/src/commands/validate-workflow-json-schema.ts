@@ -30,7 +30,11 @@ import Ajv2020 from "ajv/dist/2020.js";
 import type { ValidateFunction } from "ajv";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { ValidateWorkflowOptions, WorkflowFormat, StepValidationResult } from "./validate-workflow.js";
+import type {
+  ValidateWorkflowOptions,
+  WorkflowFormat,
+  StepValidationResult,
+} from "./validate-workflow.js";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
@@ -77,7 +81,11 @@ function stripAdditionalProperties(schema: unknown): unknown {
   return result;
 }
 
-function toolStateCacheKey(toolId: string, toolVersion: string | null, representation: string): string {
+function toolStateCacheKey(
+  toolId: string,
+  toolVersion: string | null,
+  representation: string,
+): string {
   return `${toolId}@${toolVersion ?? ""}@${representation}`;
 }
 
@@ -164,9 +172,8 @@ export async function runValidateWorkflowJsonSchema(
     validationData.class = "GalaxyWorkflow";
   }
 
-  const structValidator = format === "native"
-    ? nativeStructuralValidator()
-    : format2StructuralValidator();
+  const structValidator =
+    format === "native" ? nativeStructuralValidator() : format2StructuralValidator();
 
   const structOk = structValidator(validationData);
 
@@ -195,9 +202,21 @@ export async function runValidateWorkflowJsonSchema(
 
   let results: StepValidationResult[];
   if (format === "native") {
-    results = await validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir, "", expansionOpts);
+    results = await validateNativeStepsJsonSchema(
+      data,
+      cache,
+      opts.toolSchemaDir,
+      "",
+      expansionOpts,
+    );
   } else {
-    results = await validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, "", expansionOpts);
+    results = await validateFormat2StepsJsonSchema(
+      data,
+      cache,
+      opts.toolSchemaDir,
+      "",
+      expansionOpts,
+    );
   }
 
   if (results.length === 0) {
@@ -257,7 +276,10 @@ async function _validateNativeWorkflowJsonSchema(
 
     if (step.type === "subworkflow" && step.subworkflow) {
       const subResults = await _validateNativeWorkflowJsonSchema(
-        step.subworkflow, cache, toolSchemaDir, `${stepLabel}.`,
+        step.subworkflow,
+        cache,
+        toolSchemaDir,
+        `${stepLabel}.`,
       );
       results.push(...subResults);
       continue;
@@ -268,7 +290,12 @@ async function _validateNativeWorkflowJsonSchema(
     const toolVersion = step.tool_version ?? null;
 
     const result = await _validateNativeStepJsonSchema(
-      step, stepLabel, toolId, toolVersion, cache, toolSchemaDir,
+      step,
+      stepLabel,
+      toolId,
+      toolVersion,
+      cache,
+      toolSchemaDir,
     );
     results.push(result);
   }
@@ -286,9 +313,8 @@ async function _validateNativeStepJsonSchema(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
-    const reason = resolved.kind === "no_version"
-      ? `no version for ${toolId}`
-      : `${toolId} not in cache`;
+    const reason =
+      resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
     return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason] };
   }
 
@@ -296,9 +322,18 @@ async function _validateNativeStepJsonSchema(
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  const replacementScan = scanForReplacements(bundle.parameters, step.tool_state as Record<string, unknown>);
+  const replacementScan = scanForReplacements(
+    bundle.parameters,
+    step.tool_state as Record<string, unknown>,
+  );
   if (replacementScan === "yes") {
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: ["replacement parameters detected"] };
+    return {
+      stepLabel,
+      toolId,
+      toolVersion,
+      status: "skip",
+      errors: ["replacement parameters detected"],
+    };
   }
 
   const state = structuredClone(step.tool_state) as Record<string, unknown>;
@@ -308,9 +343,21 @@ async function _validateNativeStepJsonSchema(
   }
   injectConnectionsIntoState(bundle.parameters, state, connections);
 
-  const validate = getOrBuildValidator(toolId, toolVersion, bundle, "workflow_step_native", toolSchemaDir);
+  const validate = getOrBuildValidator(
+    toolId,
+    toolVersion,
+    bundle,
+    "workflow_step_native",
+    toolSchemaDir,
+  );
   if (!validate) {
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
+    return {
+      stepLabel,
+      toolId,
+      toolVersion,
+      status: "skip",
+      errors: ["unsupported parameter types"],
+    };
   }
 
   const valid = validate(state);
@@ -347,7 +394,10 @@ async function _validateFormat2WorkflowJsonSchema(
 
     if (step.run && typeof step.run === "object") {
       const subResults = await _validateFormat2WorkflowJsonSchema(
-        step.run as NormalizedFormat2Workflow, cache, toolSchemaDir, `${stepLabel}.`,
+        step.run as NormalizedFormat2Workflow,
+        cache,
+        toolSchemaDir,
+        `${stepLabel}.`,
       );
       results.push(...subResults);
       continue;
@@ -358,7 +408,12 @@ async function _validateFormat2WorkflowJsonSchema(
     const toolVersion = step.tool_version ?? null;
 
     const result = await _validateFormat2StepJsonSchema(
-      step, stepLabel, toolId, toolVersion, cache, toolSchemaDir,
+      step,
+      stepLabel,
+      toolId,
+      toolVersion,
+      cache,
+      toolSchemaDir,
     );
     results.push(result);
   }
@@ -376,9 +431,8 @@ async function _validateFormat2StepJsonSchema(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
-    const reason = resolved.kind === "no_version"
-      ? `no version for ${toolId}`
-      : `${toolId} not in cache`;
+    const reason =
+      resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
     return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason] };
   }
 
@@ -390,14 +444,32 @@ async function _validateFormat2StepJsonSchema(
   const state = rawState as Record<string, unknown>;
 
   // Level 1: base validation against workflow_step
-  const baseValidate = getOrBuildValidator(toolId, toolVersion, bundle, "workflow_step", toolSchemaDir);
+  const baseValidate = getOrBuildValidator(
+    toolId,
+    toolVersion,
+    bundle,
+    "workflow_step",
+    toolSchemaDir,
+  );
   if (!baseValidate) {
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
+    return {
+      stepLabel,
+      toolId,
+      toolVersion,
+      status: "skip",
+      errors: ["unsupported parameter types"],
+    };
   }
 
   const baseValid = baseValidate(state);
   if (!baseValid) {
-    return { stepLabel, toolId, toolVersion, status: "fail", errors: formatAjvErrors(baseValidate) };
+    return {
+      stepLabel,
+      toolId,
+      toolVersion,
+      status: "fail",
+      errors: formatAjvErrors(baseValidate),
+    };
   }
 
   // Build connections dict from step.in
@@ -417,19 +489,40 @@ async function _validateFormat2StepJsonSchema(
     const unmatchedKeys = Object.keys(remaining);
     if (unmatchedKeys.length > 0) {
       return {
-        stepLabel, toolId, toolVersion, status: "fail",
+        stepLabel,
+        toolId,
+        toolVersion,
+        status: "fail",
         errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
       };
     }
 
-    const linkedValidate = getOrBuildValidator(toolId, toolVersion, bundle, "workflow_step_linked", toolSchemaDir);
+    const linkedValidate = getOrBuildValidator(
+      toolId,
+      toolVersion,
+      bundle,
+      "workflow_step_linked",
+      toolSchemaDir,
+    );
     if (!linkedValidate) {
-      return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
+      return {
+        stepLabel,
+        toolId,
+        toolVersion,
+        status: "skip",
+        errors: ["unsupported parameter types"],
+      };
     }
 
     const linkedValid = linkedValidate(linkedState);
     if (!linkedValid) {
-      return { stepLabel, toolId, toolVersion, status: "fail", errors: formatAjvErrors(linkedValidate) };
+      return {
+        stepLabel,
+        toolId,
+        toolVersion,
+        status: "fail",
+        errors: formatAjvErrors(linkedValidate),
+      };
     }
   }
 

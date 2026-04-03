@@ -106,9 +106,21 @@ const DATA_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/data/data_tool";
 async function seedTools(cacheDir: string) {
   const cache = new ToolCache({ cacheDir });
   const simpleKey = cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
-  await cache.saveTool(simpleKey, S.decodeUnknownSync(ParsedTool)(simpleTool), SIMPLE_TOOL_ID, "1.0", "api");
+  await cache.saveTool(
+    simpleKey,
+    S.decodeUnknownSync(ParsedTool)(simpleTool),
+    SIMPLE_TOOL_ID,
+    "1.0",
+    "api",
+  );
   const dataKey = cacheKey("https://toolshed.g2.bx.psu.edu", "test~data~data_tool", "1.0");
-  await cache.saveTool(dataKey, S.decodeUnknownSync(ParsedTool)(dataInputTool), DATA_TOOL_ID, "1.0", "api");
+  await cache.saveTool(
+    dataKey,
+    S.decodeUnknownSync(ParsedTool)(dataInputTool),
+    DATA_TOOL_ID,
+    "1.0",
+    "api",
+  );
 }
 
 describe("validate-workflow (connection-aware)", () => {
@@ -461,4 +473,3 @@ describe("validate-workflow (connection-aware)", () => {
     });
   });
 });
-

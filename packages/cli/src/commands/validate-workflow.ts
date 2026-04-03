@@ -70,9 +70,7 @@ export async function runValidateWorkflow(
   }
 
   const format: WorkflowFormat =
-    opts.format === "native" || opts.format === "format2"
-      ? opts.format
-      : detectFormat(data);
+    opts.format === "native" || opts.format === "format2" ? opts.format : detectFormat(data);
 
   const mode: ValidationMode = opts.mode === "json-schema" ? "json-schema" : "effect";
   console.log(`Detected format: ${format}, mode: ${mode}`);
@@ -208,9 +206,8 @@ async function _validateNativeStep(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
-    const reason = resolved.kind === "no_version"
-      ? `no version for ${toolId}`
-      : `${toolId} not in cache`;
+    const reason =
+      resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
     return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason] };
   }
 
@@ -219,9 +216,18 @@ async function _validateNativeStep(
   };
 
   // Skip validation if replacement parameters (${...}) are present in typed fields
-  const replacementScan = scanForReplacements(bundle.parameters, step.tool_state as Record<string, unknown>);
+  const replacementScan = scanForReplacements(
+    bundle.parameters,
+    step.tool_state as Record<string, unknown>,
+  );
   if (replacementScan === "yes") {
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: ["replacement parameters detected"] };
+    return {
+      stepLabel,
+      toolId,
+      toolVersion,
+      status: "skip",
+      errors: ["replacement parameters detected"],
+    };
   }
 
   // Deep copy state and inject connection markers
@@ -235,7 +241,13 @@ async function _validateNativeStep(
   // Validate against workflow_step_native schema
   const fieldModel = createFieldModel(bundle, "workflow_step_native");
   if (!fieldModel) {
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
+    return {
+      stepLabel,
+      toolId,
+      toolVersion,
+      status: "skip",
+      errors: ["unsupported parameter types"],
+    };
   }
 
   const validate = S.decodeUnknownEither(fieldModel as S.Schema<any>, {
@@ -303,9 +315,8 @@ async function _validateFormat2Step(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
-    const reason = resolved.kind === "no_version"
-      ? `no version for ${toolId}`
-      : `${toolId} not in cache`;
+    const reason =
+      resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
     return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason] };
   }
 
@@ -322,7 +333,13 @@ async function _validateFormat2Step(
   // Level 1: Validate base state against workflow_step
   const baseModel = createFieldModel(bundle, "workflow_step");
   if (!baseModel) {
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
+    return {
+      stepLabel,
+      toolId,
+      toolVersion,
+      status: "skip",
+      errors: ["unsupported parameter types"],
+    };
   }
 
   const baseValidate = S.decodeUnknownEither(baseModel as S.Schema<any>, {
@@ -330,7 +347,13 @@ async function _validateFormat2Step(
   });
   const baseResult = baseValidate(state);
   if (baseResult._tag === "Left") {
-    return { stepLabel, toolId, toolVersion, status: "fail", errors: formatIssues(baseResult.left) };
+    return {
+      stepLabel,
+      toolId,
+      toolVersion,
+      status: "fail",
+      errors: formatIssues(baseResult.left),
+    };
   }
 
   // Build connections dict from step.in entries
@@ -350,14 +373,23 @@ async function _validateFormat2Step(
     const unmatchedKeys = Object.keys(remaining);
     if (unmatchedKeys.length > 0) {
       return {
-        stepLabel, toolId, toolVersion, status: "fail",
+        stepLabel,
+        toolId,
+        toolVersion,
+        status: "fail",
         errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
       };
     }
 
     const linkedModel = createFieldModel(bundle, "workflow_step_linked");
     if (!linkedModel) {
-      return { stepLabel, toolId, toolVersion, status: "skip", errors: ["unsupported parameter types"] };
+      return {
+        stepLabel,
+        toolId,
+        toolVersion,
+        status: "skip",
+        errors: ["unsupported parameter types"],
+      };
     }
 
     const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
@@ -365,10 +397,15 @@ async function _validateFormat2Step(
     });
     const linkedResult = linkedValidate(linkedState);
     if (linkedResult._tag === "Left") {
-      return { stepLabel, toolId, toolVersion, status: "fail", errors: formatIssues(linkedResult.left) };
+      return {
+        stepLabel,
+        toolId,
+        toolVersion,
+        status: "fail",
+        errors: formatIssues(linkedResult.left),
+      };
     }
   }
 
   return { stepLabel, toolId, toolVersion, status: "ok", errors: [] };
 }
-
