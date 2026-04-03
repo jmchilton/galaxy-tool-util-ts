@@ -4,7 +4,9 @@
  *
  * Galaxy terms are nested (category.subcategory.term: description).
  * Tool-util terms are flat (category.term: description).
- * We flatten both into a sorted list of {term, description, source} entries.
+ * We flatten both into a sorted list of {term, description, source} entries,
+ * then filter to only terms listed in included-terms.yml (all tool-util terms
+ * are auto-included).
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -27,7 +29,13 @@ function extractTerms(obj, path = [], source = "galaxy") {
   const entries = [];
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === "string") {
-      entries.push({ term: key, path: [...path], description: value.trim(), source });
+      entries.push({
+        term: key,
+        path: [...path],
+        dotPath: [...path, key].join("."),
+        description: value.trim(),
+        source,
+      });
     } else if (typeof value === "object" && value !== null) {
       entries.push(...extractTerms(value, [...path, key], source));
     }
@@ -61,12 +69,21 @@ function categoryLabel(path) {
 // --- Load sources ---
 const galaxyYaml = readFileSync(resolve(GLOSSARY_DIR, "galaxy-terms.yml"), "utf-8");
 const toolUtilYaml = readFileSync(resolve(GLOSSARY_DIR, "tool-util-terms.yml"), "utf-8");
+const includeList = YAML.parse(
+  readFileSync(resolve(GLOSSARY_DIR, "included-terms.yml"), "utf-8"),
+);
 
 const galaxyTerms = extractTerms(YAML.parse(galaxyYaml), [], "galaxy");
 const toolUtilTerms = extractTerms(YAML.parse(toolUtilYaml), [], "tool-util");
 
+// --- Filter: all tool-util terms + only included galaxy terms ---
+const includedPaths = new Set(includeList ?? []);
+const filteredGalaxyTerms = galaxyTerms.filter((e) => includedPaths.has(e.dotPath));
+
+const skipped = galaxyTerms.length - filteredGalaxyTerms.length;
+
 // --- Group by category ---
-const allTerms = [...toolUtilTerms, ...galaxyTerms];
+const allTerms = [...toolUtilTerms, ...filteredGalaxyTerms];
 const byCategory = new Map();
 
 for (const entry of allTerms) {
@@ -95,20 +112,20 @@ const lines = [
   "",
   "# Glossary",
   "",
-  "Terms used throughout galaxy-tool-util documentation. Project-specific terms are listed",
-  "first, followed by general Galaxy terminology synced from",
-  "[Galaxy's terms.yml](https://github.com/galaxyproject/galaxy/blob/dev/lib/galaxy/schema/terms.yml).",
-  "",
   "---",
   "",
 ];
+
+const showCategoryHeaders = sortedCats.length > 1;
 
 for (const cat of sortedCats) {
   const entries = byCategory.get(cat);
   entries.sort((a, b) => a.term.localeCompare(b.term));
 
-  lines.push(`## ${cat}`);
-  lines.push("");
+  if (showCategoryHeaders) {
+    lines.push(`## ${cat}`);
+    lines.push("");
+  }
 
   for (const entry of entries) {
     lines.push(`### ${titleCase(entry.term)}`);
@@ -118,12 +135,9 @@ for (const cat of sortedCats) {
   }
 }
 
-lines.push(
-  "---",
-  "",
-  "*Terms under **Tool Util** are specific to galaxy-tool-util. Others are from Galaxy's upstream glossary.*",
-  "",
-);
+lines.push("");
 
 writeFileSync(OUTPUT, lines.join("\n"));
-console.log(`Generated ${OUTPUT} with ${allTerms.length} terms.`);
+console.log(
+  `Generated ${OUTPUT} with ${allTerms.length} terms (${toolUtilTerms.length} project + ${filteredGalaxyTerms.length} galaxy, ${skipped} galaxy terms skipped).`,
+);
