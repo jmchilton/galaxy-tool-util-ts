@@ -57,7 +57,7 @@ body {
 }
 
 .sidebar-nav {
-  padding-top: 0.5rem;
+  padding: 0.5rem 1.2rem 1rem;
 }
 
 .sidebar-nav a {
@@ -122,7 +122,7 @@ body {
 .sidebar .search {
   margin-bottom: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 16px;
+  padding: 0 1.2rem 16px;
 }
 
 .sidebar .search input {
