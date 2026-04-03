@@ -17,6 +17,7 @@
 - **API Reference**
   - [Overview](api/README.md)
   - [TypeDoc Reference](api/typedoc/index.html)
+- [Glossary](glossary.md)
 - **Development**
   - [Contributing](development/contributing.md)
   - [Testing](development/testing.md)
