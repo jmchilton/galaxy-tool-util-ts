@@ -1,7 +1,6 @@
 import { ToolCache } from "@galaxy-tool-util/core";
 import {
   createFieldModel,
-  detectFormat,
   GalaxyWorkflowSchema,
   NativeGalaxyWorkflowSchema,
   expandedNative,
@@ -19,11 +18,10 @@ import {
 } from "@galaxy-tool-util/schema";
 import * as ParseResult from "effect/ParseResult";
 import * as S from "effect/Schema";
-import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import * as YAML from "yaml";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 import { createDefaultResolver } from "./url-resolver.js";
+import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 
 export type { WorkflowFormat } from "@galaxy-tool-util/schema";
 
@@ -54,23 +52,10 @@ export async function runValidateWorkflow(
   filePath: string,
   opts: ValidateWorkflowOptions,
 ): Promise<void> {
-  const raw = await readFile(filePath, "utf-8");
-  let data: Record<string, unknown>;
-  try {
-    if (filePath.endsWith(".ga") || filePath.endsWith(".json")) {
-      data = JSON.parse(raw);
-    } else {
-      data = YAML.parse(raw);
-    }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error(`Failed to parse ${filePath}: ${msg}`);
-    process.exitCode = 1;
-    return;
-  }
+  const data = await readWorkflowFile(filePath);
+  if (!data) return;
 
-  const format: WorkflowFormat =
-    opts.format === "native" || opts.format === "format2" ? opts.format : detectFormat(data);
+  const format: WorkflowFormat = resolveFormat(data, opts.format);
 
   const mode: ValidationMode = opts.mode === "json-schema" ? "json-schema" : "effect";
   console.log(`Detected format: ${format}, mode: ${mode}`);
@@ -263,7 +248,7 @@ async function _validateNativeStep(
 
 // --- Format2 validation ---
 
-async function validateFormat2Steps(
+export async function validateFormat2Steps(
   data: Record<string, unknown>,
   cache: ToolCache,
   prefix = "",

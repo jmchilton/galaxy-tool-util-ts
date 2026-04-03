@@ -5,7 +5,7 @@
   "type": "module",
   "bin": {
     "galaxy-tool-cache": "dist/bin/galaxy-tool-cache.js",
-    "galaxy-workflow-validate": "dist/bin/galaxy-workflow-validate.js"
+    "gxwf": "dist/bin/gxwf.js"
   },
   "exports": {
     ".": {

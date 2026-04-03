@@ -8,7 +8,7 @@ pnpm monorepo (`pnpm@10.33.0`) with 4 linked packages:
 
 - **`@galaxy-tool-util/schema`** — Effect Schema definitions for Galaxy parameter types + workflow schemas
 - **`@galaxy-tool-util/core`** — ParsedTool model, cache layer (memory + filesystem), ToolShed/Galaxy API client
-- **`@galaxy-tool-util/cli`** — `galaxy-tool-cache` and `galaxy-workflow-validate` CLIs (commander)
+- **`@galaxy-tool-util/cli`** — `galaxy-tool-cache` and `gxwf` CLIs (commander)
 - **`@galaxy-tool-util/tool-cache-proxy`** — `galaxy-tool-proxy` HTTP server mirroring ToolShed API (Effect HttpServer, YAML config, CORS)
 
 Dependency chain: `schema` ← `core` ← `cli` / `tool-cache-proxy`. Internal deps use `workspace:*`.

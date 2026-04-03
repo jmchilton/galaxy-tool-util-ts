@@ -81,6 +81,10 @@ export {
   type ExpandedNativeStep,
   type RefResolver,
   type ExpansionOptions,
+  /** Convert native workflow to normalized Format2. */
+  toFormat2,
+  /** Convert Format2 workflow to normalized native. */
+  toNative,
   /** Scan native workflow tool_state for legacy parameter encoding signals. */
   scanToolState,
   type LegacyEncodingClassification,
