@@ -84,7 +84,11 @@ export const RecordSchemaSchema = Schema.Struct({
   fields: Schema.optional(
     Schema.Union(
       Schema.Null,
-      Schema.Array(Schema.suspend((): Schema.Schema<any> => RecordFieldSchema)),
+      Schema.Array(
+        Schema.suspend((): Schema.Schema<any> => RecordFieldSchema).annotations({
+          identifier: "RecordFieldSchema",
+        }),
+      ),
     ),
   ),
   /** Must be `record` */
@@ -98,14 +102,18 @@ export const ArraySchemaSchema = Schema.Struct({
     PrimitiveTypeSchema,
     RecordSchemaSchema,
     EnumSchemaSchema,
-    Schema.suspend((): Schema.Schema<any> => ArraySchemaSchema),
+    Schema.suspend((): Schema.Schema<any> => ArraySchemaSchema).annotations({
+      identifier: "ArraySchemaSchema",
+    }),
     Schema.String,
     Schema.Array(
       Schema.Union(
         PrimitiveTypeSchema,
         RecordSchemaSchema,
         EnumSchemaSchema,
-        Schema.suspend((): Schema.Schema<any> => ArraySchemaSchema),
+        Schema.suspend((): Schema.Schema<any> => ArraySchemaSchema).annotations({
+          identifier: "ArraySchemaSchema",
+        }),
         Schema.String,
       ),
     ),
@@ -311,30 +319,6 @@ export const ReferencesToolSchema = Schema.Struct({
 });
 export type ReferencesTool = typeof ReferencesToolSchema.Type;
 
-/**
- * Associate an output parameter of the underlying process with a workflow
-parameter.  The workflow parameter (given in the `id` field) be may be used
-as a `source` to connect with input parameters of other workflow steps, or
-with an output parameter of the process.
-
-A unique identifier for this workflow output parameter.  This is
-the identifier to use in the `source` field of `WorkflowStepInput`
-to connect the output value to downstream parameters.
- */
-export const WorkflowStepOutputSchema = Schema.Struct({
-  ...IdentifiedSchema.fields,
-  add_tags: Schema.optional(Schema.Union(Schema.Null, Schema.Array(Schema.String))),
-  change_datatype: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  delete_intermediate_datasets: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  hide: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  remove_tags: Schema.optional(Schema.Union(Schema.Null, Schema.Array(Schema.String))),
-  rename: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  set_columns: Schema.optional(
-    Schema.Union(Schema.Record({ key: Schema.String, value: Schema.Unknown }), Schema.Null),
-  ),
-});
-export type WorkflowStepOutput = typeof WorkflowStepOutputSchema.Type;
-
 export const SinkSchema = Schema.Struct({
   /** Specifies one or more workflow parameters that will provide input to the underlying step parameter. */
   source: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
@@ -352,75 +336,6 @@ export const WorkflowStepInputSchema = Schema.Struct({
   default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
 });
 export type WorkflowStepInput = typeof WorkflowStepInputSchema.Type;
-
-/**
- * Definition of an invocation report for this workflow. Currently the only
-field is 'markdown'.
- */
-export const ReportSchema = Schema.Struct({
-  /** Galaxy flavored Markdown to define an invocation report. */
-  markdown: Schema.String,
-});
-export type Report = typeof ReportSchema.Type;
-
-/**
- * Base fields shared by all comment types.
- */
-export const BaseCommentSchema = Schema.Struct({
-  /** Position of the comment on the editor canvas as ``[x, y]`` coordinates. */
-  position: Schema.optional(Schema.Union(Schema.Array(Schema.Number), Schema.Null)),
-  /** Size of the comment as ``[width, height]``. */
-  size: Schema.optional(Schema.Union(Schema.Array(Schema.Number), Schema.Null)),
-  /** Display color of the comment (e.g. ``"none"``, ``"blue"``). */
-  color: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Optional label for referencing this comment from frame ``contains_comments`` fields or for use as a map key when comments are represented as a mapping. */
-  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type BaseComment = typeof BaseCommentSchema.Type;
-
-/**
- * A plain text annotation in the workflow editor.
- */
-export const TextCommentSchema = Schema.Struct({
-  ...BaseCommentSchema.fields,
-  /** Comment type (``text``). */
-  type: Schema.Literal("text"),
-  /** The text content. */
-  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Whether the text is displayed in bold. */
-  bold: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  /** Whether the text is displayed in italic. */
-  italic: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  /** Font size of the text. */
-  text_size: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
-});
-export type TextComment = typeof TextCommentSchema.Type;
-
-/**
- * A Markdown-rendered annotation in the workflow editor.
- */
-export const MarkdownCommentSchema = Schema.Struct({
-  ...BaseCommentSchema.fields,
-  /** Comment type (``markdown``). */
-  type: Schema.Literal("markdown"),
-  /** Markdown content. */
-  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type MarkdownComment = typeof MarkdownCommentSchema.Type;
-
-/**
- * A freehand drawn line on the editor canvas.
- */
-export const FreehandCommentSchema = Schema.Struct({
-  ...BaseCommentSchema.fields,
-  /** Comment type (``freehand``). */
-  type: Schema.Literal("freehand"),
-  /** Line thickness. */
-  thickness: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
-  /** Array of ``[x, y]`` coordinate pairs defining the freehand line path. */
-  line: Schema.optional(Schema.Union(Schema.Array(Schema.Array(Schema.Number)), Schema.Null)),
-});
-export type FreehandComment = typeof FreehandCommentSchema.Type;
 
 /**
  * Base fields shared by all creator types, corresponding to schema.org
@@ -449,25 +364,52 @@ export const BaseCreatorSchema = Schema.Struct({
 export type BaseCreator = typeof BaseCreatorSchema.Type;
 
 /**
- * A person who created or contributed to the workflow.
-Corresponds to a `schema.org Person <https://schema.org/Person>`_.
+ * An organization that created or contributed to the workflow.
+Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
  */
-export const CreatorPersonSchema = Schema.Struct({
+export const CreatorOrganizationSchema = Schema.Struct({
   ...BaseCreatorSchema.fields,
-  /** Creator type discriminator (``Person``). */
-  class: Schema.Literal("Person"),
-  /** Given (first) name. */
-  givenName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Family (last) name. */
-  familyName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
-  honorificPrefix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
-  honorificSuffix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Job title or role. */
-  jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Creator type discriminator (``Organization``). */
+  class: Schema.Literal("Organization"),
 });
-export type CreatorPerson = typeof CreatorPersonSchema.Type;
+export type CreatorOrganization = typeof CreatorOrganizationSchema.Type;
+
+/**
+ * Base fields shared by all comment types.
+ */
+export const BaseCommentSchema = Schema.Struct({
+  /** Position of the comment on the editor canvas as ``[x, y]`` coordinates. */
+  position: Schema.optional(Schema.Union(Schema.Array(Schema.Number), Schema.Null)),
+  /** Size of the comment as ``[width, height]``. */
+  size: Schema.optional(Schema.Union(Schema.Array(Schema.Number), Schema.Null)),
+  /** Display color of the comment (e.g. ``"none"``, ``"blue"``). */
+  color: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Optional label for referencing this comment from frame ``contains_comments`` fields or for use as a map key when comments are represented as a mapping. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type BaseComment = typeof BaseCommentSchema.Type;
+
+/**
+ * A Markdown-rendered annotation in the workflow editor.
+ */
+export const MarkdownCommentSchema = Schema.Struct({
+  ...BaseCommentSchema.fields,
+  /** Comment type (``markdown``). */
+  type: Schema.Literal("markdown"),
+  /** Markdown content. */
+  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type MarkdownComment = typeof MarkdownCommentSchema.Type;
+
+/**
+ * Definition of an invocation report for this workflow. Currently the only
+field is 'markdown'.
+ */
+export const ReportSchema = Schema.Struct({
+  /** Galaxy flavored Markdown to define an invocation report. */
+  markdown: Schema.String,
+});
+export type Report = typeof ReportSchema.Type;
 
 /**
  * A rectangular grouping box that visually contains steps and other comments.
@@ -490,15 +432,57 @@ export const FrameCommentSchema = Schema.Struct({
 export type FrameComment = typeof FrameCommentSchema.Type;
 
 /**
- * An organization that created or contributed to the workflow.
-Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
+ * A plain text annotation in the workflow editor.
  */
-export const CreatorOrganizationSchema = Schema.Struct({
-  ...BaseCreatorSchema.fields,
-  /** Creator type discriminator (``Organization``). */
-  class: Schema.Literal("Organization"),
+export const TextCommentSchema = Schema.Struct({
+  ...BaseCommentSchema.fields,
+  /** Comment type (``text``). */
+  type: Schema.Literal("text"),
+  /** The text content. */
+  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Whether the text is displayed in bold. */
+  bold: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  /** Whether the text is displayed in italic. */
+  italic: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  /** Font size of the text. */
+  text_size: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
 });
-export type CreatorOrganization = typeof CreatorOrganizationSchema.Type;
+export type TextComment = typeof TextCommentSchema.Type;
+
+/**
+ * A person who created or contributed to the workflow.
+Corresponds to a `schema.org Person <https://schema.org/Person>`_.
+ */
+export const CreatorPersonSchema = Schema.Struct({
+  ...BaseCreatorSchema.fields,
+  /** Creator type discriminator (``Person``). */
+  class: Schema.Literal("Person"),
+  /** Given (first) name. */
+  givenName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Family (last) name. */
+  familyName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
+  honorificPrefix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
+  honorificSuffix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Job title or role. */
+  jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type CreatorPerson = typeof CreatorPersonSchema.Type;
+
+/**
+ * A freehand drawn line on the editor canvas.
+ */
+export const FreehandCommentSchema = Schema.Struct({
+  ...BaseCommentSchema.fields,
+  /** Comment type (``freehand``). */
+  type: Schema.Literal("freehand"),
+  /** Line thickness. */
+  thickness: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
+  /** Array of ``[x, y]`` coordinate pairs defining the freehand line path. */
+  line: Schema.optional(Schema.Union(Schema.Array(Schema.Array(Schema.Number)), Schema.Null)),
+});
+export type FreehandComment = typeof FreehandCommentSchema.Type;
 
 /**
  * A Galaxy workflow description. This record corresponds to the description of a workflow that should be executable
@@ -526,10 +510,16 @@ export const GalaxyWorkflowSchema = Schema.Struct({
   doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
   /** The individual steps that make up the workflow. Each step is executed when all of its input data links are fulfilled. */
   steps: Schema.Union(
-    Schema.Array(Schema.suspend((): Schema.Schema<any> => WorkflowStepSchema)),
+    Schema.Array(
+      Schema.suspend((): Schema.Schema<any> => WorkflowStepSchema).annotations({
+        identifier: "WorkflowStepSchema",
+      }),
+    ),
     Schema.Record({
       key: Schema.String,
-      value: Schema.suspend((): Schema.Schema<any> => WorkflowStepSchema),
+      value: Schema.suspend((): Schema.Schema<any> => WorkflowStepSchema).annotations({
+        identifier: "WorkflowStepSchema",
+      }),
     }),
   ),
   /** Workflow invocation report template. */
@@ -572,6 +562,30 @@ export const GalaxyWorkflowSchema = Schema.Struct({
   release: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type GalaxyWorkflow = typeof GalaxyWorkflowSchema.Type;
+
+/**
+ * Associate an output parameter of the underlying process with a workflow
+parameter.  The workflow parameter (given in the `id` field) be may be used
+as a `source` to connect with input parameters of other workflow steps, or
+with an output parameter of the process.
+
+A unique identifier for this workflow output parameter.  This is
+the identifier to use in the `source` field of `WorkflowStepInput`
+to connect the output value to downstream parameters.
+ */
+export const WorkflowStepOutputSchema = Schema.Struct({
+  ...IdentifiedSchema.fields,
+  add_tags: Schema.optional(Schema.Union(Schema.Null, Schema.Array(Schema.String))),
+  change_datatype: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  delete_intermediate_datasets: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  hide: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  remove_tags: Schema.optional(Schema.Union(Schema.Null, Schema.Array(Schema.String))),
+  rename: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  set_columns: Schema.optional(
+    Schema.Union(Schema.Record({ key: Schema.String, value: Schema.Unknown }), Schema.Null),
+  ),
+});
+export type WorkflowStepOutput = typeof WorkflowStepOutputSchema.Type;
 
 /**
  * This represents a non-input step a Galaxy Workflow.
@@ -637,7 +651,9 @@ export const WorkflowStepSchema = Schema.Struct({
   /** Specifies a subworkflow to run. May be an inline workflow definition, a URL string, or an @import reference dict. */
   run: Schema.optional(
     Schema.Union(
-      GalaxyWorkflowSchema,
+      Schema.suspend((): Schema.Schema<any> => GalaxyWorkflowSchema).annotations({
+        identifier: "GalaxyWorkflowSchema",
+      }),
       Schema.String,
       Schema.Record({ key: Schema.String, value: Schema.Unknown }),
       Schema.Null,
