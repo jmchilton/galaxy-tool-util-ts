@@ -35,6 +35,8 @@ const STEP_TYPE_ALIASES: Record<string, string> = {
 class ConversionContext {
   labels = new Map<string, number>();
 
+  constructor(readonly options: ToNativeOptions = {}) {}
+
   stepId(labelOrId: string | number): number {
     const key = String(labelOrId);
     if (this.labels.has(key)) return this.labels.get(key)!;
@@ -47,7 +49,7 @@ class ConversionContext {
   }
 
   childContext(): ConversionContext {
-    return new ConversionContext();
+    return new ConversionContext(this.options);
   }
 }
 
@@ -122,9 +124,9 @@ export function toNative(raw: unknown, options?: ToNativeOptions): NormalizedNat
     wf = normalizedFormat2(raw);
   }
 
-  const ctx = new ConversionContext();
+  const ctx = new ConversionContext(options);
   _registerLabels(wf, ctx);
-  return _buildNativeWorkflow(wf, ctx, options);
+  return _buildNativeWorkflow(wf, ctx);
 }
 
 function _isNormalizedFormat2(raw: unknown): raw is NormalizedFormat2Workflow {
@@ -150,7 +152,6 @@ function _registerLabels(wf: NormalizedFormat2Workflow, ctx: ConversionContext):
 function _buildNativeWorkflow(
   wf: NormalizedFormat2Workflow,
   ctx: ConversionContext,
-  options?: ToNativeOptions,
 ): NormalizedNativeWorkflow {
   const nativeSteps: Record<string, NormalizedNativeStep> = {};
 
@@ -163,7 +164,7 @@ function _buildNativeWorkflow(
   const inputsOffset = wf.inputs.length;
   for (let j = 0; j < wf.steps.length; j++) {
     const orderIndex = inputsOffset + j;
-    nativeSteps[String(orderIndex)] = _buildStep(wf.steps[j], orderIndex, ctx, options);
+    nativeSteps[String(orderIndex)] = _buildStep(wf.steps[j], orderIndex, ctx);
   }
 
   // Wire workflow outputs
@@ -294,12 +295,11 @@ function _buildStep(
   step: NormalizedFormat2Step,
   orderIndex: number,
   ctx: ConversionContext,
-  options?: ToNativeOptions,
 ): NormalizedNativeStep {
   const stepType = _resolveStepType(step);
 
-  if (stepType === "tool") return _buildToolStep(step, orderIndex, ctx, options);
-  if (stepType === "subworkflow") return _buildSubworkflowStep(step, orderIndex, ctx, options);
+  if (stepType === "tool") return _buildToolStep(step, orderIndex, ctx);
+  if (stepType === "subworkflow") return _buildSubworkflowStep(step, orderIndex, ctx);
   if (stepType === "pause") return _buildPauseStep(step, orderIndex, ctx);
   if (stepType === "pick_value") return _buildPickValueStep(step, orderIndex, ctx);
   throw new Error(`Unhandled step type: ${stepType}`);
@@ -322,7 +322,6 @@ function _buildToolStep(
   step: NormalizedFormat2Step,
   orderIndex: number,
   ctx: ConversionContext,
-  options?: ToNativeOptions,
 ): NormalizedNativeStep {
   // Detect GalaxyUserTool in run field
   let toolRepresentation: Record<string, unknown> | undefined;
@@ -337,28 +336,27 @@ function _buildToolStep(
   const connect = _extractConnections(step);
   const runtimeInputs = step.runtime_inputs ?? [];
 
-  // Merge state: prefer stateful callback output if provided, else
-  // fall back to step.state + runtime_inputs, else step.tool_state.
-  const mergedState: Record<string, unknown> = step.state
-    ? { ...(step.state as Record<string, unknown>) }
-    : step.tool_state != null
-      ? { ...(step.tool_state as Record<string, unknown>) }
-      : {};
-  for (const ri of runtimeInputs) {
-    mergedState[ri] = { __class__: "RuntimeValue" };
-  }
-
-  const override = options?.stateEncodeToNative?.(step, mergedState);
-  if (override != null) {
-    Object.assign(toolState, override);
-  } else if (step.state != null || runtimeInputs.length > 0) {
-    const stepState = step.state ? { ...step.state } : {};
-    Object.assign(toolState, stepState);
+  // Build the pre-native merged state dict. Precedence matches the original
+  // (pre-stateful) logic: step.state + runtimeInputs wins; step.tool_state
+  // is only used as a fallback when neither applies.
+  let mergedState: Record<string, unknown>;
+  if (step.state != null || runtimeInputs.length > 0) {
+    mergedState = step.state ? { ...(step.state as Record<string, unknown>) } : {};
     for (const ri of runtimeInputs) {
-      toolState[ri] = { __class__: "RuntimeValue" };
+      mergedState[ri] = { __class__: "RuntimeValue" };
     }
   } else if (step.tool_state != null) {
-    Object.assign(toolState, step.tool_state);
+    mergedState = { ...(step.tool_state as Record<string, unknown>) };
+  } else {
+    mergedState = {};
+  }
+
+  // Stateful override: callback may replace the merged dict (e.g. reversing
+  // format2 coercions). Null → fall back to the schema-free merged dict.
+  const override = ctx.options.stateEncodeToNative?.(step, mergedState);
+  const finalState = override ?? mergedState;
+  if (Object.keys(finalState).length > 0) {
+    Object.assign(toolState, finalState);
   }
 
   const inputConnections = _buildInputConnections(connect, ctx);
@@ -397,7 +395,6 @@ function _buildSubworkflowStep(
   step: NormalizedFormat2Step,
   orderIndex: number,
   ctx: ConversionContext,
-  options?: ToNativeOptions,
 ): NormalizedNativeStep {
   let subworkflow: NormalizedNativeWorkflow | null = null;
   let contentId: string | null = null;
@@ -408,7 +405,7 @@ function _buildSubworkflowStep(
     childCtx = ctx.childContext();
     const subFmt2 = step.run as NormalizedFormat2Workflow;
     _registerLabels(subFmt2, childCtx);
-    subworkflow = _buildNativeWorkflow(subFmt2, childCtx, options);
+    subworkflow = _buildNativeWorkflow(subFmt2, childCtx);
   } else if (typeof step.run === "string") {
     contentId = step.run;
   }
