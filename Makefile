@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations
+.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-glossary build-glossary
 
 all: check test
 
@@ -261,6 +261,24 @@ check-sync:
 	fi; \
 	if $$failed; then exit 1; fi
 
+# Sync Galaxy's terms.yml for the glossary.
+#   GALAXY_ROOT=~/projects/repositories/galaxy make sync-glossary
+GLOSSARY_SRC = $(GALAXY_ROOT)/lib/galaxy/schema/terms.yml
+GLOSSARY_DST = docs/glossary/galaxy-terms.yml
+
+sync-glossary:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@test -f "$(GLOSSARY_SRC)" || (echo "ERROR: $(GLOSSARY_SRC) not found" && exit 1)
+	@echo "Syncing Galaxy terms.yml..."
+	cp $(GLOSSARY_SRC) $(GLOSSARY_DST)
+	@echo "Synced."
+
+# Merge galaxy-terms.yml + tool-util-terms.yml → docs/glossary.md
+build-glossary:
+	@node scripts/build-glossary.mjs
+
 # Full sync + regenerate + verify. Requires both GALAXY_ROOT and GXFORMAT2_ROOT.
 sync:
 ifndef GALAXY_ROOT
@@ -269,8 +287,8 @@ endif
 ifndef GXFORMAT2_ROOT
 	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
 endif
-	$(MAKE) sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations
-	$(MAKE) generate-schemas
+	$(MAKE) sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations sync-glossary
+	$(MAKE) generate-schemas build-glossary
 	$(MAKE) verify-golden
 
 # Sync schema-salad YAML sources from gxformat2 for workflow schema generation.
