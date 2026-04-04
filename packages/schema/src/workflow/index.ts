@@ -29,7 +29,15 @@ export {
   type NormalizedNativeStep,
   type ToolReference,
   toFormat2,
+  type ToFormat2Options,
+  type Format2StateOverride,
   toNative,
+  type ToNativeOptions,
+  toFormat2Stateful,
+  toNativeStateful,
+  type StepConversionStatus,
+  type StatefulExportResult,
+  type StatefulNativeResult,
   ensureFormat2,
   ensureNative,
   expandedFormat2,
@@ -66,6 +74,29 @@ export {
   type LegacyEncodingHit,
   type LegacyEncodingScanResult,
 } from "./legacy-encoding.js";
+
+export {
+  walkNativeState,
+  walkFormat2State,
+  SKIP_VALUE,
+  UnknownKeyError,
+  type LeafCallback,
+  type WalkNativeOptions,
+} from "./walker.js";
+
+export {
+  convertScalarValue,
+  reverseScalarValue,
+  convertStateToFormat2,
+  encodeStateToNative,
+  type Format2ConvertedState,
+} from "./stateful-convert.js";
+
+export {
+  precheckNativeWorkflow,
+  type PrecheckResult,
+  type StepPrecheckResult,
+} from "./precheck.js";
 
 export { cleanWorkflow } from "./clean.js";
 

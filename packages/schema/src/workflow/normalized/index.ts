@@ -24,8 +24,14 @@ export {
   type ToolReference,
 } from "./native.js";
 
-export { toFormat2 } from "./toFormat2.js";
-export { toNative } from "./toNative.js";
+export { toFormat2, type ToFormat2Options, type Format2StateOverride } from "./toFormat2.js";
+export { toNative, type ToNativeOptions } from "./toNative.js";
+export {
+  toFormat2Stateful,
+  type StepConversionStatus,
+  type StatefulExportResult,
+} from "./toFormat2Stateful.js";
+export { toNativeStateful, type StatefulNativeResult } from "./toNativeStateful.js";
 export { ensureFormat2, ensureNative } from "./ensure.js";
 export {
   expandedFormat2,

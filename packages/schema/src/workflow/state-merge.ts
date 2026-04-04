@@ -19,6 +19,8 @@ import type {
   BooleanParameterModel,
   SelectParameterModel,
 } from "../schema/bundle-types.js";
+import { parseBool } from "./coercions.js";
+import { CONNECTED_VALUE, isConnectedValue } from "./runtime-markers.js";
 
 // --- Helpers (ported from Python visitor.py) ---
 
@@ -110,28 +112,15 @@ function _testValueMatchesDiscriminator(
 ): boolean {
   if (testParam.parameter_type === "gx_boolean") {
     // Boolean coercion: handle string "true"/"false"/"True"/"False" and actual booleans
-    const boolValue = _coerceToBool(testValue);
-    const discBool =
-      typeof discriminator === "boolean" ? discriminator : _coerceToBool(discriminator);
+    const boolValue = parseBool(testValue);
+    const discBool = typeof discriminator === "boolean" ? discriminator : parseBool(discriminator);
     return boolValue === discBool;
   }
   // Select: string comparison
   return String(testValue) === String(discriminator);
 }
 
-function _coerceToBool(value: unknown): boolean | null {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const lower = value.toLowerCase();
-    if (lower === "true") return true;
-    if (lower === "false") return false;
-  }
-  return null;
-}
-
 // --- Main injection function ---
-
-const CONNECTED_VALUE = { __class__: "ConnectedValue" } as const;
 
 /**
  * Inject ConnectedValue markers into a state dict for all connections.
@@ -250,15 +239,6 @@ function _mergeParam(
 
 // --- ConnectedValue stripping ---
 
-function _isConnectedValue(value: unknown): boolean {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    (value as Record<string, unknown>).__class__ === "ConnectedValue"
-  );
-}
-
 /**
  * Strip ConnectedValue markers from a state dict using the parameter tree.
  *
@@ -319,7 +299,7 @@ function _stripParam(
     }
   } else {
     // Leaf parameter
-    if (_isConnectedValue(state[name])) {
+    if (isConnectedValue(state[name])) {
       delete state[name];
     }
   }

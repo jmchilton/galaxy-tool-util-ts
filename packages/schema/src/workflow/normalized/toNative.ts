@@ -99,10 +99,22 @@ const POST_JOB_ACTIONS: Record<string, PJADef> = {
 
 // --- Entry point ---
 
+export interface ToNativeOptions {
+  /**
+   * Per-step callback: given a format2 step and its merged pre-native
+   * state dict, return a replacement native tool_state dict, or null to
+   * fall back to the default passthrough.
+   */
+  stateEncodeToNative?: (
+    step: NormalizedFormat2Step,
+    state: Record<string, unknown>,
+  ) => Record<string, unknown> | null;
+}
+
 /**
  * Convert a Format2 workflow to normalized native Galaxy format.
  */
-export function toNative(raw: unknown): NormalizedNativeWorkflow {
+export function toNative(raw: unknown, options?: ToNativeOptions): NormalizedNativeWorkflow {
   let wf: NormalizedFormat2Workflow;
   if (_isNormalizedFormat2(raw)) {
     wf = raw;
@@ -112,7 +124,7 @@ export function toNative(raw: unknown): NormalizedNativeWorkflow {
 
   const ctx = new ConversionContext();
   _registerLabels(wf, ctx);
-  return _buildNativeWorkflow(wf, ctx);
+  return _buildNativeWorkflow(wf, ctx, options);
 }
 
 function _isNormalizedFormat2(raw: unknown): raw is NormalizedFormat2Workflow {
@@ -138,6 +150,7 @@ function _registerLabels(wf: NormalizedFormat2Workflow, ctx: ConversionContext):
 function _buildNativeWorkflow(
   wf: NormalizedFormat2Workflow,
   ctx: ConversionContext,
+  options?: ToNativeOptions,
 ): NormalizedNativeWorkflow {
   const nativeSteps: Record<string, NormalizedNativeStep> = {};
 
@@ -150,7 +163,7 @@ function _buildNativeWorkflow(
   const inputsOffset = wf.inputs.length;
   for (let j = 0; j < wf.steps.length; j++) {
     const orderIndex = inputsOffset + j;
-    nativeSteps[String(orderIndex)] = _buildStep(wf.steps[j], orderIndex, ctx);
+    nativeSteps[String(orderIndex)] = _buildStep(wf.steps[j], orderIndex, ctx, options);
   }
 
   // Wire workflow outputs
@@ -281,11 +294,12 @@ function _buildStep(
   step: NormalizedFormat2Step,
   orderIndex: number,
   ctx: ConversionContext,
+  options?: ToNativeOptions,
 ): NormalizedNativeStep {
   const stepType = _resolveStepType(step);
 
-  if (stepType === "tool") return _buildToolStep(step, orderIndex, ctx);
-  if (stepType === "subworkflow") return _buildSubworkflowStep(step, orderIndex, ctx);
+  if (stepType === "tool") return _buildToolStep(step, orderIndex, ctx, options);
+  if (stepType === "subworkflow") return _buildSubworkflowStep(step, orderIndex, ctx, options);
   if (stepType === "pause") return _buildPauseStep(step, orderIndex, ctx);
   if (stepType === "pick_value") return _buildPickValueStep(step, orderIndex, ctx);
   throw new Error(`Unhandled step type: ${stepType}`);
@@ -308,6 +322,7 @@ function _buildToolStep(
   step: NormalizedFormat2Step,
   orderIndex: number,
   ctx: ConversionContext,
+  options?: ToNativeOptions,
 ): NormalizedNativeStep {
   // Detect GalaxyUserTool in run field
   let toolRepresentation: Record<string, unknown> | undefined;
@@ -322,7 +337,21 @@ function _buildToolStep(
   const connect = _extractConnections(step);
   const runtimeInputs = step.runtime_inputs ?? [];
 
-  if (step.state != null || runtimeInputs.length > 0) {
+  // Merge state: prefer stateful callback output if provided, else
+  // fall back to step.state + runtime_inputs, else step.tool_state.
+  const mergedState: Record<string, unknown> = step.state
+    ? { ...(step.state as Record<string, unknown>) }
+    : step.tool_state != null
+      ? { ...(step.tool_state as Record<string, unknown>) }
+      : {};
+  for (const ri of runtimeInputs) {
+    mergedState[ri] = { __class__: "RuntimeValue" };
+  }
+
+  const override = options?.stateEncodeToNative?.(step, mergedState);
+  if (override != null) {
+    Object.assign(toolState, override);
+  } else if (step.state != null || runtimeInputs.length > 0) {
     const stepState = step.state ? { ...step.state } : {};
     Object.assign(toolState, stepState);
     for (const ri of runtimeInputs) {
@@ -368,6 +397,7 @@ function _buildSubworkflowStep(
   step: NormalizedFormat2Step,
   orderIndex: number,
   ctx: ConversionContext,
+  options?: ToNativeOptions,
 ): NormalizedNativeStep {
   let subworkflow: NormalizedNativeWorkflow | null = null;
   let contentId: string | null = null;
@@ -378,7 +408,7 @@ function _buildSubworkflowStep(
     childCtx = ctx.childContext();
     const subFmt2 = step.run as NormalizedFormat2Workflow;
     _registerLabels(subFmt2, childCtx);
-    subworkflow = _buildNativeWorkflow(subFmt2, childCtx);
+    subworkflow = _buildNativeWorkflow(subFmt2, childCtx, options);
   } else if (typeof step.run === "string") {
     contentId = step.run;
   }

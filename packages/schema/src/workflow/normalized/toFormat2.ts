@@ -24,14 +24,36 @@ import { UNLABELED_INPUT_PREFIX, UNLABELED_STEP_PREFIX, isUnlabeled, Labels } fr
 const INPUT_STEP_TYPES = new Set(["data_input", "data_collection_input", "parameter_input"]);
 
 /**
- * Convert a native Galaxy workflow to normalized Format2.
+ * Per-step callback result: a replacement format2 state dict + optional `in`
+ * block overrides (flat path → source). Return null to fall back to the
+ * default schema-free passthrough for this step.
  */
-export function toFormat2(raw: unknown): NormalizedFormat2Workflow {
-  const wf = normalizedNative(raw);
-  return _buildFormat2Workflow(wf);
+export interface Format2StateOverride {
+  state: Record<string, unknown>;
+  in?: Record<string, string>;
 }
 
-function _buildFormat2Workflow(wf: NormalizedNativeWorkflow): NormalizedFormat2Workflow {
+export interface ToFormat2Options {
+  /**
+   * Per-step callback: given the native step, return a replacement format2
+   * `state` dict (and optional `in` block additions), or null for the default
+   * passthrough behavior.
+   */
+  stateEncodeToFormat2?: (nativeStep: NormalizedNativeStep) => Format2StateOverride | null;
+}
+
+/**
+ * Convert a native Galaxy workflow to normalized Format2.
+ */
+export function toFormat2(raw: unknown, options?: ToFormat2Options): NormalizedFormat2Workflow {
+  const wf = normalizedNative(raw);
+  return _buildFormat2Workflow(wf, options);
+}
+
+function _buildFormat2Workflow(
+  wf: NormalizedNativeWorkflow,
+  options?: ToFormat2Options,
+): NormalizedFormat2Workflow {
   // Build label map: step key → label string
   const labelMap = new Map<string, string>();
   for (const [key, step] of Object.entries(wf.steps)) {
@@ -63,7 +85,7 @@ function _buildFormat2Workflow(wf: NormalizedNativeWorkflow): NormalizedFormat2W
     if (INPUT_STEP_TYPES.has(step.type as string)) {
       inputParams.push(_buildInputParam(step));
     } else {
-      fmt2Steps.push(_buildFormat2Step(step, labelMap));
+      fmt2Steps.push(_buildFormat2Step(step, labelMap, options));
     }
   }
 
@@ -164,10 +186,11 @@ function _resolveStepIdentity(
 function _buildFormat2Step(
   step: NormalizedNativeStep,
   labelMap: Map<string, string>,
+  options?: ToFormat2Options,
 ): NormalizedFormat2Step {
   const moduleType = step.type as string;
   if (moduleType === "subworkflow") {
-    return _buildSubworkflowFormat2Step(step, labelMap);
+    return _buildSubworkflowFormat2Step(step, labelMap, options);
   }
   if (moduleType === "pause") {
     return _buildPauseFormat2Step(step, labelMap);
@@ -176,12 +199,13 @@ function _buildFormat2Step(
     return _buildPickValueFormat2Step(step, labelMap);
   }
   // Default: tool
-  return _buildToolFormat2Step(step, labelMap);
+  return _buildToolFormat2Step(step, labelMap, options);
 }
 
 function _buildToolFormat2Step(
   step: NormalizedNativeStep,
   labelMap: Map<string, string>,
+  options?: ToFormat2Options,
 ): NormalizedFormat2Step {
   // User-defined tool: tool_representation with class GalaxyUserTool
   const toolRep = step.tool_representation as Record<string, unknown> | null | undefined;
@@ -192,13 +216,24 @@ function _buildToolFormat2Step(
   const inList = _buildFormat2StepInputs(step, labelMap);
   const outList = _buildFormat2StepOutputs(step);
 
-  // Tool state: strip __page__ and __rerun_remap_job_id__
+  // Stateful override: if the caller provides a per-step state encoder
+  // and it returns a non-null result, use its state (and optional `in`
+  // block entries) instead of the default schema-free passthrough.
+  const override = options?.stateEncodeToFormat2?.(step);
   let toolState: Record<string, unknown> | null | undefined = null;
-  const ts = { ...step.tool_state };
-  delete ts.__page__;
-  delete ts.__rerun_remap_job_id__;
-  if (Object.keys(ts).length > 0) {
-    toolState = ts;
+  if (override != null) {
+    toolState = Object.keys(override.state).length > 0 ? override.state : null;
+    if (override.in) {
+      _mergeInOverrides(inList, override.in);
+    }
+  } else {
+    // Default: copy tool_state, strip bookkeeping keys
+    const ts = { ...step.tool_state };
+    delete ts.__page__;
+    delete ts.__rerun_remap_job_id__;
+    if (Object.keys(ts).length > 0) {
+      toolState = ts;
+    }
   }
 
   const { stepId, displayLabel } = _resolveStepIdentity(step, labelMap);
@@ -243,6 +278,7 @@ function _buildUserToolFormat2Step(
 function _buildSubworkflowFormat2Step(
   step: NormalizedNativeStep,
   labelMap: Map<string, string>,
+  options?: ToFormat2Options,
 ): NormalizedFormat2Step {
   const inList = _buildFormat2StepInputs(step, labelMap);
   const outList = _buildFormat2StepOutputs(step);
@@ -253,7 +289,7 @@ function _buildSubworkflowFormat2Step(
     // URL/TRS reference passes through as string
     run = step.content_id as string;
   } else if (step.subworkflow != null) {
-    run = _buildFormat2Workflow(step.subworkflow);
+    run = _buildFormat2Workflow(step.subworkflow, options);
   } else if (step.content_id) {
     // Other content_id (e.g. direct reference)
     run = step.content_id as string;
@@ -368,6 +404,29 @@ function _buildFormat2StepInputs(
   }
 
   return inList;
+}
+
+// --- Stateful `in` block overrides ---
+
+/**
+ * Merge stateful override `in` entries into the step's in-list. These come
+ * from RuntimeValue markers recorded by the stateful state encoder. Skips
+ * paths that already have an entry (e.g. from input_connections).
+ */
+function _mergeInOverrides(
+  inList: NormalizedFormat2StepInput[],
+  overrides: Record<string, string>,
+): void {
+  const existing = new Set<string>();
+  for (const entry of inList) {
+    if ((entry as Record<string, unknown>).id) {
+      existing.add((entry as Record<string, unknown>).id as string);
+    }
+  }
+  for (const [path, source] of Object.entries(overrides)) {
+    if (existing.has(path)) continue;
+    inList.push({ id: path, source } as unknown as NormalizedFormat2StepInput);
+  }
 }
 
 // --- Step outputs from post_job_actions ---
