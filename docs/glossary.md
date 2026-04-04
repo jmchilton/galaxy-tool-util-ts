@@ -116,7 +116,7 @@ for a tool invocation. Its shape depends on the state representation — e.g. in
 `workflow_step_linked`, connected parameters are replaced with `{"__class__": "ConnectedValue"}`.
 
 Stale tool state occurs when a workflow references an older version of a tool whose
-parameters have changed. The `galaxy-workflow-validate` CLI detects and reports these.
+parameters have changed. The `gxwf validate` CLI detects and reports these.
 
 ### TRS
 

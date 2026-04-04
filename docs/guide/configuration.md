@@ -23,7 +23,7 @@ All commands accept `--cache-dir <dir>` to override the cache directory.
 | `schema` | `--representation <rep>` | `workflow_step` | [State representation](glossary#state-representations) |
 | `schema` | `--output <file>` | stdout | Output file |
 
-### galaxy-workflow-validate
+### gxwf validate
 
 | Flag | Default | Description |
 |---|---|---|

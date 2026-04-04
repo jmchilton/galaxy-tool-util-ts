@@ -55,7 +55,7 @@ galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --versi
 galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/iuc/bcftools_norm/bcftools_norm --version 1.15.1+galaxy3
 
 # Then validate offline
-galaxy-workflow-validate my-workflow.ga
+gxwf validate my-workflow.ga
 ```
 
 Alternatively, commit the cache directory to your repo or use a CI cache action.

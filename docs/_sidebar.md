@@ -6,6 +6,7 @@
   - [CLI](packages/cli.md)
   - [Tool Cache Proxy](packages/tool-cache-proxy.md)
 - **Guides**
+  - [Workflow Operations](guide/workflow-operations.md)
   - [Workflow Validation](guide/workflow-validation.md)
   - [Tool Caching](guide/tool-caching.md)
   - [Proxy Server Setup](guide/proxy-server.md)
