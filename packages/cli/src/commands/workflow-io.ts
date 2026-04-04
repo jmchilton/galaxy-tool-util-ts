@@ -2,7 +2,7 @@
  * Shared workflow file I/O helpers for CLI commands.
  */
 import { detectFormat, type WorkflowFormat } from "@galaxy-tool-util/schema";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import * as YAML from "yaml";
 
 /** Read and parse a workflow file, auto-detecting JSON vs YAML by extension. */
@@ -38,4 +38,18 @@ export function serializeWorkflow(
     return YAML.stringify(data, { lineWidth: 0 });
   }
   return JSON.stringify(data, null, 2) + "\n";
+}
+
+/** Write serialized workflow content to a file or stdout. */
+export async function writeWorkflowOutput(
+  content: string,
+  output?: string,
+  label = "Workflow",
+): Promise<void> {
+  if (output) {
+    await writeFile(output, content, "utf-8");
+    console.log(`${label} written to ${output}`);
+  } else {
+    process.stdout.write(content);
+  }
 }

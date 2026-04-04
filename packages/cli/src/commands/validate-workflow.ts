@@ -21,6 +21,7 @@ import * as S from "effect/Schema";
 import { dirname } from "node:path";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 import { createDefaultResolver } from "./url-resolver.js";
+import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 
 export type { WorkflowFormat } from "@galaxy-tool-util/schema";
@@ -117,26 +118,8 @@ export async function runValidateWorkflow(
     return;
   }
 
-  let stateOk = true;
-  let validated = 0;
-  let skipped = 0;
-
-  for (const r of results) {
-    if (r.status === "skip") {
-      skipped++;
-      console.warn(`  [${r.stepLabel}] skipped — ${r.errors[0] ?? "unknown"}`);
-    } else if (r.status === "fail") {
-      validated++;
-      stateOk = false;
-      console.error(`  [${r.stepLabel}] tool_state errors (${r.toolId}):`);
-      for (const line of r.errors) {
-        console.error(`    ${line}`);
-      }
-    } else {
-      validated++;
-      console.log(`  [${r.stepLabel}] tool_state: OK`);
-    }
-  }
+  const { validated, skipped } = renderStepResults(results);
+  const stateOk = !results.some((r) => r.status === "fail");
 
   console.log(`\nTool state: ${validated} validated, ${skipped} skipped`);
   process.exitCode = structOk && stateOk ? 0 : 1;

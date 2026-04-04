@@ -1,153 +1,26 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import * as S from "effect/Schema";
-
-import { ToolCache, cacheKey, ParsedTool } from "@galaxy-tool-util/core";
 import * as YAML from "yaml";
+
 import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
-
-// A simple tool with text + integer params (no data inputs)
-const simpleTool = {
-  id: "simple_tool",
-  version: "1.0",
-  name: "Simple Tool",
-  description: null,
-  inputs: [
-    {
-      name: "input_text",
-      parameter_type: "gx_text",
-      type: "text",
-      hidden: false,
-      label: "Input",
-      help: null,
-      argument: null,
-      is_dynamic: false,
-      optional: false,
-      area: false,
-      value: "default",
-      default_options: [],
-      validators: [],
-    },
-    {
-      name: "num_lines",
-      parameter_type: "gx_integer",
-      type: "integer",
-      hidden: false,
-      label: "Lines",
-      help: null,
-      argument: null,
-      is_dynamic: false,
-      optional: false,
-      value: 10,
-      min: null,
-      max: null,
-      validators: [],
-    },
-  ],
-  outputs: [],
-  citations: [],
-  license: null,
-  profile: null,
-  edam_operations: [],
-  edam_topics: [],
-  xrefs: [],
-};
-
-// A tool with a data input (for connection testing)
-const dataInputTool = {
-  id: "data_tool",
-  version: "1.0",
-  name: "Data Tool",
-  description: null,
-  inputs: [
-    {
-      name: "input_file",
-      parameter_type: "gx_data",
-      type: "data",
-      hidden: false,
-      label: "Input",
-      help: null,
-      argument: null,
-      is_dynamic: false,
-      optional: false,
-      multiple: false,
-      extensions: ["data"],
-    },
-    {
-      name: "threshold",
-      parameter_type: "gx_float",
-      type: "float",
-      hidden: false,
-      label: "Threshold",
-      help: null,
-      argument: null,
-      is_dynamic: false,
-      optional: true,
-      value: 0.5,
-      min: null,
-      max: null,
-      validators: [],
-    },
-  ],
-  outputs: [],
-  citations: [],
-  license: null,
-  profile: null,
-  edam_operations: [],
-  edam_topics: [],
-  xrefs: [],
-};
-
-const SIMPLE_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/simple/simple_tool";
-const DATA_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/data/data_tool";
-
-async function seedTools(cacheDir: string) {
-  const cache = new ToolCache({ cacheDir });
-  const simpleKey = cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
-  await cache.saveTool(
-    simpleKey,
-    S.decodeUnknownSync(ParsedTool)(simpleTool),
-    SIMPLE_TOOL_ID,
-    "1.0",
-    "api",
-  );
-  const dataKey = cacheKey("https://toolshed.g2.bx.psu.edu", "test~data~data_tool", "1.0");
-  await cache.saveTool(
-    dataKey,
-    S.decodeUnknownSync(ParsedTool)(dataInputTool),
-    DATA_TOOL_ID,
-    "1.0",
-    "api",
-  );
-}
+import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
+import { seedAllTools, SIMPLE_TOOL_ID, DATA_TOOL_ID } from "./helpers/fixtures.js";
 
 describe("validate-workflow (connection-aware)", () => {
-  let tmpDir: string;
-  let logSpy: ReturnType<typeof vi.spyOn>;
-  let errSpy: ReturnType<typeof vi.spyOn>;
-  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let ctx: CliTestContext;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "vw-test-"));
-    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    process.exitCode = undefined;
+    ctx = await createCliTestContext("vw-test");
   });
 
   afterEach(async () => {
-    await rm(tmpDir, { recursive: true });
-    logSpy.mockRestore();
-    errSpy.mockRestore();
-    warnSpy.mockRestore();
-    process.exitCode = undefined;
+    await ctx.cleanup();
   });
 
   describe("native workflows", () => {
     it("validates native workflow with connections (workflow_step_native)", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       // Native workflow: step 0 = input, step 1 = data_tool with connection
       const workflow = {
         a_galaxy_workflow: "true",
@@ -173,17 +46,17 @@ describe("validate-workflow (connection-aware)", () => {
           },
         },
       };
-      const wfPath = join(tmpDir, "test.ga");
+      const wfPath = join(ctx.tmpDir, "test.ga");
       await writeFile(wfPath, JSON.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
 
     it("validates native workflow without connections (simple params)", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       const workflow = {
         a_galaxy_workflow: "true",
         "format-version": "0.1",
@@ -199,17 +72,17 @@ describe("validate-workflow (connection-aware)", () => {
           },
         },
       };
-      const wfPath = join(tmpDir, "simple.ga");
+      const wfPath = join(ctx.tmpDir, "simple.ga");
       await writeFile(wfPath, JSON.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
 
     it("handles subworkflows recursively", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       const workflow = {
         a_galaxy_workflow: "true",
         "format-version": "0.1",
@@ -238,11 +111,11 @@ describe("validate-workflow (connection-aware)", () => {
           },
         },
       };
-      const wfPath = join(tmpDir, "sub.ga");
+      const wfPath = join(ctx.tmpDir, "sub.ga");
       await writeFile(wfPath, JSON.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
@@ -250,7 +123,7 @@ describe("validate-workflow (connection-aware)", () => {
 
   describe("format2 workflows", () => {
     it("validates format2 workflow with connections (two-level)", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       const workflow = {
         class: "GalaxyWorkflow",
         label: "Test Format2",
@@ -267,17 +140,17 @@ describe("validate-workflow (connection-aware)", () => {
           },
         ],
       };
-      const wfPath = join(tmpDir, "test.gxwf.yml");
+      const wfPath = join(ctx.tmpDir, "test.gxwf.yml");
       await writeFile(wfPath, YAML.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
 
     it("validates format2 workflow with no connections", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       const workflow = {
         class: "GalaxyWorkflow",
         label: "No Connections",
@@ -294,17 +167,17 @@ describe("validate-workflow (connection-aware)", () => {
           },
         ],
       };
-      const wfPath = join(tmpDir, "simple.gxwf.yml");
+      const wfPath = join(ctx.tmpDir, "simple.gxwf.yml");
       await writeFile(wfPath, YAML.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
 
     it("validates format2 with $link syntax (stripped from state, added to in)", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       // $link in state should be stripped during normalization
       // and a corresponding in entry generated for connection injection
       const workflow = {
@@ -326,18 +199,18 @@ describe("validate-workflow (connection-aware)", () => {
           },
         ],
       };
-      const wfPath = join(tmpDir, "link.gxwf.yml");
+      const wfPath = join(ctx.tmpDir, "link.gxwf.yml");
       await writeFile(wfPath, YAML.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
-      const _errors = errSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+      const _errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
 
     it("handles inline subworkflows", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       const workflow = {
         class: "GalaxyWorkflow",
         label: "Sub",
@@ -367,11 +240,11 @@ describe("validate-workflow (connection-aware)", () => {
           },
         ],
       };
-      const wfPath = join(tmpDir, "sub.gxwf.yml");
+      const wfPath = join(ctx.tmpDir, "sub.gxwf.yml");
       await writeFile(wfPath, YAML.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
@@ -394,16 +267,16 @@ describe("validate-workflow (connection-aware)", () => {
           },
         },
       };
-      const wfPath = join(tmpDir, "missing.ga");
+      const wfPath = join(ctx.tmpDir, "missing.ga");
       await writeFile(wfPath, JSON.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = warnSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.warnSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("skipped");
     });
 
     it("reports validation failure for bad tool_state", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       const workflow = {
         a_galaxy_workflow: "true",
         "format-version": "0.1",
@@ -420,17 +293,17 @@ describe("validate-workflow (connection-aware)", () => {
           },
         },
       };
-      const wfPath = join(tmpDir, "bad.ga");
+      const wfPath = join(ctx.tmpDir, "bad.ga");
       await writeFile(wfPath, JSON.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const errors = errSpy.mock.calls.map((c) => c[0]).join("\n");
+      const errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(errors).toContain("tool_state errors");
       expect(process.exitCode).toBe(1);
     });
 
     it("skips native steps with replacement parameters", async () => {
-      await seedTools(tmpDir);
+      await seedAllTools(ctx.tmpDir);
       const workflow = {
         a_galaxy_workflow: "true",
         "format-version": "0.1",
@@ -447,11 +320,11 @@ describe("validate-workflow (connection-aware)", () => {
           },
         },
       };
-      const wfPath = join(tmpDir, "replacement.ga");
+      const wfPath = join(ctx.tmpDir, "replacement.ga");
       await writeFile(wfPath, JSON.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
-      const output = warnSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.warnSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("skipped");
       expect(output).toContain("replacement");
       expect(process.exitCode).toBe(0);
@@ -463,11 +336,11 @@ describe("validate-workflow (connection-aware)", () => {
         "format-version": "0.1",
         steps: {},
       };
-      const wfPath = join(tmpDir, "notool.ga");
+      const wfPath = join(ctx.tmpDir, "notool.ga");
       await writeFile(wfPath, JSON.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: tmpDir, toolState: false });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, toolState: false });
 
-      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("Structural validation: OK");
       expect(process.exitCode).toBe(0);
     });

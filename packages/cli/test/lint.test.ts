@@ -1,82 +1,25 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import * as S from "effect/Schema";
 import * as YAML from "yaml";
 
-import { ToolCache, cacheKey, ParsedTool } from "@galaxy-tool-util/core";
 import { runLint } from "../src/commands/lint.js";
-
-const simpleTool = {
-  id: "simple_tool",
-  version: "1.0",
-  name: "Simple Tool",
-  description: null,
-  inputs: [
-    {
-      name: "input_text",
-      parameter_type: "gx_text",
-      type: "text",
-      hidden: false,
-      label: "Input",
-      help: null,
-      argument: null,
-      is_dynamic: false,
-      optional: false,
-      area: false,
-      value: "default",
-      default_options: [],
-      validators: [],
-    },
-  ],
-  outputs: [],
-  citations: [],
-  license: null,
-  profile: null,
-  edam_operations: [],
-  edam_topics: [],
-  xrefs: [],
-};
-
-const SIMPLE_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/simple/simple_tool";
-
-async function seedTools(cacheDir: string) {
-  const cache = new ToolCache({ cacheDir });
-  const key = cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
-  await cache.saveTool(
-    key,
-    S.decodeUnknownSync(ParsedTool)(simpleTool),
-    SIMPLE_TOOL_ID,
-    "1.0",
-    "api",
-  );
-}
+import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
+import { seedSimpleTool, SIMPLE_TOOL_ID } from "./helpers/fixtures.js";
 
 describe("gxwf lint", () => {
-  let tmpDir: string;
-  let logSpy: ReturnType<typeof vi.spyOn>;
-  let errSpy: ReturnType<typeof vi.spyOn>;
-  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let ctx: CliTestContext;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "lint-test-"));
-    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    process.exitCode = undefined;
+    ctx = await createCliTestContext("lint-test");
   });
 
   afterEach(async () => {
-    await rm(tmpDir, { recursive: true });
-    logSpy.mockRestore();
-    errSpy.mockRestore();
-    warnSpy.mockRestore();
-    process.exitCode = undefined;
+    await ctx.cleanup();
   });
 
   it("lints well-formed native workflow with cached tools", async () => {
-    await seedTools(tmpDir);
+    await seedSimpleTool(ctx.tmpDir);
     const workflow = {
       a_galaxy_workflow: "true",
       "format-version": "0.1",
@@ -93,11 +36,11 @@ describe("gxwf lint", () => {
         },
       },
     };
-    const wfPath = join(tmpDir, "good.ga");
+    const wfPath = join(ctx.tmpDir, "good.ga");
     await writeFile(wfPath, JSON.stringify(workflow));
-    await runLint(wfPath, { cacheDir: tmpDir });
+    await runLint(wfPath, { cacheDir: ctx.tmpDir });
 
-    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+    const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("Structural lint: OK");
     expect(output).toContain("tool_state: OK");
   });
@@ -114,11 +57,11 @@ describe("gxwf lint", () => {
         },
       ],
     };
-    const wfPath = join(tmpDir, "noannotation.gxwf.yml");
+    const wfPath = join(ctx.tmpDir, "noannotation.gxwf.yml");
     await writeFile(wfPath, YAML.stringify(workflow));
     await runLint(wfPath, { skipStateValidation: true });
 
-    const warnings = warnSpy.mock.calls.map((c) => c[0]).join("\n");
+    const warnings = ctx.warnSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(warnings).toContain("not annotated");
     expect(warnings).toContain("creator");
     expect(warnings).toContain("license");
@@ -133,11 +76,11 @@ describe("gxwf lint", () => {
       outputs: [{ id: "bad_out", outputSource: "nonexistent_step/output" }],
       steps: [],
     };
-    const wfPath = join(tmpDir, "badoutput.gxwf.yml");
+    const wfPath = join(ctx.tmpDir, "badoutput.gxwf.yml");
     await writeFile(wfPath, YAML.stringify(workflow));
     await runLint(wfPath, { skipStateValidation: true, skipBestPractices: true });
 
-    const errors = errSpy.mock.calls.map((c) => c[0]).join("\n");
+    const errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(errors).toContain("nonexistent_step");
     expect(process.exitCode).toBe(2);
   });
@@ -154,17 +97,17 @@ describe("gxwf lint", () => {
         },
       ],
     };
-    const wfPath = join(tmpDir, "skip-bp.gxwf.yml");
+    const wfPath = join(ctx.tmpDir, "skip-bp.gxwf.yml");
     await writeFile(wfPath, YAML.stringify(workflow));
     await runLint(wfPath, { skipBestPractices: true, skipStateValidation: true });
 
-    const warnings = warnSpy.mock.calls.map((c) => c[0]).join("\n");
+    const warnings = ctx.warnSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(warnings).not.toContain("not annotated");
     expect(warnings).not.toContain("creator");
   });
 
   it("--skip-state-validation suppresses state checks", async () => {
-    await seedTools(tmpDir);
+    await seedSimpleTool(ctx.tmpDir);
     const workflow = {
       a_galaxy_workflow: "true",
       "format-version": "0.1",
@@ -181,11 +124,11 @@ describe("gxwf lint", () => {
         },
       },
     };
-    const wfPath = join(tmpDir, "skip-state.ga");
+    const wfPath = join(ctx.tmpDir, "skip-state.ga");
     await writeFile(wfPath, JSON.stringify(workflow));
-    await runLint(wfPath, { cacheDir: tmpDir, skipStateValidation: true });
+    await runLint(wfPath, { cacheDir: ctx.tmpDir, skipStateValidation: true });
 
-    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+    const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("skipped");
     expect(output).not.toContain("tool_state errors");
   });
@@ -203,16 +146,16 @@ describe("gxwf lint", () => {
         },
       },
     };
-    const wfPath = join(tmpDir, "structural-only.ga");
+    const wfPath = join(ctx.tmpDir, "structural-only.ga");
     await writeFile(wfPath, JSON.stringify(workflow));
     await runLint(wfPath, { skipBestPractices: true, skipStateValidation: true });
 
-    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+    const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("Structural lint: OK");
   });
 
   it("reports state validation errors for invalid tool_state", async () => {
-    await seedTools(tmpDir);
+    await seedSimpleTool(ctx.tmpDir);
     const workflow = {
       a_galaxy_workflow: "true",
       "format-version": "0.1",
@@ -229,11 +172,11 @@ describe("gxwf lint", () => {
         },
       },
     };
-    const wfPath = join(tmpDir, "bad-state.ga");
+    const wfPath = join(ctx.tmpDir, "bad-state.ga");
     await writeFile(wfPath, JSON.stringify(workflow));
-    await runLint(wfPath, { cacheDir: tmpDir });
+    await runLint(wfPath, { cacheDir: ctx.tmpDir });
 
-    const errors = errSpy.mock.calls.map((c) => c[0]).join("\n");
+    const errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(errors).toContain("tool_state errors");
     expect(process.exitCode).toBe(2);
   });
@@ -254,11 +197,11 @@ describe("gxwf lint", () => {
         },
       },
     };
-    const wfPath = join(tmpDir, "empty-cache.ga");
+    const wfPath = join(ctx.tmpDir, "empty-cache.ga");
     await writeFile(wfPath, JSON.stringify(workflow));
-    await runLint(wfPath, { cacheDir: tmpDir });
+    await runLint(wfPath, { cacheDir: ctx.tmpDir });
 
-    const warnings = warnSpy.mock.calls.map((c) => c[0]).join("\n");
+    const warnings = ctx.warnSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(warnings).toContain("empty");
   });
 
@@ -275,11 +218,11 @@ describe("gxwf lint", () => {
         },
       },
     };
-    const wfPath = join(tmpDir, "json-out.ga");
+    const wfPath = join(ctx.tmpDir, "json-out.ga");
     await writeFile(wfPath, JSON.stringify(workflow));
     await runLint(wfPath, { skipStateValidation: true, json: true });
 
-    const output = logSpy.mock.calls[0][0];
+    const output = ctx.logSpy.mock.calls[0][0];
     const report = JSON.parse(output);
     expect(report).toHaveProperty("structural");
     expect(report).toHaveProperty("bestPractices");

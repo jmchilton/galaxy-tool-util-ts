@@ -20,6 +20,15 @@ export { runValidateWorkflow } from "./commands/validate-workflow.js";
 /** Clean a Galaxy workflow — strip stale keys and decode legacy encoding. */
 export { runClean } from "./commands/clean.js";
 /** Lint a Galaxy workflow — structural checks, best practices, tool state validation. */
-export { runLint } from "./commands/lint.js";
+export { runLint, lintWorkflowReport } from "./commands/lint.js";
+export type { LintReport, LintReportOptions } from "./commands/lint.js";
 /** Convert a Galaxy workflow between native and format2 formats. */
 export { runConvert } from "./commands/convert.js";
+/** Scan a workflow and cache all referenced tools. */
+export { runPopulateWorkflow } from "./commands/populate-workflow.js";
+/** Export the structural JSON Schema for Galaxy workflows. */
+export { runStructuralSchema } from "./commands/structural-schema.js";
+/** Render step validation results to console. */
+export { renderStepResults } from "./commands/render-results.js";
+/** Write workflow content to file or stdout. */
+export { writeWorkflowOutput } from "./commands/workflow-io.js";

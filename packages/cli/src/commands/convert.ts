@@ -2,8 +2,12 @@
  * `gxwf convert` — convert between native (.ga) and format2 (.gxwf.yml) formats.
  */
 import { toFormat2, toNative, type WorkflowFormat } from "@galaxy-tool-util/schema";
-import { writeFile } from "node:fs/promises";
-import { readWorkflowFile, resolveFormat, serializeWorkflow } from "./workflow-io.js";
+import {
+  readWorkflowFile,
+  resolveFormat,
+  serializeWorkflow,
+  writeWorkflowOutput,
+} from "./workflow-io.js";
 
 export interface ConvertOptions {
   to?: string;
@@ -41,12 +45,7 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
   }
 
   const output = serializeWorkflow(result, targetFormat, { json: opts.json, yaml: opts.yaml });
-  if (opts.output) {
-    await writeFile(opts.output, output, "utf-8");
-    console.log(`Converted workflow written to ${opts.output}`);
-  } else {
-    process.stdout.write(output);
-  }
+  await writeWorkflowOutput(output, opts.output, "Converted workflow");
 }
 
 function resolveTargetFormat(sourceFormat: WorkflowFormat, toOpt?: string): WorkflowFormat {

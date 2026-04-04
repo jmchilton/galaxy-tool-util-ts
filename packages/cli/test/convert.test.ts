@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as YAML from "yaml";
 
 import { runConvert } from "../src/commands/convert.js";
+import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 
 const nativeWorkflow = {
   a_galaxy_workflow: "true",
@@ -49,44 +49,33 @@ const format2Workflow = {
 };
 
 describe("gxwf convert", () => {
-  let tmpDir: string;
-  let logSpy: ReturnType<typeof vi.spyOn>;
-  let errSpy: ReturnType<typeof vi.spyOn>;
-  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let ctx: CliTestContext;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "convert-test-"));
-    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-    process.exitCode = undefined;
+    ctx = await createCliTestContext("convert-test");
   });
 
   afterEach(async () => {
-    await rm(tmpDir, { recursive: true });
-    logSpy.mockRestore();
-    errSpy.mockRestore();
-    stdoutSpy.mockRestore();
-    process.exitCode = undefined;
+    await ctx.cleanup();
   });
 
   it("converts native to format2", async () => {
-    const wfPath = join(tmpDir, "test.ga");
+    const wfPath = join(ctx.tmpDir, "test.ga");
     await writeFile(wfPath, JSON.stringify(nativeWorkflow));
     await runConvert(wfPath, {});
 
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join("");
+    const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
     const converted = YAML.parse(output);
     expect(converted.class).toBe("GalaxyWorkflow");
     expect(converted.steps).toBeDefined();
   });
 
   it("converts format2 to native", async () => {
-    const wfPath = join(tmpDir, "test.gxwf.yml");
+    const wfPath = join(ctx.tmpDir, "test.gxwf.yml");
     await writeFile(wfPath, YAML.stringify(format2Workflow));
     await runConvert(wfPath, {});
 
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join("");
+    const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
     const converted = JSON.parse(output);
     expect(converted.a_galaxy_workflow).toBe("true");
     expect(converted.steps).toBeDefined();
@@ -94,17 +83,17 @@ describe("gxwf convert", () => {
 
   it("round-trips native -> format2 -> native preserving key fields", async () => {
     // Native -> Format2
-    const nativePath = join(tmpDir, "original.ga");
+    const nativePath = join(ctx.tmpDir, "original.ga");
     await writeFile(nativePath, JSON.stringify(nativeWorkflow));
     await runConvert(nativePath, {});
-    const f2Output = stdoutSpy.mock.calls.map((c) => c[0]).join("");
-    stdoutSpy.mockClear();
+    const f2Output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
+    ctx.stdoutSpy.mockClear();
 
     // Format2 -> Native
-    const f2Path = join(tmpDir, "converted.gxwf.yml");
+    const f2Path = join(ctx.tmpDir, "converted.gxwf.yml");
     await writeFile(f2Path, f2Output);
     await runConvert(f2Path, {});
-    const nativeOutput = stdoutSpy.mock.calls.map((c) => c[0]).join("");
+    const nativeOutput = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
     const roundTripped = JSON.parse(nativeOutput);
 
     expect(roundTripped.a_galaxy_workflow).toBe("true");
@@ -112,11 +101,11 @@ describe("gxwf convert", () => {
   });
 
   it("--compact strips position data from format2 output", async () => {
-    const wfPath = join(tmpDir, "compact.ga");
+    const wfPath = join(ctx.tmpDir, "compact.ga");
     await writeFile(wfPath, JSON.stringify(nativeWorkflow));
     await runConvert(wfPath, { compact: true });
 
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join("");
+    const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
     const converted = YAML.parse(output);
     // Steps should not have position
     if (converted.steps) {
@@ -130,34 +119,34 @@ describe("gxwf convert", () => {
 
   it("auto-detects target format as opposite of source", async () => {
     // Native input -> should auto-target format2
-    const wfPath = join(tmpDir, "auto.ga");
+    const wfPath = join(ctx.tmpDir, "auto.ga");
     await writeFile(wfPath, JSON.stringify(nativeWorkflow));
     await runConvert(wfPath, {});
 
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join("");
+    const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
     const converted = YAML.parse(output);
     expect(converted.class).toBe("GalaxyWorkflow");
   });
 
   it("errors when source and target are same format", async () => {
-    const wfPath = join(tmpDir, "same.ga");
+    const wfPath = join(ctx.tmpDir, "same.ga");
     await writeFile(wfPath, JSON.stringify(nativeWorkflow));
     await runConvert(wfPath, { to: "native" });
 
-    const errors = errSpy.mock.calls.map((c) => c[0]).join("\n");
+    const errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(errors).toContain("both native");
     expect(process.exitCode).toBe(1);
   });
 
   it("writes to --output file", async () => {
-    const wfPath = join(tmpDir, "out.ga");
-    const outPath = join(tmpDir, "converted.gxwf.yml");
+    const wfPath = join(ctx.tmpDir, "out.ga");
+    const outPath = join(ctx.tmpDir, "converted.gxwf.yml");
     await writeFile(wfPath, JSON.stringify(nativeWorkflow));
     await runConvert(wfPath, { output: outPath });
 
     const raw = await readFile(outPath, "utf-8");
     const converted = YAML.parse(raw);
     expect(converted.class).toBe("GalaxyWorkflow");
-    expect(logSpy.mock.calls[0][0]).toContain("converted.gxwf.yml");
+    expect(ctx.logSpy.mock.calls[0][0]).toContain("converted.gxwf.yml");
   });
 });

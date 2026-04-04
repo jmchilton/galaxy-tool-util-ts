@@ -11,6 +11,7 @@ import {
   type ExpansionOptions,
 } from "@galaxy-tool-util/schema";
 import { dirname } from "node:path";
+import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 import { createDefaultResolver } from "./url-resolver.js";
 import {
@@ -25,6 +26,12 @@ export interface LintOptions {
   skipStateValidation?: boolean;
   cacheDir?: string;
   json?: boolean;
+}
+
+export interface LintReportOptions {
+  skipBestPractices?: boolean;
+  skipStateValidation?: boolean;
+  cache?: ToolCache;
 }
 
 export interface LintReport {
@@ -51,7 +58,24 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
   if (!data) return;
 
   const format = resolveFormat(data, opts.format);
-  const report = await lintWorkflowFull(filePath, data, format, opts);
+
+  // Build or load tool cache for state validation
+  let cache: ToolCache | undefined;
+  if (!opts.skipStateValidation) {
+    try {
+      cache = new ToolCache({ cacheDir: opts.cacheDir });
+      await cache.index.load();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`Failed to load tool cache: ${msg}`);
+    }
+  }
+
+  const report = await lintWorkflowReport(filePath, data, format, {
+    skipBestPractices: opts.skipBestPractices,
+    skipStateValidation: opts.skipStateValidation,
+    cache,
+  });
 
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));
@@ -91,23 +115,8 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
 
   // Tool state validation
   if (report.stateValidation) {
-    const results = report.stateValidation;
-    let validated = 0;
-    let skipped = 0;
-    for (const r of results) {
-      if (r.status === "skip") {
-        skipped++;
-        console.warn(`  [${r.stepLabel}] skipped — ${r.errors[0] ?? "unknown"}`);
-      } else if (r.status === "fail") {
-        validated++;
-        console.error(`  [${r.stepLabel}] tool_state errors (${r.toolId}):`);
-        for (const line of r.errors) console.error(`    ${line}`);
-      } else {
-        validated++;
-        console.log(`  [${r.stepLabel}] tool_state: OK`);
-      }
-    }
-    if (results.length > 0) {
+    const { validated, skipped } = renderStepResults(report.stateValidation);
+    if (report.stateValidation.length > 0) {
       console.log(`\nTool state: ${validated} validated, ${skipped} skipped`);
     }
   } else if (report.stateSkipped) {
@@ -117,11 +126,12 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
   process.exitCode = report.exitCode;
 }
 
-async function lintWorkflowFull(
+/** Lint a workflow, returning a structured report. Pure logic — no CLI I/O. */
+export async function lintWorkflowReport(
   filePath: string,
   data: Record<string, unknown>,
   format: string,
-  opts: LintOptions,
+  opts: LintReportOptions,
 ): Promise<LintReport> {
   // Phase 1: Structural lint (always runs)
   const structural = lintWorkflow(data);
@@ -137,28 +147,31 @@ async function lintWorkflowFull(
   let stateValidation: StepValidationResult[] | null = null;
   let stateSkipped = !!opts.skipStateValidation;
   if (!opts.skipStateValidation) {
-    try {
-      const cache = new ToolCache({ cacheDir: opts.cacheDir });
-      await cache.index.load();
-      const isEmpty = cache.index.listAll().length === 0;
-      if (isEmpty) {
-        console.warn("Tool cache is empty — skipping tool state validation");
-        stateSkipped = true;
-      } else {
-        const workflowDirectory = dirname(filePath);
-        const expansionOpts: ExpansionOptions = {
-          resolver: createDefaultResolver({ workflowDirectory }),
-        };
-        if (format === "native") {
-          stateValidation = await validateNativeSteps(data, cache, "", expansionOpts);
-        } else {
-          stateValidation = await validateFormat2Steps(data, cache, "", expansionOpts);
-        }
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.warn(`Tool state validation failed: ${msg}`);
+    const cache = opts.cache;
+    if (!cache) {
       stateSkipped = true;
+    } else {
+      try {
+        const isEmpty = cache.index.listAll().length === 0;
+        if (isEmpty) {
+          console.warn("Tool cache is empty — skipping tool state validation");
+          stateSkipped = true;
+        } else {
+          const workflowDirectory = dirname(filePath);
+          const expansionOpts: ExpansionOptions = {
+            resolver: createDefaultResolver({ workflowDirectory }),
+          };
+          if (format === "native") {
+            stateValidation = await validateNativeSteps(data, cache, "", expansionOpts);
+          } else {
+            stateValidation = await validateFormat2Steps(data, cache, "", expansionOpts);
+          }
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn(`Tool state validation failed: ${msg}`);
+        stateSkipped = true;
+      }
     }
   }
 

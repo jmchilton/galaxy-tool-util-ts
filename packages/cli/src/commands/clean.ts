@@ -2,8 +2,12 @@
  * `gxwf clean` — strip stale keys and decode legacy tool_state encoding.
  */
 import { cleanWorkflow } from "@galaxy-tool-util/schema";
-import { writeFile } from "node:fs/promises";
-import { readWorkflowFile, resolveFormat, serializeWorkflow } from "./workflow-io.js";
+import {
+  readWorkflowFile,
+  resolveFormat,
+  serializeWorkflow,
+  writeWorkflowOutput,
+} from "./workflow-io.js";
 
 export interface CleanOptions {
   output?: string;
@@ -42,10 +46,5 @@ export async function runClean(filePath: string, opts: CleanOptions): Promise<vo
   }
 
   const output = serializeWorkflow(data, format);
-  if (opts.output) {
-    await writeFile(opts.output, output, "utf-8");
-    console.log(`Cleaned workflow written to ${opts.output}`);
-  } else {
-    process.stdout.write(output);
-  }
+  await writeWorkflowOutput(output, opts.output, "Cleaned workflow");
 }
