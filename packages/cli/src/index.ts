@@ -28,6 +28,23 @@ export { runConvert } from "./commands/convert.js";
 export { runPopulateWorkflow } from "./commands/populate-workflow.js";
 /** Export the structural JSON Schema for Galaxy workflows. */
 export { runStructuralSchema } from "./commands/structural-schema.js";
+/** Batch validate all workflows under a directory. */
+export { runValidateTree } from "./commands/validate-tree.js";
+/** Batch lint all workflows under a directory. */
+export { runLintTree } from "./commands/lint-tree.js";
+/** Batch clean all workflows under a directory. */
+export { runCleanTree } from "./commands/clean-tree.js";
+/** Batch convert all workflows under a directory. */
+export { runConvertTree } from "./commands/convert-tree.js";
+/** Tree orchestrator infrastructure. */
+export {
+  discoverWorkflows,
+  collectTree,
+  summarizeOutcomes,
+  skipWorkflow,
+  loadWorkflowSafe,
+} from "./commands/tree.js";
+export type { WorkflowInfo, WorkflowOutcome, TreeResult, TreeSummary } from "./commands/tree.js";
 /** Render step validation results to console. */
 export { renderStepResults } from "./commands/render-results.js";
 /** Write workflow content to file or stdout. */
