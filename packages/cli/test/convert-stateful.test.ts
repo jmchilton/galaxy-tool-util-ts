@@ -100,7 +100,30 @@ describe("gxwf convert --stateful", () => {
 
     const errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(errors).toContain("fell back");
+    // Reporter tags the failure class
+    expect(errors).toContain("unknown_tool");
+    expect(errors).toContain("fallback breakdown:");
     // Exit code 1 when any step fell back
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("reports precheck failure class when tool_state has ${...} interpolation", async () => {
+    await seedAllTools(ctx.tmpDir);
+    const wfPath = join(ctx.tmpDir, "native.ga");
+    // Replace num_lines with a replacement-param reference
+    const wf = buildNativeWorkflow();
+    const steps = wf.steps as Record<string, Record<string, unknown>>;
+    steps["0"].tool_state = JSON.stringify({
+      input_text: "hello",
+      num_lines: "${threshold}",
+    });
+    await writeFile(wfPath, JSON.stringify(wf));
+
+    await runConvert(wfPath, { stateful: true, cacheDir: ctx.tmpDir });
+
+    const errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(errors).toContain("[precheck]");
+    expect(errors).toContain("replacement");
     expect(process.exitCode).toBe(1);
   });
 });

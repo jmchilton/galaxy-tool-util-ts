@@ -74,6 +74,9 @@ program
   .option("--cache-dir <dir>", "Tool cache directory")
   .option("--format <fmt>", "Force source format (must resolve to native)")
   .option("--json", "Output structured JSON report")
+  .option("--errors-only", "Suppress benign diffs and clean steps from output")
+  .option("--benign-only", "Show only steps with benign diffs (no errors, no failures)")
+  .option("--brief", "Omit per-diff list; show only the one-line summary")
   .action(runRoundtrip);
 
 // -- Tree (batch) variants --
@@ -135,6 +138,9 @@ program
   .option("--cache-dir <dir>", "Tool cache directory")
   .option("--format <fmt>", "Force source format (must resolve to native)")
   .option("--json", "Output structured JSON report")
+  .option("--errors-only", "List only files with errors or failures")
+  .option("--benign-only", "List only files with benign diffs (no errors, no failures)")
+  .option("--brief", "Omit per-file lines; print only the aggregate summary")
   .action(runRoundtripTree);
 
 program.parse();

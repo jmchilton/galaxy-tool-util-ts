@@ -97,6 +97,54 @@ describe("gxwf roundtrip", () => {
     expect(process.exitCode).toBe(2);
   });
 
+  it("--brief suppresses per-diff lines but keeps the summary", async () => {
+    await seedAllTools(ctx.tmpDir);
+    const wfPath = join(ctx.tmpDir, "native.ga");
+    await writeFile(
+      wfPath,
+      JSON.stringify(
+        buildNativeWorkflow({
+          input_text: "hello",
+          num_lines: 10,
+          __rerun_remap_job_id__: null,
+        }),
+      ),
+    );
+
+    await runRoundtrip(wfPath, { cacheDir: ctx.tmpDir, brief: true });
+
+    const logs = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+    // Summary line still present
+    expect(logs).toMatch(/step\(s\) ok/);
+    // Diff detail lines (the `[benign:...]` rows) suppressed
+    expect(logs).not.toMatch(/\[benign:/);
+    expect(logs).not.toMatch(/\[ERROR\]/);
+  });
+
+  it("--errors-only hides benign-only steps", async () => {
+    await seedAllTools(ctx.tmpDir);
+    const wfPath = join(ctx.tmpDir, "native.ga");
+    // Benign-only workflow: stale key, no real diffs.
+    await writeFile(
+      wfPath,
+      JSON.stringify(
+        buildNativeWorkflow({
+          input_text: "hello",
+          num_lines: 10,
+          __rerun_remap_job_id__: null,
+        }),
+      ),
+    );
+
+    await runRoundtrip(wfPath, { cacheDir: ctx.tmpDir, errorsOnly: true });
+
+    // Exit code policy unchanged by filter flags.
+    expect(process.exitCode).toBe(1);
+    const logs = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+    // Per-step section should be empty (no benign rows printed)
+    expect(logs).not.toMatch(/\[benign:/);
+  });
+
   it("rejects format2 source", async () => {
     const wfPath = join(ctx.tmpDir, "wf.gxwf.yml");
     await writeFile(
@@ -149,5 +197,33 @@ describe("gxwf roundtrip-tree", () => {
     expect(logs).toMatch(/Summary: 2 file\(s\)/);
     // At least one file has a benign diff (b.ga) → exit 1
     expect(process.exitCode).toBe(1);
+  });
+
+  it("--brief prints only the aggregate summary", async () => {
+    await seedAllTools(ctx.tmpDir);
+    const srcDir = join(ctx.tmpDir, "wfs");
+    await mkdir(srcDir, { recursive: true });
+    await writeFile(
+      join(srcDir, "a.ga"),
+      JSON.stringify(buildNativeWorkflow({ input_text: "a", num_lines: 1 })),
+    );
+    await writeFile(
+      join(srcDir, "b.ga"),
+      JSON.stringify(
+        buildNativeWorkflow({
+          input_text: "b",
+          num_lines: 2,
+          __rerun_remap_job_id__: null,
+        }),
+      ),
+    );
+
+    await runRoundtripTree(srcDir, { cacheDir: ctx.tmpDir, brief: true });
+
+    const logs = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(logs).toMatch(/Summary: 2 file\(s\)/);
+    // Per-file lines (the "  a.ga: clean (...)" rows) suppressed.
+    expect(logs).not.toMatch(/a\.ga: (clean|benign|FAIL)/);
+    expect(logs).not.toMatch(/b\.ga: (clean|benign|FAIL)/);
   });
 });

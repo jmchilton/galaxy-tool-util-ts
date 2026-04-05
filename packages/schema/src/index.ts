@@ -90,9 +90,20 @@ export {
   /** Stateful format2 → native conversion using cached tool definitions. */
   toNativeStateful,
   type StepConversionStatus,
+  type StepConversionFailureClass,
   type StatefulExportResult,
   type StatefulNativeResult,
   type ToolInputsResolver,
+  /** Precheck a native workflow / step for stateful conversion compatibility. */
+  precheckNativeWorkflow,
+  precheckNativeStep,
+  type PrecheckResult,
+  type StepPrecheckResult,
+  /** Effect Schema validation wrappers for stateful conversion (pre/post). */
+  ConversionValidationFailure,
+  validateNativeStepState,
+  validateFormat2StepState,
+  type ValidationPhase,
   /** Roundtrip a native workflow through format2 and back, diffing tool_state per step. */
   roundtripValidate,
   type RoundtripResult,

@@ -178,6 +178,24 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
   console.log(`\nSummary: ${s.total} workflows converted (written to ${outputDir})`);
   if (opts.stateful) {
     console.log(`Stateful: ${statefulFallbacks} step(s) fell back to schema-free`);
+    // Aggregate failure classes across all files
+    const byClass = new Map<string, number>();
+    for (const r of report.results) {
+      if ("statefulSteps" in r && r.statefulSteps) {
+        for (const step of r.statefulSteps) {
+          if (!step.converted) {
+            const cls = step.failureClass ?? "unknown";
+            byClass.set(cls, (byClass.get(cls) ?? 0) + 1);
+          }
+        }
+      }
+    }
+    if (byClass.size > 0) {
+      const summary = Array.from(byClass.entries())
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ");
+      console.log(`  fallback breakdown: ${summary}`);
+    }
   }
   process.exitCode = s.error > 0 || statefulFallbacks > 0 ? 1 : 0;
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { precheckNativeWorkflow } from "../src/workflow/precheck.js";
+import type { ToolInputsResolver } from "../src/workflow/normalized/stateful-runner.js";
 import type {
   NormalizedNativeWorkflow,
   NormalizedNativeStep,
@@ -11,6 +12,10 @@ import type {
   ConditionalParameterModel,
   BooleanParameterModel,
 } from "../src/schema/bundle-types.js";
+
+function mapResolver(map: Record<string, ToolParameterModel[]>): ToolInputsResolver {
+  return (toolId) => map[toolId];
+}
 
 // --- Helpers ---
 
@@ -138,10 +143,8 @@ describe("precheckNativeWorkflow", () => {
     const wf = workflow({
       "0": toolStep(0, "my_tool", { num: 42, label: "test" }),
     });
-    const tools = new Map<string, ToolParameterModel[]>([
-      ["my_tool", [intParam("num"), textParam("label")]],
-    ]);
-    const result = precheckNativeWorkflow(wf, tools);
+    const resolver = mapResolver({ my_tool: [intParam("num"), textParam("label")] });
+    const result = precheckNativeWorkflow(wf, resolver);
     expect(result.canProcess).toBe(true);
     expect(result.skipReasons).toEqual([]);
     expect(result.stepResults[0].canProcess).toBe(true);
@@ -151,8 +154,8 @@ describe("precheckNativeWorkflow", () => {
     const wf = workflow({
       "0": toolStep(0, "my_tool", { num: "${threshold}" }),
     });
-    const tools = new Map<string, ToolParameterModel[]>([["my_tool", [intParam("num")]]]);
-    const result = precheckNativeWorkflow(wf, tools);
+    const resolver = mapResolver({ my_tool: [intParam("num")] });
+    const result = precheckNativeWorkflow(wf, resolver);
     expect(result.canProcess).toBe(false);
     expect(result.skipReasons.length).toBeGreaterThan(0);
     expect(result.skipReasons[0]).toContain("replacement");
@@ -162,8 +165,8 @@ describe("precheckNativeWorkflow", () => {
     const wf = workflow({
       "0": toolStep(0, "my_tool", { label: "${user_label}" }),
     });
-    const tools = new Map<string, ToolParameterModel[]>([["my_tool", [textParam("label")]]]);
-    const result = precheckNativeWorkflow(wf, tools);
+    const resolver = mapResolver({ my_tool: [textParam("label")] });
+    const result = precheckNativeWorkflow(wf, resolver);
     expect(result.canProcess).toBe(true);
   });
 
@@ -175,8 +178,8 @@ describe("precheckNativeWorkflow", () => {
     const wf = workflow({
       "0": toolStep(0, "my_tool", { cond: '{"use_ref": true}' }),
     });
-    const tools = new Map<string, ToolParameterModel[]>([["my_tool", [cond]]]);
-    const result = precheckNativeWorkflow(wf, tools);
+    const resolver = mapResolver({ my_tool: [cond] });
+    const result = precheckNativeWorkflow(wf, resolver);
     expect(result.canProcess).toBe(false);
     expect(result.skipReasons[0]).toContain("legacy parameter encoding");
   });
@@ -185,7 +188,7 @@ describe("precheckNativeWorkflow", () => {
     const wf = workflow({
       "0": inputStep(0),
     });
-    const result = precheckNativeWorkflow(wf);
+    const result = precheckNativeWorkflow(wf, null);
     expect(result.canProcess).toBe(true);
     expect(result.stepResults[0].canProcess).toBe(true);
   });
@@ -194,15 +197,15 @@ describe("precheckNativeWorkflow", () => {
     const wf = workflow({
       "0": toolStep(0, "unknown_tool", { num: "${bad}" }),
     });
-    const result = precheckNativeWorkflow(wf, new Map());
+    const result = precheckNativeWorkflow(wf, mapResolver({}));
     expect(result.canProcess).toBe(true);
   });
 
-  it("no toolInputs map → all steps pass", () => {
+  it("null resolver → all steps pass", () => {
     const wf = workflow({
       "0": toolStep(0, "my_tool", { num: "${bad}" }),
     });
-    const result = precheckNativeWorkflow(wf);
+    const result = precheckNativeWorkflow(wf, null);
     expect(result.canProcess).toBe(true);
   });
 
@@ -211,11 +214,11 @@ describe("precheckNativeWorkflow", () => {
       "0": toolStep(0, "tool_a", { num: 42 }),
       "1": toolStep(1, "tool_b", { num: "${bad}" }),
     });
-    const tools = new Map<string, ToolParameterModel[]>([
-      ["tool_a", [intParam("num")]],
-      ["tool_b", [intParam("num")]],
-    ]);
-    const result = precheckNativeWorkflow(wf, tools);
+    const resolver = mapResolver({
+      tool_a: [intParam("num")],
+      tool_b: [intParam("num")],
+    });
+    const result = precheckNativeWorkflow(wf, resolver);
     expect(result.canProcess).toBe(false);
     expect(result.stepResults[0].canProcess).toBe(true);
     expect(result.stepResults[1].canProcess).toBe(false);
@@ -225,8 +228,8 @@ describe("precheckNativeWorkflow", () => {
     const wf = workflow({
       "0": toolStep(0, "my_tool", {}),
     });
-    const tools = new Map<string, ToolParameterModel[]>([["my_tool", []]]);
-    const result = precheckNativeWorkflow(wf, tools);
+    const resolver = mapResolver({ my_tool: [] });
+    const result = precheckNativeWorkflow(wf, resolver);
     expect(result.stepResults[0].stepId).toBe("0");
     expect(result.stepResults[0].toolId).toBe("my_tool");
   });

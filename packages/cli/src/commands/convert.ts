@@ -109,10 +109,25 @@ function reportStepStatuses(statuses: StepConversionStatus[]): void {
     `\nStateful conversion: ${converted}/${statuses.length} steps converted` +
       (failed > 0 ? `, ${failed} fell back` : ""),
   );
+  // Aggregate fallbacks by failure class
+  if (failed > 0) {
+    const byClass = new Map<string, number>();
+    for (const s of statuses) {
+      if (!s.converted) {
+        const cls = s.failureClass ?? "unknown";
+        byClass.set(cls, (byClass.get(cls) ?? 0) + 1);
+      }
+    }
+    const summary = Array.from(byClass.entries())
+      .map(([k, v]) => `${k}=${v}`)
+      .join(", ");
+    console.error(`  fallback breakdown: ${summary}`);
+  }
   for (const s of statuses) {
     if (!s.converted) {
       const label = s.toolId ? `${s.stepId} (${s.toolId})` : s.stepId;
-      console.error(`  step ${label}: ${s.error ?? "unknown error"}`);
+      const cls = s.failureClass ?? "unknown";
+      console.error(`  step ${label} [${cls}]: ${s.error ?? "unknown error"}`);
     }
   }
   if (failed > 0) process.exitCode = 1;

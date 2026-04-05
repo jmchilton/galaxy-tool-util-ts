@@ -36,6 +36,7 @@ export {
   toFormat2Stateful,
   toNativeStateful,
   type StepConversionStatus,
+  type StepConversionFailureClass,
   type StatefulExportResult,
   type StatefulNativeResult,
   type ToolInputsResolver,
@@ -95,9 +96,17 @@ export {
 
 export {
   precheckNativeWorkflow,
+  precheckNativeStep,
   type PrecheckResult,
   type StepPrecheckResult,
 } from "./precheck.js";
+
+export {
+  ConversionValidationFailure,
+  validateNativeStepState,
+  validateFormat2StepState,
+  type ValidationPhase,
+} from "./stateful-validate.js";
 
 export {
   roundtripValidate,

@@ -1,15 +1,22 @@
 /**
- * Precheck native workflows for stateful conversion compatibility.
+ * Precheck native workflow steps for stateful conversion compatibility.
  *
- * Checks whether a workflow can be processed by stateful conversion, or
- * whether it has issues (legacy replacement params, legacy parameter encoding)
- * that require falling back to schema-free passthrough.
+ * Checks whether a step's tool_state can be walked by the schema-aware
+ * stateful converter, or whether it has issues (legacy replacement params,
+ * legacy parameter encoding) that require falling back to schema-free
+ * passthrough.
  *
- * Usage: call before attempting stateful conversion. If canProcess is false,
- * use schema-free conversion for the whole workflow (or per step).
+ * Usage: called per-step by the stateful runner before conversion. A
+ * failing precheck short-circuits `convert` and pushes a structured
+ * `failureClass: "precheck"` status entry.
+ *
+ * Tool lookup is callback-shaped (`ToolInputsResolver`) matching the rest
+ * of the stateful conversion pipeline — the caller owns tool loading and
+ * version disambiguation.
  */
 
 import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./normalized/native.js";
+import type { ToolInputsResolver } from "./normalized/stateful-runner.js";
 import type { ToolParameterModel } from "../schema/bundle-types.js";
 import { scanForReplacements } from "./replacement-scan.js";
 import { scanToolState } from "./legacy-encoding.js";
@@ -28,70 +35,33 @@ export interface PrecheckResult {
 }
 
 /**
- * Precheck a native workflow for stateful conversion compatibility.
+ * Precheck a single tool step's tool_state against its parameter inputs.
  *
- * For each tool step:
- * - If tool inputs are provided, scan for `${...}` replacement params in
- *   typed fields (→ can't process) and for legacy parameter encoding
- *   (string-encoded containers → can't process).
- * - Non-tool steps (inputs, subworkflows, etc.) are always processable.
+ * Returns `canProcess: true` with empty reasons if the step is clean or
+ * if no inputs were provided (caller falls back at conversion time).
+ * Returns `canProcess: false` with reasons if legacy replacement params
+ * or legacy parameter encoding is detected.
  *
- * Returns a workflow-level verdict plus per-step details. If any step
- * can't be processed, the workflow-level canProcess is false, but the
- * caller can still do per-step stateful conversion for the clean steps.
+ * Non-tool steps (inputs, subworkflows) always pass — they have no
+ * tool_state to validate.
  */
-export function precheckNativeWorkflow(
-  workflow: NormalizedNativeWorkflow,
-  toolInputs?: Map<string, ToolParameterModel[]>,
-): PrecheckResult {
-  const stepResults: StepPrecheckResult[] = [];
-  const workflowReasons: string[] = [];
-
-  for (const [key, step] of Object.entries(workflow.steps)) {
-    const stepResult = _precheckStep(key, step, toolInputs);
-    stepResults.push(stepResult);
-    if (!stepResult.canProcess) {
-      for (const reason of stepResult.skipReasons) {
-        workflowReasons.push(`step ${stepResult.stepId}: ${reason}`);
-      }
-    }
-  }
-
-  return {
-    canProcess: workflowReasons.length === 0,
-    skipReasons: workflowReasons,
-    stepResults,
-  };
-}
-
-function _precheckStep(
-  stepKey: string,
+export function precheckNativeStep(
   step: NormalizedNativeStep,
-  toolInputs?: Map<string, ToolParameterModel[]>,
+  inputs: ToolParameterModel[] | undefined,
 ): StepPrecheckResult {
-  const stepId = String(step.id ?? stepKey);
+  const stepId = String(step.id ?? "");
   const toolId = step.tool_id ?? undefined;
   const reasons: string[] = [];
 
-  // Non-tool steps pass through precheck (no tool_state to validate)
   if (step.type !== "tool") {
     return { stepId, toolId, canProcess: true, skipReasons: [] };
   }
-
-  // No tool inputs available: caller didn't provide them — treat as
-  // processable (caller will fall back at conversion time if needed)
-  if (toolInputs == null || toolId == null) {
-    return { stepId, toolId, canProcess: true, skipReasons: [] };
-  }
-
-  const inputs = toolInputs.get(toolId);
-  if (inputs == null) {
+  if (inputs == null || toolId == null) {
     return { stepId, toolId, canProcess: true, skipReasons: [] };
   }
 
   // Legacy replacement parameters (${...}) in typed fields
-  const replacementClass = scanForReplacements(inputs, step.tool_state);
-  if (replacementClass === "yes") {
+  if (scanForReplacements(inputs, step.tool_state) === "yes") {
     reasons.push("legacy replacement parameter (${...}) in typed field");
   }
 
@@ -107,5 +77,46 @@ function _precheckStep(
     toolId,
     canProcess: reasons.length === 0,
     skipReasons: reasons,
+  };
+}
+
+/**
+ * Precheck every step in a native workflow using a tool inputs resolver.
+ *
+ * For each step calls `precheckNativeStep`. Returns a workflow-level
+ * verdict (`canProcess` = all steps passed) plus per-step details, so
+ * callers can still do per-step stateful conversion for clean steps.
+ *
+ * Passing `null` as the resolver is allowed and means "no tool inputs
+ * available" — every step will pass (conversion-time fallback still runs).
+ */
+export function precheckNativeWorkflow(
+  workflow: NormalizedNativeWorkflow,
+  resolver: ToolInputsResolver | null,
+): PrecheckResult {
+  const stepResults: StepPrecheckResult[] = [];
+  const workflowReasons: string[] = [];
+
+  for (const [key, step] of Object.entries(workflow.steps)) {
+    const inputs =
+      resolver != null && step.tool_id != null
+        ? resolver(step.tool_id, step.tool_version ?? null)
+        : undefined;
+    const stepResult = precheckNativeStep(step, inputs);
+    if (stepResult.stepId === "") {
+      stepResult.stepId = String(step.id ?? key);
+    }
+    stepResults.push(stepResult);
+    if (!stepResult.canProcess) {
+      for (const reason of stepResult.skipReasons) {
+        workflowReasons.push(`step ${stepResult.stepId}: ${reason}`);
+      }
+    }
+  }
+
+  return {
+    canProcess: workflowReasons.length === 0,
+    skipReasons: workflowReasons,
+    stepResults,
   };
 }

@@ -87,8 +87,18 @@ function textParam(name: string): TextParameterModel {
 
 // --- Fixtures ---
 
+/**
+ * Resolver honoring (toolId, toolVersion). Map keys are either `toolId` (any
+ * version) or `toolId@version` (exact version match, falls back to bare id).
+ */
 function mapResolver(map: Record<string, ToolParameterModel[]>): ToolInputsResolver {
-  return (toolId) => map[toolId];
+  return (toolId, toolVersion) => {
+    if (toolVersion != null) {
+      const versioned = map[`${toolId}@${toolVersion}`];
+      if (versioned) return versioned;
+    }
+    return map[toolId];
+  };
 }
 
 function coolToolInputs(): ToolParameterModel[] {
@@ -197,7 +207,10 @@ describe("roundtripValidate", () => {
     expect(result.clean).toBe(true);
   });
 
-  it("subworkflow steps emit informational entries (not counted as failures)", () => {
+  it("recursively diffs tool steps inside inline subworkflows", () => {
+    // Nested tool step inside a subworkflow with a stale bookkeeping key.
+    // Should surface as a benign diff attributed to prefixed stepId "1.0",
+    // not silently dropped via a subworkflow_not_diffed stub.
     const wf: Record<string, unknown> = {
       a_galaxy_workflow: "true",
       "format-version": "0.1",
@@ -208,7 +221,7 @@ describe("roundtripValidate", () => {
         "0": {
           id: 0,
           type: "tool",
-          label: "cool_tool",
+          label: "cool_tool_top",
           name: "cool_tool",
           annotation: "",
           tool_id: "cool_tool",
@@ -239,19 +252,107 @@ describe("roundtripValidate", () => {
             name: "nested",
             annotation: "",
             tags: [],
-            steps: {},
+            steps: {
+              "0": {
+                id: 0,
+                type: "tool",
+                label: "cool_tool_nested",
+                name: "cool_tool",
+                annotation: "",
+                tool_id: "cool_tool",
+                tool_version: "1.0",
+                tool_state: {
+                  count: 5,
+                  enabled: false,
+                  tags: ["b"],
+                  label: "nested_val",
+                  __rerun_remap_job_id__: null,
+                },
+                input_connections: {},
+                inputs: [],
+                outputs: [],
+                workflow_outputs: [],
+                post_job_actions: {},
+                position: { left: 0, top: 0 },
+              },
+            },
           },
         },
       },
     };
     const result = roundtripValidate(wf, mapResolver({ cool_tool: coolToolInputs() }));
-    // Subworkflow entry present but doesn't flip success/clean
+    // Overall: benign-only (stale key stripped).
+    expect(result.success).toBe(true);
+    expect(result.clean).toBe(false);
+    // Top-level tool step present with depth 0.
+    const top = result.stepResults.find((s) => s.stepId === "0");
+    expect(top).toBeDefined();
+    expect(top!.depth).toBe(0);
+    expect(top!.diffs).toEqual([]);
+    // Nested tool step present with prefixed id "1.0" and depth 1.
+    const nested = result.stepResults.find((s) => s.stepId === "1.0");
+    expect(nested).toBeDefined();
+    expect(nested!.depth).toBe(1);
+    expect(nested!.toolId).toBe("cool_tool");
+    // Nested stale-key diff is classified as benign.
+    const kinds = nested!.diffs.map((d) => d.kind);
+    expect(kinds).toContain("bookkeeping_stripped");
+    expect(nested!.diffs.every((d) => d.severity === "benign")).toBe(true);
+    // No stray subworkflow_external_ref entries for inline subs.
+    expect(result.stepResults.some((s) => s.failureClass === "subworkflow_external_ref")).toBe(
+      false,
+    );
+  });
+
+  it("external (URL/TRS) subworkflow refs surface as informational entries", () => {
+    const wf: Record<string, unknown> = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      name: "with-external-sub",
+      annotation: "",
+      tags: [],
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          label: "cool_tool",
+          name: "cool_tool",
+          annotation: "",
+          tool_id: "cool_tool",
+          tool_version: "1.0",
+          tool_state: { count: 1, enabled: true, tags: ["a"], label: "x" },
+          input_connections: {},
+          inputs: [],
+          outputs: [],
+          workflow_outputs: [],
+          post_job_actions: {},
+          position: { left: 0, top: 0 },
+        },
+        "1": {
+          id: 1,
+          type: "subworkflow",
+          label: "external",
+          name: "external",
+          annotation: "",
+          tool_state: {},
+          input_connections: {},
+          inputs: [],
+          outputs: [],
+          workflow_outputs: [],
+          position: { left: 100, top: 0 },
+          content_source: "url",
+          content_id: "https://example.com/wf.ga",
+          // subworkflow field absent → external
+        },
+      },
+    };
+    const result = roundtripValidate(wf, mapResolver({ cool_tool: coolToolInputs() }));
     expect(result.success).toBe(true);
     expect(result.clean).toBe(true);
-    const sw = result.stepResults.find((s) => s.failureClass === "subworkflow_not_diffed");
-    expect(sw).toBeDefined();
-    expect(sw!.stepId).toBe("1");
-    expect(sw!.success).toBe(true);
+    const ext = result.stepResults.find((s) => s.failureClass === "subworkflow_external_ref");
+    expect(ext).toBeDefined();
+    expect(ext!.stepId).toBe("1");
+    expect(ext!.depth).toBe(0);
   });
 
   it("non-tool steps are ignored in per-step results", () => {
@@ -297,5 +398,114 @@ describe("roundtripValidate", () => {
     expect(result.stepResults).toHaveLength(1);
     expect(result.stepResults[0].toolId).toBe("cool_tool");
     expect(result.success).toBe(true);
+  });
+
+  it("resolves different parameter shapes per tool_version", () => {
+    // Same tool_id, two versions with incompatible parameter shapes. v1 has
+    // `count` only; v2 adds `label` and `tags`. A resolver ignoring version
+    // would hand v2's inputs to v1's state (or vice versa), either throwing
+    // "unknown parameter" from the walker or dropping real values.
+    const v1Inputs: ToolParameterModel[] = [intParam("count")];
+    const v2Inputs: ToolParameterModel[] = [
+      intParam("count"),
+      textParam("label"),
+      selectMultipleParam("tags", ["a", "b", "c"]),
+    ];
+    const wf: Record<string, unknown> = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      name: "multi-version",
+      annotation: "",
+      tags: [],
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          label: "v1",
+          name: "multi_tool",
+          annotation: "",
+          tool_id: "multi_tool",
+          tool_version: "1.0",
+          tool_state: { count: "7" },
+          input_connections: {},
+          inputs: [],
+          outputs: [],
+          workflow_outputs: [],
+          post_job_actions: {},
+          position: { left: 0, top: 0 },
+        },
+        "1": {
+          id: 1,
+          type: "tool",
+          label: "v2",
+          name: "multi_tool",
+          annotation: "",
+          tool_id: "multi_tool",
+          tool_version: "2.0",
+          tool_state: { count: "3", label: "hi", tags: "a,b" },
+          input_connections: {},
+          inputs: [],
+          outputs: [],
+          workflow_outputs: [],
+          post_job_actions: {},
+          position: { left: 100, top: 0 },
+        },
+      },
+    };
+    const resolver = mapResolver({
+      "multi_tool@1.0": v1Inputs,
+      "multi_tool@2.0": v2Inputs,
+    });
+    const result = roundtripValidate(wf, resolver);
+    expect(result.forwardSteps).toHaveLength(2);
+    expect(result.forwardSteps.every((s) => s.converted)).toBe(true);
+    expect(result.stepResults.every((s) => s.success)).toBe(true);
+    // v1 should only see `count`; v2 sees all three. If resolver ignored
+    // version, v1 would be handed v2's inputs (walker wouldn't throw but the
+    // extra keys would round-trip through as benign diffs) — instead expect
+    // zero error diffs for both.
+    expect(
+      result.stepResults.flatMap((s) => s.diffs).filter((d) => d.severity === "error"),
+    ).toEqual([]);
+  });
+
+  it("resolver seeing wrong version drops that step to fallback", () => {
+    // Workflow declares v2; resolver only knows v1. Resolver returns undefined
+    // for the (id, v2) pair → step falls back with unknown_tool.
+    const v1Inputs: ToolParameterModel[] = [intParam("count")];
+    const wf = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      name: "wrong-version",
+      annotation: "",
+      tags: [],
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          label: "v2",
+          name: "multi_tool",
+          annotation: "",
+          tool_id: "multi_tool",
+          tool_version: "2.0",
+          tool_state: { count: 1 },
+          input_connections: {},
+          inputs: [],
+          outputs: [],
+          workflow_outputs: [],
+          post_job_actions: {},
+          position: { left: 0, top: 0 },
+        },
+      },
+    };
+    // Strict resolver — version must match.
+    const resolver: ToolInputsResolver = (toolId, toolVersion) => {
+      if (toolId === "multi_tool" && toolVersion === "1.0") return v1Inputs;
+      return undefined;
+    };
+    const result = roundtripValidate(wf, resolver);
+    expect(result.forwardSteps[0].converted).toBe(false);
+    expect(result.forwardSteps[0].failureClass).toBe("unknown_tool");
+    expect(result.forwardSteps[0].toolVersion).toBe("2.0");
   });
 });

@@ -19,6 +19,12 @@ export interface RoundtripTreeOptions {
   cacheDir?: string;
   format?: string;
   json?: boolean;
+  /** Only list files with error-severity diffs or failures. */
+  errorsOnly?: boolean;
+  /** Only list files with benign diffs (no errors, no failures). */
+  benignOnly?: boolean;
+  /** Suppress per-file lines; print only the aggregate summary. */
+  brief?: boolean;
 }
 
 interface FileOutcome {
@@ -102,22 +108,34 @@ export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions):
       ),
     );
   } else {
-    for (const o of treeResult.outcomes) {
-      if (o.error) {
-        console.error(`  ${o.info.relativePath}: ERROR (${o.error})`);
-        continue;
-      }
-      if (o.skipped) continue;
-      const r = o.result!;
-      const c = countDiffs(r.result);
-      const status = !r.result.success ? "FAIL" : r.result.clean ? "clean" : "benign";
-      console.log(
-        `  ${r.relativePath}: ${status} (${c.benign} benign, ${c.error} real diff, ${c.failed} conversion failure)`,
-      );
-      if (r.toolLoadErrors) {
-        for (const t of r.toolLoadErrors) {
-          const ver = t.toolVersion ? `@${t.toolVersion}` : "";
-          console.error(`    tool ${t.toolId}${ver}: ${t.error}`);
+    if (!opts.brief) {
+      for (const o of treeResult.outcomes) {
+        if (o.error) {
+          // File-level errors always shown unless --benign-only.
+          if (!opts.benignOnly) {
+            console.error(`  ${o.info.relativePath}: ERROR (${o.error})`);
+          }
+          continue;
+        }
+        if (o.skipped) continue;
+        const r = o.result!;
+        const c = countDiffs(r.result);
+        const isFail = !r.result.success;
+        const isClean = r.result.clean;
+        const isBenign = !isFail && !isClean;
+
+        if (opts.errorsOnly && !isFail) continue;
+        if (opts.benignOnly && !isBenign) continue;
+
+        const status = isFail ? "FAIL" : isClean ? "clean" : "benign";
+        console.log(
+          `  ${r.relativePath}: ${status} (${c.benign} benign, ${c.error} real diff, ${c.failed} conversion failure)`,
+        );
+        if (r.toolLoadErrors) {
+          for (const t of r.toolLoadErrors) {
+            const ver = t.toolVersion ? `@${t.toolVersion}` : "";
+            console.error(`    tool ${t.toolId}${ver}: ${t.error}`);
+          }
         }
       }
     }

@@ -32,6 +32,7 @@ export {
   type StatefulExportResult,
   type ToolInputsResolver,
 } from "./toFormat2Stateful.js";
+export type { StepConversionFailureClass } from "./stateful-runner.js";
 export { toNativeStateful, type StatefulNativeResult } from "./toNativeStateful.js";
 export { ensureFormat2, ensureNative } from "./ensure.js";
 export {

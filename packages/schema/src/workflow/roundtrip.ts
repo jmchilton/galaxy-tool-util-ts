@@ -16,6 +16,7 @@ import { toNativeStateful } from "./normalized/toNativeStateful.js";
 import type { StepConversionStatus, ToolInputsResolver } from "./normalized/stateful-runner.js";
 import type { StatefulExportResult } from "./normalized/toFormat2Stateful.js";
 import { isConnectedValue, isRuntimeValue } from "./runtime-markers.js";
+import { STALE_KEYS as SKIP_KEYS } from "./stale-keys.js";
 
 // --- Types ---
 
@@ -23,7 +24,8 @@ export type RoundtripFailureClass =
   | "conversion_error"
   | "reimport_error"
   | "roundtrip_mismatch"
-  | "subworkflow_not_diffed";
+  /** Subworkflow ref was an external URL/TRS string — inline steps not available for diff. */
+  | "subworkflow_external_ref";
 
 export type DiffSeverity = "error" | "benign";
 
@@ -49,6 +51,12 @@ export interface StepRoundtripResult {
   failureClass?: RoundtripFailureClass;
   error?: string;
   diffs: StepDiff[];
+  /**
+   * Nesting depth inside subworkflows. 0 = top-level, 1 = inside one
+   * subworkflow, etc. Used by CLI reporters to indent nested results.
+   * `stepId` is prefixed with parent ids using `.` (e.g. `3.1.0`).
+   */
+  depth: number;
 }
 
 export interface RoundtripResult {
@@ -65,16 +73,6 @@ export interface RoundtripResult {
 }
 
 // --- Bookkeeping / internal helpers ---
-
-const SKIP_KEYS = new Set([
-  "__current_case__",
-  "__input_ext",
-  "__page__",
-  "__rerun_remap_job_id__",
-  "__index__",
-  "__job_resource",
-  "chromInfo",
-]);
 
 /** Compare two scalar values with format2↔native type-equivalence. */
 function scalarsEquivalent(a: unknown, b: unknown): boolean {
@@ -350,36 +348,48 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
 
 // --- Step collection ---
 
-function collectToolSteps(wf: NormalizedNativeWorkflow): Map<string, NormalizedNativeStep> {
-  const out = new Map<string, NormalizedNativeStep>();
-  for (const [key, step] of Object.entries(wf.steps)) {
-    if (step.type === "tool") {
-      out.set(String(step.id ?? key), step);
-    }
-  }
-  return out;
+interface CollectedStep {
+  step: NormalizedNativeStep;
+  depth: number;
+}
+
+interface CollectedSubworkflow {
+  stepId: string;
+  depth: number;
+  /** Non-null when the subworkflow is inline; null for external URL/TRS refs. */
+  workflow: NormalizedNativeWorkflow | null;
 }
 
 /**
- * Subworkflow steps aren't recursively diffed in this (minimal) port —
- * nested tool_state corruption inside a subworkflow step is not caught.
- * We still surface an entry per subworkflow step so callers can tell the
- * step exists and was deliberately skipped, rather than silently treating
- * it as a clean roundtrip.
+ * Walk a native workflow collecting tool steps and subworkflow references.
+ *
+ * Tool step ids are prefixed with their parent chain separated by `.` so
+ * nested ids don't collide with top-level ids (e.g. `3.0` = step 0 inside
+ * the subworkflow at top-level id 3). Depth tracks nesting for reporters.
+ * External (URL/TRS) subworkflow refs are recorded but not recursed into.
  */
-function collectSubworkflowSteps(
+function collectSteps(
   wf: NormalizedNativeWorkflow,
-): Array<{ stepId: string; name?: string }> {
-  const out: Array<{ stepId: string; name?: string }> = [];
+  prefix: string = "",
+  depth: number = 0,
+): { tools: Map<string, CollectedStep>; subworkflows: CollectedSubworkflow[] } {
+  const tools = new Map<string, CollectedStep>();
+  const subworkflows: CollectedSubworkflow[] = [];
   for (const [key, step] of Object.entries(wf.steps)) {
-    if (step.type === "subworkflow") {
-      out.push({
-        stepId: String(step.id ?? key),
-        name: step.label ?? step.name ?? undefined,
-      });
+    const localId = String(step.id ?? key);
+    const fullId = prefix ? `${prefix}.${localId}` : localId;
+    if (step.type === "tool") {
+      tools.set(fullId, { step, depth });
+    } else if (step.type === "subworkflow") {
+      subworkflows.push({ stepId: fullId, depth, workflow: step.subworkflow ?? null });
+      if (step.subworkflow != null) {
+        const nested = collectSteps(step.subworkflow, fullId, depth + 1);
+        for (const [k, v] of nested.tools) tools.set(k, v);
+        subworkflows.push(...nested.subworkflows);
+      }
     }
   }
-  return out;
+  return { tools, subworkflows };
 }
 
 // --- Public entry point ---
@@ -397,8 +407,7 @@ export function roundtripValidate(
   toolInputsResolver: ToolInputsResolver,
 ): RoundtripResult {
   const original = ensureNative(nativeRaw);
-  const originalSteps = collectToolSteps(original);
-  const subworkflowSteps = collectSubworkflowSteps(original);
+  const { tools: originalSteps, subworkflows: originalSubworkflows } = collectSteps(original);
 
   let forwardSteps: StepConversionStatus[] = [];
   let reverseSteps: StepConversionStatus[] = [];
@@ -410,9 +419,9 @@ export function roundtripValidate(
   try {
     forward = toFormat2Stateful(nativeRaw, toolInputsResolver);
   } catch (err) {
-    // Total failure — attribute to all tool steps
+    // Total failure — attribute to all tool steps (including nested)
     const error = err instanceof Error ? err.message : String(err);
-    for (const [stepId, step] of originalSteps) {
+    for (const [stepId, { step, depth }] of originalSteps) {
       stepResults.push({
         stepId,
         toolId: step.tool_id ?? undefined,
@@ -420,6 +429,7 @@ export function roundtripValidate(
         failureClass: "conversion_error",
         error,
         diffs: [],
+        depth,
       });
     }
     return {
@@ -439,7 +449,7 @@ export function roundtripValidate(
     reimported = reverse.workflow;
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
-    for (const [stepId, step] of originalSteps) {
+    for (const [stepId, { step, depth }] of originalSteps) {
       stepResults.push({
         stepId,
         toolId: step.tool_id ?? undefined,
@@ -447,6 +457,7 @@ export function roundtripValidate(
         failureClass: "reimport_error",
         error,
         diffs: [],
+        depth,
       });
     }
     return {
@@ -458,12 +469,12 @@ export function roundtripValidate(
     };
   }
 
-  const reimportedSteps = collectToolSteps(reimported);
+  const { tools: reimportedSteps } = collectSteps(reimported);
 
-  // Per-step comparison
-  for (const [stepId, origStep] of originalSteps) {
-    const afterStep = reimportedSteps.get(stepId);
-    if (!afterStep) {
+  // Per-step comparison (top-level + recursively-collected nested tools)
+  for (const [stepId, { step: origStep, depth }] of originalSteps) {
+    const afterEntry = reimportedSteps.get(stepId);
+    if (!afterEntry) {
       stepResults.push({
         stepId,
         toolId: origStep.tool_id ?? undefined,
@@ -471,11 +482,18 @@ export function roundtripValidate(
         failureClass: "roundtrip_mismatch",
         error: `step ${stepId} missing after roundtrip`,
         diffs: [],
+        depth,
       });
       continue;
     }
-    // Per-step forward failure → propagate
-    const forwardFailure = forwardSteps.find((s) => s.stepId === stepId && !s.converted);
+    // Per-step forward failure → propagate. Note: forwardSteps from
+    // `makeStepConversionRunner` uses unprefixed step ids. Nested steps
+    // with the same local id as a top-level step can collide; we match
+    // by suffix (localId) and tool_id as a best-effort disambiguation.
+    const localId = stepId.includes(".") ? stepId.slice(stepId.lastIndexOf(".") + 1) : stepId;
+    const forwardFailure = forwardSteps.find(
+      (s) => s.stepId === localId && !s.converted && s.toolId === (origStep.tool_id ?? undefined),
+    );
     if (forwardFailure) {
       stepResults.push({
         stepId,
@@ -484,11 +502,12 @@ export function roundtripValidate(
         failureClass: "conversion_error",
         error: forwardFailure.error,
         diffs: [],
+        depth,
       });
       continue;
     }
     const diffs: StepDiff[] = [];
-    compareTree(origStep.tool_state, afterStep.tool_state, "", diffs);
+    compareTree(origStep.tool_state, afterEntry.step.tool_state, "", diffs);
     const hasError = diffs.some((d) => d.severity === "error");
     stepResults.push({
       stepId,
@@ -496,25 +515,29 @@ export function roundtripValidate(
       success: !hasError,
       failureClass: hasError ? "roundtrip_mismatch" : undefined,
       diffs,
+      depth,
     });
   }
 
-  // Subworkflow steps: emit synthetic results so callers see they exist.
-  // Not counted as failures or diffs — documented limitation.
-  for (const sw of subworkflowSteps) {
+  // External (URL/TRS) subworkflow refs: surface an informational entry
+  // so callers can see the step exists and was deliberately skipped.
+  // Inline subworkflows are handled by the recursive collection above.
+  for (const sw of originalSubworkflows) {
+    if (sw.workflow != null) continue;
     stepResults.push({
       stepId: sw.stepId,
       toolId: undefined,
       success: true,
-      failureClass: "subworkflow_not_diffed",
-      error: "subworkflow step not recursively diffed in this port",
+      failureClass: "subworkflow_external_ref",
+      error: "external subworkflow reference (URL/TRS) — inline steps not available for diff",
       diffs: [],
+      depth: sw.depth,
     });
   }
 
-  // Only tool-step results contribute to overall verdicts; subworkflow
+  // Only tool-step results contribute to overall verdicts; external-ref
   // entries are informational.
-  const toolResults = stepResults.filter((s) => s.failureClass !== "subworkflow_not_diffed");
+  const toolResults = stepResults.filter((s) => s.failureClass !== "subworkflow_external_ref");
   const anyError = toolResults.some((s) => !s.success);
   const anyDiff = toolResults.some((s) => s.diffs.length > 0);
   return {

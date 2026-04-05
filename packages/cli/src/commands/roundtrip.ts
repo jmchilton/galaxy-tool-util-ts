@@ -23,6 +23,12 @@ export interface RoundtripOptions {
   cacheDir?: string;
   format?: string;
   json?: boolean;
+  /** Only show steps with error-severity diffs. */
+  errorsOnly?: boolean;
+  /** Only show steps with benign diffs (suppress clean + real-error steps). */
+  benignOnly?: boolean;
+  /** Suppress the per-diff list; show only per-step counts and summary. */
+  brief?: boolean;
 }
 
 export async function runRoundtrip(filePath: string, opts: RoundtripOptions): Promise<void> {
@@ -66,13 +72,19 @@ export async function runRoundtrip(filePath: string, opts: RoundtripOptions): Pr
   if (opts.json) {
     console.log(JSON.stringify(result, null, 2));
   } else {
-    reportResult(filePath, result);
+    reportResult(filePath, result, opts);
   }
 
   process.exitCode = exitCodeFor(result);
 }
 
-function reportResult(filePath: string, result: RoundtripResult): void {
+export interface ReportFilter {
+  errorsOnly?: boolean;
+  benignOnly?: boolean;
+  brief?: boolean;
+}
+
+function reportResult(filePath: string, result: RoundtripResult, filter: ReportFilter): void {
   const total = result.stepResults.length;
   const failed = result.stepResults.filter((s) => !s.success).length;
   const benignCount = result.stepResults.reduce(
@@ -89,20 +101,50 @@ function reportResult(filePath: string, result: RoundtripResult): void {
     `  ${total - failed}/${total} step(s) ok, ${benignCount} benign diff(s), ${errorCount} real diff(s)`,
   );
 
+  // --brief short-circuits: skip the per-step detail entirely. Still prints
+  // the one-line summary above, which is the whole point of --brief.
+  if (filter.brief) return;
+
   for (const step of result.stepResults) {
-    // Skip clean-passing tool steps but keep informational subworkflow
-    // notes (failureClass set, success true) visible.
-    if (step.diffs.length === 0 && step.success && !step.failureClass) continue;
+    const hasError = step.diffs.some((d) => d.severity === "error");
+    const hasBenign = step.diffs.some((d) => d.severity === "benign");
+
+    if (filter.errorsOnly && !hasError && step.success) continue;
+    if (filter.benignOnly) {
+      // Show only steps with benign diffs and no errors and no failure.
+      if (!hasBenign || hasError || !step.success) continue;
+    }
+    // Default: skip clean-passing tool steps but keep informational
+    // subworkflow notes (failureClass set, success true) visible.
+    if (
+      !filter.errorsOnly &&
+      !filter.benignOnly &&
+      step.diffs.length === 0 &&
+      step.success &&
+      !step.failureClass
+    ) {
+      continue;
+    }
+
+    // Indent nested subworkflow steps (depth>0) so the hierarchy is visible.
+    const indent = "  ".repeat(step.depth);
     const label = step.toolId ? `${step.stepId} (${step.toolId})` : step.stepId;
     if (!step.success) {
-      console.error(`  step ${label}: ${step.failureClass ?? "failed"} — ${step.error ?? ""}`);
+      console.error(
+        `${indent}  step ${label}: ${step.failureClass ?? "failed"} — ${step.error ?? ""}`,
+      );
     } else if (step.failureClass) {
-      console.log(`  step ${label}: ${step.failureClass} (${step.error ?? ""})`);
+      console.log(`${indent}  step ${label}: ${step.failureClass} (${step.error ?? ""})`);
     }
-    for (const d of step.diffs) {
+    const diffsToShow = filter.errorsOnly
+      ? step.diffs.filter((d) => d.severity === "error")
+      : filter.benignOnly
+        ? step.diffs.filter((d) => d.severity === "benign")
+        : step.diffs;
+    for (const d of diffsToShow) {
       const tag = d.severity === "error" ? "ERROR" : `benign:${d.kind ?? "?"}`;
       const loc = d.path || "<root>";
-      console.log(`    [${tag}] ${loc}: ${d.message}`);
+      console.log(`${indent}    [${tag}] ${loc}: ${d.message}`);
     }
   }
 }

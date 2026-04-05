@@ -255,8 +255,12 @@ Source must be a native (`.ga`) file — format2 inputs are rejected.
 | `--cache-dir <dir>` | Tool cache directory |
 | `--format <fmt>` | Force source format (must resolve to native) |
 | `--json` | Output structured JSON report |
+| `--errors-only` | Suppress benign diffs and clean steps from text output |
+| `--benign-only` | Show only steps with benign diffs (no errors, no failures) |
+| `--brief` | Omit per-diff list; show only the one-line summary |
 
 Exit codes: 0 = clean, 1 = benign diffs only, 2 = real diffs or conversion errors.
+Filter flags affect only the text report — exit codes are unchanged.
 
 ### Tree (batch) commands
 
@@ -360,5 +364,9 @@ gxwf roundtrip-tree ./workflows/ --json
 | `--cache-dir <dir>` | Tool cache directory |
 | `--format <fmt>` | Force source format (must resolve to native) |
 | `--json` | Output structured JSON report |
+| `--errors-only` | List only files with errors or failures |
+| `--benign-only` | List only files with benign diffs (no errors, no failures) |
+| `--brief` | Omit per-file lines; print only the aggregate summary |
 
 Exit codes: 0 = all files clean, 1 = benign diffs only, 2 = any file has real diffs or conversion errors.
+Filter flags affect only the text report — exit codes are unchanged.

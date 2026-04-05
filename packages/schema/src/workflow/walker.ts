@@ -22,6 +22,7 @@ import type {
 } from "../schema/bundle-types.js";
 
 import { flatStatePath, repeatInputsToArray, selectWhichWhen } from "./state-merge.js";
+import { STALE_KEYS } from "./stale-keys.js";
 
 /** Sentinel: return from leaf callback to omit a value from output. */
 export const SKIP_VALUE: unique symbol = Symbol("SKIP_VALUE");
@@ -31,14 +32,6 @@ export type LeafCallback = (
   value: unknown,
   statePath: string,
 ) => unknown | typeof SKIP_VALUE;
-
-/** Keys stripped from native state during walking (bookkeeping artifacts). */
-const BOOKKEEPING_KEYS = new Set([
-  "__current_case__",
-  "__page__",
-  "__index__",
-  "__rerun_remap_job_id__",
-]);
 
 export interface WalkNativeOptions {
   prefix?: string;
@@ -157,7 +150,7 @@ export function walkNativeState(
 
   if (checkUnknownKeys) {
     for (const key of Object.keys(state)) {
-      if (!visitedKeys.has(key) && !BOOKKEEPING_KEYS.has(key)) {
+      if (!visitedKeys.has(key) && !STALE_KEYS.has(key)) {
         throw new UnknownKeyError(key, prefix);
       }
     }

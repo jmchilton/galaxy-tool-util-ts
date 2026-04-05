@@ -304,5 +304,98 @@ describe("toNativeStateful", () => {
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0].converted).toBe(false);
     expect(result.steps[0].error).toMatch(/not resolved/);
+    expect(result.steps[0].failureClass).toBe("unknown_tool");
+  });
+});
+
+// --- Integration: precheck + validation failure classes ---
+
+describe("toFormat2Stateful failure classification", () => {
+  it("unknown_tool: resolver returns undefined", () => {
+    const resolver: ToolInputsResolver = () => undefined;
+    const result = toFormat2Stateful(buildNativeWorkflow(), resolver);
+    for (const s of result.steps) {
+      expect(s.converted).toBe(false);
+      expect(s.failureClass).toBe("unknown_tool");
+    }
+  });
+
+  it("precheck: legacy ${...} in typed field → failureClass precheck", () => {
+    // Build a workflow whose tool_state has a ${...} in an integer field
+    const wf = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      name: "wf",
+      annotation: "",
+      tags: [],
+      uuid: "00000000-0000-4000-8000-000000000000",
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          label: "bad",
+          name: "bad",
+          annotation: "",
+          tool_id: "bad_tool",
+          tool_version: "1.0",
+          tool_state: { count: "${threshold}" },
+          input_connections: {},
+          inputs: [],
+          outputs: [],
+          workflow_outputs: [],
+          post_job_actions: {},
+          position: { left: 0, top: 0 },
+        },
+      },
+    };
+    const resolver = mapResolver({ bad_tool: [intParam("count")] });
+    const result = toFormat2Stateful(wf, resolver);
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].converted).toBe(false);
+    expect(result.steps[0].failureClass).toBe("precheck");
+    expect(result.steps[0].error).toMatch(/replacement/);
+  });
+
+  it("pre_validation: native state fails workflow_step_native schema", () => {
+    // Integer field gets a non-numeric string — should fail pre-validation
+    const wf = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      name: "wf",
+      annotation: "",
+      tags: [],
+      uuid: "00000000-0000-4000-8000-000000000000",
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          label: "t",
+          name: "t",
+          annotation: "",
+          tool_id: "t",
+          tool_version: "1.0",
+          tool_state: { count: { not: "a scalar" } },
+          input_connections: {},
+          inputs: [],
+          outputs: [],
+          workflow_outputs: [],
+          post_job_actions: {},
+          position: { left: 0, top: 0 },
+        },
+      },
+    };
+    const resolver = mapResolver({ t: [intParam("count")] });
+    const result = toFormat2Stateful(wf, resolver);
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0].converted).toBe(false);
+    expect(result.steps[0].failureClass).toBe("pre_validation");
+  });
+
+  it("converted: valid native state passes pre and post validation", () => {
+    const resolver = mapResolver({ cool_tool: coolToolInputs() });
+    const result = toFormat2Stateful(buildNativeWorkflow(), resolver);
+    const coolStatus = result.steps.find((s) => s.toolId === "cool_tool");
+    expect(coolStatus?.converted).toBe(true);
+    expect(coolStatus?.failureClass).toBeUndefined();
   });
 });

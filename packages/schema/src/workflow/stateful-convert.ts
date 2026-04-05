@@ -112,7 +112,8 @@ export function convertStateToFormat2(
   toolInputs: ToolParameterModel[],
 ): Format2ConvertedState {
   const toolState = nativeStep.tool_state;
-  const inputConnections = _flattenInputConnections(nativeStep);
+  // Widen readonly tuples to unknown for the walker's connection lookup.
+  const inputConnections = nativeStep.input_connections as Record<string, unknown>;
   const connectedPaths = nativeStep.connected_paths;
   const inBlock: Record<string, string> = {};
 
@@ -191,20 +192,4 @@ export function encodeStateToNative(
   };
 
   return walkFormat2State(toolInputs, state, leafCallback);
-}
-
-// --- Helpers ---
-
-/**
- * Flatten input_connections to a flat path→value map for the walker.
- *
- * NormalizedNativeStep.input_connections is Record<string, readonly unknown[]>.
- * The walker needs a flat Record<string, unknown> keyed by connection path.
- */
-function _flattenInputConnections(step: NormalizedNativeStep): Record<string, unknown> {
-  const flat: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(step.input_connections)) {
-    flat[key] = value;
-  }
-  return flat;
 }
