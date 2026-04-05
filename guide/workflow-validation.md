@@ -2,6 +2,8 @@
 
 End-to-end guide for validating [Galaxy](https://galaxyproject.org) workflow files using `galaxy-tool-util`.
 
+> For a broader overview of all workflow operations (cleaning, linting, conversion, batch processing), see [Workflow Operations](guide/workflow-operations.md).
+
 ## Overview
 
 Workflow validation has two layers:
@@ -13,10 +15,10 @@ Workflow validation has two layers:
 
 ```bash
 # Full validation (structure + tool state)
-galaxy-workflow-validate my-workflow.ga
+gxwf validate my-workflow.ga
 
 # Structure only
-galaxy-workflow-validate my-workflow.ga --no-tool-state
+gxwf validate my-workflow.ga --no-tool-state
 ```
 
 ### Format Detection
@@ -33,13 +35,13 @@ Two backends are available for [tool state](glossary#tool-state) validation:
 
 **Effect mode** (default):
 ```bash
-galaxy-workflow-validate my-workflow.ga --mode effect
+gxwf validate my-workflow.ga --mode effect
 ```
 Uses [Effect](https://effect.website) Schema directly for validation. Full type-level validation with rich error messages.
 
 **JSON Schema mode**:
 ```bash
-galaxy-workflow-validate my-workflow.ga --mode json-schema
+gxwf validate my-workflow.ga --mode json-schema
 ```
 Exports Effect Schemas to [JSON Schema](https://json-schema.org), then validates with [Ajv](https://ajv.js.org). Useful for interop with other JSON Schema tools.
 
@@ -54,7 +56,7 @@ galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
   --output schemas/fastqc-0.74.json
 
 # Step 2: Validate using pre-exported schemas
-galaxy-workflow-validate my-workflow.ga \
+gxwf validate my-workflow.ga \
   --mode json-schema \
   --tool-schema-dir ./schemas/
 ```

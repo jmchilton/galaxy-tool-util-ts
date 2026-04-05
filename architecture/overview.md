@@ -7,7 +7,7 @@ galaxy-tool-util/
   packages/
     schema/    → Effect Schema definitions for parameters + workflows
     core/      → ToolCache, ToolInfoService, API clients
-    cli/       → galaxy-tool-cache CLI (Commander.js)
+    cli/       → galaxy-tool-cache + gxwf CLIs (Commander.js)
     tool-cache-proxy/  → galaxy-tool-proxy HTTP server
   schema-sources/  → Upstream YAML definitions (synced from gxformat2)
 ```
@@ -27,6 +27,8 @@ tool-cache-proxy (depends on: core, schema)
 
 ## Data Flow
 
+### Tool Caching & Validation
+
 ```
 ToolShed API / Galaxy API
         ↓
@@ -43,6 +45,34 @@ ToolShed API / Galaxy API
    JSONSchema.make()  or  S.decodeUnknown()
         ↓
    JSON Schema export    Runtime validation
+```
+
+### Workflow Operations
+
+```
+Workflow file (.ga / .gxwf.yml)
+        ↓
+   detectFormat() → native | format2
+        ↓
+   ┌──────────────┬──────────────┬──────────────┬──────────────┐
+   │   validate    │    clean     │     lint     │   convert    │
+   │              │              │              │              │
+   │ expandNative  │ cleanWorkflow │ lintWorkflow  │ toFormat2()  │
+   │ expandFormat2 │ (stale keys, │ lintBestPrac. │ toNative()   │
+   │ validateSteps │  legacy enc) │ validateSteps │              │
+   └──────────────┴──────────────┴──────────────┴──────────────┘
+        ↓                              ↓
+   StepValidationResult[]         LintReport
+```
+
+Tree (batch) variants wrap each operation with a shared orchestrator:
+
+```
+discoverWorkflows(dir) → WorkflowInfo[]
+        ↓
+   collectTree(dir, processOne) → TreeResult<T>
+        ↓
+   summarizeOutcomes() → TreeSummary
 ```
 
 ## Key Design Decisions
