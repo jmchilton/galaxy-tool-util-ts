@@ -1,0 +1,50 @@
+# pre-commit config for galaxy-tool-util
+#
+# Install hooks:   pre-commit install
+# Run on all:      pre-commit run --all-files
+# Update pins:     pre-commit autoupdate
+# Skip once:       SKIP=eslint git commit ...   (prefer fixing over skipping)
+
+# Skip generated code, synced upstream sources, and test fixtures — they are
+# not ours to reformat and hygiene hooks would cause noise or break tests.
+exclude: |
+  (?x)^(
+    packages/schema/src/workflow/raw/|
+    packages/.*/test/fixtures/|
+    schema-sources/|
+    docs/api/typedoc/|
+    pnpm-lock\.yaml$
+  )
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-yaml
+      - id: check-json
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Local hooks shell out to pnpm so versions track package.json, not a mirror.
+  # language: system means pre-commit won't create its own env — it uses the
+  # repo's already-installed pnpm/node (run `pnpm install` first).
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (write)
+        entry: pnpm exec prettier --write
+        language: system
+        files: ^packages/.*/(src|test)/.*\.ts$
+        pass_filenames: true
+
+      - id: eslint
+        name: eslint (fix)
+        entry: pnpm exec eslint --fix
+        language: system
+        files: ^packages/.*/(src|test)/.*\.ts$
+        pass_filenames: true
