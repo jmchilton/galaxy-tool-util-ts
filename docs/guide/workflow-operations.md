@@ -4,14 +4,15 @@ End-to-end guide for validating, cleaning, linting, and converting [Galaxy](http
 
 ## Overview
 
-The `gxwf` CLI provides four operations on workflow files, each available in single-file and batch (tree) modes:
+The `gxwf` CLI provides five operations on workflow files, each available in single-file and batch (tree) modes:
 
 | Operation | Single-file | Batch | Purpose |
 |---|---|---|---|
 | **Validate** | `gxwf validate` | `gxwf validate-tree` | Structure + tool state validation |
 | **Clean** | `gxwf clean` | `gxwf clean-tree` | Strip stale keys, decode legacy encoding |
 | **Lint** | `gxwf lint` | `gxwf lint-tree` | Structural checks + best practices + state validation |
-| **Convert** | `gxwf convert` | `gxwf convert-tree` | Native <-> format2 conversion |
+| **Convert** | `gxwf convert` | `gxwf convert-tree` | Native <-> format2 conversion (schema-free or `--stateful`) |
+| **Roundtrip** | `gxwf roundtrip` | `gxwf roundtrip-tree` | Native → format2 → native fidelity check |
 
 ## Validation
 
@@ -145,21 +146,83 @@ gxwf convert my-workflow.ga --to format2
 gxwf convert my-workflow.ga --to format2 --compact --output my-workflow.gxwf.yml
 ```
 
-This is the schema-free conversion path — it mirrors Python's `gxwf-to-format2` / `gxwf-to-native`. It does not use tool definitions for state conversion.
+By default this is the schema-free conversion path — it mirrors Python's `gxwf-to-format2` / `gxwf-to-native`. It does not use tool definitions for state conversion.
 
 ### When to Convert
 
 - **native → format2**: For version control friendliness (YAML diffs better than JSON), human readability, and IWC compatibility.
 - **format2 → native**: For importing into Galaxy instances that expect native format, or for testing roundtrip fidelity.
 
+### Schema-free vs Stateful
+
+Conversion has two modes:
+
+**Schema-free** (default): `tool_state` is copied between formats as-is. Fast, no tool cache dependency, but lossy — native state may contain stale bookkeeping keys, string-typed numbers, comma-delimited multi-selects, or ConnectedValue/RuntimeValue markers that remain in the output.
+
+**Stateful** (`--stateful`): walks the parameter tree using cached tool definitions to strip stale keys, coerce scalar types, separate connection/runtime markers into the format2 `in` block, and emit clean `state` dicts. Per-step failures (tool not in cache, invalid state) fall back to schema-free passthrough and are reported to stderr.
+
+```bash
+# Stateful conversion — requires populated tool cache
+gxwf convert my-workflow.ga --to format2 --stateful
+gxwf convert-tree ./workflows/ --to format2 --stateful --output-dir ./converted/
+
+# Share a cache directory across runs
+gxwf convert my-workflow.ga --to format2 --stateful --cache-dir ~/.cache/galaxy-tools
+```
+
+Populate the cache first with `galaxy-tool-cache populate-workflow` (see [Tool Cache Management](#tool-cache-management) below). An empty cache emits a warning and falls back for every step.
+
+Stateful mode exit codes: 0 = all steps converted cleanly, 1 = any step fell back to schema-free (typically a missing tool).
+
+## Roundtrip Validation
+
+`gxwf roundtrip` converts a native workflow to format2 and back via stateful conversion, then diffs the original and reimported `tool_state` step-by-step. Use this to verify that a workflow survives a round-trip through format2 without silent state corruption.
+
+```bash
+# Single file
+gxwf roundtrip my-workflow.ga --cache-dir ~/.cache/galaxy-tools
+
+# Batch (native workflows only — format2 files are skipped)
+gxwf roundtrip-tree ./workflows/ --cache-dir ~/.cache/galaxy-tools
+
+# Structured JSON report
+gxwf roundtrip my-workflow.ga --json
+```
+
+### Diff Classification
+
+Per-step diffs are classified as **benign** or **real**:
+
+- **Benign** (expected artifacts of stateful conversion):
+  - `bookkeeping_stripped` — stale keys (`__page__`, `__rerun_remap_job_id__`, `chromInfo`, ...) removed
+  - `multi_select_normalized` — comma-delimited string ↔ list representation change
+  - `all_null_section_omitted` — section with all-null leaves dropped
+  - `empty_container_omitted` — empty repeat placeholder dropped
+  - `connection_only_section_omitted` — section containing only ConnectedValue/RuntimeValue markers moved to the `in` block
+- **Real** — value changes, missing keys, type mismatches not covered by the type-equivalence rules
+
+Type-equivalent values (`"5"` ↔ `5`, `"true"` ↔ `true`, `"null"` ↔ `null`) are treated as equal and emit no diff. (The `BenignArtifactKind` TS union also declares a `type_coercion` member for completeness, but it is never emitted in practice — equivalent scalars produce no diff at all rather than a benign one.)
+
+Roundtrip requires a populated tool cache — an empty cache emits a warning and every step falls back, yielding exit code 2.
+
+### Exit Codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Clean roundtrip — no diffs of any severity |
+| 1 | Benign diffs only (type coercions, stale keys, connection moves) |
+| 2 | Real diffs, conversion failures, or a non-native source file |
+
 ### Limitations
 
-- Conversion is schema-free: tool state is copied as-is, not re-encoded for the target format's conventions.
-- Schema-aware conversion (`--stateful` flag) is planned but not yet implemented — it requires tool cache integration in the conversion path.
+- Source must be a native (`.ga`) workflow — format2 inputs are rejected.
+- Subworkflow steps are listed in the result but their nested `tool_state` is not recursively diffed. Corrupt nested state is not caught.
+- No step ID remapping (relies on ID stability across the normalized conversion pipeline).
+- No label/annotation/position/tool_version diffing — only `tool_state`.
 
 ## Batch Processing
 
-All four operations have tree variants that recursively discover and process workflows under a directory.
+All five operations have tree variants that recursively discover and process workflows under a directory.
 
 ```bash
 gxwf validate-tree ./workflows/
@@ -284,12 +347,12 @@ Mapping between Python CLI commands and their TypeScript equivalents:
 | `gxwf-state-clean-tree` | `gxwf clean-tree` | Done |
 | `gxwf-lint-stateful` | `gxwf lint` | Done |
 | `gxwf-lint-stateful-tree` | `gxwf lint-tree` | Done |
-| `gxwf-to-format2-stateful` | `gxwf convert --to format2 --stateful` | Future |
-| `gxwf-to-native-stateful` | `gxwf convert --to native --stateful` | Future |
-| `gxwf-to-format2-stateful-tree` | `gxwf convert-tree --to format2 --stateful` | Future |
-| `gxwf-to-native-stateful-tree` | `gxwf convert-tree --to native --stateful` | Future |
-| `gxwf-roundtrip-validate` | `gxwf roundtrip` | Future |
-| `gxwf-roundtrip-validate-tree` | `gxwf roundtrip-tree` | Future |
+| `gxwf-to-format2-stateful` | `gxwf convert --to format2 --stateful` | Done |
+| `gxwf-to-native-stateful` | `gxwf convert --to native --stateful` | Done |
+| `gxwf-to-format2-stateful-tree` | `gxwf convert-tree --to format2 --stateful` | Done |
+| `gxwf-to-native-stateful-tree` | `gxwf convert-tree --to native --stateful` | Done |
+| `gxwf-roundtrip-validate` | `gxwf roundtrip` | Done |
+| `gxwf-roundtrip-validate-tree` | `gxwf roundtrip-tree` | Done |
 | `galaxy-tool-cache populate-workflow` | `galaxy-tool-cache populate-workflow` | Done |
 | `galaxy-tool-cache structural-schema` | `galaxy-tool-cache structural-schema` | Done |
 | `galaxy-tool-cache add-local` | — | Out of scope (no local XML parsing) |

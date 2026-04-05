@@ -231,6 +231,32 @@ gxwf convert my-workflow.gxwf.yml --to native --json
 | `--json` | Force JSON output |
 | `--yaml` | Force YAML output |
 | `--format <fmt>` | Force source format (auto-detected by default) |
+| `--stateful` | Use cached tool definitions for schema-aware state re-encoding |
+| `--cache-dir <dir>` | Tool cache directory (for `--stateful`) |
+
+With `--stateful`, scalar types are coerced (`"42"` → `42`), stale bookkeeping keys stripped, and connection/runtime markers routed into the format2 `in` block. Per-step failures fall back to schema-free passthrough and are reported to stderr. Exit code 1 if any step fell back.
+
+### `roundtrip <file>`
+
+Roundtrip-validate a native workflow: convert native → format2 → native via stateful conversion, then diff the original and reimported `tool_state` per step. Benign diffs (type coercions, stale-key stripping, connection moves) are distinguished from real state corruption.
+
+```bash
+# Single file
+gxwf roundtrip my-workflow.ga --cache-dir ~/.cache/galaxy-tools
+
+# Structured JSON report
+gxwf roundtrip my-workflow.ga --json
+```
+
+Source must be a native (`.ga`) file — format2 inputs are rejected.
+
+| Option | Description |
+|---|---|
+| `--cache-dir <dir>` | Tool cache directory |
+| `--format <fmt>` | Force source format (must resolve to native) |
+| `--json` | Output structured JSON report |
+
+Exit codes: 0 = clean, 1 = benign diffs only, 2 = real diffs or conversion errors.
 
 ### Tree (batch) commands
 
@@ -315,3 +341,24 @@ gxwf convert-tree ./workflows/ --output-dir ./converted/
 | `--json` | Force JSON output for converted files |
 | `--yaml` | Force YAML output |
 | `--format <fmt>` | Force source format (auto-detected by default) |
+| `--stateful` | Use cached tool definitions for schema-aware state re-encoding |
+| `--cache-dir <dir>` | Tool cache directory (for `--stateful`) |
+
+With `--stateful`, the shared tool cache is loaded once and reused across all files. Each file reports its per-step conversion count (e.g. `[stateful 3/4]`) and aggregate fallback totals. Exit code 1 if any step fell back.
+
+### `roundtrip-tree <dir>`
+
+Batch roundtrip-validate native workflows under a directory. Format2 files are skipped.
+
+```bash
+gxwf roundtrip-tree ./workflows/ --cache-dir ~/.cache/galaxy-tools
+gxwf roundtrip-tree ./workflows/ --json
+```
+
+| Option | Description |
+|---|---|
+| `--cache-dir <dir>` | Tool cache directory |
+| `--format <fmt>` | Force source format (must resolve to native) |
+| `--json` | Output structured JSON report |
+
+Exit codes: 0 = all files clean, 1 = benign diffs only, 2 = any file has real diffs or conversion errors.

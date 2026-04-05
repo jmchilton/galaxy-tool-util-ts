@@ -38,6 +38,7 @@ export {
   type StepConversionStatus,
   type StatefulExportResult,
   type StatefulNativeResult,
+  type ToolInputsResolver,
   ensureFormat2,
   ensureNative,
   expandedFormat2,
@@ -97,6 +98,16 @@ export {
   type PrecheckResult,
   type StepPrecheckResult,
 } from "./precheck.js";
+
+export {
+  roundtripValidate,
+  type RoundtripResult,
+  type StepRoundtripResult,
+  type StepDiff,
+  type DiffSeverity,
+  type BenignArtifactKind,
+  type RoundtripFailureClass,
+} from "./roundtrip.js";
 
 export { cleanWorkflow } from "./clean.js";
 

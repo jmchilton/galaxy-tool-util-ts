@@ -1,0 +1,528 @@
+/**
+ * Native → Format2 → Native roundtrip validation for stateful conversion.
+ *
+ * Uses `toFormat2Stateful` + `toNativeStateful` to round-trip a native
+ * workflow, then diffs per-step `tool_state` with a classification pass
+ * that marks type-coercion and connection/runtime artifacts as benign.
+ *
+ * Mirrors Python's `galaxy/tool_util/workflow_state/roundtrip.py` at a
+ * minimal level — the goal is detecting *real* state corruption while
+ * tolerating known stateful-conversion normalizations.
+ */
+import type { NormalizedNativeStep, NormalizedNativeWorkflow } from "./normalized/native.js";
+import { ensureNative } from "./normalized/ensure.js";
+import { toFormat2Stateful } from "./normalized/toFormat2Stateful.js";
+import { toNativeStateful } from "./normalized/toNativeStateful.js";
+import type { StepConversionStatus, ToolInputsResolver } from "./normalized/stateful-runner.js";
+import type { StatefulExportResult } from "./normalized/toFormat2Stateful.js";
+import { isConnectedValue, isRuntimeValue } from "./runtime-markers.js";
+
+// --- Types ---
+
+export type RoundtripFailureClass =
+  | "conversion_error"
+  | "reimport_error"
+  | "roundtrip_mismatch"
+  | "subworkflow_not_diffed";
+
+export type DiffSeverity = "error" | "benign";
+
+export type BenignArtifactKind =
+  | "type_coercion"
+  | "multi_select_normalized"
+  | "all_null_section_omitted"
+  | "empty_container_omitted"
+  | "connection_only_section_omitted"
+  | "bookkeeping_stripped";
+
+export interface StepDiff {
+  path: string;
+  severity: DiffSeverity;
+  kind?: BenignArtifactKind;
+  message: string;
+}
+
+export interface StepRoundtripResult {
+  stepId: string;
+  toolId?: string;
+  success: boolean;
+  failureClass?: RoundtripFailureClass;
+  error?: string;
+  diffs: StepDiff[];
+}
+
+export interface RoundtripResult {
+  workflowName?: string;
+  stepResults: StepRoundtripResult[];
+  /** Per-step forward (native→format2) status from stateful conversion. */
+  forwardSteps: StepConversionStatus[];
+  /** Per-step reverse (format2→native) status from stateful conversion. */
+  reverseSteps: StepConversionStatus[];
+  /** No error-severity diffs and no step failures (benign diffs allowed). */
+  success: boolean;
+  /** No diffs at all (clean roundtrip). */
+  clean: boolean;
+}
+
+// --- Bookkeeping / internal helpers ---
+
+const SKIP_KEYS = new Set([
+  "__current_case__",
+  "__input_ext",
+  "__page__",
+  "__rerun_remap_job_id__",
+  "__index__",
+  "__job_resource",
+  "chromInfo",
+]);
+
+/** Compare two scalar values with format2↔native type-equivalence. */
+function scalarsEquivalent(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  // "null" ↔ null
+  if ((a === null || a === "null") && (b === null || b === "null")) return true;
+  if (a == null || b == null) return false;
+
+  // Booleans ↔ "true"/"false"/"yes"/"no"
+  const asBool = (v: unknown): boolean | undefined => {
+    if (typeof v === "boolean") return v;
+    if (typeof v === "string") {
+      const s = v.toLowerCase();
+      if (s === "true" || s === "yes") return true;
+      if (s === "false" || s === "no") return false;
+    }
+    return undefined;
+  };
+  const ab = asBool(a);
+  const bb = asBool(b);
+  if (ab !== undefined && bb !== undefined) return ab === bb;
+
+  // Numbers ↔ strings
+  const asNum = (v: unknown): number | undefined => {
+    if (typeof v === "number") return v;
+    if (typeof v === "string" && v.trim() !== "") {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    return undefined;
+  };
+  const an = asNum(a);
+  const bn = asNum(b);
+  if (an !== undefined && bn !== undefined) return an === bn;
+
+  return false;
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return v != null && typeof v === "object" && !Array.isArray(v);
+}
+
+/**
+ * All leaf values are null / "null". Format2 export drops these sections,
+ * so their absence in the reimported state is benign.
+ */
+function isAllNullDict(v: unknown): boolean {
+  if (v === null || v === "null") return true;
+  if (Array.isArray(v)) return v.every(isAllNullDict);
+  if (isPlainObject(v)) {
+    for (const [k, val] of Object.entries(v)) {
+      if (SKIP_KEYS.has(k)) continue;
+      if (!isAllNullDict(val)) return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Empty-repeat placeholder: empty arrays + null leaves. Requires at least
+ * one empty list to be present, matching Python's `_is_empty_container_dict`
+ * in `roundtrip.py` — otherwise a plain `{}` would be classified as this
+ * kind when `all_null_section_omitted` is more accurate.
+ */
+function isEmptyContainerDict(v: unknown): boolean {
+  let sawEmptyList = false;
+  const walk = (x: unknown): boolean => {
+    if (x === null) return true;
+    if (Array.isArray(x)) {
+      if (x.length === 0) {
+        sawEmptyList = true;
+        return true;
+      }
+      return x.every(walk);
+    }
+    if (isPlainObject(x)) {
+      for (const [k, val] of Object.entries(x)) {
+        if (SKIP_KEYS.has(k)) continue;
+        if (!walk(val)) return false;
+      }
+      return true;
+    }
+    return false;
+  };
+  const ok = walk(v);
+  return ok && sawEmptyList;
+}
+
+/** Contains only connection/runtime markers (moved to `in` block). */
+function isConnectionOnlyDict(v: unknown): boolean {
+  if (v == null) return true;
+  if (isConnectedValue(v) || isRuntimeValue(v)) return true;
+  if (Array.isArray(v)) return v.every(isConnectionOnlyDict);
+  if (isPlainObject(v)) {
+    let sawMarker = false;
+    for (const [k, val] of Object.entries(v)) {
+      if (SKIP_KEYS.has(k)) continue;
+      if (val == null) continue;
+      if (!isConnectionOnlyDict(val)) return false;
+      sawMarker = true;
+    }
+    return sawMarker;
+  }
+  return false;
+}
+
+function classifyMissing(value: unknown): BenignArtifactKind | undefined {
+  if (value === null || value === undefined || value === "null") {
+    return "all_null_section_omitted";
+  }
+  if (isConnectedValue(value) || isRuntimeValue(value)) {
+    return "connection_only_section_omitted";
+  }
+  if (isConnectionOnlyDict(value)) return "connection_only_section_omitted";
+  if (isAllNullDict(value)) return "all_null_section_omitted";
+  if (isEmptyContainerDict(value)) return "empty_container_omitted";
+  return undefined;
+}
+
+/**
+ * Multi-select equivalence: `"a,b"`, `["a","b"]`, and a bare scalar
+ * compared against a 1-element list are all considered equivalent.
+ */
+function multiSelectEquivalent(a: unknown, b: unknown): boolean {
+  const norm = (v: unknown): string[] | undefined => {
+    if (Array.isArray(v)) return v.map((x) => String(x));
+    if (typeof v === "string") return v.split(",").map((s) => s.trim());
+    if (typeof v === "number" || typeof v === "boolean") return [String(v)];
+    return undefined;
+  };
+  const na = norm(a);
+  const nb = norm(b);
+  if (!na || !nb) return false;
+  if (na.length !== nb.length) return false;
+  for (let i = 0; i < na.length; i++) if (na[i] !== nb[i]) return false;
+  return true;
+}
+
+// --- Recursive diff ---
+
+/**
+ * Recursive lockstep diff of two `tool_state` trees. Intentionally does
+ * not use `walker.ts` — that module is a single-tree leaf-callback walker
+ * keyed by parameter model, whereas this traverses two plain dicts in
+ * parallel without a tool-inputs context. Also intentionally does NOT
+ * JSON-decode string leaves (cf. Python's `_try_json_decode`): this port
+ * treats containers as proper dicts/lists end-to-end, matching the
+ * walker's "no legacy decode" principle.
+ */
+function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDiff[]): void {
+  // Exact equivalence
+  if (scalarsEquivalent(orig, after)) return;
+
+  // Multi-select normalization: only when exactly one side is an array
+  // (scalar ↔ list, comma-string ↔ list). Two arrays fall through to the
+  // element-wise recursion below so identical arrays don't get flagged.
+  if (Array.isArray(orig) !== Array.isArray(after) && multiSelectEquivalent(orig, after)) {
+    diffs.push({
+      path,
+      severity: "benign",
+      kind: "multi_select_normalized",
+      message: `multi-select representation differs: ${JSON.stringify(orig)} vs ${JSON.stringify(after)}`,
+    });
+    return;
+  }
+
+  // Scalar mismatch after coercion rules → error
+  if (
+    !isPlainObject(orig) &&
+    !isPlainObject(after) &&
+    !Array.isArray(orig) &&
+    !Array.isArray(after)
+  ) {
+    diffs.push({
+      path,
+      severity: "error",
+      message: `value changed: ${JSON.stringify(orig)} → ${JSON.stringify(after)}`,
+    });
+    return;
+  }
+
+  // Arrays: compare lengths, recurse element-wise
+  if (Array.isArray(orig) && Array.isArray(after)) {
+    if (orig.length !== after.length) {
+      diffs.push({
+        path,
+        severity: "error",
+        message: `array length ${orig.length} → ${after.length}`,
+      });
+      return;
+    }
+    for (let i = 0; i < orig.length; i++) {
+      compareTree(orig[i], after[i], `${path}[${i}]`, diffs);
+    }
+    return;
+  }
+
+  // Dict mismatch with non-dict other side
+  if (!isPlainObject(orig) || !isPlainObject(after)) {
+    // One side might be an omitted section represented by null/absent on the other
+    const benign = classifyMissing(orig) ?? classifyMissing(after);
+    if (benign) {
+      diffs.push({
+        path,
+        severity: "benign",
+        kind: benign,
+        message: `type change tolerated as ${benign}`,
+      });
+      return;
+    }
+    diffs.push({
+      path,
+      severity: "error",
+      message: `structural mismatch: ${typeof orig} vs ${typeof after}`,
+    });
+    return;
+  }
+
+  // Both plain objects → key-wise compare
+  const keys = new Set([...Object.keys(orig), ...Object.keys(after)]);
+  for (const key of keys) {
+    if (SKIP_KEYS.has(key)) {
+      // Presence on either side is benign bookkeeping (only report if orig had
+      // it — avoids noise from reimported state never having it)
+      if (key in orig && !(key in after)) {
+        diffs.push({
+          path: `${path}.${key}`,
+          severity: "benign",
+          kind: "bookkeeping_stripped",
+          message: `stale key ${key} stripped`,
+        });
+      }
+      continue;
+    }
+    const subPath = path ? `${path}.${key}` : key;
+    const hasOrig = key in orig;
+    const hasAfter = key in after;
+    if (hasOrig && hasAfter) {
+      compareTree(orig[key], after[key], subPath, diffs);
+      continue;
+    }
+    // Missing on one side — classify
+    const presentValue = hasOrig ? orig[key] : after[key];
+    // Null/"null" leaves: matches Python roundtrip.py where
+    // `orig_val in (None, "null", [])` short-circuits with no diff. This
+    // keeps `clean=true` aligned with the Python reference's "ok" status.
+    if (
+      presentValue === null ||
+      presentValue === undefined ||
+      presentValue === "null" ||
+      (Array.isArray(presentValue) && presentValue.length === 0)
+    ) {
+      continue;
+    }
+    const benign = classifyMissing(presentValue);
+    if (benign) {
+      diffs.push({
+        path: subPath,
+        severity: "benign",
+        kind: benign,
+        message: `key ${hasOrig ? "dropped" : "added"} (${benign})`,
+      });
+    } else {
+      diffs.push({
+        path: subPath,
+        severity: "error",
+        message: `key ${hasOrig ? "missing after roundtrip" : "appeared after roundtrip"}`,
+      });
+    }
+  }
+}
+
+// --- Step collection ---
+
+function collectToolSteps(wf: NormalizedNativeWorkflow): Map<string, NormalizedNativeStep> {
+  const out = new Map<string, NormalizedNativeStep>();
+  for (const [key, step] of Object.entries(wf.steps)) {
+    if (step.type === "tool") {
+      out.set(String(step.id ?? key), step);
+    }
+  }
+  return out;
+}
+
+/**
+ * Subworkflow steps aren't recursively diffed in this (minimal) port —
+ * nested tool_state corruption inside a subworkflow step is not caught.
+ * We still surface an entry per subworkflow step so callers can tell the
+ * step exists and was deliberately skipped, rather than silently treating
+ * it as a clean roundtrip.
+ */
+function collectSubworkflowSteps(
+  wf: NormalizedNativeWorkflow,
+): Array<{ stepId: string; name?: string }> {
+  const out: Array<{ stepId: string; name?: string }> = [];
+  for (const [key, step] of Object.entries(wf.steps)) {
+    if (step.type === "subworkflow") {
+      out.push({
+        stepId: String(step.id ?? key),
+        name: step.label ?? step.name ?? undefined,
+      });
+    }
+  }
+  return out;
+}
+
+// --- Public entry point ---
+
+/**
+ * Roundtrip a native workflow through format2 and back, diffing each
+ * tool step's `tool_state`. Benign diffs (type coercion, connection
+ * moves, stale-key stripping) are reported but don't count as failures.
+ *
+ * Returns `success=true` iff no error-severity diffs and no conversion
+ * failures. `clean=true` iff there are zero diffs of any severity.
+ */
+export function roundtripValidate(
+  nativeRaw: unknown,
+  toolInputsResolver: ToolInputsResolver,
+): RoundtripResult {
+  const original = ensureNative(nativeRaw);
+  const originalSteps = collectToolSteps(original);
+  const subworkflowSteps = collectSubworkflowSteps(original);
+
+  let forwardSteps: StepConversionStatus[] = [];
+  let reverseSteps: StepConversionStatus[] = [];
+  let reimported: NormalizedNativeWorkflow | undefined;
+  const stepResults: StepRoundtripResult[] = [];
+
+  // Forward: native → format2
+  let forward: StatefulExportResult;
+  try {
+    forward = toFormat2Stateful(nativeRaw, toolInputsResolver);
+  } catch (err) {
+    // Total failure — attribute to all tool steps
+    const error = err instanceof Error ? err.message : String(err);
+    for (const [stepId, step] of originalSteps) {
+      stepResults.push({
+        stepId,
+        toolId: step.tool_id ?? undefined,
+        success: false,
+        failureClass: "conversion_error",
+        error,
+        diffs: [],
+      });
+    }
+    return {
+      stepResults,
+      forwardSteps,
+      reverseSteps,
+      success: false,
+      clean: false,
+    };
+  }
+  forwardSteps = forward.steps;
+
+  // Reverse: format2 → native
+  try {
+    const reverse = toNativeStateful(forward.workflow, toolInputsResolver);
+    reverseSteps = reverse.steps;
+    reimported = reverse.workflow;
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    for (const [stepId, step] of originalSteps) {
+      stepResults.push({
+        stepId,
+        toolId: step.tool_id ?? undefined,
+        success: false,
+        failureClass: "reimport_error",
+        error,
+        diffs: [],
+      });
+    }
+    return {
+      stepResults,
+      forwardSteps,
+      reverseSteps,
+      success: false,
+      clean: false,
+    };
+  }
+
+  const reimportedSteps = collectToolSteps(reimported);
+
+  // Per-step comparison
+  for (const [stepId, origStep] of originalSteps) {
+    const afterStep = reimportedSteps.get(stepId);
+    if (!afterStep) {
+      stepResults.push({
+        stepId,
+        toolId: origStep.tool_id ?? undefined,
+        success: false,
+        failureClass: "roundtrip_mismatch",
+        error: `step ${stepId} missing after roundtrip`,
+        diffs: [],
+      });
+      continue;
+    }
+    // Per-step forward failure → propagate
+    const forwardFailure = forwardSteps.find((s) => s.stepId === stepId && !s.converted);
+    if (forwardFailure) {
+      stepResults.push({
+        stepId,
+        toolId: origStep.tool_id ?? undefined,
+        success: false,
+        failureClass: "conversion_error",
+        error: forwardFailure.error,
+        diffs: [],
+      });
+      continue;
+    }
+    const diffs: StepDiff[] = [];
+    compareTree(origStep.tool_state, afterStep.tool_state, "", diffs);
+    const hasError = diffs.some((d) => d.severity === "error");
+    stepResults.push({
+      stepId,
+      toolId: origStep.tool_id ?? undefined,
+      success: !hasError,
+      failureClass: hasError ? "roundtrip_mismatch" : undefined,
+      diffs,
+    });
+  }
+
+  // Subworkflow steps: emit synthetic results so callers see they exist.
+  // Not counted as failures or diffs — documented limitation.
+  for (const sw of subworkflowSteps) {
+    stepResults.push({
+      stepId: sw.stepId,
+      toolId: undefined,
+      success: true,
+      failureClass: "subworkflow_not_diffed",
+      error: "subworkflow step not recursively diffed in this port",
+      diffs: [],
+    });
+  }
+
+  // Only tool-step results contribute to overall verdicts; subworkflow
+  // entries are informational.
+  const toolResults = stepResults.filter((s) => s.failureClass !== "subworkflow_not_diffed");
+  const anyError = toolResults.some((s) => !s.success);
+  const anyDiff = toolResults.some((s) => s.diffs.length > 0);
+  return {
+    workflowName: (original.name ?? undefined) || undefined,
+    stepResults,
+    forwardSteps,
+    reverseSteps,
+    success: !anyError,
+    clean: !anyDiff && !anyError,
+  };
+}

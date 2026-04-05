@@ -30,6 +30,7 @@ export {
   toFormat2Stateful,
   type StepConversionStatus,
   type StatefulExportResult,
+  type ToolInputsResolver,
 } from "./toFormat2Stateful.js";
 export { toNativeStateful, type StatefulNativeResult } from "./toNativeStateful.js";
 export { ensureFormat2, ensureNative } from "./ensure.js";

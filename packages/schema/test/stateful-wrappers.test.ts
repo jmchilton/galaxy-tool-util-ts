@@ -9,7 +9,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { toFormat2Stateful, toNativeStateful } from "../src/workflow/normalized/index.js";
+import {
+  toFormat2Stateful,
+  toNativeStateful,
+  type ToolInputsResolver,
+} from "../src/workflow/normalized/index.js";
 import type {
   ToolParameterModel,
   IntegerParameterModel,
@@ -17,6 +21,11 @@ import type {
   SelectParameterModel,
   TextParameterModel,
 } from "../src/schema/bundle-types.js";
+
+/** Build a resolver callback from a dict — tests care about tool_id only. */
+function mapResolver(map: Record<string, ToolParameterModel[]>): ToolInputsResolver {
+  return (toolId) => map[toolId];
+}
 
 // --- Param factories ---
 
@@ -169,16 +178,16 @@ function coolToolInputs(): ToolParameterModel[] {
 
 describe("toFormat2Stateful", () => {
   it("converts cached tools and flags uncached ones", () => {
-    const cache = new Map<string, ToolParameterModel[]>([["cool_tool", coolToolInputs()]]);
+    const resolver = mapResolver({ cool_tool: coolToolInputs() });
 
-    const result = toFormat2Stateful(buildNativeWorkflow(), cache);
+    const result = toFormat2Stateful(buildNativeWorkflow(), resolver);
 
     // Two tool-step status entries
     expect(result.steps).toHaveLength(2);
     const byStep = new Map(result.steps.map((s) => [s.toolId, s]));
     expect(byStep.get("cool_tool")?.converted).toBe(true);
     expect(byStep.get("uncached_tool")?.converted).toBe(false);
-    expect(byStep.get("uncached_tool")?.error).toMatch(/not in cache/);
+    expect(byStep.get("uncached_tool")?.error).toMatch(/not resolved/);
 
     // Find the two tool steps in the output by label
     const fmt2Steps = result.workflow.steps;
@@ -212,12 +221,12 @@ describe("toFormat2Stateful", () => {
       // @ts-expect-error intentionally invalid parameter_type to trigger walker error
       { name: "x", parameter_type: "gx_unknown_type", type: "unknown" } as ToolParameterModel,
     ];
-    const cache = new Map<string, ToolParameterModel[]>([
-      ["cool_tool", badInputs],
-      ["uncached_tool", []],
-    ]);
+    const resolver = mapResolver({
+      cool_tool: badInputs,
+      uncached_tool: [],
+    });
 
-    const result = toFormat2Stateful(buildNativeWorkflow(), cache);
+    const result = toFormat2Stateful(buildNativeWorkflow(), resolver);
     // cool_tool should either succeed (if walker tolerates unknown) or fail —
     // either way, uncached_tool must have a status entry
     expect(result.steps.some((s) => s.toolId === "uncached_tool")).toBe(true);
@@ -226,8 +235,8 @@ describe("toFormat2Stateful", () => {
   });
 
   it("non-tool steps are not reported in status", () => {
-    const cache = new Map<string, ToolParameterModel[]>();
-    const result = toFormat2Stateful(buildNativeWorkflow(), cache);
+    const resolver: ToolInputsResolver = () => undefined;
+    const result = toFormat2Stateful(buildNativeWorkflow(), resolver);
     // Only the two tool steps appear in status, not the data_input step
     expect(result.steps).toHaveLength(2);
     expect(result.steps.every((s) => s.toolId !== undefined)).toBe(true);
@@ -236,12 +245,12 @@ describe("toFormat2Stateful", () => {
 
 describe("toNativeStateful", () => {
   it("round-trips through format2 → native with clean state dicts", () => {
-    const cache = new Map<string, ToolParameterModel[]>([["cool_tool", coolToolInputs()]]);
+    const resolver = mapResolver({ cool_tool: coolToolInputs() });
 
     // First: native → format2 (stateful)
-    const fmt2Result = toFormat2Stateful(buildNativeWorkflow(), cache);
+    const fmt2Result = toFormat2Stateful(buildNativeWorkflow(), resolver);
     // Then: format2 → native (stateful)
-    const nativeResult = toNativeStateful(fmt2Result.workflow, cache);
+    const nativeResult = toNativeStateful(fmt2Result.workflow, resolver);
 
     // Status for cool_tool should be converted
     const coolStatus = nativeResult.steps.find((s) => s.toolId === "cool_tool");
@@ -273,7 +282,7 @@ describe("toNativeStateful", () => {
   });
 
   it("flags uncached tools and falls back", () => {
-    const cache = new Map<string, ToolParameterModel[]>();
+    const resolver: ToolInputsResolver = () => undefined;
     // Build a minimal format2 workflow with one tool step
     const fmt2Wf = {
       class: "GalaxyWorkflow",
@@ -291,9 +300,9 @@ describe("toNativeStateful", () => {
         },
       ],
     };
-    const result = toNativeStateful(fmt2Wf, cache);
+    const result = toNativeStateful(fmt2Wf, resolver);
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0].converted).toBe(false);
-    expect(result.steps[0].error).toMatch(/not in cache/);
+    expect(result.steps[0].error).toMatch(/not resolved/);
   });
 });

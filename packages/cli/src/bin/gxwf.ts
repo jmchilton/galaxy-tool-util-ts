@@ -5,6 +5,8 @@ import { runClean } from "../commands/clean.js";
 import { runCleanTree } from "../commands/clean-tree.js";
 import { runConvert } from "../commands/convert.js";
 import { runConvertTree } from "../commands/convert-tree.js";
+import { runRoundtrip } from "../commands/roundtrip.js";
+import { runRoundtripTree } from "../commands/roundtrip-tree.js";
 import { runLint } from "../commands/lint.js";
 import { runLintTree } from "../commands/lint-tree.js";
 import { runValidateWorkflow } from "../commands/validate-workflow.js";
@@ -61,7 +63,18 @@ program
   .option("--json", "Force JSON output")
   .option("--yaml", "Force YAML output")
   .option("--format <fmt>", "Force source format (auto-detected by default)")
+  .option("--stateful", "Use cached tool definitions for schema-aware state re-encoding")
+  .option("--cache-dir <dir>", "Tool cache directory (for --stateful)")
   .action(runConvert);
+
+program
+  .command("roundtrip")
+  .description("Roundtrip-validate a native workflow: native → format2 → native, diff tool_state")
+  .argument("<file>", "Native workflow file (.ga)")
+  .option("--cache-dir <dir>", "Tool cache directory")
+  .option("--format <fmt>", "Force source format (must resolve to native)")
+  .option("--json", "Output structured JSON report")
+  .action(runRoundtrip);
 
 // -- Tree (batch) variants --
 
@@ -111,6 +124,17 @@ program
   .option("--json", "Force JSON output for converted files")
   .option("--yaml", "Force YAML output")
   .option("--format <fmt>", "Force source format (auto-detected by default)")
+  .option("--stateful", "Use cached tool definitions for schema-aware state re-encoding")
+  .option("--cache-dir <dir>", "Tool cache directory (for --stateful)")
   .action(runConvertTree);
+
+program
+  .command("roundtrip-tree")
+  .description("Batch roundtrip-validate native workflows under a directory")
+  .argument("<dir>", "Directory to scan for native workflows")
+  .option("--cache-dir <dir>", "Tool cache directory")
+  .option("--format <fmt>", "Force source format (must resolve to native)")
+  .option("--json", "Output structured JSON report")
+  .action(runRoundtripTree);
 
 program.parse();

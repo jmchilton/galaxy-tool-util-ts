@@ -85,6 +85,22 @@ export {
   toFormat2,
   /** Convert Format2 workflow to normalized native. */
   toNative,
+  /** Stateful native → format2 conversion using cached tool definitions. */
+  toFormat2Stateful,
+  /** Stateful format2 → native conversion using cached tool definitions. */
+  toNativeStateful,
+  type StepConversionStatus,
+  type StatefulExportResult,
+  type StatefulNativeResult,
+  type ToolInputsResolver,
+  /** Roundtrip a native workflow through format2 and back, diffing tool_state per step. */
+  roundtripValidate,
+  type RoundtripResult,
+  type StepRoundtripResult,
+  type StepDiff,
+  type DiffSeverity,
+  type BenignArtifactKind,
+  type RoundtripFailureClass,
   /** Scan native workflow tool_state for legacy parameter encoding signals. */
   scanToolState,
   type LegacyEncodingClassification,

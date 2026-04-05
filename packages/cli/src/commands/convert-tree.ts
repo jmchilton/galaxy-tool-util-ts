@@ -1,9 +1,20 @@
 /**
  * `gxwf convert-tree` — batch convert all workflows under a directory.
  */
-import { toFormat2, toNative, type WorkflowFormat } from "@galaxy-tool-util/schema";
+import { ToolCache } from "@galaxy-tool-util/core";
+import {
+  toFormat2,
+  toFormat2Stateful,
+  toNative,
+  toNativeStateful,
+  type ExpansionOptions,
+  type StepConversionStatus,
+  type WorkflowFormat,
+} from "@galaxy-tool-util/schema";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, basename } from "node:path";
+import { loadToolInputsForWorkflow, type ToolLoadStatus } from "./stateful-tool-inputs.js";
+import { createDefaultResolver } from "./url-resolver.js";
 import { resolveFormat, serializeWorkflow } from "./workflow-io.js";
 import { collectTree, summarizeOutcomes, type TreeResult, type TreeSummary } from "./tree.js";
 
@@ -15,12 +26,16 @@ export interface ConvertTreeOptions {
   format?: string;
   json?: boolean;
   reportJson?: boolean;
+  stateful?: boolean;
+  cacheDir?: string;
 }
 
 export interface WorkflowConvertResult {
   relativePath: string;
   sourceFormat: string;
   targetFormat: string;
+  statefulSteps?: StepConversionStatus[];
+  toolLoadErrors?: ToolLoadStatus[];
 }
 
 export interface ConvertTreeReport {
@@ -37,6 +52,16 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
     return;
   }
 
+  // Shared tool cache for stateful mode (loaded once per run)
+  let cache: ToolCache | null = null;
+  if (opts.stateful) {
+    cache = new ToolCache({ cacheDir: opts.cacheDir });
+    await cache.index.load();
+    if (cache.index.listAll().length === 0) {
+      console.warn("Tool cache is empty — stateful conversion will fall back for every step");
+    }
+  }
+
   const treeResult = await collectTree(dir, async (info, data) => {
     const sourceFormat = resolveFormat(data, opts.format);
     const targetFormat = resolveTargetFormat(sourceFormat, opts.to);
@@ -50,7 +75,34 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
     }
 
     let result: Record<string, unknown>;
-    if (targetFormat === "format2") {
+    let statefulSteps: StepConversionStatus[] | undefined;
+    let toolLoadErrors: ToolLoadStatus[] | undefined;
+
+    if (opts.stateful && cache) {
+      const expansionOpts: ExpansionOptions = {
+        resolver: createDefaultResolver({
+          workflowDirectory: dirname(join(dir, info.relativePath)),
+        }),
+      };
+      const { resolver, status: toolStatus } = await loadToolInputsForWorkflow(
+        data,
+        sourceFormat,
+        cache,
+        expansionOpts,
+      );
+      const failedLoads = toolStatus.filter((s) => !s.loaded);
+      if (failedLoads.length > 0) toolLoadErrors = failedLoads;
+      if (targetFormat === "format2") {
+        const r = toFormat2Stateful(data, resolver);
+        result = r.workflow as unknown as Record<string, unknown>;
+        statefulSteps = r.steps;
+        if (opts.compact) stripPositionInfo(result);
+      } else {
+        const r = toNativeStateful(data, resolver);
+        result = r.workflow as unknown as Record<string, unknown>;
+        statefulSteps = r.steps;
+      }
+    } else if (targetFormat === "format2") {
       result = toFormat2(data) as unknown as Record<string, unknown>;
       if (opts.compact) {
         stripPositionInfo(result);
@@ -74,14 +126,26 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
       relativePath: info.relativePath,
       sourceFormat,
       targetFormat,
+      statefulSteps,
+      toolLoadErrors,
     } satisfies WorkflowConvertResult;
   });
 
   const report = buildConvertReport(treeResult);
 
+  // Aggregate stateful step counts across files
+  let statefulFallbacks = 0;
+  if (opts.stateful) {
+    for (const r of report.results) {
+      if ("statefulSteps" in r && r.statefulSteps) {
+        statefulFallbacks += r.statefulSteps.filter((s) => !s.converted).length;
+      }
+    }
+  }
+
   if (opts.reportJson) {
     console.log(JSON.stringify(report, null, 2));
-    process.exitCode = report.summary.error > 0 ? 1 : 0;
+    process.exitCode = report.summary.error > 0 || statefulFallbacks > 0 ? 1 : 0;
     return;
   }
 
@@ -95,13 +159,27 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
     if (r.sourceFormat === r.targetFormat) {
       console.warn(`  ${r.relativePath}: already ${r.targetFormat}, skipped`);
     } else {
-      console.log(`  ${r.relativePath}: ${r.sourceFormat} → ${r.targetFormat}`);
+      let line = `  ${r.relativePath}: ${r.sourceFormat} → ${r.targetFormat}`;
+      if (r.statefulSteps) {
+        const converted = r.statefulSteps.filter((s) => s.converted).length;
+        line += ` [stateful ${converted}/${r.statefulSteps.length}]`;
+      }
+      console.log(line);
+      if (r.toolLoadErrors) {
+        for (const t of r.toolLoadErrors) {
+          const ver = t.toolVersion ? `@${t.toolVersion}` : "";
+          console.error(`    tool ${t.toolId}${ver}: ${t.error}`);
+        }
+      }
     }
   }
 
   const s = report.summary;
   console.log(`\nSummary: ${s.total} workflows converted (written to ${outputDir})`);
-  process.exitCode = s.error > 0 ? 1 : 0;
+  if (opts.stateful) {
+    console.log(`Stateful: ${statefulFallbacks} step(s) fell back to schema-free`);
+  }
+  process.exitCode = s.error > 0 || statefulFallbacks > 0 ? 1 : 0;
 }
 
 function resolveTargetFormat(sourceFormat: WorkflowFormat, toOpt?: string): WorkflowFormat {

@@ -1,0 +1,134 @@
+/**
+ * `gxwf roundtrip-tree` — batch roundtrip validation across a directory.
+ * Mirrors the patterns in convert-tree.ts.
+ */
+import { ToolCache } from "@galaxy-tool-util/core";
+import {
+  roundtripValidate,
+  type ExpansionOptions,
+  type RoundtripResult,
+} from "@galaxy-tool-util/schema";
+import { dirname, join } from "node:path";
+import { loadToolInputsForWorkflow, type ToolLoadStatus } from "./stateful-tool-inputs.js";
+import { createDefaultResolver } from "./url-resolver.js";
+import { resolveFormat } from "./workflow-io.js";
+import { collectTree, skipWorkflow } from "./tree.js";
+import { countDiffs } from "./roundtrip.js";
+
+export interface RoundtripTreeOptions {
+  cacheDir?: string;
+  format?: string;
+  json?: boolean;
+}
+
+interface FileOutcome {
+  relativePath: string;
+  result: RoundtripResult;
+  toolLoadErrors?: ToolLoadStatus[];
+}
+
+export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions): Promise<void> {
+  const cache = new ToolCache({ cacheDir: opts.cacheDir });
+  await cache.index.load();
+  if (cache.index.listAll().length === 0) {
+    console.warn("Tool cache is empty — all steps will fall back (no roundtrip possible)");
+  }
+
+  // Only native workflows are eligible; format2 files are skipped.
+  const treeResult = await collectTree<FileOutcome>(
+    dir,
+    async (info, data) => {
+      const sourceFormat = resolveFormat(data, opts.format);
+      if (sourceFormat !== "native") {
+        skipWorkflow(`not a native workflow (${sourceFormat})`);
+      }
+      const expansionOpts: ExpansionOptions = {
+        resolver: createDefaultResolver({
+          workflowDirectory: dirname(join(dir, info.relativePath)),
+        }),
+      };
+      const { resolver, status: toolStatus } = await loadToolInputsForWorkflow(
+        data,
+        "native",
+        cache,
+        expansionOpts,
+      );
+      const failedLoads = toolStatus.filter((s) => !s.loaded);
+      const result = roundtripValidate(data, resolver);
+      return {
+        relativePath: info.relativePath,
+        result,
+        toolLoadErrors: failedLoads.length > 0 ? failedLoads : undefined,
+      };
+    },
+    false, // native only — skip format2 discovery
+  );
+
+  // Aggregate
+  let totalBenign = 0;
+  let totalErrors = 0;
+  let filesClean = 0;
+  let filesBenignOnly = 0;
+  let filesFailed = 0;
+  const fileResults: FileOutcome[] = [];
+  for (const o of treeResult.outcomes) {
+    if (o.error || o.skipped || !o.result) continue;
+    fileResults.push(o.result);
+    const counts = countDiffs(o.result.result);
+    totalBenign += counts.benign;
+    totalErrors += counts.error;
+    if (!o.result.result.success) filesFailed++;
+    else if (o.result.result.clean) filesClean++;
+    else filesBenignOnly++;
+  }
+
+  if (opts.json) {
+    console.log(
+      JSON.stringify(
+        {
+          root: treeResult.root,
+          files: fileResults,
+          summary: {
+            total: fileResults.length,
+            clean: filesClean,
+            benignOnly: filesBenignOnly,
+            failed: filesFailed,
+            benignDiffs: totalBenign,
+            errorDiffs: totalErrors,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+  } else {
+    for (const o of treeResult.outcomes) {
+      if (o.error) {
+        console.error(`  ${o.info.relativePath}: ERROR (${o.error})`);
+        continue;
+      }
+      if (o.skipped) continue;
+      const r = o.result!;
+      const c = countDiffs(r.result);
+      const status = !r.result.success ? "FAIL" : r.result.clean ? "clean" : "benign";
+      console.log(
+        `  ${r.relativePath}: ${status} (${c.benign} benign, ${c.error} real diff, ${c.failed} conversion failure)`,
+      );
+      if (r.toolLoadErrors) {
+        for (const t of r.toolLoadErrors) {
+          const ver = t.toolVersion ? `@${t.toolVersion}` : "";
+          console.error(`    tool ${t.toolId}${ver}: ${t.error}`);
+        }
+      }
+    }
+    console.log(
+      `\nSummary: ${fileResults.length} file(s): ${filesClean} clean, ${filesBenignOnly} benign-only, ${filesFailed} failed`,
+    );
+    console.log(`Diffs: ${totalBenign} benign, ${totalErrors} real`);
+  }
+
+  // Exit code: 2 if any failure, 1 if benign-only, 0 if all clean
+  if (filesFailed > 0 || totalErrors > 0) process.exitCode = 2;
+  else if (totalBenign > 0) process.exitCode = 1;
+  else process.exitCode = 0;
+}
