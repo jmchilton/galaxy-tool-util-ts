@@ -17,6 +17,7 @@ import type { StepConversionStatus, ToolInputsResolver } from "./normalized/stat
 import type { StatefulExportResult } from "./normalized/toFormat2Stateful.js";
 import { isConnectedValue, isRuntimeValue } from "./runtime-markers.js";
 import { STALE_KEYS as SKIP_KEYS, isRuntimeLeakKey } from "./stale-keys.js";
+import { stripStaleKeysToolAware } from "./clean.js";
 
 // --- Types ---
 
@@ -432,6 +433,32 @@ export function roundtripValidate(
 ): RoundtripResult {
   const original = ensureNative(nativeRaw);
   const { tools: originalSteps, subworkflows: originalSubworkflows } = collectSteps(original);
+
+  // Pre-clean: strip undeclared keys from each tool step's `tool_state`
+  // using the tool definition. Mirrors Galaxy's
+  // `roundtrip_validate(clean_stale=True)` default, which runs
+  // `clean_stale_state` before diffing so runtime leaks, stale-branch
+  // params, and tool-upgrade residue are removed from the original.
+  // Without this pass, the diff flags asymmetries between the raw
+  // original and the walker-produced reimport as errors.
+  for (const entry of originalSteps.values()) {
+    const step = entry.step;
+    if (step.type !== "tool" || !step.tool_id) continue;
+    const inputs = toolInputsResolver(step.tool_id, step.tool_version ?? null);
+    if (!inputs) continue;
+    // Deep clone via JSON round-trip — tool_state is JSON-compatible by
+    // design (parsed from a JSON string), and ES2022 lib doesn't include
+    // structuredClone.
+    const stateClone = JSON.parse(JSON.stringify(step.tool_state)) as Record<string, unknown>;
+    const cleaned = stripStaleKeysToolAware(
+      stateClone,
+      inputs,
+      (step.input_connections ?? {}) as Record<string, unknown>,
+    );
+    // Mutate the collected step's tool_state in place. `original` was
+    // produced fresh by `ensureNative(nativeRaw)` so mutation is local.
+    (step as { tool_state: Record<string, unknown> }).tool_state = cleaned;
+  }
 
   let forwardSteps: StepConversionStatus[] = [];
   let reverseSteps: StepConversionStatus[] = [];

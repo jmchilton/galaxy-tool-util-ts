@@ -153,7 +153,10 @@ describe("roundtripValidate", () => {
     expect(result.stepResults[0].diffs.filter((d) => d.severity === "error")).toEqual([]);
   });
 
-  it("stale bookkeeping keys are stripped as benign diffs", () => {
+  it("stale bookkeeping keys are pre-cleaned before diff (clean=true)", () => {
+    // Matches Galaxy's roundtrip_validate(clean_stale=True) default: the
+    // tool-aware strip runs over the original before the diff, so
+    // undeclared bookkeeping keys never reach compareTree.
     const wf = nativeWorkflow({
       count: 42,
       enabled: true,
@@ -164,16 +167,35 @@ describe("roundtripValidate", () => {
     });
     const result = roundtripValidate(wf, mapResolver({ cool_tool: coolToolInputs() }));
     expect(result.success).toBe(true);
-    expect(result.clean).toBe(false);
-    const kinds = result.stepResults[0].diffs.map((d) => d.kind);
-    expect(kinds).toContain("bookkeeping_stripped");
+    expect(result.clean).toBe(true);
   });
 
-  it("runtime-leak keys are tolerated as benign (|__identifier__, uuid)", () => {
+  it("stale bookkeeping keys fall back to differ benign when tool is uncached", () => {
+    // Pre-clean requires a resolver hit; without one, pre-clean is skipped
+    // and the differ's STALE_KEYS path classifies drops as benign. Defense
+    // in depth for unknown-tool cases. The whole step still falls back to
+    // conversion_error because forward conversion needs tool inputs too —
+    // but the point is the pre-clean doesn't mutate state it can't
+    // interpret.
+    const wf = nativeWorkflow({
+      count: 42,
+      enabled: true,
+      tags: ["a"],
+      label: "hi",
+      __page__: 0,
+    });
+    const result = roundtripValidate(wf, () => undefined);
+    // With no resolver, the forward conversion fails -> conversion_error
+    // step status, no diffs attempted. That's the expected uncached path.
+    expect(result.stepResults[0].failureClass).toBe("conversion_error");
+  });
+
+  it("runtime-leak keys are pre-cleaned before diff (|__identifier__, uuid)", () => {
     // Collection-element identifier keys and invocation UUIDs leak from job
-    // execution into tool_state. Walker drops them during stateful
-    // conversion so they never survive the roundtrip — mirrors Galaxy's
-    // `RUNTIME_LEAK` classification. Treated as benign by the differ.
+    // execution into tool_state. The tool-aware pre-clean drops them as
+    // undeclared parameter keys (same pass that handles bookkeeping
+    // residue). Mirrors Galaxy's clean._strip_recursive + clean_stale_state
+    // → RUNTIME_LEAK category gets stripped transitively.
     const wf = nativeWorkflow({
       count: 42,
       enabled: true,
@@ -184,13 +206,10 @@ describe("roundtripValidate", () => {
     });
     const result = roundtripValidate(wf, mapResolver({ cool_tool: coolToolInputs() }));
     expect(result.success).toBe(true);
+    expect(result.clean).toBe(true);
+    // Sanity: no error diffs from the residue keys.
     const errorDiffs = result.stepResults[0].diffs.filter((d) => d.severity === "error");
     expect(errorDiffs).toEqual([]);
-    const kinds = result.stepResults[0].diffs.map((d) => d.kind);
-    expect(kinds).toContain("runtime_leak_stripped");
-    // Both the suffix-match and exact-match flavors are classified
-    const leakDiffs = result.stepResults[0].diffs.filter((d) => d.kind === "runtime_leak_stripped");
-    expect(leakDiffs.length).toBe(2);
   });
 
   it("type-coerced values are tolerated (string int ↔ number)", () => {
@@ -305,9 +324,10 @@ describe("roundtripValidate", () => {
       },
     };
     const result = roundtripValidate(wf, mapResolver({ cool_tool: coolToolInputs() }));
-    // Overall: benign-only (stale key stripped).
+    // Overall: clean (pre-clean runs recursively over subworkflows too,
+    // stripping the nested __rerun_remap_job_id__ before diff).
     expect(result.success).toBe(true);
-    expect(result.clean).toBe(false);
+    expect(result.clean).toBe(true);
     // Top-level tool step present with depth 0.
     const top = result.stepResults.find((s) => s.stepId === "0");
     expect(top).toBeDefined();
@@ -318,10 +338,7 @@ describe("roundtripValidate", () => {
     expect(nested).toBeDefined();
     expect(nested!.depth).toBe(1);
     expect(nested!.toolId).toBe("cool_tool");
-    // Nested stale-key diff is classified as benign.
-    const kinds = nested!.diffs.map((d) => d.kind);
-    expect(kinds).toContain("bookkeeping_stripped");
-    expect(nested!.diffs.every((d) => d.severity === "benign")).toBe(true);
+    expect(nested!.diffs).toEqual([]);
     // No stray subworkflow_external_ref entries for inline subs.
     expect(result.stepResults.some((s) => s.failureClass === "subworkflow_external_ref")).toBe(
       false,

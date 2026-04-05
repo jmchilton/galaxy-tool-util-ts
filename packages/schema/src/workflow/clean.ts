@@ -4,7 +4,16 @@
  * Port of Galaxy's workflow_state clean operation. Removes bookkeeping keys
  * (__page__, __rerun_remap_job_id__), runtime leak keys (chromInfo, __input_ext),
  * and decodes JSON-encoded tool_state strings into proper dicts.
+ *
+ * Also provides a tool-definition-aware strip (`stripStaleKeysToolAware`)
+ * that mirrors Galaxy's `clean._strip_recursive`: uses the declared
+ * parameter tree to drop any undeclared key (runtime leaks, stale-branch
+ * params, tool-upgrade residue) honoring conditional branch selection,
+ * repeat expansion, and section nesting.
  */
+
+import type { ToolParameterModel } from "../schema/bundle-types.js";
+import { walkNativeState, SKIP_VALUE } from "./walker.js";
 
 /** Keys injected by Galaxy's tool form machinery — never meaningful in saved workflows. */
 const BOOKKEEPING_KEYS = new Set(["__page__", "__rerun_remap_job_id__"]);
@@ -125,6 +134,35 @@ function cleanNativeSteps(workflowDict: Record<string, unknown>): void {
 }
 
 import { detectFormat } from "./detect-format.js";
+
+/**
+ * Strip all keys from a native step's `tool_state` that are not declared in
+ * the tool's parameter tree. Mirrors Galaxy's `clean._strip_recursive`.
+ *
+ * Uses `walkNativeState` with an identity leaf callback: the walker builds
+ * its output from declared params only, silently dropping undeclared keys
+ * (runtime leaks like `|__identifier__`, stale-branch conditional params,
+ * tool-upgrade residue). Missing declared leaves are omitted via
+ * `SKIP_VALUE` rather than written back as `undefined`.
+ *
+ * Used by `roundtripValidate` to pre-clean the original workflow before
+ * diffing (matches Galaxy's `roundtrip_validate(clean_stale=True)`
+ * default).
+ *
+ * @param state - Raw tool_state dict (parsed, not a JSON string)
+ * @param toolInputs - Declared parameter models from the tool definition
+ * @param inputConnections - Flat connection map; only used for repeat
+ *   instance-count inference. Pass `{}` if not relevant.
+ */
+export function stripStaleKeysToolAware(
+  state: Record<string, unknown>,
+  toolInputs: ToolParameterModel[],
+  inputConnections: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return walkNativeState(inputConnections, toolInputs, state, (_input, value) =>
+    value === undefined ? SKIP_VALUE : value,
+  );
+}
 
 /**
  * Clean a workflow — strip stale keys and decode legacy tool_state encoding.

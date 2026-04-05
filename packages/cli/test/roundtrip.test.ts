@@ -66,7 +66,12 @@ describe("gxwf roundtrip", () => {
     expect([0, 1]).toContain(process.exitCode);
   });
 
-  it("reports stale bookkeeping keys as benign (exit 1, not 2)", async () => {
+  it("stale bookkeeping keys are pre-cleaned → clean roundtrip (exit 0)", async () => {
+    // Tool-aware pre-clean mirrors Galaxy's
+    // roundtrip_validate(clean_stale=True) default: undeclared keys are
+    // stripped from the original before diffing, so bookkeeping residue
+    // never produces a benign diff at the CLI level. Exit code reflects
+    // the clean verdict.
     await seedAllTools(ctx.tmpDir);
     const wfPath = join(ctx.tmpDir, "native.ga");
     await writeFile(
@@ -83,9 +88,9 @@ describe("gxwf roundtrip", () => {
 
     await runRoundtrip(wfPath, { cacheDir: ctx.tmpDir });
 
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBe(0);
     const logs = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
-    expect(logs).toMatch(/bookkeeping_stripped|benign/);
+    expect(logs).toMatch(/1\/1 step\(s\) ok/);
   });
 
   it("empty cache → conversion failure (exit 2)", async () => {
@@ -121,10 +126,12 @@ describe("gxwf roundtrip", () => {
     expect(logs).not.toMatch(/\[ERROR\]/);
   });
 
-  it("--errors-only hides benign-only steps", async () => {
+  it("--errors-only suppresses the per-step detail block on clean roundtrips", async () => {
+    // Pre-clean strips bookkeeping residue so this workflow roundtrips
+    // cleanly; --errors-only then has nothing to show per-step (no diffs
+    // of any severity). Verifies the flag is idempotent on clean files.
     await seedAllTools(ctx.tmpDir);
     const wfPath = join(ctx.tmpDir, "native.ga");
-    // Benign-only workflow: stale key, no real diffs.
     await writeFile(
       wfPath,
       JSON.stringify(
@@ -138,11 +145,12 @@ describe("gxwf roundtrip", () => {
 
     await runRoundtrip(wfPath, { cacheDir: ctx.tmpDir, errorsOnly: true });
 
-    // Exit code policy unchanged by filter flags.
-    expect(process.exitCode).toBe(1);
+    // Clean verdict after pre-clean.
+    expect(process.exitCode).toBe(0);
     const logs = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
-    // Per-step section should be empty (no benign rows printed)
+    // No diff rows should be printed under any severity.
     expect(logs).not.toMatch(/\[benign:/);
+    expect(logs).not.toMatch(/\[ERROR\]/);
   });
 
   it("rejects format2 source", async () => {
@@ -195,8 +203,8 @@ describe("gxwf roundtrip-tree", () => {
 
     const logs = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(logs).toMatch(/Summary: 2 file\(s\)/);
-    // At least one file has a benign diff (b.ga) → exit 1
-    expect(process.exitCode).toBe(1);
+    // Both files clean after pre-clean (b.ga's bookkeeping stripped) → exit 0.
+    expect(process.exitCode).toBe(0);
   });
 
   it("--brief prints only the aggregate summary", async () => {
