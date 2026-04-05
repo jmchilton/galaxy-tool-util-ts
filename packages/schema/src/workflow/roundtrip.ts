@@ -84,8 +84,14 @@ export interface RoundtripResult {
 /** Compare two scalar values with format2↔native type-equivalence. */
 function scalarsEquivalent(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  // "null" ↔ null
-  if ((a === null || a === "null") && (b === null || b === "null")) return true;
+  // Nullish equivalence: null, undefined, and the string "null" all
+  // represent "no value" in serialized workflow state. JSON has no
+  // undefined, so a JS undefined reaching the differ means a key was
+  // present-but-unset or missing entirely — equivalent to an explicit
+  // null on the other side. Matches Python roundtrip.py's
+  // `orig_val in (None, "null")` treatment.
+  const isNullish = (v: unknown): boolean => v === null || v === undefined || v === "null";
+  if (isNullish(a) && isNullish(b)) return true;
   if (a == null || b == null) return false;
 
   // Booleans ↔ "true"/"false"/"yes"/"no"
