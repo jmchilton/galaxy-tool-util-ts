@@ -16,7 +16,7 @@ import { toNativeStateful } from "./normalized/toNativeStateful.js";
 import type { StepConversionStatus, ToolInputsResolver } from "./normalized/stateful-runner.js";
 import type { StatefulExportResult } from "./normalized/toFormat2Stateful.js";
 import { isConnectedValue, isRuntimeValue } from "./runtime-markers.js";
-import { STALE_KEYS as SKIP_KEYS } from "./stale-keys.js";
+import { STALE_KEYS as SKIP_KEYS, isRuntimeLeakKey } from "./stale-keys.js";
 
 // --- Types ---
 
@@ -35,7 +35,13 @@ export type BenignArtifactKind =
   | "all_null_section_omitted"
   | "empty_container_omitted"
   | "connection_only_section_omitted"
-  | "bookkeeping_stripped";
+  | "bookkeeping_stripped"
+  /**
+   * Runtime-leak key (`__workflow_invocation_uuid__` or `*|__identifier__`)
+   * dropped or appeared during roundtrip. Walker drops these silently during
+   * stateful conversion; mirrors Galaxy's `RUNTIME_LEAK` classification.
+   */
+  | "runtime_leak_stripped";
 
 export interface StepDiff {
   path: string;
@@ -304,6 +310,24 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
           severity: "benign",
           kind: "bookkeeping_stripped",
           message: `stale key ${key} stripped`,
+        });
+      }
+      continue;
+    }
+    if (isRuntimeLeakKey(key)) {
+      // Walker drops runtime-leak keys (`__workflow_invocation_uuid__`,
+      // `*|__identifier__`) during stateful conversion — neither side of the
+      // roundtrip keeps them. Mirrors Galaxy's `RUNTIME_LEAK` classification
+      // in `stale_keys.py`; `for_export` allows them but they don't survive
+      // format2 round-trip. Treat any drop/appearance as benign.
+      const hasOrig = key in orig;
+      const hasAfter = key in after;
+      if (hasOrig !== hasAfter) {
+        diffs.push({
+          path: path ? `${path}.${key}` : key,
+          severity: "benign",
+          kind: "runtime_leak_stripped",
+          message: `runtime leak ${key} ${hasOrig ? "stripped" : "appeared"}`,
         });
       }
       continue;

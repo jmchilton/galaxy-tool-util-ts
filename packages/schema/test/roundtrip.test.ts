@@ -169,6 +169,30 @@ describe("roundtripValidate", () => {
     expect(kinds).toContain("bookkeeping_stripped");
   });
 
+  it("runtime-leak keys are tolerated as benign (|__identifier__, uuid)", () => {
+    // Collection-element identifier keys and invocation UUIDs leak from job
+    // execution into tool_state. Walker drops them during stateful
+    // conversion so they never survive the roundtrip — mirrors Galaxy's
+    // `RUNTIME_LEAK` classification. Treated as benign by the differ.
+    const wf = nativeWorkflow({
+      count: 42,
+      enabled: true,
+      tags: ["a"],
+      label: "hi",
+      "label|__identifier__": "sample-1",
+      __workflow_invocation_uuid__: "abc123",
+    });
+    const result = roundtripValidate(wf, mapResolver({ cool_tool: coolToolInputs() }));
+    expect(result.success).toBe(true);
+    const errorDiffs = result.stepResults[0].diffs.filter((d) => d.severity === "error");
+    expect(errorDiffs).toEqual([]);
+    const kinds = result.stepResults[0].diffs.map((d) => d.kind);
+    expect(kinds).toContain("runtime_leak_stripped");
+    // Both the suffix-match and exact-match flavors are classified
+    const leakDiffs = result.stepResults[0].diffs.filter((d) => d.kind === "runtime_leak_stripped");
+    expect(leakDiffs.length).toBe(2);
+  });
+
   it("type-coerced values are tolerated (string int ↔ number)", () => {
     // Native has "42" (string) — forward converts to 42 (number),
     // reverse encodes back as 42 (number). Original "42" vs reimported 42 →
