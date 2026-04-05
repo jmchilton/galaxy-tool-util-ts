@@ -13,6 +13,7 @@ exclude: |
     packages/.*/test/fixtures/|
     schema-sources/|
     docs/api/typedoc/|
+    docs/glossary[/.]|
     pnpm-lock\.yaml$
   )
 
