@@ -1,5 +1,6 @@
 - [Home](/)
 - [Getting Started](getting-started.md)
+- [How It Works](architecture/overview.md)
 - **Packages**
   - [Schema](packages/schema.md)
   - [Core](packages/core.md)
@@ -12,7 +13,6 @@
   - [Proxy Server Setup](guide/proxy-server.md)
   - [Configuration](guide/configuration.md)
 - **Architecture**
-  - [Overview](architecture/overview.md)
   - [Parameter Schema System](architecture/parameter-schemas.md)
   - [Effect Schema Usage](architecture/effect-schema.md)
 - **API Reference**
