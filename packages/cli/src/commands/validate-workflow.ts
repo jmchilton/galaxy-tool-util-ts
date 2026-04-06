@@ -442,7 +442,7 @@ async function _validateFormat2Step(
         version: toolVersion,
         status: "skip_tool_not_found",
         errors: ["unsupported parameter types"],
-        };
+      };
     }
 
     const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
