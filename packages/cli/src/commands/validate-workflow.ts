@@ -183,7 +183,7 @@ export async function runValidateWorkflow(
   console.log(`\nTool state: ${validated} validated, ${skipped} skipped`);
 
   // --- strict state: promote skips to failures ---
-  if (strict.strictState && results.some((r) => r.status === "skip")) {
+  if (strict.strictState && results.some((r) => r.status !== "ok" && r.status !== "fail")) {
     console.error("Strict state: skipped steps not allowed");
     process.exitCode = 2;
     return;
@@ -241,7 +241,6 @@ async function _validateNativeStep(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
-    const skippedReason = resolved.kind === "no_version" ? "no_version" : "not_in_cache";
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
     return {
@@ -269,7 +268,6 @@ async function _validateNativeStep(
       version: toolVersion,
       status: "skip_replacement_params",
       errors: ["replacement parameters detected"],
-      skippedReason: "replacement_params",
     };
   }
 
@@ -290,7 +288,6 @@ async function _validateNativeStep(
       version: toolVersion,
       status: "skip_tool_not_found",
       errors: ["unsupported parameter types"],
-      skippedReason: "unsupported_params",
     };
   }
 
@@ -365,7 +362,6 @@ async function _validateFormat2Step(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
-    const skippedReason = resolved.kind === "no_version" ? "no_version" : "not_in_cache";
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
     return {
@@ -396,7 +392,6 @@ async function _validateFormat2Step(
       version: toolVersion,
       status: "skip_tool_not_found",
       errors: ["unsupported parameter types"],
-      skippedReason: "unsupported_params",
     };
   }
 
@@ -447,8 +442,7 @@ async function _validateFormat2Step(
         version: toolVersion,
         status: "skip_tool_not_found",
         errors: ["unsupported parameter types"],
-        skippedReason: "unsupported_params",
-      };
+        };
     }
 
     const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {

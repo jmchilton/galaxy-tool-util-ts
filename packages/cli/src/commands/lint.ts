@@ -241,7 +241,8 @@ export async function lintWorkflowReport(
   const hasStateErrors = stateValidation?.some((r) => r.status === "fail") ?? false;
   const hasStrictErrors = encodingErrors.length > 0 || structureErrors.length > 0;
   const hasStrictStateSkips =
-    strict.strictState && (stateValidation?.some((r) => r.status === "skip") ?? false);
+    strict.strictState &&
+    (stateValidation?.some((r) => r.status !== "ok" && r.status !== "fail") ?? false);
   const hasErrors =
     merged.error_count > 0 || hasStateErrors || hasStrictErrors || hasStrictStateSkips;
   const hasWarnings = merged.warn_count > 0;
