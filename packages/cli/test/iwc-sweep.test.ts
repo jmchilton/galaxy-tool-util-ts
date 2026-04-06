@@ -8,8 +8,10 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFile, readdir } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { ToolCache } from "@galaxy-tool-util/core";
+import { checkStrictEncoding, checkStrictStructure } from "@galaxy-tool-util/schema";
 import {
   validateNativeSteps,
   type StepValidationResult,
@@ -102,3 +104,119 @@ function runSweep(
 
 runSweep("native validation", validateNativeSteps);
 runSweep("native JSON Schema validation", validateNativeStepsJsonSchema);
+
+// --- Strict sweep suites ---
+
+describe.skipIf(!IWC_DIR)("IWC sweep: strict-encoding", { timeout: 300_000 }, () => {
+  let workflows: string[];
+
+  beforeAll(async () => {
+    workflows = await discoverNativeWorkflows(join(IWC_DIR!, "workflows"));
+  });
+
+  it("all IWC native workflows pass strict-encoding", () => {
+    const failures: Array<{ workflow: string; errors: string[] }> = [];
+    for (const wfPath of workflows) {
+      const raw = readFileSync(wfPath, "utf-8");
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      const errors = checkStrictEncoding(data, "native");
+      if (errors.length > 0) {
+        failures.push({ workflow: workflowId(wfPath), errors });
+      }
+    }
+
+    if (failures.length > 0) {
+      const details = failures.map((f) => `  ${f.workflow}: ${f.errors.join("; ")}`).join("\n");
+      expect.fail(`${failures.length} encoding failures:\n${details}`);
+    }
+  });
+});
+
+describe.skipIf(!IWC_DIR)("IWC sweep: strict-structure", { timeout: 300_000 }, () => {
+  let workflows: string[];
+
+  beforeAll(async () => {
+    workflows = await discoverNativeWorkflows(join(IWC_DIR!, "workflows"));
+  });
+
+  it("all IWC native workflows pass strict-structure", () => {
+    const failures: Array<{ workflow: string; errors: string[] }> = [];
+    for (const wfPath of workflows) {
+      const raw = readFileSync(wfPath, "utf-8");
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      const errors = checkStrictStructure(data, "native");
+      if (errors.length > 0) {
+        failures.push({ workflow: workflowId(wfPath), errors });
+      }
+    }
+
+    if (failures.length > 0) {
+      const details = failures.map((f) => `  ${f.workflow}: ${f.errors.join("; ")}`).join("\n");
+      expect.fail(`${failures.length} structure failures:\n${details}`);
+    }
+  });
+});
+
+describe.skipIf(!IWC_DIR)("IWC sweep: strict (all)", { timeout: 300_000 }, () => {
+  let workflows: string[];
+  let cache: ToolCache;
+
+  beforeAll(async () => {
+    workflows = await discoverNativeWorkflows(join(IWC_DIR!, "workflows"));
+    cache = new ToolCache();
+    await cache.index.load();
+  });
+
+  it("all IWC native workflows pass strict validation", async () => {
+    const failures: Array<{ workflow: string; phase: string; errors: string[] }> = [];
+    let skippedSteps = 0;
+
+    for (const wfPath of workflows) {
+      const raw = readFileSync(wfPath, "utf-8");
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+
+      // Encoding
+      const encErrors = checkStrictEncoding(data, "native");
+      if (encErrors.length > 0) {
+        failures.push({ workflow: workflowId(wfPath), phase: "encoding", errors: encErrors });
+        continue;
+      }
+
+      // Structure
+      const structErrors = checkStrictStructure(data, "native");
+      if (structErrors.length > 0) {
+        failures.push({ workflow: workflowId(wfPath), phase: "structure", errors: structErrors });
+        continue;
+      }
+
+      // State: check for skips (strict-state would reject these)
+      const results = await validateNativeSteps(data, cache);
+      const skips = results.filter((r) => r.status === "skip");
+      skippedSteps += skips.length;
+    }
+
+    console.log(`\nIWC strict sweep: ${skippedSteps} steps would be skipped by strict-state`);
+
+    if (failures.length > 0) {
+      const details = failures
+        .map((f) => `  ${f.workflow} [${f.phase}]: ${f.errors.join("; ")}`)
+        .join("\n");
+      expect.fail(`${failures.length} strict failures:\n${details}`);
+    }
+  });
+});

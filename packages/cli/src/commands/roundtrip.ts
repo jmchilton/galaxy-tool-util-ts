@@ -17,9 +17,10 @@ import {
 import { dirname } from "node:path";
 import { loadToolInputsForWorkflow } from "./stateful-tool-inputs.js";
 import { createDefaultResolver } from "./url-resolver.js";
+import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 
-export interface RoundtripOptions {
+export interface RoundtripOptions extends StrictOptions {
   cacheDir?: string;
   format?: string;
   json?: boolean;
@@ -36,6 +37,8 @@ export async function runRoundtrip(filePath: string, opts: RoundtripOptions): Pr
   if (!data) return;
 
   const sourceFormat = resolveFormat(data, opts.format);
+  const strict = resolveStrictOptions(opts);
+
   if (sourceFormat !== "native") {
     console.error(
       `Roundtrip source must be a native (.ga) workflow; got ${sourceFormat}.` +
@@ -67,15 +70,35 @@ export async function runRoundtrip(filePath: string, opts: RoundtripOptions): Pr
     }
   }
 
-  const result = roundtripValidate(data, resolver);
+  const result = roundtripValidate(data, resolver, {
+    strictEncoding: strict.strictEncoding,
+    strictStructure: strict.strictStructure,
+    strictState: strict.strictState,
+  });
 
   if (opts.json) {
     console.log(JSON.stringify(result, null, 2));
   } else {
+    // Report strict errors before step-level results
+    if (result.encodingErrors.length > 0) {
+      console.error("Encoding errors:");
+      for (const e of result.encodingErrors) console.error(`  ${e}`);
+    }
+    if (result.structureErrors.length > 0) {
+      console.error("Structure errors (strict):");
+      for (const e of result.structureErrors) console.error(`  ${e}`);
+    }
     reportResult(filePath, result, opts);
   }
 
-  process.exitCode = exitCodeFor(result);
+  let exitCode = exitCodeFor(result);
+
+  // --strict-state: require all steps to roundtrip (no skips/failures)
+  if (strict.strictState && result.stepResults.some((s) => !s.success)) {
+    exitCode = 2;
+  }
+
+  process.exitCode = exitCode;
 }
 
 export interface ReportFilter {

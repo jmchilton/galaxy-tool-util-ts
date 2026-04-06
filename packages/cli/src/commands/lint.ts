@@ -7,20 +7,28 @@ import {
   lintWorkflow,
   lintBestPracticesNative,
   lintBestPracticesFormat2,
+  checkStrictEncoding,
+  checkStrictStructure,
   type LintResult,
   type ExpansionOptions,
+  type WorkflowFormat,
 } from "@galaxy-tool-util/schema";
 import { dirname } from "node:path";
 import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 import { createDefaultResolver } from "./url-resolver.js";
 import {
+  resolveStrictOptions,
+  type StrictOptions,
+  type ResolvedStrictOptions,
+} from "./strict-options.js";
+import {
   validateNativeSteps,
   validateFormat2Steps,
   type StepValidationResult,
 } from "./validate-workflow.js";
 
-export interface LintOptions {
+export interface LintOptions extends StrictOptions {
   format?: string;
   skipBestPractices?: boolean;
   skipStateValidation?: boolean;
@@ -32,6 +40,7 @@ export interface LintReportOptions {
   skipBestPractices?: boolean;
   skipStateValidation?: boolean;
   cache?: ToolCache;
+  strict?: ResolvedStrictOptions;
 }
 
 export interface LintReport {
@@ -39,6 +48,8 @@ export interface LintReport {
   bestPractices: LintResult | null;
   stateValidation: StepValidationResult[] | null;
   stateSkipped: boolean;
+  encodingErrors: string[];
+  structureErrors: string[];
   exitCode: number;
 }
 
@@ -71,16 +82,28 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
     }
   }
 
+  const strict = resolveStrictOptions(opts);
   const report = await lintWorkflowReport(filePath, data, format, {
     skipBestPractices: opts.skipBestPractices,
     skipStateValidation: opts.skipStateValidation,
     cache,
+    strict,
   });
 
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));
     process.exitCode = report.exitCode;
     return;
+  }
+
+  // Strict checks
+  if (report.encodingErrors.length > 0) {
+    console.error("Encoding errors:");
+    for (const e of report.encodingErrors) console.error(`  ${e}`);
+  }
+  if (report.structureErrors.length > 0) {
+    console.error("Structure errors (strict):");
+    for (const e of report.structureErrors) console.error(`  ${e}`);
   }
 
   // Structural lint
@@ -133,6 +156,19 @@ export async function lintWorkflowReport(
   format: string,
   opts: LintReportOptions,
 ): Promise<LintReport> {
+  const strict = opts.strict ?? {
+    strictStructure: false,
+    strictEncoding: false,
+    strictState: false,
+  };
+  const fmt = format as WorkflowFormat;
+
+  // Strict encoding check
+  const encodingErrors = strict.strictEncoding ? checkStrictEncoding(data, fmt) : [];
+
+  // Strict structure check
+  const structureErrors = strict.strictStructure ? checkStrictStructure(data, fmt) : [];
+
   // Phase 1: Structural lint (always runs)
   const structural = lintWorkflow(data);
 
@@ -178,10 +214,22 @@ export async function lintWorkflowReport(
   // Compute exit code: 0 = clean, 1 = warnings only, 2 = errors
   const merged = mergeLintResults(structural, bestPractices);
   const hasStateErrors = stateValidation?.some((r) => r.status === "fail") ?? false;
-  const hasErrors = merged.error_count > 0 || hasStateErrors;
+  const hasStrictErrors = encodingErrors.length > 0 || structureErrors.length > 0;
+  const hasStrictStateSkips =
+    strict.strictState && (stateValidation?.some((r) => r.status === "skip") ?? false);
+  const hasErrors =
+    merged.error_count > 0 || hasStateErrors || hasStrictErrors || hasStrictStateSkips;
   const hasWarnings = merged.warn_count > 0;
 
   const exitCode = hasErrors ? 2 : hasWarnings ? 1 : 0;
 
-  return { structural, bestPractices, stateValidation, stateSkipped, exitCode };
+  return {
+    structural,
+    bestPractices,
+    stateValidation,
+    stateSkipped,
+    encodingErrors,
+    structureErrors,
+    exitCode,
+  };
 }

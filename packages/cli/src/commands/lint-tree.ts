@@ -3,10 +3,11 @@
  */
 import { ToolCache } from "@galaxy-tool-util/core";
 import { resolveFormat } from "./workflow-io.js";
+import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { lintWorkflowReport, type LintReport } from "./lint.js";
 import { collectTree, summarizeOutcomes, type TreeResult, type TreeSummary } from "./tree.js";
 
-export interface LintTreeOptions {
+export interface LintTreeOptions extends StrictOptions {
   format?: string;
   skipBestPractices?: boolean;
   skipStateValidation?: boolean;
@@ -42,12 +43,15 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
     }
   }
 
+  const strict = resolveStrictOptions(opts);
+
   const treeResult = await collectTree(dir, async (info, data) => {
     const format = resolveFormat(data, opts.format);
     const report = await lintWorkflowReport(info.path, data, format, {
       skipBestPractices: opts.skipBestPractices,
       skipStateValidation: opts.skipStateValidation,
       cache,
+      strict,
     });
     return { relativePath: info.relativePath, report } satisfies WorkflowLintResult;
   });
