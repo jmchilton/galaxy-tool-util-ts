@@ -57,7 +57,7 @@ describe("validate-tree", () => {
     expect(process.exitCode).toBe(0);
   });
 
-  it("reports failures in --json mode", async () => {
+  it("reports failures in --json mode with schema shape", async () => {
     await seedAllTools(ctx.tmpDir);
     const wfDir = join(ctx.tmpDir, "wfs");
     await mkdir(wfDir);
@@ -82,11 +82,21 @@ describe("validate-tree", () => {
     const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("");
     const report = JSON.parse(output);
     expect(report.root).toBe(wfDir);
-    expect(report.results).toHaveLength(1);
-    expect(report.summary.total).toBe(1);
+    // Schema shape: "workflows" key, not "results"
+    expect(report.workflows).toHaveLength(1);
+    expect(report.workflows[0].path).toBe("bad.ga");
+    expect(report.workflows[0].category).toBe("(root)");
+    expect(report.workflows[0].name).toBe("bad.ga");
+    // categories grouping present
+    expect(report.categories).toHaveLength(1);
+    expect(report.categories[0].name).toBe("(root)");
+    // snake_case summary
+    expect(report.summary).toHaveProperty("ok");
+    expect(report.summary).toHaveProperty("fail");
+    expect(report.summary).toHaveProperty("skip");
   });
 
-  it("discovers workflows in subdirectories", async () => {
+  it("discovers workflows in subdirectories with category grouping", async () => {
     const wfDir = join(ctx.tmpDir, "wfs");
     const sub = join(wfDir, "nested");
     await mkdir(sub, { recursive: true });
@@ -98,7 +108,15 @@ describe("validate-tree", () => {
 
     const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("");
     const report = JSON.parse(output);
-    expect(report.summary.total).toBe(2);
+    expect(report.workflows).toHaveLength(2);
+    // Two categories: "(root)" and "nested"
+    expect(report.categories).toHaveLength(2);
+    const catNames = report.categories.map((c: any) => c.name).sort();
+    expect(catNames).toEqual(["(root)", "nested"]);
+    // Each category has one workflow
+    for (const cat of report.categories) {
+      expect(cat.results).toHaveLength(1);
+    }
   });
 
   it("handles format2 workflows", async () => {
@@ -131,7 +149,7 @@ describe("validate-tree", () => {
 
     const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("");
     const report = JSON.parse(output);
-    expect(report.summary.stepOk).toBe(0);
-    expect(report.summary.stepFail).toBe(0);
+    expect(report.summary.ok).toBe(0);
+    expect(report.summary.fail).toBe(0);
   });
 });

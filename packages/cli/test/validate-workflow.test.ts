@@ -6,7 +6,7 @@ import * as YAML from "yaml";
 import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
 import type { SingleValidationReport } from "@galaxy-tool-util/schema";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
-import { seedAllTools, SIMPLE_TOOL_ID, DATA_TOOL_ID } from "./helpers/fixtures.js";
+import { seedAllTools, SIMPLE_TOOL_ID, DATA_TOOL_ID, COND_TOOL_ID } from "./helpers/fixtures.js";
 
 describe("validate-workflow (connection-aware)", () => {
   let ctx: CliTestContext;
@@ -205,7 +205,6 @@ describe("validate-workflow (connection-aware)", () => {
       await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
       const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
-      const _errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
@@ -471,6 +470,34 @@ describe("validate-workflow (connection-aware)", () => {
       expect(report.results[0].status).toBe("ok");
       expect(report.summary.ok).toBe(1);
       expect(process.exitCode).toBe(0);
+    });
+
+    it("detects legacy encoding errors in native workflow", async () => {
+      await seedAllTools(ctx.tmpDir);
+      // Conditional tool_state with string value for a container param = legacy encoding
+      const workflow = {
+        a_galaxy_workflow: "true",
+        "format-version": "0.1",
+        steps: {
+          "0": {
+            id: 0,
+            type: "tool",
+            tool_id: COND_TOOL_ID,
+            tool_version: "1.0",
+            // Legacy encoding: conditional "mode" is a JSON string instead of an object
+            tool_state: JSON.stringify({ mode: '{"selector": false}' }),
+            input_connections: {},
+          },
+        },
+      };
+      const wfPath = join(ctx.tmpDir, "legacy.ga");
+      await writeFile(wfPath, JSON.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, json: true });
+
+      const report = parseJsonOutput(ctx);
+      expect(report.encoding_errors.length).toBeGreaterThan(0);
+      expect(report.encoding_errors[0]).toContain("legacy parameter encoding");
+      expect(report.encoding_errors[0]).toContain("mode");
     });
   });
 });

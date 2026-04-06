@@ -5,22 +5,23 @@ import { ToolCache } from "@galaxy-tool-util/core";
 import {
   checkStrictEncoding,
   checkStrictStructure,
+  buildWorkflowValidationResult,
+  buildTreeValidationReport,
   type ExpansionOptions,
+  type ValidationStepResult,
+  type WorkflowValidationResult,
+  type TreeValidationReport,
 } from "@galaxy-tool-util/schema";
 import { dirname } from "node:path";
 import { createDefaultResolver } from "./url-resolver.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { resolveFormat } from "./workflow-io.js";
 import {
-  SKIP_STATUSES,
-  type ValidationStepResult as StepValidationResult,
-} from "@galaxy-tool-util/schema";
-import {
   validateNativeSteps,
   validateFormat2Steps,
   type ValidationMode,
 } from "./validate-workflow.js";
-import { collectTree, summarizeOutcomes, type TreeResult, type TreeSummary } from "./tree.js";
+import { collectTree, type TreeResult } from "./tree.js";
 
 export interface ValidateTreeOptions extends StrictOptions {
   format?: string;
@@ -29,18 +30,6 @@ export interface ValidateTreeOptions extends StrictOptions {
   mode?: string;
   toolSchemaDir?: string;
   json?: boolean;
-}
-
-export interface WorkflowValidateResult {
-  relativePath: string;
-  format: string;
-  steps: StepValidationResult[];
-}
-
-export interface ValidateTreeReport {
-  root: string;
-  results: (WorkflowValidateResult | { relativePath: string; error: string })[];
-  summary: TreeSummary & { stepOk: number; stepFail: number; stepSkip: number };
 }
 
 export async function runValidateTree(dir: string, opts: ValidateTreeOptions): Promise<void> {
@@ -71,7 +60,7 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
 
   const strict = resolveStrictOptions(opts);
 
-  const treeResult = await collectTree(dir, async (info, data) => {
+  const treeResult = await collectTree<WorkflowValidationResult>(dir, async (info, data) => {
     const format = resolveFormat(data, opts.format);
 
     // Per-file strict checks
@@ -92,25 +81,25 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
       resolver: createDefaultResolver({ workflowDirectory: dirname(info.path) }),
     };
 
-    let steps: StepValidationResult[] = [];
+    let stepResults: ValidationStepResult[] = [];
     if (cache && opts.toolState !== false) {
       const validateNative = validateNativeStepsJsonSchema ?? validateNativeSteps;
       const validateF2 = validateFormat2StepsJsonSchema ?? validateFormat2Steps;
-      steps =
+      stepResults =
         format === "native"
           ? await validateNative(data, cache, "", expansionOpts)
           : await validateF2(data, cache, "", expansionOpts);
     }
 
     // --strict-state: promote skips to failures
-    if (strict.strictState && steps.some((s) => s.status === "skip")) {
+    if (strict.strictState && stepResults.some((s) => s.status !== "ok" && s.status !== "fail")) {
       throw new Error("Strict state: skipped steps not allowed");
     }
 
-    return { relativePath: info.relativePath, format, steps } satisfies WorkflowValidateResult;
+    return buildWorkflowValidationResult(info.relativePath, stepResults);
   });
 
-  const report = buildValidateReport(treeResult);
+  const report = buildReport(treeResult);
 
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));
@@ -119,75 +108,58 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
   }
 
   // Text output
-  for (const outcome of treeResult.outcomes) {
-    if (outcome.error) {
-      console.error(`  ${outcome.info.relativePath}: ERROR (${outcome.error})`);
+  for (const wf of report.workflows) {
+    if (wf.error) {
+      console.error(`  ${wf.path}: ERROR (${wf.error})`);
       continue;
     }
-    if (outcome.skipped) {
-      console.warn(`  ${outcome.info.relativePath}: SKIPPED (${outcome.skipReason})`);
+    if (wf.skipped_reason) {
+      console.warn(`  ${wf.path}: SKIPPED (${wf.skipped_reason})`);
       continue;
     }
-    const r = outcome.result!;
-    const ok = r.steps.filter((s) => s.status === "ok").length;
-    const fail = r.steps.filter((s) => s.status === "fail").length;
-    const skip = r.steps.filter((s) => SKIP_STATUSES.has(s.status)).length;
-    const total = r.steps.length;
+    const s = wf.summary!;
+    const total = s.ok + s.fail + s.skip;
 
-    if (fail > 0) {
-      console.error(`  ${r.relativePath}: ${total} steps (${ok} OK, ${fail} FAIL, ${skip} SKIP)`);
-      for (const s of r.steps.filter((s) => s.status === "fail")) {
-        for (const err of s.errors) {
-          console.error(`    Step ${s.step} (${s.tool_id}): ${err}`);
-        }
+    if (s.fail > 0) {
+      console.error(`  ${wf.path}: ${total} steps (${s.ok} OK, ${s.fail} FAIL, ${s.skip} SKIP)`);
+      for (const f of wf.failures ?? []) {
+        console.error(`    Step ${f.step} (${f.tool_id}): ${f.message}`);
       }
     } else {
-      console.log(`  ${r.relativePath}: ${total} steps (${ok} OK, ${skip} SKIP)`);
+      console.log(`  ${wf.path}: ${total} steps (${s.ok} OK, ${s.skip} SKIP)`);
     }
   }
 
   const s = report.summary;
-  console.log(
-    `\nSummary: ${s.total} workflows | ${s.stepOk} OK, ${s.stepFail} FAIL, ${s.stepSkip} SKIP`,
-  );
+  const total = report.workflows.length;
+  console.log(`\nSummary: ${total} workflows | ${s.ok} OK, ${s.fail} FAIL, ${s.skip} SKIP`);
   process.exitCode = computeValidateExitCode(report);
 }
 
-function buildValidateReport(treeResult: TreeResult<WorkflowValidateResult>): ValidateTreeReport {
-  const results: ValidateTreeReport["results"] = [];
-  let stepOk = 0;
-  let stepFail = 0;
-  let stepSkip = 0;
+function buildReport(treeResult: TreeResult<WorkflowValidationResult>): TreeValidationReport {
+  const workflows: WorkflowValidationResult[] = [];
 
   for (const o of treeResult.outcomes) {
     if (o.error) {
-      results.push({ relativePath: o.info.relativePath, error: o.error });
+      workflows.push(buildWorkflowValidationResult(o.info.relativePath, [], { error: o.error }));
       continue;
     }
     if (o.skipped) {
-      results.push({ relativePath: o.info.relativePath, error: `SKIPPED: ${o.skipReason}` });
+      workflows.push(
+        buildWorkflowValidationResult(o.info.relativePath, [], {
+          skipped_reason: o.skipReason ?? "unknown",
+        }),
+      );
       continue;
     }
-    const r = o.result!;
-    results.push(r);
-    stepOk += r.steps.filter((s) => s.status === "ok").length;
-    stepFail += r.steps.filter((s) => s.status === "fail").length;
-    stepSkip += r.steps.filter((s) => SKIP_STATUSES.has(s.status)).length;
+    workflows.push(o.result!);
   }
 
-  const wfSummary = summarizeOutcomes(treeResult.outcomes, (r) =>
-    r.steps.some((s) => s.status === "fail"),
-  );
-
-  return {
-    root: treeResult.root,
-    results,
-    summary: { ...wfSummary, stepOk, stepFail, stepSkip },
-  };
+  return buildTreeValidationReport(treeResult.root, workflows);
 }
 
-function computeValidateExitCode(report: ValidateTreeReport): number {
+function computeValidateExitCode(report: TreeValidationReport): number {
   const s = report.summary;
-  if (s.stepFail > 0 || s.error > 0) return 1;
+  if (s.fail > 0 || s.error > 0) return 1;
   return 0;
 }

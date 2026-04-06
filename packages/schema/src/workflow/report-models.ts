@@ -74,6 +74,10 @@ export interface SingleCleanReport {
 }
 
 // ── Tree workflow-level results ──────────────────────────────────────
+// Note: tree-level types intentionally omit structure_errors and encoding_errors.
+// Those fields exist only on SingleValidationReport / SingleLintReport for
+// single-workflow JSON output. Tree commands aggregate per-workflow summaries
+// without running Effect Schema decode or legacy encoding detection per file.
 
 export interface WorkflowValidationResult {
   path: string;
@@ -207,7 +211,7 @@ export function categoryOf(relativePath: string): string {
   return dir || "(root)";
 }
 
-/** Extract basename from a path (portion after last slash). */
+/** Extract basename from a path (portion after last slash). Avoids node:path for browser compat. */
 function baseName(path: string): string {
   const lastSlash = path.lastIndexOf("/");
   return lastSlash < 0 ? path : path.slice(lastSlash + 1);

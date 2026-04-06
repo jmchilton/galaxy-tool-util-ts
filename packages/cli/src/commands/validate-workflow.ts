@@ -10,6 +10,7 @@ import {
   scanForReplacements,
   checkStrictEncoding,
   checkStrictStructure,
+  scanToolState,
   buildSingleValidationReport,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
@@ -44,6 +45,29 @@ export interface ValidateWorkflowOptions extends StrictOptions {
 function formatIssues(error: ParseResult.ParseError): string[] {
   const issues = ParseResult.ArrayFormatter.formatErrorSync(error);
   return issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+}
+
+/** Run Effect Schema decode on raw workflow data and return structural decode failures. */
+export function decodeStructureErrors(
+  data: Record<string, unknown>,
+  format: WorkflowFormat,
+): string[] {
+  const validationData = { ...data };
+  if (format === "native" && !("class" in validationData)) {
+    validationData.class = "NativeGalaxyWorkflow";
+  } else if (format === "format2" && !("class" in validationData)) {
+    validationData.class = "GalaxyWorkflow";
+  }
+
+  const schema: S.Schema<any> =
+    format === "native" ? NativeGalaxyWorkflowSchema : GalaxyWorkflowSchema;
+  const decode = S.decodeUnknownEither(schema, { onExcessProperty: "ignore" });
+  const result = decode(validationData);
+
+  if (result._tag === "Left") {
+    return formatIssues(result.left);
+  }
+  return [];
 }
 
 export type { ValidationStepResult as StepValidationResult } from "@galaxy-tool-util/schema";
@@ -99,32 +123,18 @@ export async function runValidateWorkflow(
   }
 
   // --- structural validation (effect mode) ---
-  const validationData = { ...data };
-  if (format === "native" && !("class" in validationData)) {
-    validationData.class = "NativeGalaxyWorkflow";
-  } else if (format === "format2" && !("class" in validationData)) {
-    validationData.class = "GalaxyWorkflow";
-  }
+  const structureErrors = decodeStructureErrors(data, format);
+  const structOk = structureErrors.length === 0;
 
-  const schema: S.Schema<any> =
-    format === "native" ? NativeGalaxyWorkflowSchema : GalaxyWorkflowSchema;
-  const decode = S.decodeUnknownEither(schema, { onExcessProperty: "ignore" });
-  const structResult = decode(validationData);
-
-  const structureErrors: string[] = [];
-  let structOk = true;
-  if (structResult._tag === "Left") {
-    structOk = false;
-    const issues = formatIssues(structResult.left);
-    structureErrors.push(...issues);
-    if (!opts.json) {
+  if (!opts.json) {
+    if (!structOk) {
       console.error(`\nStructural validation errors:`);
-      for (const line of issues) {
+      for (const line of structureErrors) {
         console.error(`  ${line}`);
       }
+    } else {
+      console.log(`Structural validation: OK`);
     }
-  } else {
-    if (!opts.json) console.log(`Structural validation: OK`);
   }
 
   // --- tool state validation (effect mode) ---
@@ -152,8 +162,10 @@ export async function runValidateWorkflow(
   const stateOk = !results.some((r) => r.status === "fail");
 
   if (opts.json) {
+    const encodingErrors = await detectEncodingErrors(data, cache, format, expansionOpts);
     const report = buildSingleValidationReport(filePath, results, {
       structure_errors: structureErrors,
+      encoding_errors: encodingErrors,
     });
     console.log(JSON.stringify(report, null, 2));
     process.exitCode = structOk && stateOk ? 0 : 1;
@@ -455,4 +467,59 @@ async function _validateFormat2Step(
   }
 
   return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
+}
+
+// --- Encoding error detection ---
+
+/**
+ * Detect legacy parameter encoding in workflow tool_state fields.
+ *
+ * Scans each tool step's tool_state for legacy encoding signals
+ * (string-encoded containers, quoted select values) using scanToolState().
+ */
+export async function detectEncodingErrors(
+  data: Record<string, unknown>,
+  cache: ToolCache,
+  format: WorkflowFormat,
+  expansionOpts?: ExpansionOptions,
+): Promise<string[]> {
+  if (format === "native") {
+    const expanded = await expandedNative(data, expansionOpts);
+    return _detectNativeEncodingErrors(expanded, cache, "");
+  }
+  // Format2 workflows don't have legacy encoding issues
+  return [];
+}
+
+async function _detectNativeEncodingErrors(
+  wf: NormalizedNativeWorkflow,
+  cache: ToolCache,
+  prefix: string,
+): Promise<string[]> {
+  const errors: string[] = [];
+
+  for (const [key, step] of Object.entries(wf.steps)) {
+    const stepLabel = prefix ? `${prefix}${key}` : key;
+
+    if (step.type === "subworkflow" && step.subworkflow) {
+      const subErrors = await _detectNativeEncodingErrors(step.subworkflow, cache, `${stepLabel}.`);
+      errors.push(...subErrors);
+      continue;
+    }
+
+    const toolId = step.tool_id;
+    if (!toolId) continue;
+
+    const resolved = await loadCachedTool(cache, toolId, step.tool_version ?? null);
+    if (isResolveError(resolved)) continue;
+
+    const inputs = resolved.tool.inputs as ToolParameterBundleModel["parameters"];
+    const result = scanToolState(inputs, step.tool_state as Record<string, unknown>);
+    if (result.classification === "yes") {
+      const details = result.hits.map((h) => `${h.parameterName}: ${h.detail}`).join("; ");
+      errors.push(`Step ${stepLabel} (${toolId}): legacy parameter encoding (${details})`);
+    }
+  }
+
+  return errors;
 }

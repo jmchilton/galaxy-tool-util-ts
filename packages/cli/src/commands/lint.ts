@@ -24,7 +24,12 @@ import {
   type StrictOptions,
   type ResolvedStrictOptions,
 } from "./strict-options.js";
-import { validateNativeSteps, validateFormat2Steps } from "./validate-workflow.js";
+import {
+  validateNativeSteps,
+  validateFormat2Steps,
+  decodeStructureErrors,
+  detectEncodingErrors,
+} from "./validate-workflow.js";
 
 export interface LintOptions extends StrictOptions {
   format?: string;
@@ -91,11 +96,25 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
   if (opts.json) {
     const lintErrors = report.structural.error_count + (report.bestPractices?.error_count ?? 0);
     const lintWarnings = report.structural.warn_count + (report.bestPractices?.warn_count ?? 0);
+
+    // Effect Schema decode for structure_errors
+    const structureErrors = decodeStructureErrors(data, format);
+
+    // Legacy encoding detection for encoding_errors
+    let encodingErrors: string[] = [];
+    if (cache && !opts.skipStateValidation) {
+      const expansionOpts: ExpansionOptions = {
+        resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
+      };
+      encodingErrors = await detectEncodingErrors(data, cache, format, expansionOpts);
+    }
+
     const singleReport = buildSingleLintReport(
       filePath,
       lintErrors,
       lintWarnings,
       report.stateValidation ?? [],
+      { structure_errors: structureErrors, encoding_errors: encodingErrors },
     );
     console.log(JSON.stringify(singleReport, null, 2));
     process.exitCode = report.exitCode;

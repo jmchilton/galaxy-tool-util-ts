@@ -6,7 +6,7 @@ import * as YAML from "yaml";
 import { runLint } from "../src/commands/lint.js";
 import type { SingleLintReport } from "@galaxy-tool-util/schema";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
-import { seedSimpleTool, SIMPLE_TOOL_ID } from "./helpers/fixtures.js";
+import { seedSimpleTool, seedAllTools, SIMPLE_TOOL_ID, COND_TOOL_ID } from "./helpers/fixtures.js";
 
 describe("gxwf lint", () => {
   let ctx: CliTestContext;
@@ -265,5 +265,46 @@ describe("gxwf lint", () => {
     expect(report.results).toHaveLength(1);
     expect(report.results[0].status).toBe("ok");
     expect(report.summary.state_ok).toBe(1);
+  });
+
+  it("--json includes structure_errors for malformed workflow", async () => {
+    // Workflow missing required "format-version" but is detected as native via .ga extension
+    const workflow = { a_galaxy_workflow: "true", steps: {} };
+    const wfPath = join(ctx.tmpDir, "malformed.ga");
+    await writeFile(wfPath, JSON.stringify(workflow));
+    await runLint(wfPath, { skipStateValidation: true, json: true });
+
+    const output = ctx.logSpy.mock.calls[0][0];
+    const report: SingleLintReport = JSON.parse(output);
+    expect(report.structure_errors.length).toBeGreaterThan(0);
+  });
+
+  it("--json includes encoding_errors for legacy-encoded tool_state", async () => {
+    await seedAllTools(ctx.tmpDir);
+    const workflow = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          tool_id: COND_TOOL_ID,
+          tool_version: "1.0",
+          // Legacy encoding: conditional "mode" is a JSON string instead of an object
+          tool_state: JSON.stringify({ mode: '{"selector": false}' }),
+          input_connections: {},
+          workflow_outputs: [{ label: "out", output_name: "output" }],
+        },
+      },
+    };
+    const wfPath = join(ctx.tmpDir, "legacy-lint.ga");
+    await writeFile(wfPath, JSON.stringify(workflow));
+    await runLint(wfPath, { cacheDir: ctx.tmpDir, json: true });
+
+    const output = ctx.logSpy.mock.calls[0][0];
+    const report: SingleLintReport = JSON.parse(output);
+    expect(report.encoding_errors.length).toBeGreaterThan(0);
+    expect(report.encoding_errors[0]).toContain("legacy parameter encoding");
+    expect(report.encoding_errors[0]).toContain("mode");
   });
 });
