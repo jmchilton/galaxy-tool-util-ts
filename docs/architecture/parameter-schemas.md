@@ -68,14 +68,6 @@ The [state representation](glossary#state-representations) controls several sche
 | Integer IDs | `request_internal`, `request_internal_dereferenced`, `landing_request_internal`, `job_internal` |
 | Batching (list values) | `request`, `relaxed_request`, `request_internal`, `request_internal_dereferenced`, `landing_request`, `landing_request_internal` |
 
-## Adding a New Parameter Type
-
-1. Create a generator function in `packages/schema/src/schema/parameters/`
-2. Register it in the registry (`packages/schema/src/schema/parameters/registry.ts`)
-3. Add test cases to the parameter spec tests
-
-The generator receives the full `ToolParameterModel` and state representation, so it has access to all attributes (min, max, options, etc.) to build an appropriately constrained schema.
-
 ## Schema Sources
 
 The `schema-sources/` directory contains upstream YAML definitions from [gxformat2](https://github.com/galaxyproject/gxformat2) (synced via `make sync-schema-sources`). These define the workflow schema structure — not parameter types. Parameter type generators are hand-written in TypeScript.
