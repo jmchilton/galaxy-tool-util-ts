@@ -65,4 +65,4 @@ HTTP proxy server components.
 
 ## Full TypeDoc Reference
 
-[View generated TypeDoc API documentation →](typedoc/index.html)
+[View generated TypeDoc API documentation →](api/typedoc/index.html ':ignore')

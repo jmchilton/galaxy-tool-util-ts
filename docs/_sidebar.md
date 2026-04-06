@@ -17,7 +17,7 @@
   - [Effect Schema Usage](architecture/effect-schema.md)
 - **API Reference**
   - [Overview](api/README.md)
-  - [TypeDoc Reference](api/typedoc/index.html)
+  - [TypeDoc Reference](api/typedoc/index.html ':ignore')
 - [Glossary](glossary.md)
 - **Development**
   - [Contributing](development/contributing.md)
