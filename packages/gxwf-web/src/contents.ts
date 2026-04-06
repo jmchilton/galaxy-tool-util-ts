@@ -444,6 +444,9 @@ export function restoreCheckpoint(directory: string, relPath: string, checkpoint
     fail(404, `Checkpoint not found: ${checkpointId}`);
   }
   fs.copyFileSync(cpFile, absPath);
+  // Preserve mtime (mirrors Python's shutil.copy2).
+  const cpSt = fs.statSync(cpFile);
+  fs.utimesSync(absPath, cpSt.atime, cpSt.mtime);
 }
 
 export function deleteCheckpoint(directory: string, relPath: string, checkpointId: string): void {
@@ -454,11 +457,15 @@ export function deleteCheckpoint(directory: string, relPath: string, checkpointI
     fail(404, `Checkpoint not found: ${checkpointId}`);
   }
   fs.unlinkSync(cpFile);
-  // Clean up empty checkpoint dir tree.
-  try {
-    fs.rmdirSync(cpDir);
-    fs.rmdirSync(path.dirname(cpDir));
-  } catch {
-    // ignore — directory not empty or already gone
+  // Clean up empty checkpoint dir tree (mirrors Python's os.removedirs — walk up).
+  let dir = cpDir;
+  const root = path.resolve(directory);
+  while (dir !== root) {
+    try {
+      fs.rmdirSync(dir); // throws if non-empty
+    } catch {
+      break;
+    }
+    dir = path.dirname(dir);
   }
 }

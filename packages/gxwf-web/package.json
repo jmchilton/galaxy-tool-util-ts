@@ -36,11 +36,7 @@
     "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
   },
   "license": "MIT",
-  "dependencies": {
-    "@galaxy-tool-util/core": "workspace:*",
-    "@galaxy-tool-util/schema": "workspace:*",
-    "effect": "^3.21.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^25.5.0"
   }

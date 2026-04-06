@@ -94,6 +94,9 @@ function matchRoute(method: string, url: string): Route | null {
   // Workflow stubs (Phase 2b wiring point).
   if (rawPath === "/workflows") {
     if (method === "GET") return { handler: "listWorkflows" };
+    return null;
+  }
+  if (rawPath === "/workflows/refresh") {
     if (method === "POST") return { handler: "refreshWorkflows" };
     return null;
   }
