@@ -21,7 +21,7 @@ import type {
   SectionParameterModel,
 } from "../schema/bundle-types.js";
 
-import { flatStatePath, repeatInputsToArray, selectWhichWhen } from "./state-merge.js";
+import { flatStatePath, repeatInputsToArray, selectWhichWhen } from "./walk-helpers.js";
 import { STALE_KEYS } from "./stale-keys.js";
 
 /** Sentinel: return from leaf callback to omit a value from output. */
@@ -36,6 +36,8 @@ export type LeafCallback = (
 export interface WalkNativeOptions {
   prefix?: string;
   checkUnknownKeys?: boolean;
+  /** Copy undeclared keys from input state to output (default: false). */
+  preserveUnknownKeys?: boolean;
 }
 
 /**
@@ -59,6 +61,7 @@ export function walkNativeState(
 ): Record<string, unknown> {
   const prefix = options?.prefix;
   const checkUnknownKeys = options?.checkUnknownKeys ?? false;
+  const preserveUnknownKeys = options?.preserveUnknownKeys ?? false;
   const result: Record<string, unknown> = {};
   const visitedKeys = new Set<string>();
 
@@ -84,7 +87,7 @@ export function walkNativeState(
         [conditional.test_parameter, ...branchParams],
         stateDict,
         leafCallback,
-        { prefix: statePath, checkUnknownKeys },
+        { prefix: statePath, checkUnknownKeys, preserveUnknownKeys },
       );
 
       if (Object.keys(innerResult).length > 0) {
@@ -112,7 +115,7 @@ export function walkNativeState(
           repeat.parameters,
           instanceState,
           leafCallback,
-          { prefix: instancePrefix, checkUnknownKeys },
+          { prefix: instancePrefix, checkUnknownKeys, preserveUnknownKeys },
         );
         instances.push(instanceResult);
       }
@@ -132,7 +135,7 @@ export function walkNativeState(
         section.parameters,
         stateDict,
         leafCallback,
-        { prefix: statePath, checkUnknownKeys },
+        { prefix: statePath, checkUnknownKeys, preserveUnknownKeys },
       );
 
       if (Object.keys(innerResult).length > 0) {
@@ -152,6 +155,12 @@ export function walkNativeState(
     for (const key of Object.keys(state)) {
       if (!visitedKeys.has(key) && !STALE_KEYS.has(key)) {
         throw new UnknownKeyError(key, prefix);
+      }
+    }
+  } else if (preserveUnknownKeys) {
+    for (const key of Object.keys(state)) {
+      if (!visitedKeys.has(key)) {
+        result[key] = state[key];
       }
     }
   }

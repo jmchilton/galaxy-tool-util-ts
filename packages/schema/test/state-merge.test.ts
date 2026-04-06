@@ -5,6 +5,7 @@ import {
   repeatInputsToArray,
   selectWhichWhen,
   injectConnectionsIntoState,
+  stripConnectedValues,
 } from "../src/workflow/state-merge.js";
 import type {
   ToolParameterModel,
@@ -344,6 +345,40 @@ describe("injectConnectionsIntoState", () => {
     expect(remaining).toEqual({});
   });
 
+  it("preserves bookkeeping keys inside repeat instances", () => {
+    const repeat = repeatParam("queries", [dataParam("input")]);
+    const inputs: ToolParameterModel[] = [repeat];
+    const state: Record<string, unknown> = {
+      queries: [{ input: "existing", __index__: 0 }],
+    };
+    const connections = { "queries_0|input": ["step0/output"] };
+    injectConnectionsIntoState(inputs, state, connections);
+    const q0 = (state.queries as Record<string, unknown>[])[0];
+    expect(q0.input).toEqual({ __class__: "ConnectedValue" });
+    expect(q0.__index__).toBe(0);
+  });
+
+  it("preserves bookkeeping keys at root and inside conditionals", () => {
+    const cond = conditionalParam("cond", boolParam("flag"), [
+      { discriminator: true, parameters: [dataParam("ref")], is_default_when: false },
+      { discriminator: false, parameters: [], is_default_when: true },
+    ]);
+    const inputs: ToolParameterModel[] = [textParam("input1"), cond];
+    const state: Record<string, unknown> = {
+      input1: "hello",
+      __page__: 0,
+      __rerun_remap_job_id__: null,
+      cond: { flag: true, __current_case__: 0 },
+    };
+    const connections = { "cond|ref": ["step0/output"] };
+    injectConnectionsIntoState(inputs, state, connections);
+    expect(state.__page__).toBe(0);
+    expect(state.__rerun_remap_job_id__).toBeNull();
+    const condState = state.cond as Record<string, unknown>;
+    expect(condState.__current_case__).toBe(0);
+    expect(condState.ref).toEqual({ __class__: "ConnectedValue" });
+  });
+
   it("creates missing container state entries", () => {
     const section = sectionParam("advanced", [textParam("option")]);
     const inputs: ToolParameterModel[] = [section];
@@ -355,5 +390,96 @@ describe("injectConnectionsIntoState", () => {
     expect((state.advanced as Record<string, unknown>).option).toEqual({
       __class__: "ConnectedValue",
     });
+  });
+});
+
+describe("stripConnectedValues", () => {
+  const CV = { __class__: "ConnectedValue" };
+
+  it("strips ConnectedValue leaf and preserves non-connected values", () => {
+    const inputs = [textParam("input1"), dataParam("input2")];
+    const state: Record<string, unknown> = { input1: "hello", input2: { ...CV } };
+    stripConnectedValues(inputs, state);
+    expect(state.input1).toBe("hello");
+    expect(state.input2).toBeUndefined();
+  });
+
+  it("no-op on empty state", () => {
+    const inputs = [textParam("input1")];
+    const state: Record<string, unknown> = {};
+    stripConnectedValues(inputs, state);
+    expect(state).toEqual({});
+  });
+
+  it("strips inside conditional branch", () => {
+    const cond = conditionalParam("cond", selectParam("method", ["blast", "diamond"]), [
+      { discriminator: "blast", parameters: [dataParam("blast_db")], is_default_when: true },
+      { discriminator: "diamond", parameters: [dataParam("diamond_db")], is_default_when: false },
+    ]);
+    const state: Record<string, unknown> = {
+      cond: { method: "blast", blast_db: { ...CV } },
+    };
+    stripConnectedValues([cond], state);
+    const condState = state.cond as Record<string, unknown>;
+    expect(condState.blast_db).toBeUndefined();
+    expect(condState.method).toBe("blast");
+  });
+
+  it("strips inside repeat instances", () => {
+    const repeat = repeatParam("queries", [dataParam("input"), textParam("label")]);
+    const state: Record<string, unknown> = {
+      queries: [
+        { input: { ...CV }, label: "first" },
+        { input: { ...CV }, label: "second" },
+      ],
+    };
+    stripConnectedValues([repeat], state);
+    const q = state.queries as Record<string, unknown>[];
+    expect(q[0].input).toBeUndefined();
+    expect(q[0].label).toBe("first");
+    expect(q[1].input).toBeUndefined();
+    expect(q[1].label).toBe("second");
+  });
+
+  it("strips inside section", () => {
+    const section = sectionParam("advanced", [dataParam("ref_file"), textParam("extra")]);
+    const state: Record<string, unknown> = {
+      advanced: { ref_file: { ...CV }, extra: "foo" },
+    };
+    stripConnectedValues([section], state);
+    const adv = state.advanced as Record<string, unknown>;
+    expect(adv.ref_file).toBeUndefined();
+    expect(adv.extra).toBe("foo");
+  });
+
+  it("preserves bookkeeping keys while stripping ConnectedValues", () => {
+    const inputs = [textParam("input1"), dataParam("input2")];
+    const state: Record<string, unknown> = {
+      input1: "hello",
+      input2: { ...CV },
+      __page__: 0,
+      __rerun_remap_job_id__: null,
+    };
+    stripConnectedValues(inputs, state);
+    expect(state.input1).toBe("hello");
+    expect(state.input2).toBeUndefined();
+    expect(state.__page__).toBe(0);
+    expect(state.__rerun_remap_job_id__).toBeNull();
+  });
+
+  it("strips nested conditional inside repeat", () => {
+    const cond = conditionalParam("cond", boolParam("use_ref"), [
+      { discriminator: true, parameters: [dataParam("ref")], is_default_when: false },
+      { discriminator: false, parameters: [], is_default_when: true },
+    ]);
+    const repeat = repeatParam("queries", [dataParam("input"), cond]);
+    const state: Record<string, unknown> = {
+      queries: [{ input: { ...CV }, cond: { use_ref: true, ref: { ...CV } } }],
+    };
+    stripConnectedValues([repeat], state);
+    const q0 = (state.queries as Record<string, unknown>[])[0];
+    expect(q0.input).toBeUndefined();
+    expect((q0.cond as Record<string, unknown>).ref).toBeUndefined();
+    expect((q0.cond as Record<string, unknown>).use_ref).toBe(true);
   });
 });

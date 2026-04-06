@@ -60,13 +60,13 @@ export {
 } from "./normalized/index.js";
 
 export {
-  injectConnectionsIntoState,
-  stripConnectedValues,
   flatStatePath,
   keysStartingWith,
   repeatInputsToArray,
   selectWhichWhen,
-} from "./state-merge.js";
+} from "./walk-helpers.js";
+
+export { injectConnectionsIntoState, stripConnectedValues } from "./state-merge.js";
 
 export { scanForReplacements, type ReplacementClassification } from "./replacement-scan.js";
 
