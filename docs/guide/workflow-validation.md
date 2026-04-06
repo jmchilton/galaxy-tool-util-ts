@@ -1,6 +1,6 @@
 # Workflow Validation
 
-End-to-end guide for validating [Galaxy](https://galaxyproject.org) workflow files using `galaxy-tool-util`.
+End-to-end guide for validating [Galaxy](https://galaxyproject.org) workflow files using `galaxy-tool-util`. For background on state representations, tool state, and why parameter shapes vary by context, see [How It Works](architecture/overview.md).
 
 > For a broader overview of all workflow operations (cleaning, linting, conversion, batch processing), see [Workflow Operations](guide/workflow-operations.md).
 

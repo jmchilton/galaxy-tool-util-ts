@@ -13,14 +13,14 @@ ToolShed / Galaxy API  →  ParsedTool  →  ToolCache  →  Effect Schema  → 
 1. **Fetch** — tool metadata is retrieved from a [ToolShed](https://toolshed.g2.bx.psu.edu) or Galaxy server via their TRS/API endpoints
 2. **Parse** — the raw response is normalized into a **ParsedTool**, a structured model of the tool's inputs, outputs, and metadata
 3. **Cache** — the ParsedTool is stored in a two-layer cache (memory + filesystem) so subsequent lookups never require the network
-4. **Generate** — `createFieldModel(bundle, stateRep)` transforms the tool's parameter definitions into an [Effect Schema](https://effect.website/docs/schema/introduction), parameterized by a **state representation**
+4. **Generate** — [`createFieldModel(bundle, stateRep)`](packages/schema.md#createfieldmodelbundle-staterepresentation) transforms the tool's parameter definitions into an [Effect Schema](https://effect.website/docs/schema/introduction), parameterized by a **state representation**
 5. **Use** — the schema can validate data at runtime (`S.decodeUnknown`) or be exported as [JSON Schema](https://json-schema.org) (`JSONSchema.make`) for external consumers
 
 ## Key Concepts
 
 ### ParsedTool
 
-A ParsedTool is the normalized model of a Galaxy tool after fetching. It contains the tool's parameter definitions (as `ToolParameterModel[]`), name, version, and metadata. ParsedTool instances are what the cache stores and what schema generation consumes. Defined in `@galaxy-tool-util/core`.
+A ParsedTool is the normalized model of a Galaxy tool after fetching. It contains the tool's parameter definitions (as `ToolParameterModel[]`), name, version, and metadata. ParsedTool instances are what the cache stores and what schema generation consumes. Defined in [`@galaxy-tool-util/core`](packages/core.md). See also: [glossary](glossary.md#parsed-tool).
 
 ### State Representations
 
@@ -40,7 +40,7 @@ The representations you'll encounter most often:
 | `job_internal` | Fully resolved state for a running job — all fields required, integer IDs |
 | `test_case_xml` / `test_case_json` | Tool test case parameters |
 
-See the [Parameter Schema System](architecture/parameter-schemas.md) for the complete list and the rules each representation applies.
+See the [Parameter Schema System](architecture/parameter-schemas.md) for the complete list and the rules each representation applies. See also: [glossary](glossary.md#state-representations).
 
 ### ConnectedValue and RuntimeValue
 
@@ -49,11 +49,11 @@ In workflow steps, not every parameter has a literal value:
 - A **ConnectedValue** (`{"__class__": "ConnectedValue"}`) means the parameter's value comes from a connection to another step's output. Valid in `workflow_step_linked` and `workflow_step_native`.
 - A **RuntimeValue** (`{"__class__": "RuntimeValue"}`) means the parameter will be supplied when the workflow is invoked, not fixed in the definition. Valid only in `workflow_step_native`.
 
-The schema system wraps parameter schemas with union types to allow these markers where appropriate.
+The schema system wraps parameter schemas with union types to allow these markers where appropriate. See also: [ConnectedValue](glossary.md#connected-value), [RuntimeValue](glossary.md#runtime-value).
 
 ### Tool State
 
-Tool state is the JSON object inside a workflow step that holds parameter values for a tool invocation. Its shape depends on the state representation. "Stale" tool state occurs when a workflow references an older tool version whose parameters have changed — `gxwf validate` detects this.
+Tool state is the JSON object inside a workflow step that holds parameter values for a tool invocation. Its shape depends on the state representation. "Stale" tool state occurs when a workflow references an older tool version whose parameters have changed — `gxwf validate` detects this. See also: [glossary](glossary.md#tool-state).
 
 ## Why Effect Schema?
 
@@ -91,3 +91,12 @@ Workflow file → detectFormat() → validate / clean / lint / convert
 - **convert** — transform between native and format2 formats
 
 Tree variants (`discoverWorkflows` + `collectTree`) apply these operations across an entire directory of workflows.
+
+## What to Read Next
+
+- [Workflow Validation](guide/workflow-validation.md) — end-to-end guide for validating workflow files
+- [Workflow Operations](guide/workflow-operations.md) — full reference for validate, clean, lint, convert, and roundtrip
+- [Tool Caching](guide/tool-caching.md) — managing the local tool cache
+- [Parameter Schema System](architecture/parameter-schemas.md) — complete state representation rules and generator internals
+- [Effect Schema Usage](architecture/effect-schema.md) — patterns and examples used in this project
+- [`@galaxy-tool-util/schema`](packages/schema.md) and [`@galaxy-tool-util/core`](packages/core.md) — package API details

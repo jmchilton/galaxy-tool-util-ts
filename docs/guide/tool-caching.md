@@ -1,5 +1,7 @@
 # Tool Caching
 
+> For background on the data flow (fetch → cache → schema generation) and how caching fits the bigger picture, see [How It Works](architecture/overview.md).
+
 ## Why Cache?
 
 Tool metadata fetched from the [ToolShed](https://toolshed.g2.bx.psu.edu) or [Galaxy](https://galaxyproject.org) instances is cached locally to:
