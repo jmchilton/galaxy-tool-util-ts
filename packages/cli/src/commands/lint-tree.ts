@@ -91,7 +91,7 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
       if (lr.stateValidation) {
         for (const s of lr.stateValidation.filter((s) => s.status === "fail")) {
           for (const err of s.errors)
-            console.error(`    [state] Step ${s.stepLabel} (${s.toolId}): ${err}`);
+            console.error(`    [state] Step ${s.step} (${s.tool_id}): ${err}`);
         }
       }
     } else if (warnings > 0) {

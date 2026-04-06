@@ -12,9 +12,12 @@ import { createDefaultResolver } from "./url-resolver.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { resolveFormat } from "./workflow-io.js";
 import {
+  SKIP_STATUSES,
+  type ValidationStepResult as StepValidationResult,
+} from "@galaxy-tool-util/schema";
+import {
   validateNativeSteps,
   validateFormat2Steps,
-  type StepValidationResult,
   type ValidationMode,
 } from "./validate-workflow.js";
 import { collectTree, summarizeOutcomes, type TreeResult, type TreeSummary } from "./tree.js";
@@ -128,14 +131,14 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
     const r = outcome.result!;
     const ok = r.steps.filter((s) => s.status === "ok").length;
     const fail = r.steps.filter((s) => s.status === "fail").length;
-    const skip = r.steps.filter((s) => s.status === "skip").length;
+    const skip = r.steps.filter((s) => SKIP_STATUSES.has(s.status)).length;
     const total = r.steps.length;
 
     if (fail > 0) {
       console.error(`  ${r.relativePath}: ${total} steps (${ok} OK, ${fail} FAIL, ${skip} SKIP)`);
       for (const s of r.steps.filter((s) => s.status === "fail")) {
         for (const err of s.errors) {
-          console.error(`    Step ${s.stepLabel} (${s.toolId}): ${err}`);
+          console.error(`    Step ${s.step} (${s.tool_id}): ${err}`);
         }
       }
     } else {
@@ -169,7 +172,7 @@ function buildValidateReport(treeResult: TreeResult<WorkflowValidateResult>): Va
     results.push(r);
     stepOk += r.steps.filter((s) => s.status === "ok").length;
     stepFail += r.steps.filter((s) => s.status === "fail").length;
-    stepSkip += r.steps.filter((s) => s.status === "skip").length;
+    stepSkip += r.steps.filter((s) => SKIP_STATUSES.has(s.status)).length;
   }
 
   const wfSummary = summarizeOutcomes(treeResult.outcomes, (r) =>

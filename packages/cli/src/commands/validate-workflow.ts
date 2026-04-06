@@ -10,6 +10,7 @@ import {
   scanForReplacements,
   checkStrictEncoding,
   checkStrictStructure,
+  buildSingleValidationReport,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
   type NormalizedFormat2Step,
@@ -37,6 +38,7 @@ export interface ValidateWorkflowOptions extends StrictOptions {
   cacheDir?: string;
   mode?: ValidationMode;
   toolSchemaDir?: string;
+  json?: boolean;
 }
 
 function formatIssues(error: ParseResult.ParseError): string[] {
@@ -44,15 +46,10 @@ function formatIssues(error: ParseResult.ParseError): string[] {
   return issues.map((i) => `${i.path.join(".")}: ${i.message}`);
 }
 
-export interface StepValidationResult {
-  stepLabel: string;
-  toolId: string;
-  toolVersion: string | null;
-  status: "ok" | "fail" | "skip";
-  errors: string[];
-  /** When status is "skip", explains why (e.g. "not_in_cache", "replacement_params", "no_version"). */
-  skippedReason?: string;
-}
+export type { ValidationStepResult as StepValidationResult } from "@galaxy-tool-util/schema";
+
+// Re-import locally for use in this file
+import type { ValidationStepResult as StepValidationResult } from "@galaxy-tool-util/schema";
 
 export async function runValidateWorkflow(
   filePath: string,
@@ -64,7 +61,7 @@ export async function runValidateWorkflow(
   const format: WorkflowFormat = resolveFormat(data, opts.format);
 
   const mode: ValidationMode = opts.mode === "json-schema" ? "json-schema" : "effect";
-  console.log(`Detected format: ${format}, mode: ${mode}`);
+  if (!opts.json) console.log(`Detected format: ${format}, mode: ${mode}`);
 
   // Build expansion options for resolving external subworkflow references
   const workflowDirectory = dirname(filePath);
@@ -74,7 +71,7 @@ export async function runValidateWorkflow(
 
   if (mode === "json-schema") {
     const { runValidateWorkflowJsonSchema } = await import("./validate-workflow-json-schema.js");
-    return runValidateWorkflowJsonSchema(data, format, opts, expansionOpts);
+    return runValidateWorkflowJsonSchema(filePath, data, format, opts, expansionOpts);
   }
 
   const strict = resolveStrictOptions(opts);
@@ -114,19 +111,30 @@ export async function runValidateWorkflow(
   const decode = S.decodeUnknownEither(schema, { onExcessProperty: "ignore" });
   const structResult = decode(validationData);
 
+  const structureErrors: string[] = [];
   let structOk = true;
   if (structResult._tag === "Left") {
     structOk = false;
-    console.error(`\nStructural validation errors:`);
-    for (const line of formatIssues(structResult.left)) {
-      console.error(`  ${line}`);
+    const issues = formatIssues(structResult.left);
+    structureErrors.push(...issues);
+    if (!opts.json) {
+      console.error(`\nStructural validation errors:`);
+      for (const line of issues) {
+        console.error(`  ${line}`);
+      }
     }
   } else {
-    console.log(`Structural validation: OK`);
+    if (!opts.json) console.log(`Structural validation: OK`);
   }
 
   // --- tool state validation (effect mode) ---
   if (opts.toolState === false) {
+    if (opts.json) {
+      const report = buildSingleValidationReport(filePath, [], {
+        structure_errors: structureErrors,
+      });
+      console.log(JSON.stringify(report, null, 2));
+    }
     process.exitCode = structOk ? 0 : 1;
     return;
   }
@@ -141,6 +149,17 @@ export async function runValidateWorkflow(
     results = await validateFormat2Steps(data, cache, "", expansionOpts);
   }
 
+  const stateOk = !results.some((r) => r.status === "fail");
+
+  if (opts.json) {
+    const report = buildSingleValidationReport(filePath, results, {
+      structure_errors: structureErrors,
+    });
+    console.log(JSON.stringify(report, null, 2));
+    process.exitCode = structOk && stateOk ? 0 : 1;
+    return;
+  }
+
   if (results.length === 0) {
     console.log("No tool steps to validate state for.");
     process.exitCode = structOk ? 0 : 1;
@@ -148,7 +167,6 @@ export async function runValidateWorkflow(
   }
 
   const { validated, skipped } = renderStepResults(results);
-  const stateOk = !results.some((r) => r.status === "fail");
 
   console.log(`\nTool state: ${validated} validated, ${skipped} skipped`);
 
@@ -214,7 +232,13 @@ async function _validateNativeStep(
     const skippedReason = resolved.kind === "no_version" ? "no_version" : "not_in_cache";
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason], skippedReason };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: [reason],
+    };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -228,10 +252,10 @@ async function _validateNativeStep(
   );
   if (replacementScan === "yes") {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_replacement_params",
       errors: ["replacement parameters detected"],
       skippedReason: "replacement_params",
     };
@@ -249,10 +273,10 @@ async function _validateNativeStep(
   const fieldModel = createFieldModel(bundle, "workflow_step_native");
   if (!fieldModel) {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
       errors: ["unsupported parameter types"],
       skippedReason: "unsupported_params",
     };
@@ -264,9 +288,15 @@ async function _validateNativeStep(
   const result = validate(state);
 
   if (result._tag === "Left") {
-    return { stepLabel, toolId, toolVersion, status: "fail", errors: formatIssues(result.left) };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatIssues(result.left),
+    };
   }
-  return { stepLabel, toolId, toolVersion, status: "ok", errors: [] };
+  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
 }
 
 // --- Format2 validation ---
@@ -326,7 +356,13 @@ async function _validateFormat2Step(
     const skippedReason = resolved.kind === "no_version" ? "no_version" : "not_in_cache";
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason], skippedReason };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: [reason],
+    };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -343,10 +379,10 @@ async function _validateFormat2Step(
   const baseModel = createFieldModel(bundle, "workflow_step");
   if (!baseModel) {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
       errors: ["unsupported parameter types"],
       skippedReason: "unsupported_params",
     };
@@ -358,9 +394,9 @@ async function _validateFormat2Step(
   const baseResult = baseValidate(state);
   if (baseResult._tag === "Left") {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
       status: "fail",
       errors: formatIssues(baseResult.left),
     };
@@ -383,9 +419,9 @@ async function _validateFormat2Step(
     const unmatchedKeys = Object.keys(remaining);
     if (unmatchedKeys.length > 0) {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
         status: "fail",
         errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
       };
@@ -394,10 +430,10 @@ async function _validateFormat2Step(
     const linkedModel = createFieldModel(bundle, "workflow_step_linked");
     if (!linkedModel) {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
-        status: "skip",
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
+        status: "skip_tool_not_found",
         errors: ["unsupported parameter types"],
         skippedReason: "unsupported_params",
       };
@@ -409,14 +445,14 @@ async function _validateFormat2Step(
     const linkedResult = linkedValidate(linkedState);
     if (linkedResult._tag === "Left") {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
         status: "fail",
         errors: formatIssues(linkedResult.left),
       };
     }
   }
 
-  return { stepLabel, toolId, toolVersion, status: "ok", errors: [] };
+  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
 }

@@ -32,7 +32,8 @@ addStrictOptions(
     .option(
       "--tool-schema-dir <dir>",
       "Directory of pre-exported per-tool JSON Schemas (for offline json-schema mode)",
-    ),
+    )
+    .option("--json", "Output structured JSON report"),
 ).action(runValidateWorkflow);
 
 program
@@ -42,6 +43,7 @@ program
   .option("--output <file>", "Write cleaned workflow to file (default: stdout)")
   .option("--diff", "Show diff of changes instead of writing output")
   .option("--format <fmt>", "Force format: native or format2 (auto-detected by default)")
+  .option("--json", "Output structured JSON report")
   .action(runClean);
 
 addStrictOptions(

@@ -30,6 +30,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import type { ValidateFunction } from "ajv";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { buildSingleValidationReport } from "@galaxy-tool-util/schema";
 import type {
   ValidateWorkflowOptions,
   WorkflowFormat,
@@ -159,6 +160,7 @@ function formatAjvErrors(validate: ValidateFunction): string[] {
 // --- main entry point ---
 
 export async function runValidateWorkflowJsonSchema(
+  filePath: string,
   data: Record<string, unknown>,
   format: WorkflowFormat,
   opts: ValidateWorkflowOptions,
@@ -176,23 +178,33 @@ export async function runValidateWorkflowJsonSchema(
     format === "native" ? nativeStructuralValidator() : format2StructuralValidator();
 
   const structOk = structValidator(validationData);
+  const structureErrors: string[] = [];
 
   if (!structOk) {
-    console.error(`\nStructural validation errors (json-schema):`);
-    for (const line of formatAjvErrors(structValidator)) {
-      console.error(`  ${line}`);
+    structureErrors.push(...formatAjvErrors(structValidator));
+    if (!opts.json) {
+      console.error(`\nStructural validation errors (json-schema):`);
+      for (const line of structureErrors) {
+        console.error(`  ${line}`);
+      }
     }
   } else {
-    console.log(`Structural validation (json-schema): OK`);
+    if (!opts.json) console.log(`Structural validation (json-schema): OK`);
   }
 
   // --- tool state validation ---
   if (opts.toolState === false) {
+    if (opts.json) {
+      const report = buildSingleValidationReport(filePath, [], {
+        structure_errors: structureErrors,
+      });
+      console.log(JSON.stringify(report, null, 2));
+    }
     process.exitCode = structOk ? 0 : 1;
     return;
   }
 
-  if (!structOk) {
+  if (!structOk && !opts.json) {
     process.exitCode = 1;
     return;
   }
@@ -200,23 +212,36 @@ export async function runValidateWorkflowJsonSchema(
   const cache = new ToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
 
-  let results: StepValidationResult[];
-  if (format === "native") {
-    results = await validateNativeStepsJsonSchema(
-      data,
-      cache,
-      opts.toolSchemaDir,
-      "",
-      expansionOpts,
-    );
-  } else {
-    results = await validateFormat2StepsJsonSchema(
-      data,
-      cache,
-      opts.toolSchemaDir,
-      "",
-      expansionOpts,
-    );
+  let results: StepValidationResult[] = [];
+  if (structOk) {
+    if (format === "native") {
+      results = await validateNativeStepsJsonSchema(
+        data,
+        cache,
+        opts.toolSchemaDir,
+        "",
+        expansionOpts,
+      );
+    } else {
+      results = await validateFormat2StepsJsonSchema(
+        data,
+        cache,
+        opts.toolSchemaDir,
+        "",
+        expansionOpts,
+      );
+    }
+  }
+
+  const stateOk = !results.some((r) => r.status === "fail");
+
+  if (opts.json) {
+    const report = buildSingleValidationReport(filePath, results, {
+      structure_errors: structureErrors,
+    });
+    console.log(JSON.stringify(report, null, 2));
+    process.exitCode = structOk && stateOk ? 0 : 1;
+    return;
   }
 
   if (results.length === 0) {
@@ -225,29 +250,27 @@ export async function runValidateWorkflowJsonSchema(
     return;
   }
 
-  let stateOk = true;
   let validated = 0;
   let skipped = 0;
 
   for (const r of results) {
-    if (r.status === "skip") {
+    if (r.status === "skip_tool_not_found" || r.status === "skip_replacement_params") {
       skipped++;
-      console.warn(`  [${r.stepLabel}] skipped — ${r.errors[0] ?? "unknown"}`);
+      console.warn(`  [${r.step}] skipped — ${r.errors[0] ?? "unknown"}`);
     } else if (r.status === "fail") {
       validated++;
-      stateOk = false;
-      console.error(`  [${r.stepLabel}] tool_state errors (${r.toolId}):`);
+      console.error(`  [${r.step}] tool_state errors (${r.tool_id}):`);
       for (const line of r.errors) {
         console.error(`    ${line}`);
       }
     } else {
       validated++;
-      console.log(`  [${r.stepLabel}] tool_state: OK`);
+      console.log(`  [${r.step}] tool_state: OK`);
     }
   }
 
   console.log(`\nTool state (json-schema): ${validated} validated, ${skipped} skipped`);
-  process.exitCode = stateOk ? 0 : 1;
+  process.exitCode = structOk && stateOk ? 0 : 1;
 }
 
 // --- Native validation (json-schema) ---
@@ -315,7 +338,13 @@ async function _validateNativeStepJsonSchema(
   if (isResolveError(resolved)) {
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason] };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: [reason],
+    };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -328,10 +357,10 @@ async function _validateNativeStepJsonSchema(
   );
   if (replacementScan === "yes") {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_replacement_params",
       errors: ["replacement parameters detected"],
     };
   }
@@ -352,19 +381,25 @@ async function _validateNativeStepJsonSchema(
   );
   if (!validate) {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
       errors: ["unsupported parameter types"],
     };
   }
 
   const valid = validate(state);
   if (!valid) {
-    return { stepLabel, toolId, toolVersion, status: "fail", errors: formatAjvErrors(validate) };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatAjvErrors(validate),
+    };
   }
-  return { stepLabel, toolId, toolVersion, status: "ok", errors: [] };
+  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
 }
 
 // --- Format2 validation (json-schema) ---
@@ -433,7 +468,13 @@ async function _validateFormat2StepJsonSchema(
   if (isResolveError(resolved)) {
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason] };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: [reason],
+    };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -453,10 +494,10 @@ async function _validateFormat2StepJsonSchema(
   );
   if (!baseValidate) {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
       errors: ["unsupported parameter types"],
     };
   }
@@ -464,9 +505,9 @@ async function _validateFormat2StepJsonSchema(
   const baseValid = baseValidate(state);
   if (!baseValid) {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
       status: "fail",
       errors: formatAjvErrors(baseValidate),
     };
@@ -489,9 +530,9 @@ async function _validateFormat2StepJsonSchema(
     const unmatchedKeys = Object.keys(remaining);
     if (unmatchedKeys.length > 0) {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
         status: "fail",
         errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
       };
@@ -506,10 +547,10 @@ async function _validateFormat2StepJsonSchema(
     );
     if (!linkedValidate) {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
-        status: "skip",
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
+        status: "skip_tool_not_found",
         errors: ["unsupported parameter types"],
       };
     }
@@ -517,14 +558,14 @@ async function _validateFormat2StepJsonSchema(
     const linkedValid = linkedValidate(linkedState);
     if (!linkedValid) {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
         status: "fail",
         errors: formatAjvErrors(linkedValidate),
       };
     }
   }
 
-  return { stepLabel, toolId, toolVersion, status: "ok", errors: [] };
+  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
 }

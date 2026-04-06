@@ -30,7 +30,7 @@ export async function runCleanTree(dir: string, opts: CleanTreeOptions): Promise
   const treeResult = await collectTree(dir, async (info, data) => {
     const format = resolveFormat(data, opts.format);
     const before = JSON.stringify(data);
-    cleanWorkflow(data);
+    const { results: _cleanResults } = cleanWorkflow(data);
     const changed = JSON.stringify(data) !== before;
 
     if (outputDir) {

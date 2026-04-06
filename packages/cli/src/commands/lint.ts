@@ -9,9 +9,11 @@ import {
   lintBestPracticesFormat2,
   checkStrictEncoding,
   checkStrictStructure,
+  buildSingleLintReport,
   type LintResult,
   type ExpansionOptions,
   type WorkflowFormat,
+  type ValidationStepResult as StepValidationResult,
 } from "@galaxy-tool-util/schema";
 import { dirname } from "node:path";
 import { renderStepResults } from "./render-results.js";
@@ -22,11 +24,7 @@ import {
   type StrictOptions,
   type ResolvedStrictOptions,
 } from "./strict-options.js";
-import {
-  validateNativeSteps,
-  validateFormat2Steps,
-  type StepValidationResult,
-} from "./validate-workflow.js";
+import { validateNativeSteps, validateFormat2Steps } from "./validate-workflow.js";
 
 export interface LintOptions extends StrictOptions {
   format?: string;
@@ -91,7 +89,15 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
   });
 
   if (opts.json) {
-    console.log(JSON.stringify(report, null, 2));
+    const lintErrors = report.structural.error_count + (report.bestPractices?.error_count ?? 0);
+    const lintWarnings = report.structural.warn_count + (report.bestPractices?.warn_count ?? 0);
+    const singleReport = buildSingleLintReport(
+      filePath,
+      lintErrors,
+      lintWarnings,
+      report.stateValidation ?? [],
+    );
+    console.log(JSON.stringify(singleReport, null, 2));
     process.exitCode = report.exitCode;
     return;
   }

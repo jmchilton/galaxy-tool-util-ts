@@ -4,6 +4,7 @@ import { join } from "node:path";
 import * as YAML from "yaml";
 
 import { runLint } from "../src/commands/lint.js";
+import type { SingleLintReport } from "@galaxy-tool-util/schema";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 import { seedSimpleTool, SIMPLE_TOOL_ID } from "./helpers/fixtures.js";
 
@@ -205,7 +206,7 @@ describe("gxwf lint", () => {
     expect(warnings).toContain("empty");
   });
 
-  it("--json outputs structured report", async () => {
+  it("--json outputs SingleLintReport shape", async () => {
     const workflow = {
       a_galaxy_workflow: "true",
       "format-version": "0.1",
@@ -223,9 +224,46 @@ describe("gxwf lint", () => {
     await runLint(wfPath, { skipStateValidation: true, json: true });
 
     const output = ctx.logSpy.mock.calls[0][0];
-    const report = JSON.parse(output);
-    expect(report).toHaveProperty("structural");
-    expect(report).toHaveProperty("bestPractices");
-    expect(report).toHaveProperty("exitCode");
+    const report: SingleLintReport = JSON.parse(output);
+    expect(report.workflow).toBe(wfPath);
+    expect(report.lint_errors).toBeTypeOf("number");
+    expect(report.lint_warnings).toBeTypeOf("number");
+    expect(report.results).toEqual([]);
+    expect(report.structure_errors).toEqual([]);
+    expect(report.encoding_errors).toEqual([]);
+    expect(report.summary).toHaveProperty("lint_errors");
+    expect(report.summary).toHaveProperty("lint_warnings");
+    expect(report.summary).toHaveProperty("state_ok");
+    expect(report.summary).toHaveProperty("state_fail");
+    expect(report.summary).toHaveProperty("state_skip");
+  });
+
+  it("--json includes state validation results", async () => {
+    await seedSimpleTool(ctx.tmpDir);
+    const workflow = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          label: "Good",
+          tool_id: SIMPLE_TOOL_ID,
+          tool_version: "1.0",
+          tool_state: JSON.stringify({ input_text: "hello" }),
+          input_connections: {},
+          workflow_outputs: [{ label: "out", output_name: "output" }],
+        },
+      },
+    };
+    const wfPath = join(ctx.tmpDir, "json-state.ga");
+    await writeFile(wfPath, JSON.stringify(workflow));
+    await runLint(wfPath, { cacheDir: ctx.tmpDir, json: true });
+
+    const output = ctx.logSpy.mock.calls[0][0];
+    const report: SingleLintReport = JSON.parse(output);
+    expect(report.results).toHaveLength(1);
+    expect(report.results[0].status).toBe("ok");
+    expect(report.summary.state_ok).toBe(1);
   });
 });

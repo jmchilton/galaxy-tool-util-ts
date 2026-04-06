@@ -119,7 +119,7 @@ export {
   type RoundtripFailureClass,
 } from "./roundtrip.js";
 
-export { cleanWorkflow } from "./clean.js";
+export { cleanWorkflow, type CleanWorkflowResult } from "./clean.js";
 
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
 
@@ -139,3 +139,35 @@ export {
   lintBestPracticesNative,
   type LintResult,
 } from "./lint.js";
+
+// Structured report models (mirrors Python _report_models.py)
+export {
+  type StepStatus,
+  SKIP_STATUSES,
+  type ValidationStepResult,
+  type CleanStepResult,
+  type SingleValidationReport,
+  type SingleLintReport,
+  type SingleCleanReport,
+  type WorkflowValidationResult,
+  type LintWorkflowResult,
+  type WorkflowCleanResult,
+  type CategoryGroup,
+  type TreeValidationReport,
+  type LintTreeReport,
+  type TreeCleanReport,
+  validationSummary,
+  validationFailures,
+  cleanDisplayLabel,
+  categoryOf,
+  groupByCategory,
+  buildSingleValidationReport,
+  buildSingleLintReport,
+  buildSingleCleanReport,
+  buildWorkflowValidationResult,
+  buildLintWorkflowResult,
+  buildWorkflowCleanResult,
+  buildTreeValidationReport,
+  buildLintTreeReport,
+  buildTreeCleanReport,
+} from "./report-models.js";
