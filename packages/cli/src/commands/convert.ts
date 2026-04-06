@@ -7,6 +7,8 @@ import {
   toFormat2Stateful,
   toNative,
   toNativeStateful,
+  checkStrictEncoding,
+  checkStrictStructure,
   type ExpansionOptions,
   type StepConversionStatus,
   type WorkflowFormat,
@@ -14,6 +16,7 @@ import {
 import { dirname } from "node:path";
 import { loadToolInputsForWorkflow } from "./stateful-tool-inputs.js";
 import { createDefaultResolver } from "./url-resolver.js";
+import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import {
   readWorkflowFile,
   resolveFormat,
@@ -21,7 +24,7 @@ import {
   writeWorkflowOutput,
 } from "./workflow-io.js";
 
-export interface ConvertOptions {
+export interface ConvertOptions extends StrictOptions {
   to?: string;
   output?: string;
   compact?: boolean;
@@ -38,6 +41,27 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
 
   const sourceFormat = resolveFormat(data, opts.format);
   const targetFormat = resolveTargetFormat(sourceFormat, opts.to);
+  const strict = resolveStrictOptions(opts);
+
+  // Pre-conversion strict checks on input
+  if (strict.strictEncoding) {
+    const encErrors = checkStrictEncoding(data, sourceFormat);
+    if (encErrors.length > 0) {
+      console.error("Encoding errors:");
+      for (const e of encErrors) console.error(`  ${e}`);
+      process.exitCode = 2;
+      return;
+    }
+  }
+  if (strict.strictStructure) {
+    const structErrors = checkStrictStructure(data, sourceFormat);
+    if (structErrors.length > 0) {
+      console.error("Structure errors (strict):");
+      for (const e of structErrors) console.error(`  ${e}`);
+      process.exitCode = 2;
+      return;
+    }
+  }
 
   if (sourceFormat === targetFormat) {
     console.error(
@@ -99,6 +123,15 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
 
   if (stepStatuses !== null) {
     reportStepStatuses(stepStatuses);
+    // --strict-state: require all steps to convert successfully
+    if (strict.strictState) {
+      const hasFailures = stepStatuses.some((s) => !s.converted);
+      if (hasFailures) {
+        console.error("Strict state: all steps must convert successfully");
+        process.exitCode = 2;
+        return;
+      }
+    }
   }
 }
 

@@ -2,9 +2,14 @@
  * `gxwf validate-tree` — batch validate all workflows under a directory.
  */
 import { ToolCache } from "@galaxy-tool-util/core";
-import type { ExpansionOptions } from "@galaxy-tool-util/schema";
+import {
+  checkStrictEncoding,
+  checkStrictStructure,
+  type ExpansionOptions,
+} from "@galaxy-tool-util/schema";
 import { dirname } from "node:path";
 import { createDefaultResolver } from "./url-resolver.js";
+import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { resolveFormat } from "./workflow-io.js";
 import {
   validateNativeSteps,
@@ -14,7 +19,7 @@ import {
 } from "./validate-workflow.js";
 import { collectTree, summarizeOutcomes, type TreeResult, type TreeSummary } from "./tree.js";
 
-export interface ValidateTreeOptions {
+export interface ValidateTreeOptions extends StrictOptions {
   format?: string;
   toolState?: boolean;
   cacheDir?: string;
@@ -61,8 +66,25 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
       mod.validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts);
   }
 
+  const strict = resolveStrictOptions(opts);
+
   const treeResult = await collectTree(dir, async (info, data) => {
     const format = resolveFormat(data, opts.format);
+
+    // Per-file strict checks
+    if (strict.strictEncoding) {
+      const encErrors = checkStrictEncoding(data, format);
+      if (encErrors.length > 0) {
+        throw new Error(`Encoding: ${encErrors.join("; ")}`);
+      }
+    }
+    if (strict.strictStructure) {
+      const structErrors = checkStrictStructure(data, format);
+      if (structErrors.length > 0) {
+        throw new Error(`Structure: ${structErrors.join("; ")}`);
+      }
+    }
+
     const expansionOpts: ExpansionOptions = {
       resolver: createDefaultResolver({ workflowDirectory: dirname(info.path) }),
     };
@@ -75,6 +97,11 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
         format === "native"
           ? await validateNative(data, cache, "", expansionOpts)
           : await validateF2(data, cache, "", expansionOpts);
+    }
+
+    // --strict-state: promote skips to failures
+    if (strict.strictState && steps.some((s) => s.status === "skip")) {
+      throw new Error("Strict state: skipped steps not allowed");
     }
 
     return { relativePath: info.relativePath, format, steps } satisfies WorkflowValidateResult;

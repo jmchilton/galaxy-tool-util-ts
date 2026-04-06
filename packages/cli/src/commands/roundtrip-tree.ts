@@ -11,11 +11,12 @@ import {
 import { dirname, join } from "node:path";
 import { loadToolInputsForWorkflow, type ToolLoadStatus } from "./stateful-tool-inputs.js";
 import { createDefaultResolver } from "./url-resolver.js";
+import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { resolveFormat } from "./workflow-io.js";
 import { collectTree, skipWorkflow } from "./tree.js";
 import { countDiffs } from "./roundtrip.js";
 
-export interface RoundtripTreeOptions {
+export interface RoundtripTreeOptions extends StrictOptions {
   cacheDir?: string;
   format?: string;
   json?: boolean;
@@ -40,11 +41,14 @@ export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions):
     console.warn("Tool cache is empty — all steps will fall back (no roundtrip possible)");
   }
 
+  const strict = resolveStrictOptions(opts);
+
   // Only native workflows are eligible; format2 files are skipped.
   const treeResult = await collectTree<FileOutcome>(
     dir,
     async (info, data) => {
       const sourceFormat = resolveFormat(data, opts.format);
+
       if (sourceFormat !== "native") {
         skipWorkflow(`not a native workflow (${sourceFormat})`);
       }
@@ -60,7 +64,15 @@ export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions):
         expansionOpts,
       );
       const failedLoads = toolStatus.filter((s) => !s.loaded);
-      const result = roundtripValidate(data, resolver);
+      const result = roundtripValidate(data, resolver, {
+        strictEncoding: strict.strictEncoding,
+        strictStructure: strict.strictStructure,
+        strictState: strict.strictState,
+      });
+      if (result.encodingErrors.length > 0 || result.structureErrors.length > 0) {
+        const allErrors = [...result.encodingErrors, ...result.structureErrors];
+        throw new Error(`Strict: ${allErrors.join("; ")}`);
+      }
       return {
         relativePath: info.relativePath,
         result,

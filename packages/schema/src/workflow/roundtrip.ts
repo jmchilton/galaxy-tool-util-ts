@@ -18,6 +18,7 @@ import type { StatefulExportResult } from "./normalized/toFormat2Stateful.js";
 import { isConnectedValue, isRuntimeValue } from "./runtime-markers.js";
 import { STALE_KEYS as SKIP_KEYS, isRuntimeLeakKey } from "./stale-keys.js";
 import { stripStaleKeysToolAware } from "./clean.js";
+import { checkStrictEncoding, checkStrictStructure } from "./strict-checks.js";
 
 // --- Types ---
 
@@ -77,6 +78,17 @@ export interface RoundtripResult {
   success: boolean;
   /** No diffs at all (clean roundtrip). */
   clean: boolean;
+  /** Strict-encoding errors across all stages (input, forward output, reverse output). */
+  encodingErrors: string[];
+  /** Strict-structure errors across all stages (input, forward output, reverse output). */
+  structureErrors: string[];
+}
+
+/** Options controlling strict validation within roundtripValidate. */
+export interface RoundtripStrictOptions {
+  strictEncoding?: boolean;
+  strictStructure?: boolean;
+  strictState?: boolean;
 }
 
 // --- Bookkeeping / internal helpers ---
@@ -436,7 +448,21 @@ function collectSteps(
 export function roundtripValidate(
   nativeRaw: unknown,
   toolInputsResolver: ToolInputsResolver,
+  strictOpts?: RoundtripStrictOptions,
 ): RoundtripResult {
+  const strict = strictOpts ?? {};
+  const encodingErrors: string[] = [];
+  const structureErrors: string[] = [];
+
+  // Stage 1: strict checks on raw native input
+  const rawDict = nativeRaw as Record<string, unknown>;
+  if (strict.strictEncoding) {
+    encodingErrors.push(...checkStrictEncoding(rawDict, "native").map((e) => `input: ${e}`));
+  }
+  if (strict.strictStructure) {
+    structureErrors.push(...checkStrictStructure(rawDict, "native").map((e) => `input: ${e}`));
+  }
+
   const original = ensureNative(nativeRaw);
   const { tools: originalSteps, subworkflows: originalSubworkflows } = collectSteps(original);
 
@@ -495,9 +521,27 @@ export function roundtripValidate(
       reverseSteps,
       success: false,
       clean: false,
+      encodingErrors,
+      structureErrors,
     };
   }
   forwardSteps = forward.steps;
+
+  // Stage 2: strict checks on forward (format2) output
+  if (strict.strictEncoding) {
+    encodingErrors.push(
+      ...checkStrictEncoding(forward.workflow as Record<string, unknown>, "format2").map(
+        (e) => `forward: ${e}`,
+      ),
+    );
+  }
+  if (strict.strictStructure) {
+    structureErrors.push(
+      ...checkStrictStructure(forward.workflow as Record<string, unknown>, "format2").map(
+        (e) => `forward: ${e}`,
+      ),
+    );
+  }
 
   // Reverse: format2 → native
   try {
@@ -523,7 +567,25 @@ export function roundtripValidate(
       reverseSteps,
       success: false,
       clean: false,
+      encodingErrors,
+      structureErrors,
     };
+  }
+
+  // Stage 3: strict checks on reverse (reimported native) output
+  if (strict.strictEncoding) {
+    encodingErrors.push(
+      ...checkStrictEncoding(reimported as unknown as Record<string, unknown>, "native").map(
+        (e) => `reverse: ${e}`,
+      ),
+    );
+  }
+  if (strict.strictStructure) {
+    structureErrors.push(
+      ...checkStrictStructure(reimported as unknown as Record<string, unknown>, "native").map(
+        (e) => `reverse: ${e}`,
+      ),
+    );
   }
 
   const { tools: reimportedSteps } = collectSteps(reimported);
@@ -597,12 +659,15 @@ export function roundtripValidate(
   const toolResults = stepResults.filter((s) => s.failureClass !== "subworkflow_external_ref");
   const anyError = toolResults.some((s) => !s.success);
   const anyDiff = toolResults.some((s) => s.diffs.length > 0);
+  const hasStrictErrors = encodingErrors.length > 0 || structureErrors.length > 0;
   return {
     workflowName: (original.name ?? undefined) || undefined,
     stepResults,
     forwardSteps,
     reverseSteps,
-    success: !anyError,
-    clean: !anyDiff && !anyError,
+    success: !anyError && !hasStrictErrors,
+    clean: !anyDiff && !anyError && !hasStrictErrors,
+    encodingErrors,
+    structureErrors,
   };
 }

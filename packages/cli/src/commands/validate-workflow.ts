@@ -8,6 +8,8 @@ import {
   injectConnectionsIntoState,
   stripConnectedValues,
   scanForReplacements,
+  checkStrictEncoding,
+  checkStrictStructure,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
   type NormalizedFormat2Step,
@@ -23,12 +25,13 @@ import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 import { createDefaultResolver } from "./url-resolver.js";
 import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
+import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 
 export type { WorkflowFormat } from "@galaxy-tool-util/schema";
 
 export type ValidationMode = "effect" | "json-schema";
 
-export interface ValidateWorkflowOptions {
+export interface ValidateWorkflowOptions extends StrictOptions {
   format?: string;
   toolState?: boolean;
   cacheDir?: string;
@@ -47,6 +50,8 @@ export interface StepValidationResult {
   toolVersion: string | null;
   status: "ok" | "fail" | "skip";
   errors: string[];
+  /** When status is "skip", explains why (e.g. "not_in_cache", "replacement_params", "no_version"). */
+  skippedReason?: string;
 }
 
 export async function runValidateWorkflow(
@@ -70,6 +75,30 @@ export async function runValidateWorkflow(
   if (mode === "json-schema") {
     const { runValidateWorkflowJsonSchema } = await import("./validate-workflow-json-schema.js");
     return runValidateWorkflowJsonSchema(data, format, opts, expansionOpts);
+  }
+
+  const strict = resolveStrictOptions(opts);
+
+  // --- strict encoding check (pre-normalization) ---
+  if (strict.strictEncoding) {
+    const encErrors = checkStrictEncoding(data, format);
+    if (encErrors.length > 0) {
+      console.error("Encoding errors:");
+      for (const e of encErrors) console.error(`  ${e}`);
+      process.exitCode = 2;
+      return;
+    }
+  }
+
+  // --- strict structure check (pre-normalization) ---
+  if (strict.strictStructure) {
+    const structErrors = checkStrictStructure(data, format);
+    if (structErrors.length > 0) {
+      console.error("Structure errors (strict):");
+      for (const e of structErrors) console.error(`  ${e}`);
+      process.exitCode = 2;
+      return;
+    }
   }
 
   // --- structural validation (effect mode) ---
@@ -122,6 +151,14 @@ export async function runValidateWorkflow(
   const stateOk = !results.some((r) => r.status === "fail");
 
   console.log(`\nTool state: ${validated} validated, ${skipped} skipped`);
+
+  // --- strict state: promote skips to failures ---
+  if (strict.strictState && results.some((r) => r.status === "skip")) {
+    console.error("Strict state: skipped steps not allowed");
+    process.exitCode = 2;
+    return;
+  }
+
   process.exitCode = structOk && stateOk ? 0 : 1;
 }
 
@@ -174,9 +211,10 @@ async function _validateNativeStep(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
+    const skippedReason = resolved.kind === "no_version" ? "no_version" : "not_in_cache";
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason] };
+    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason], skippedReason };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -195,6 +233,7 @@ async function _validateNativeStep(
       toolVersion,
       status: "skip",
       errors: ["replacement parameters detected"],
+      skippedReason: "replacement_params",
     };
   }
 
@@ -215,6 +254,7 @@ async function _validateNativeStep(
       toolVersion,
       status: "skip",
       errors: ["unsupported parameter types"],
+      skippedReason: "unsupported_params",
     };
   }
 
@@ -283,9 +323,10 @@ async function _validateFormat2Step(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
+    const skippedReason = resolved.kind === "no_version" ? "no_version" : "not_in_cache";
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason] };
+    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason], skippedReason };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -307,6 +348,7 @@ async function _validateFormat2Step(
       toolVersion,
       status: "skip",
       errors: ["unsupported parameter types"],
+      skippedReason: "unsupported_params",
     };
   }
 
@@ -357,6 +399,7 @@ async function _validateFormat2Step(
         toolVersion,
         status: "skip",
         errors: ["unsupported parameter types"],
+        skippedReason: "unsupported_params",
       };
     }
 

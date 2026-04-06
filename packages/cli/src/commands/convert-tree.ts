@@ -7,6 +7,8 @@ import {
   toFormat2Stateful,
   toNative,
   toNativeStateful,
+  checkStrictEncoding,
+  checkStrictStructure,
   type ExpansionOptions,
   type StepConversionStatus,
   type WorkflowFormat,
@@ -15,10 +17,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, basename } from "node:path";
 import { loadToolInputsForWorkflow, type ToolLoadStatus } from "./stateful-tool-inputs.js";
 import { createDefaultResolver } from "./url-resolver.js";
+import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { resolveFormat, serializeWorkflow } from "./workflow-io.js";
 import { collectTree, summarizeOutcomes, type TreeResult, type TreeSummary } from "./tree.js";
 
-export interface ConvertTreeOptions {
+export interface ConvertTreeOptions extends StrictOptions {
   to?: string;
   outputDir?: string;
   compact?: boolean;
@@ -62,9 +65,25 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
     }
   }
 
+  const strict = resolveStrictOptions(opts);
+
   const treeResult = await collectTree(dir, async (info, data) => {
     const sourceFormat = resolveFormat(data, opts.format);
     const targetFormat = resolveTargetFormat(sourceFormat, opts.to);
+
+    // Per-file strict checks on input
+    if (strict.strictEncoding) {
+      const encErrors = checkStrictEncoding(data, sourceFormat);
+      if (encErrors.length > 0) {
+        throw new Error(`Encoding: ${encErrors.join("; ")}`);
+      }
+    }
+    if (strict.strictStructure) {
+      const structErrors = checkStrictStructure(data, sourceFormat);
+      if (structErrors.length > 0) {
+        throw new Error(`Structure: ${structErrors.join("; ")}`);
+      }
+    }
 
     if (sourceFormat === targetFormat) {
       return {
@@ -121,6 +140,11 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
     const outPath = join(outputDir, outName);
     await mkdir(dirname(outPath), { recursive: true });
     await writeFile(outPath, serialized, "utf-8");
+
+    // --strict-state: require all stateful steps to convert successfully
+    if (strict.strictState && statefulSteps?.some((s) => !s.converted)) {
+      throw new Error("Strict state: all steps must convert successfully");
+    }
 
     return {
       relativePath: info.relativePath,

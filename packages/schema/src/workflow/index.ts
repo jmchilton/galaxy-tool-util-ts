@@ -111,6 +111,7 @@ export {
 export {
   roundtripValidate,
   type RoundtripResult,
+  type RoundtripStrictOptions,
   type StepRoundtripResult,
   type StepDiff,
   type DiffSeverity,
@@ -121,6 +122,13 @@ export {
 export { cleanWorkflow } from "./clean.js";
 
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
+
+export {
+  validateEncodingNative,
+  validateEncodingFormat2,
+  checkStrictEncoding,
+  checkStrictStructure,
+} from "./strict-checks.js";
 
 export {
   LintContext,

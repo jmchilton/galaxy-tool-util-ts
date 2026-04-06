@@ -107,6 +107,7 @@ export {
   /** Roundtrip a native workflow through format2 and back, diffing tool_state per step. */
   roundtripValidate,
   type RoundtripResult,
+  type RoundtripStrictOptions,
   type StepRoundtripResult,
   type StepDiff,
   type DiffSeverity,
@@ -135,4 +136,10 @@ export {
   /** Lint best practices for a native Galaxy workflow. */
   lintBestPracticesNative,
   type LintResult,
+  /** Strict encoding check — reject JSON-string tool_state (native) or tool_state field misuse (format2). */
+  validateEncodingNative,
+  validateEncodingFormat2,
+  checkStrictEncoding,
+  /** Strict structure check — reject unknown keys via onExcessProperty: "error". */
+  checkStrictStructure,
 } from "./workflow/index.js";
