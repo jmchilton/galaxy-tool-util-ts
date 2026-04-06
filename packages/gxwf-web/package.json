@@ -1,0 +1,47 @@
+{
+  "name": "@galaxy-tool-util/gxwf-web",
+  "version": "0.1.0",
+  "description": "Galaxy workflow development HTTP server — validate, lint, clean, convert workflows",
+  "type": "module",
+  "bin": {
+    "gxwf-web": "dist/bin/gxwf-web.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
+    "directory": "packages/gxwf-web"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ test/",
+    "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@galaxy-tool-util/core": "workspace:*",
+    "@galaxy-tool-util/schema": "workspace:*",
+    "effect": "^3.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0"
+  }
+}
