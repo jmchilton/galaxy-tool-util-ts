@@ -152,17 +152,27 @@ export async function runValidateWorkflow(
   const cache = new ToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
 
-  let results: StepValidationResult[];
-  if (format === "native") {
-    results = await validateNativeSteps(data, cache, "", expansionOpts);
-  } else {
-    results = await validateFormat2Steps(data, cache, "", expansionOpts);
+  let results: StepValidationResult[] = [];
+  const encodingErrors: string[] = [];
+
+  try {
+    if (format === "native") {
+      results = await validateNativeSteps(data, cache, "", expansionOpts);
+    } else {
+      results = await validateFormat2Steps(data, cache, "", expansionOpts);
+    }
+  } catch (error) {
+    // Catch legacy encoding errors thrown by walker and capture them
+    if (error instanceof Error && error.message.includes("legacy parameter encoding")) {
+      encodingErrors.push(error.message);
+    } else {
+      throw error;
+    }
   }
 
   const stateOk = !results.some((r) => r.status === "fail");
 
   if (opts.json) {
-    const encodingErrors = await detectEncodingErrors(data, cache, format, expansionOpts);
     const report = buildSingleValidationReport(filePath, results, {
       structure_errors: structureErrors,
       encoding_errors: encodingErrors,
