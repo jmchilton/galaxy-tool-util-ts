@@ -47,6 +47,17 @@ Individual targets (e.g. `make sync-golden`, `make sync-param-spec`) are availab
 
 Uses changesets with `@changesets/changelog-github`. All 4 packages version together (linked). Repo: `jmchilton/galaxy-tool-util-ts`.
 
+**Changesets are required** for commits that affect published packages (`packages/*/src/`). When committing user-visible changes (features, fixes, API changes), include a changeset:
+
+```bash
+pnpm changeset        # select packages, pick bump level, describe the change
+git add .changeset/   # commit the .changeset/*.md alongside your code
+```
+
+- Use `pnpm changeset --empty` for commits that don't warrant a version bump (docs, CI, tests, internal refactors).
+- CI enforces changeset presence on PRs via `changeset status`.
+- Pre-commit hooks run prettier and eslint on staged files (`pre-commit install` to set up).
+
 ## Docs
 
 Docsify site with TypeDoc API docs. `pnpm docs:dev` to serve locally, `pnpm docs:build` to generate.
