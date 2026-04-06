@@ -1,6 +1,6 @@
 # Workflow Operations
 
-End-to-end guide for validating, cleaning, linting, and converting [Galaxy](https://galaxyproject.org) workflow files using `gxwf`.
+End-to-end guide for validating, cleaning, linting, and converting [Galaxy](https://galaxyproject.org) workflow files using `gxwf`. For background on state representations, tool state, and why parameter shapes vary by context, see [How It Works](architecture/overview.md).
 
 ## Overview
 
