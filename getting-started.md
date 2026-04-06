@@ -85,6 +85,7 @@ galaxy-tool-proxy --config proxy-config.yml
 
 ## Next Steps
 
+- [How It Works](architecture/overview.md) — understand the conceptual model: data flow, state representations, and why they matter
 - [Package details](packages/schema.md) for each package's API
 - [Workflow Validation guide](guide/workflow-validation.md) for end-to-end validation
 - [Configuration reference](guide/configuration.md) for all env vars and options
