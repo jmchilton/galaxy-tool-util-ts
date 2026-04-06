@@ -4,8 +4,9 @@ import { join } from "node:path";
 import * as YAML from "yaml";
 
 import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
+import type { SingleValidationReport } from "@galaxy-tool-util/schema";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
-import { seedAllTools, SIMPLE_TOOL_ID, DATA_TOOL_ID } from "./helpers/fixtures.js";
+import { seedAllTools, SIMPLE_TOOL_ID, DATA_TOOL_ID, COND_TOOL_ID } from "./helpers/fixtures.js";
 
 describe("validate-workflow (connection-aware)", () => {
   let ctx: CliTestContext;
@@ -204,7 +205,6 @@ describe("validate-workflow (connection-aware)", () => {
       await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
 
       const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
-      const _errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
@@ -343,6 +343,161 @@ describe("validate-workflow (connection-aware)", () => {
       const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("Structural validation: OK");
       expect(process.exitCode).toBe(0);
+    });
+  });
+
+  describe("--json output (SingleValidationReport)", () => {
+    function parseJsonOutput(ctx: CliTestContext): SingleValidationReport {
+      const calls = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+      return JSON.parse(calls);
+    }
+
+    it("produces SingleValidationReport shape for native workflow", async () => {
+      await seedAllTools(ctx.tmpDir);
+      const workflow = {
+        a_galaxy_workflow: "true",
+        "format-version": "0.1",
+        steps: {
+          "0": {
+            id: 0,
+            type: "tool",
+            label: "Simple",
+            tool_id: SIMPLE_TOOL_ID,
+            tool_version: "1.0",
+            tool_state: JSON.stringify({ input_text: "hello", num_lines: "5" }),
+            input_connections: {},
+          },
+        },
+      };
+      const wfPath = join(ctx.tmpDir, "test.ga");
+      await writeFile(wfPath, JSON.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, json: true });
+
+      const report = parseJsonOutput(ctx);
+      expect(report.workflow).toBe(wfPath);
+      expect(report.connection_report).toBeNull();
+      expect(report.skipped_reason).toBeNull();
+      expect(report.structure_errors).toEqual([]);
+      expect(report.encoding_errors).toEqual([]);
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].tool_id).toBe(SIMPLE_TOOL_ID);
+      expect(report.results[0].status).toBe("ok");
+      expect(report.summary).toEqual({ ok: 1, fail: 0, skip: 0 });
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("includes structure_errors in JSON when structural validation fails", async () => {
+      const workflow = { bad: "data" }; // missing required fields
+      const wfPath = join(ctx.tmpDir, "bad.ga");
+      await writeFile(wfPath, JSON.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, json: true });
+
+      const report = parseJsonOutput(ctx);
+      expect(report.structure_errors.length).toBeGreaterThan(0);
+      expect(report.results).toEqual([]);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("includes step failures in JSON report", async () => {
+      await seedAllTools(ctx.tmpDir);
+      const workflow = {
+        a_galaxy_workflow: "true",
+        "format-version": "0.1",
+        steps: {
+          "0": {
+            id: 0,
+            type: "tool",
+            label: "Bad",
+            tool_id: SIMPLE_TOOL_ID,
+            tool_version: "1.0",
+            tool_state: JSON.stringify({ input_text: "ok", num_lines: { bad: true } }),
+            input_connections: {},
+          },
+        },
+      };
+      const wfPath = join(ctx.tmpDir, "fail.ga");
+      await writeFile(wfPath, JSON.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, json: true });
+
+      const report = parseJsonOutput(ctx);
+      expect(report.results[0].status).toBe("fail");
+      expect(report.results[0].errors.length).toBeGreaterThan(0);
+      expect(report.summary.fail).toBe(1);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("produces JSON with --no-tool-state (structure only)", async () => {
+      const workflow = {
+        a_galaxy_workflow: "true",
+        "format-version": "0.1",
+        steps: {},
+      };
+      const wfPath = join(ctx.tmpDir, "struct.ga");
+      await writeFile(wfPath, JSON.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, toolState: false, json: true });
+
+      const report = parseJsonOutput(ctx);
+      expect(report.workflow).toBe(wfPath);
+      expect(report.results).toEqual([]);
+      expect(report.structure_errors).toEqual([]);
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("produces JSON for format2 workflow", async () => {
+      await seedAllTools(ctx.tmpDir);
+      const workflow = {
+        class: "GalaxyWorkflow",
+        label: "F2 JSON",
+        inputs: [],
+        outputs: [],
+        steps: [
+          {
+            id: "step1",
+            tool_id: SIMPLE_TOOL_ID,
+            tool_version: "1.0",
+            state: { input_text: "val", num_lines: 10 },
+            in: [],
+            out: [],
+          },
+        ],
+      };
+      const wfPath = join(ctx.tmpDir, "f2.gxwf.yml");
+      await writeFile(wfPath, YAML.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, json: true });
+
+      const report = parseJsonOutput(ctx);
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].status).toBe("ok");
+      expect(report.summary.ok).toBe(1);
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("detects legacy encoding errors in native workflow", async () => {
+      await seedAllTools(ctx.tmpDir);
+      // Conditional tool_state with string value for a container param = legacy encoding
+      const workflow = {
+        a_galaxy_workflow: "true",
+        "format-version": "0.1",
+        steps: {
+          "0": {
+            id: 0,
+            type: "tool",
+            tool_id: COND_TOOL_ID,
+            tool_version: "1.0",
+            // Legacy encoding: conditional "mode" is a JSON string instead of an object
+            tool_state: JSON.stringify({ mode: '{"selector": false}' }),
+            input_connections: {},
+          },
+        },
+      };
+      const wfPath = join(ctx.tmpDir, "legacy.ga");
+      await writeFile(wfPath, JSON.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, json: true });
+
+      const report = parseJsonOutput(ctx);
+      expect(report.encoding_errors.length).toBeGreaterThan(0);
+      expect(report.encoding_errors[0]).toContain("legacy parameter encoding");
+      expect(report.encoding_errors[0]).toContain("mode");
     });
   });
 });

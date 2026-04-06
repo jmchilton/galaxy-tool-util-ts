@@ -1,7 +1,7 @@
 /**
- * Shared rendering for StepValidationResult arrays.
+ * Shared rendering for ValidationStepResult arrays.
  */
-import type { StepValidationResult } from "./validate-workflow.js";
+import { SKIP_STATUSES, type ValidationStepResult } from "@galaxy-tool-util/schema";
 
 export interface RenderSummary {
   validated: number;
@@ -9,20 +9,20 @@ export interface RenderSummary {
 }
 
 /** Render step validation results to console, returning counts. */
-export function renderStepResults(results: StepValidationResult[]): RenderSummary {
+export function renderStepResults(results: ValidationStepResult[]): RenderSummary {
   let validated = 0;
   let skipped = 0;
   for (const r of results) {
-    if (r.status === "skip") {
+    if (SKIP_STATUSES.has(r.status)) {
       skipped++;
-      console.warn(`  [${r.stepLabel}] skipped — ${r.errors[0] ?? "unknown"}`);
+      console.warn(`  [${r.step}] skipped — ${r.errors[0] ?? "unknown"}`);
     } else if (r.status === "fail") {
       validated++;
-      console.error(`  [${r.stepLabel}] tool_state errors (${r.toolId}):`);
+      console.error(`  [${r.step}] tool_state errors (${r.tool_id}):`);
       for (const line of r.errors) console.error(`    ${line}`);
     } else {
       validated++;
-      console.log(`  [${r.stepLabel}] tool_state: OK`);
+      console.log(`  [${r.step}] tool_state: OK`);
     }
   }
   return { validated, skipped };

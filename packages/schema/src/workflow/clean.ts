@@ -13,6 +13,9 @@
  */
 
 import type { ToolParameterModel } from "../schema/bundle-types.js";
+import type { CleanStepResult } from "./report-models.js";
+import { cleanDisplayLabel } from "./report-models.js";
+import { detectFormat } from "./detect-format.js";
 import { walkNativeState, SKIP_VALUE } from "./walker.js";
 
 /** Keys injected by Galaxy's tool form machinery — never meaningful in saved workflows. */
@@ -82,11 +85,17 @@ function parseToolState(toolState: unknown): Record<string, unknown> | null {
   return null;
 }
 
-/** Recursively remove stale keys from a tool_state dict. */
-function stripStaleKeys(state: Record<string, unknown>): Record<string, unknown> {
+/** Recursively remove stale keys from a tool_state dict, tracking removed top-level keys. */
+function stripStaleKeys(
+  state: Record<string, unknown>,
+  removedKeys?: string[],
+): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(state)) {
-    if (STALE_KEYS.has(key)) continue;
+    if (STALE_KEYS.has(key)) {
+      removedKeys?.push(key);
+      continue;
+    }
     result[key] = stripStaleValue(value);
   }
   return result;
@@ -103,37 +112,81 @@ function stripStaleValue(value: unknown): unknown {
   return value;
 }
 
-/** Clean a single native step's tool_state in place. */
-function cleanNativeStep(stepDef: Record<string, unknown>): void {
-  const toolId = stepDef.tool_id;
-  if (!toolId) return;
+/** Clean a single native step's tool_state in place, returning step result info. */
+function cleanNativeStep(stepDef: Record<string, unknown>, stepLabel: string): CleanStepResult {
+  const toolId = (stepDef.tool_id as string) ?? null;
+  const toolVersion = (stepDef.tool_version as string) ?? null;
+
+  if (!toolId) {
+    return {
+      step: stepLabel,
+      tool_id: null,
+      version: null,
+      removed_keys: [],
+      skipped: true,
+      skip_reason: "no tool_id",
+      display_label: cleanDisplayLabel(null, null),
+    };
+  }
 
   const rawState = stepDef.tool_state;
-  if (rawState === undefined || rawState === null) return;
+  if (rawState === undefined || rawState === null) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      removed_keys: [],
+      skipped: true,
+      skip_reason: "no tool_state",
+      display_label: cleanDisplayLabel(toolId, toolVersion),
+    };
+  }
 
   const parsed = parseToolState(rawState);
-  if (!parsed) return;
+  if (!parsed) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      removed_keys: [],
+      skipped: true,
+      skip_reason: "unparseable tool_state",
+      display_label: cleanDisplayLabel(toolId, toolVersion),
+    };
+  }
 
-  stepDef.tool_state = stripStaleKeys(parsed);
+  const removedKeys: string[] = [];
+  stepDef.tool_state = stripStaleKeys(parsed, removedKeys);
+
+  return {
+    step: stepLabel,
+    tool_id: toolId,
+    version: toolVersion,
+    removed_keys: removedKeys,
+    skipped: false,
+    skip_reason: "",
+    display_label: cleanDisplayLabel(toolId, toolVersion),
+  };
 }
 
 /** Recursively clean all steps in a native workflow dict. */
-function cleanNativeSteps(workflowDict: Record<string, unknown>): void {
+function cleanNativeSteps(workflowDict: Record<string, unknown>, prefix = ""): CleanStepResult[] {
   const steps = workflowDict.steps as Record<string, Record<string, unknown>> | undefined;
-  if (!steps) return;
+  if (!steps) return [];
+  const results: CleanStepResult[] = [];
 
-  for (const stepDef of Object.values(steps)) {
-    // Subworkflow steps don't have meaningful tool_state — recurse into the
-    // embedded subworkflow's steps instead.
+  for (const [key, stepDef] of Object.entries(steps)) {
+    const stepLabel = prefix ? `${prefix}${key}` : key;
     if (stepDef.type === "subworkflow" && stepDef.subworkflow) {
-      cleanNativeSteps(stepDef.subworkflow as Record<string, unknown>);
+      results.push(
+        ...cleanNativeSteps(stepDef.subworkflow as Record<string, unknown>, `${stepLabel}.`),
+      );
       continue;
     }
-    cleanNativeStep(stepDef);
+    results.push(cleanNativeStep(stepDef, stepLabel));
   }
+  return results;
 }
-
-import { detectFormat } from "./detect-format.js";
 
 /**
  * Strip all keys from a native step's `tool_state` that are not declared in
@@ -164,14 +217,20 @@ export function stripStaleKeysToolAware(
   );
 }
 
+export interface CleanWorkflowResult {
+  workflow: Record<string, unknown>;
+  results: CleanStepResult[];
+}
+
 /**
  * Clean a workflow — strip stale keys and decode legacy tool_state encoding.
- * Mutates and returns the workflow dict. Format2 workflows pass through unchanged.
+ * Mutates the workflow dict in place. Format2 workflows pass through unchanged.
+ * Returns both the mutated workflow and per-step clean results.
  */
-export function cleanWorkflow(workflowDict: Record<string, unknown>): Record<string, unknown> {
+export function cleanWorkflow(workflowDict: Record<string, unknown>): CleanWorkflowResult {
   if (detectFormat(workflowDict) === "format2") {
-    return workflowDict;
+    return { workflow: workflowDict, results: [] };
   }
-  cleanNativeSteps(workflowDict);
-  return workflowDict;
+  const results = cleanNativeSteps(workflowDict);
+  return { workflow: workflowDict, results };
 }

@@ -10,6 +10,8 @@ import {
   scanForReplacements,
   checkStrictEncoding,
   checkStrictStructure,
+  scanToolState,
+  buildSingleValidationReport,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
   type NormalizedFormat2Step,
@@ -37,6 +39,7 @@ export interface ValidateWorkflowOptions extends StrictOptions {
   cacheDir?: string;
   mode?: ValidationMode;
   toolSchemaDir?: string;
+  json?: boolean;
 }
 
 function formatIssues(error: ParseResult.ParseError): string[] {
@@ -44,15 +47,33 @@ function formatIssues(error: ParseResult.ParseError): string[] {
   return issues.map((i) => `${i.path.join(".")}: ${i.message}`);
 }
 
-export interface StepValidationResult {
-  stepLabel: string;
-  toolId: string;
-  toolVersion: string | null;
-  status: "ok" | "fail" | "skip";
-  errors: string[];
-  /** When status is "skip", explains why (e.g. "not_in_cache", "replacement_params", "no_version"). */
-  skippedReason?: string;
+/** Run Effect Schema decode on raw workflow data and return structural decode failures. */
+export function decodeStructureErrors(
+  data: Record<string, unknown>,
+  format: WorkflowFormat,
+): string[] {
+  const validationData = { ...data };
+  if (format === "native" && !("class" in validationData)) {
+    validationData.class = "NativeGalaxyWorkflow";
+  } else if (format === "format2" && !("class" in validationData)) {
+    validationData.class = "GalaxyWorkflow";
+  }
+
+  const schema: S.Schema<any> =
+    format === "native" ? NativeGalaxyWorkflowSchema : GalaxyWorkflowSchema;
+  const decode = S.decodeUnknownEither(schema, { onExcessProperty: "ignore" });
+  const result = decode(validationData);
+
+  if (result._tag === "Left") {
+    return formatIssues(result.left);
+  }
+  return [];
 }
+
+export type { ValidationStepResult as StepValidationResult } from "@galaxy-tool-util/schema";
+
+// Re-import locally for use in this file
+import type { ValidationStepResult as StepValidationResult } from "@galaxy-tool-util/schema";
 
 export async function runValidateWorkflow(
   filePath: string,
@@ -64,7 +85,7 @@ export async function runValidateWorkflow(
   const format: WorkflowFormat = resolveFormat(data, opts.format);
 
   const mode: ValidationMode = opts.mode === "json-schema" ? "json-schema" : "effect";
-  console.log(`Detected format: ${format}, mode: ${mode}`);
+  if (!opts.json) console.log(`Detected format: ${format}, mode: ${mode}`);
 
   // Build expansion options for resolving external subworkflow references
   const workflowDirectory = dirname(filePath);
@@ -74,7 +95,7 @@ export async function runValidateWorkflow(
 
   if (mode === "json-schema") {
     const { runValidateWorkflowJsonSchema } = await import("./validate-workflow-json-schema.js");
-    return runValidateWorkflowJsonSchema(data, format, opts, expansionOpts);
+    return runValidateWorkflowJsonSchema(filePath, data, format, opts, expansionOpts);
   }
 
   const strict = resolveStrictOptions(opts);
@@ -102,31 +123,28 @@ export async function runValidateWorkflow(
   }
 
   // --- structural validation (effect mode) ---
-  const validationData = { ...data };
-  if (format === "native" && !("class" in validationData)) {
-    validationData.class = "NativeGalaxyWorkflow";
-  } else if (format === "format2" && !("class" in validationData)) {
-    validationData.class = "GalaxyWorkflow";
-  }
+  const structureErrors = decodeStructureErrors(data, format);
+  const structOk = structureErrors.length === 0;
 
-  const schema: S.Schema<any> =
-    format === "native" ? NativeGalaxyWorkflowSchema : GalaxyWorkflowSchema;
-  const decode = S.decodeUnknownEither(schema, { onExcessProperty: "ignore" });
-  const structResult = decode(validationData);
-
-  let structOk = true;
-  if (structResult._tag === "Left") {
-    structOk = false;
-    console.error(`\nStructural validation errors:`);
-    for (const line of formatIssues(structResult.left)) {
-      console.error(`  ${line}`);
+  if (!opts.json) {
+    if (!structOk) {
+      console.error(`\nStructural validation errors:`);
+      for (const line of structureErrors) {
+        console.error(`  ${line}`);
+      }
+    } else {
+      console.log(`Structural validation: OK`);
     }
-  } else {
-    console.log(`Structural validation: OK`);
   }
 
   // --- tool state validation (effect mode) ---
   if (opts.toolState === false) {
+    if (opts.json) {
+      const report = buildSingleValidationReport(filePath, [], {
+        structure_errors: structureErrors,
+      });
+      console.log(JSON.stringify(report, null, 2));
+    }
     process.exitCode = structOk ? 0 : 1;
     return;
   }
@@ -134,11 +152,34 @@ export async function runValidateWorkflow(
   const cache = new ToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
 
-  let results: StepValidationResult[];
-  if (format === "native") {
-    results = await validateNativeSteps(data, cache, "", expansionOpts);
-  } else {
-    results = await validateFormat2Steps(data, cache, "", expansionOpts);
+  let results: StepValidationResult[] = [];
+  const encodingErrors: string[] = [];
+
+  try {
+    if (format === "native") {
+      results = await validateNativeSteps(data, cache, "", expansionOpts);
+    } else {
+      results = await validateFormat2Steps(data, cache, "", expansionOpts);
+    }
+  } catch (error) {
+    // Catch legacy encoding errors thrown by walker and capture them
+    if (error instanceof Error && error.message.includes("legacy parameter encoding")) {
+      encodingErrors.push(error.message);
+    } else {
+      throw error;
+    }
+  }
+
+  const stateOk = !results.some((r) => r.status === "fail");
+
+  if (opts.json) {
+    const report = buildSingleValidationReport(filePath, results, {
+      structure_errors: structureErrors,
+      encoding_errors: encodingErrors,
+    });
+    console.log(JSON.stringify(report, null, 2));
+    process.exitCode = structOk && stateOk ? 0 : 1;
+    return;
   }
 
   if (results.length === 0) {
@@ -148,12 +189,11 @@ export async function runValidateWorkflow(
   }
 
   const { validated, skipped } = renderStepResults(results);
-  const stateOk = !results.some((r) => r.status === "fail");
 
   console.log(`\nTool state: ${validated} validated, ${skipped} skipped`);
 
   // --- strict state: promote skips to failures ---
-  if (strict.strictState && results.some((r) => r.status === "skip")) {
+  if (strict.strictState && results.some((r) => r.status !== "ok" && r.status !== "fail")) {
     console.error("Strict state: skipped steps not allowed");
     process.exitCode = 2;
     return;
@@ -211,10 +251,15 @@ async function _validateNativeStep(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
-    const skippedReason = resolved.kind === "no_version" ? "no_version" : "not_in_cache";
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason], skippedReason };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: [reason],
+    };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -228,12 +273,11 @@ async function _validateNativeStep(
   );
   if (replacementScan === "yes") {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_replacement_params",
       errors: ["replacement parameters detected"],
-      skippedReason: "replacement_params",
     };
   }
 
@@ -249,12 +293,11 @@ async function _validateNativeStep(
   const fieldModel = createFieldModel(bundle, "workflow_step_native");
   if (!fieldModel) {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
       errors: ["unsupported parameter types"],
-      skippedReason: "unsupported_params",
     };
   }
 
@@ -264,9 +307,15 @@ async function _validateNativeStep(
   const result = validate(state);
 
   if (result._tag === "Left") {
-    return { stepLabel, toolId, toolVersion, status: "fail", errors: formatIssues(result.left) };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatIssues(result.left),
+    };
   }
-  return { stepLabel, toolId, toolVersion, status: "ok", errors: [] };
+  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
 }
 
 // --- Format2 validation ---
@@ -323,10 +372,15 @@ async function _validateFormat2Step(
 ): Promise<StepValidationResult> {
   const resolved = await loadCachedTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
-    const skippedReason = resolved.kind === "no_version" ? "no_version" : "not_in_cache";
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
-    return { stepLabel, toolId, toolVersion, status: "skip", errors: [reason], skippedReason };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: [reason],
+    };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -343,12 +397,11 @@ async function _validateFormat2Step(
   const baseModel = createFieldModel(bundle, "workflow_step");
   if (!baseModel) {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
-      status: "skip",
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
       errors: ["unsupported parameter types"],
-      skippedReason: "unsupported_params",
     };
   }
 
@@ -358,9 +411,9 @@ async function _validateFormat2Step(
   const baseResult = baseValidate(state);
   if (baseResult._tag === "Left") {
     return {
-      stepLabel,
-      toolId,
-      toolVersion,
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
       status: "fail",
       errors: formatIssues(baseResult.left),
     };
@@ -383,9 +436,9 @@ async function _validateFormat2Step(
     const unmatchedKeys = Object.keys(remaining);
     if (unmatchedKeys.length > 0) {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
         status: "fail",
         errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
       };
@@ -394,12 +447,11 @@ async function _validateFormat2Step(
     const linkedModel = createFieldModel(bundle, "workflow_step_linked");
     if (!linkedModel) {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
-        status: "skip",
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
+        status: "skip_tool_not_found",
         errors: ["unsupported parameter types"],
-        skippedReason: "unsupported_params",
       };
     }
 
@@ -409,14 +461,69 @@ async function _validateFormat2Step(
     const linkedResult = linkedValidate(linkedState);
     if (linkedResult._tag === "Left") {
       return {
-        stepLabel,
-        toolId,
-        toolVersion,
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
         status: "fail",
         errors: formatIssues(linkedResult.left),
       };
     }
   }
 
-  return { stepLabel, toolId, toolVersion, status: "ok", errors: [] };
+  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
+}
+
+// --- Encoding error detection ---
+
+/**
+ * Detect legacy parameter encoding in workflow tool_state fields.
+ *
+ * Scans each tool step's tool_state for legacy encoding signals
+ * (string-encoded containers, quoted select values) using scanToolState().
+ */
+export async function detectEncodingErrors(
+  data: Record<string, unknown>,
+  cache: ToolCache,
+  format: WorkflowFormat,
+  expansionOpts?: ExpansionOptions,
+): Promise<string[]> {
+  if (format === "native") {
+    const expanded = await expandedNative(data, expansionOpts);
+    return _detectNativeEncodingErrors(expanded, cache, "");
+  }
+  // Format2 workflows don't have legacy encoding issues
+  return [];
+}
+
+async function _detectNativeEncodingErrors(
+  wf: NormalizedNativeWorkflow,
+  cache: ToolCache,
+  prefix: string,
+): Promise<string[]> {
+  const errors: string[] = [];
+
+  for (const [key, step] of Object.entries(wf.steps)) {
+    const stepLabel = prefix ? `${prefix}${key}` : key;
+
+    if (step.type === "subworkflow" && step.subworkflow) {
+      const subErrors = await _detectNativeEncodingErrors(step.subworkflow, cache, `${stepLabel}.`);
+      errors.push(...subErrors);
+      continue;
+    }
+
+    const toolId = step.tool_id;
+    if (!toolId) continue;
+
+    const resolved = await loadCachedTool(cache, toolId, step.tool_version ?? null);
+    if (isResolveError(resolved)) continue;
+
+    const inputs = resolved.tool.inputs as ToolParameterBundleModel["parameters"];
+    const result = scanToolState(inputs, step.tool_state as Record<string, unknown>);
+    if (result.classification === "yes") {
+      const details = result.hits.map((h) => `${h.parameterName}: ${h.detail}`).join("; ");
+      errors.push(`Step ${stepLabel} (${toolId}): legacy parameter encoding (${details})`);
+    }
+  }
+
+  return errors;
 }

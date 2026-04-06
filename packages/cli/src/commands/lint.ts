@@ -9,9 +9,11 @@ import {
   lintBestPracticesFormat2,
   checkStrictEncoding,
   checkStrictStructure,
+  buildSingleLintReport,
   type LintResult,
   type ExpansionOptions,
   type WorkflowFormat,
+  type ValidationStepResult as StepValidationResult,
 } from "@galaxy-tool-util/schema";
 import { dirname } from "node:path";
 import { renderStepResults } from "./render-results.js";
@@ -25,7 +27,8 @@ import {
 import {
   validateNativeSteps,
   validateFormat2Steps,
-  type StepValidationResult,
+  decodeStructureErrors,
+  detectEncodingErrors,
 } from "./validate-workflow.js";
 
 export interface LintOptions extends StrictOptions {
@@ -91,7 +94,29 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
   });
 
   if (opts.json) {
-    console.log(JSON.stringify(report, null, 2));
+    const lintErrors = report.structural.error_count + (report.bestPractices?.error_count ?? 0);
+    const lintWarnings = report.structural.warn_count + (report.bestPractices?.warn_count ?? 0);
+
+    // Effect Schema decode for structure_errors
+    const structureErrors = decodeStructureErrors(data, format);
+
+    // Legacy encoding detection for encoding_errors
+    let encodingErrors: string[] = [];
+    if (cache && !opts.skipStateValidation) {
+      const expansionOpts: ExpansionOptions = {
+        resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
+      };
+      encodingErrors = await detectEncodingErrors(data, cache, format, expansionOpts);
+    }
+
+    const singleReport = buildSingleLintReport(
+      filePath,
+      lintErrors,
+      lintWarnings,
+      report.stateValidation ?? [],
+      { structure_errors: structureErrors, encoding_errors: encodingErrors },
+    );
+    console.log(JSON.stringify(singleReport, null, 2));
     process.exitCode = report.exitCode;
     return;
   }
@@ -216,7 +241,8 @@ export async function lintWorkflowReport(
   const hasStateErrors = stateValidation?.some((r) => r.status === "fail") ?? false;
   const hasStrictErrors = encodingErrors.length > 0 || structureErrors.length > 0;
   const hasStrictStateSkips =
-    strict.strictState && (stateValidation?.some((r) => r.status === "skip") ?? false);
+    strict.strictState &&
+    (stateValidation?.some((r) => r.status !== "ok" && r.status !== "fail") ?? false);
   const hasErrors =
     merged.error_count > 0 || hasStateErrors || hasStrictErrors || hasStrictStateSkips;
   const hasWarnings = merged.warn_count > 0;

@@ -75,8 +75,8 @@ function formatIssues(error: ParseResult.ParseError): string[] {
 
 interface StepValidationResult {
   step: string;
-  toolId: string;
-  status: "ok" | "fail" | "skip";
+  tool_id: string;
+  status: "ok" | "fail" | "skip_tool_not_found" | "skip_replacement_params";
   errors: string[];
 }
 
@@ -148,7 +148,12 @@ async function validateNativeStep(
 
   const parsedTool = await toolInfo.getToolInfo(toolId, toolVersion);
   if (!parsedTool) {
-    return { step: stepLabel, toolId, status: "skip", errors: ["tool not in cache"] };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "skip_tool_not_found",
+      errors: ["tool not in cache"],
+    };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -164,7 +169,12 @@ async function validateNativeStep(
     }
   }
   if (!toolState || typeof toolState !== "object") {
-    return { step: stepLabel, toolId, status: "skip", errors: ["no tool_state"] };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "skip_tool_not_found",
+      errors: ["no tool_state"],
+    };
   }
 
   // Skip if replacement parameters detected
@@ -173,7 +183,12 @@ async function validateNativeStep(
     toolState as Record<string, unknown>,
   );
   if (replacementScan === "yes") {
-    return { step: stepLabel, toolId, status: "skip", errors: ["replacement parameters"] };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "skip_replacement_params",
+      errors: ["replacement parameters"],
+    };
   }
 
   // Deep copy state and inject connection markers
@@ -188,7 +203,12 @@ async function validateNativeStep(
   // Validate against workflow_step_native with strict excess property checking
   const fieldModel = createFieldModel(bundle, "workflow_step_native");
   if (!fieldModel) {
-    return { step: stepLabel, toolId, status: "skip", errors: ["unsupported parameter types"] };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
   }
 
   const validate = S.decodeUnknownEither(fieldModel as S.Schema<any>, {
@@ -197,9 +217,9 @@ async function validateNativeStep(
   const result = validate(state);
 
   if (result._tag === "Left") {
-    return { step: stepLabel, toolId, status: "fail", errors: formatIssues(result.left) };
+    return { step: stepLabel, tool_id: toolId, status: "fail", errors: formatIssues(result.left) };
   }
-  return { step: stepLabel, toolId, status: "ok", errors: [] };
+  return { step: stepLabel, tool_id: toolId, status: "ok", errors: [] };
 }
 
 // --- Native workflow validation (recursive) ---
@@ -245,7 +265,12 @@ async function validateFormat2Step(
 
   const parsedTool = await toolInfo.getToolInfo(toolId, toolVersion);
   if (!parsedTool) {
-    return { step: stepLabel, toolId, status: "skip", errors: ["tool not in cache"] };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "skip_tool_not_found",
+      errors: ["tool not in cache"],
+    };
   }
 
   const bundle: ToolParameterBundleModel = {
@@ -259,7 +284,12 @@ async function validateFormat2Step(
   // Base validation
   const baseModel = createFieldModel(bundle, "workflow_step");
   if (!baseModel) {
-    return { step: stepLabel, toolId, status: "skip", errors: ["unsupported parameter types"] };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
   }
 
   const baseValidate = S.decodeUnknownEither(baseModel as S.Schema<any>, {
@@ -267,7 +297,12 @@ async function validateFormat2Step(
   });
   const baseResult = baseValidate(state);
   if (baseResult._tag === "Left") {
-    return { step: stepLabel, toolId, status: "fail", errors: formatIssues(baseResult.left) };
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "fail",
+      errors: formatIssues(baseResult.left),
+    };
   }
 
   // Linked validation with connections
@@ -285,7 +320,12 @@ async function validateFormat2Step(
 
     const linkedModel = createFieldModel(bundle, "workflow_step_linked");
     if (!linkedModel) {
-      return { step: stepLabel, toolId, status: "skip", errors: ["unsupported parameter types"] };
+      return {
+        step: stepLabel,
+        tool_id: toolId,
+        status: "skip_tool_not_found",
+        errors: ["unsupported parameter types"],
+      };
     }
 
     const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
@@ -293,11 +333,16 @@ async function validateFormat2Step(
     });
     const linkedResult = linkedValidate(linkedState);
     if (linkedResult._tag === "Left") {
-      return { step: stepLabel, toolId, status: "fail", errors: formatIssues(linkedResult.left) };
+      return {
+        step: stepLabel,
+        tool_id: toolId,
+        status: "fail",
+        errors: formatIssues(linkedResult.left),
+      };
     }
   }
 
-  return { step: stepLabel, toolId, status: "ok", errors: [] };
+  return { step: stepLabel, tool_id: toolId, status: "ok", errors: [] };
 }
 
 // --- Format2 workflow validation ---
@@ -359,7 +404,7 @@ async function validateOp(wfDict: unknown): Promise<unknown> {
   // Check for failures
   const failures = results.filter((r) => r.status === "fail");
   if (failures.length > 0) {
-    const msgs = failures.map((r) => `step ${r.step} (${r.toolId}): ${r.errors.join("; ")}`);
+    const msgs = failures.map((r) => `step ${r.step} (${r.tool_id}): ${r.errors.join("; ")}`);
     throw new Error(`Validation failed:\n${msgs.join("\n")}`);
   }
 
@@ -368,19 +413,19 @@ async function validateOp(wfDict: unknown): Promise<unknown> {
 
 function cleanOp(wfDict: unknown): unknown {
   const workflow = structuredClone(wfDict as Record<string, unknown>);
-  return cleanWorkflow(workflow);
+  return cleanWorkflow(workflow).workflow;
 }
 
 async function validateCleanOp(wfDict: unknown): Promise<unknown> {
   // Clean an internal copy, then validate it — return original on success
-  const cleaned = cleanWorkflow(structuredClone(wfDict as Record<string, unknown>));
+  const { workflow: cleaned } = cleanWorkflow(structuredClone(wfDict as Record<string, unknown>));
   await validateOp(cleaned);
   return wfDict;
 }
 
 async function cleanThenValidateOp(wfDict: unknown): Promise<unknown> {
   // Mutating clean, then validate — return the cleaned workflow
-  const cleaned = cleanWorkflow(structuredClone(wfDict as Record<string, unknown>));
+  const { workflow: cleaned } = cleanWorkflow(structuredClone(wfDict as Record<string, unknown>));
   await validateOp(cleaned);
   return cleaned;
 }

@@ -128,8 +128,55 @@ export const dataInputTool = {
   xrefs: [],
 };
 
+/** Tool with a conditional parameter (for encoding detection testing). */
+export const conditionalTool = {
+  id: "cond_tool",
+  version: "1.0",
+  name: "Conditional Tool",
+  description: null,
+  inputs: [
+    {
+      name: "mode",
+      parameter_type: "gx_conditional",
+      type: "conditional",
+      hidden: false,
+      label: "Mode",
+      help: null,
+      argument: null,
+      is_dynamic: false,
+      test_parameter: {
+        name: "selector",
+        parameter_type: "gx_boolean",
+        type: "boolean",
+        hidden: false,
+        label: "Enable",
+        help: null,
+        argument: null,
+        is_dynamic: false,
+        optional: false,
+        value: false,
+        truevalue: "true",
+        falsevalue: "false",
+        validators: [],
+      },
+      whens: [
+        { value: "true", parameters: [] },
+        { value: "false", parameters: [] },
+      ],
+    },
+  ],
+  outputs: [],
+  citations: [],
+  license: null,
+  profile: null,
+  edam_operations: [],
+  edam_topics: [],
+  xrefs: [],
+};
+
 export const SIMPLE_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/simple/simple_tool";
 export const DATA_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/data/data_tool";
+export const COND_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/cond/cond_tool";
 
 /** Seed cache with the text-only simple tool. */
 export async function seedSimpleTool(cacheDir: string): Promise<void> {
@@ -160,6 +207,14 @@ export async function seedAllTools(cacheDir: string): Promise<void> {
     dataKey,
     S.decodeUnknownSync(ParsedTool)(dataInputTool),
     DATA_TOOL_ID,
+    "1.0",
+    "api",
+  );
+  const condKey = cacheKey("https://toolshed.g2.bx.psu.edu", "test~cond~cond_tool", "1.0");
+  await cache.saveTool(
+    condKey,
+    S.decodeUnknownSync(ParsedTool)(conditionalTool),
+    COND_TOOL_ID,
     "1.0",
     "api",
   );

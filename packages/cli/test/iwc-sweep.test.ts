@@ -72,7 +72,7 @@ function runSweep(
         const results = await validateFn(data, cache);
 
         for (const r of results) {
-          if (r.status === "skip") {
+          if (r.status === "skip_tool_not_found" || r.status === "skip_replacement_params") {
             skipped++;
           } else if (r.status === "fail") {
             failures.push({ workflow: workflowId(wfPath), step: r });
@@ -93,7 +93,7 @@ function runSweep(
         const details = failures
           .map(
             (f) =>
-              `  ${f.workflow} [${f.step.stepLabel}] ${f.step.toolId}: ${f.step.errors.join("; ")}`,
+              `  ${f.workflow} [${f.step.step}] ${f.step.tool_id}: ${f.step.errors.join("; ")}`,
           )
           .join("\n");
         expect.fail(`${failures.length} validation failures:\n${details}`);

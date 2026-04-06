@@ -4,6 +4,7 @@ import { join } from "node:path";
 import * as YAML from "yaml";
 
 import { runClean } from "../src/commands/clean.js";
+import type { SingleCleanReport } from "@galaxy-tool-util/schema";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 
 describe("gxwf clean", () => {
@@ -159,5 +160,64 @@ describe("gxwf clean", () => {
 
     const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("No changes");
+  });
+
+  it("--json outputs SingleCleanReport with removed keys", async () => {
+    const workflow = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          tool_id: "my_tool",
+          tool_version: "1.0",
+          tool_state: {
+            input_text: "hello",
+            __page__: 0,
+            chromInfo: "/path",
+          },
+        },
+      },
+    };
+    const wfPath = join(ctx.tmpDir, "json-clean.ga");
+    await writeFile(wfPath, JSON.stringify(workflow));
+    await runClean(wfPath, { json: true });
+
+    const output = ctx.logSpy.mock.calls[0][0];
+    const report: SingleCleanReport = JSON.parse(output);
+    expect(report.workflow).toBe(wfPath);
+    expect(report.results).toHaveLength(1);
+    expect(report.results[0].tool_id).toBe("my_tool");
+    expect(report.results[0].removed_keys).toContain("__page__");
+    expect(report.results[0].removed_keys).toContain("chromInfo");
+    expect(report.results[0].skipped).toBe(false);
+    expect(report.results[0].display_label).toContain("my_tool");
+    expect(report.total_removed).toBe(2);
+    expect(report.steps_with_removals).toBe(1);
+  });
+
+  it("--json reports no removals for clean workflow", async () => {
+    const workflow = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          tool_id: "my_tool",
+          tool_state: { input_text: "hello" },
+        },
+      },
+    };
+    const wfPath = join(ctx.tmpDir, "json-noop.ga");
+    await writeFile(wfPath, JSON.stringify(workflow));
+    await runClean(wfPath, { json: true });
+
+    const output = ctx.logSpy.mock.calls[0][0];
+    const report: SingleCleanReport = JSON.parse(output);
+    expect(report.total_removed).toBe(0);
+    expect(report.steps_with_removals).toBe(0);
+    expect(report.results[0].removed_keys).toEqual([]);
   });
 });
