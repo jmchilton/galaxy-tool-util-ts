@@ -417,7 +417,7 @@ export async function operateRoundtrip(
     success: s.success,
     failure_class: _mapRoundtripFailureClass(s.failureClass ?? null),
     error: s.error ?? null,
-    diffs: s.diffs.map((d) => d.description),
+    diffs: s.diffs,
     format2_state: null,
     format2_connections: null,
   }));
