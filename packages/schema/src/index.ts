@@ -23,8 +23,40 @@ export {
   collectParameterTypes,
   /** Extract the set of validator types used in a tool bundle. */
   collectValidatorTypes,
-  type ToolParameterBundleModel,
 } from "./schema/index.js";
+
+export {
+  /** Top-level bundle of tool parameters. */
+  type ToolParameterBundleModel,
+  /** Union of all tool parameter types (discriminated on parameter_type). */
+  type ToolParameterModel,
+  /** Union of leaf (non-container) Galaxy parameter types. */
+  type GalaxyParameterModel,
+  /** Union of container parameter types (section, repeat, conditional). */
+  type ContainerParameterModel,
+  /** Base fields shared by all leaf Galaxy parameter types. */
+  type BaseGalaxyParameterModel,
+  type SelectParameterModel,
+  type GenomeBuildParameterModel,
+  type DrillDownParameterModel,
+  type BooleanParameterModel,
+  type SectionParameterModel,
+  type RepeatParameterModel,
+  type ConditionalParameterModel,
+  /** A single branch of a ConditionalParameterModel. */
+  type ConditionalWhen,
+  /** A label/value pair used in select and genomebuild options. */
+  type LabelValue,
+} from "./schema/bundle-types.js";
+
+export {
+  /** True for gx_select, gx_genomebuild, gx_drill_down — params with an options list. */
+  isSelectLikeParam,
+  isBooleanParam,
+  isSectionParam,
+  isRepeatParam,
+  isConditionalParam,
+} from "./schema/type-guards.js";
 
 export {
   type GalaxyWorkflow,
