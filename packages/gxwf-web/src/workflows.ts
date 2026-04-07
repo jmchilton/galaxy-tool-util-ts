@@ -52,6 +52,7 @@ import {
   type StepDiff,
   type ExpansionOptions,
   type ValidationStepResult,
+  type RoundtripFailureClass,
 } from "@galaxy-tool-util/schema";
 import {
   validateNativeSteps,
@@ -408,8 +409,6 @@ export async function operateRoundtrip(
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
-
-import type { RoundtripFailureClass } from "@galaxy-tool-util/schema";
 
 function _mapRoundtripFailureClass(cls: RoundtripFailureClass | null): FailureClass | null {
   if (cls === null) return null;
