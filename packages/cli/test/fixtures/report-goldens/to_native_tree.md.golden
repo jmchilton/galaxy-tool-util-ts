@@ -1,0 +1,6 @@
+# Conversion Report: /data/workflows
+
+- **ok.gxwf.yml**: OK (4 steps)
+- **partial.gxwf.yml**: PARTIAL (1 fallbacks)
+
+**Summary**: 1 OK, 0 errors, 0 skipped

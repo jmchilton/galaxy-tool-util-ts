@@ -7,6 +7,9 @@ import {
   roundtripValidate,
   type ExpansionOptions,
   type RoundtripResult,
+  type RoundTripValidationResult,
+  buildRoundTripTreeReport,
+  categoryOf,
 } from "@galaxy-tool-util/schema";
 import { dirname, join } from "node:path";
 import { loadToolInputsForWorkflow, type ToolLoadStatus } from "./stateful-tool-inputs.js";
@@ -15,8 +18,9 @@ import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { resolveFormat } from "./workflow-io.js";
 import { collectTree, skipWorkflow } from "./tree.js";
 import { countDiffs } from "./roundtrip.js";
+import { writeReportOutput, type ReportOutputOptions } from "./report-output.js";
 
-export interface RoundtripTreeOptions extends StrictOptions {
+export interface RoundtripTreeOptions extends StrictOptions, ReportOutputOptions {
   cacheDir?: string;
   format?: string;
   json?: boolean;
@@ -100,6 +104,16 @@ export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions):
     else filesBenignOnly++;
   }
 
+  // Build RoundTripTreeReport for Markdown/HTML rendering
+  const roundtripWorkflows: RoundTripValidationResult[] = treeResult.outcomes.map((o) => {
+    const relPath = o.info.relativePath;
+    if (o.error) return makeRoundTripResult(relPath, null, o.error, null);
+    if (o.skipped) return makeRoundTripResult(relPath, null, null, "legacy_encoding");
+    return makeRoundTripResult(relPath, o.result!.result, null, null);
+  });
+  const roundtripReport = buildRoundTripTreeReport(treeResult.root, roundtripWorkflows);
+  await writeReportOutput("roundtrip_tree.md.j2", roundtripReport, opts);
+
   if (opts.json) {
     console.log(
       JSON.stringify(
@@ -161,4 +175,44 @@ export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions):
   if (filesFailed > 0 || totalErrors > 0) process.exitCode = 2;
   else if (totalBenign > 0) process.exitCode = 1;
   else process.exitCode = 0;
+}
+
+/** Map the TS-internal RoundtripResult to the report-model shape for template rendering. */
+function makeRoundTripResult(
+  relPath: string,
+  result: RoundtripResult | null,
+  error: string | null,
+  skippedReason: "legacy_encoding" | null,
+): RoundTripValidationResult {
+  const allDiffs = result?.stepResults.flatMap((s) => s.diffs) ?? [];
+  const errorDiffs = allDiffs.filter((d) => d.severity === "error");
+  const benignDiffs = allDiffs.filter((d) => d.severity === "benign");
+  const ok = result ? result.success : false;
+  let status: string;
+  if (error) status = "error";
+  else if (skippedReason) status = "skipped";
+  else if (ok) status = "ok";
+  else status = "roundtrip_mismatch";
+  const conversionFailureLines =
+    result?.stepResults
+      .filter((s) => !s.success)
+      .map((s) => s.error ?? `Step ${s.stepId} failed`) ?? [];
+  return {
+    workflow_path: relPath,
+    category: categoryOf(relPath),
+    conversion_result: null,
+    diffs: allDiffs,
+    step_id_mapping: null,
+    stale_clean_results: null,
+    error,
+    skipped_reason: skippedReason,
+    structure_errors: result?.structureErrors ?? [],
+    encoding_errors: result?.encodingErrors ?? [],
+    error_diffs: errorDiffs,
+    benign_diffs: benignDiffs,
+    ok,
+    status,
+    conversion_failure_lines: conversionFailureLines,
+    summary_line: status.toUpperCase(),
+  };
 }

@@ -14,8 +14,9 @@ import { resolveFormat } from "./workflow-io.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { lintWorkflowReport, type LintReport } from "./lint.js";
 import { collectTree, type TreeResult } from "./tree.js";
+import { writeReportOutput, type ReportOutputOptions } from "./report-output.js";
 
-export interface LintTreeOptions extends StrictOptions {
+export interface LintTreeOptions extends StrictOptions, ReportOutputOptions {
   format?: string;
   skipBestPractices?: boolean;
   skipStateValidation?: boolean;
@@ -62,6 +63,8 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
   });
 
   const report = buildReport(treeResult);
+
+  await writeReportOutput("lint_tree.md.j2", report, opts);
 
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));
@@ -114,7 +117,7 @@ function buildReport(treeResult: TreeResult<LintWorkflowResult>): SchemaLintTree
     if (o.skipped) {
       workflows.push(
         buildLintWorkflowResult(o.info.relativePath, 0, 0, [], {
-          skipped_reason: o.skipReason ?? "unknown",
+          skipped_reason: (o.skipReason as "legacy_encoding") ?? null,
         }),
       );
       continue;

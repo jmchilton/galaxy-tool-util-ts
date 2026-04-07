@@ -176,6 +176,12 @@ export {
   type TreeValidationReport,
   type LintTreeReport,
   type TreeCleanReport,
+  type WorkflowExportResult,
+  type ExportTreeReport,
+  type WorkflowToNativeResult,
+  type ToNativeTreeReport,
+  type ToolFailureMode,
+  type RoundTripTreeReport,
   validationSummary,
   validationFailures,
   cleanDisplayLabel,
@@ -190,6 +196,11 @@ export {
   buildTreeValidationReport,
   buildLintTreeReport,
   buildTreeCleanReport,
+  buildWorkflowExportResult,
+  buildExportTreeReport,
+  buildWorkflowToNativeResult,
+  buildToNativeTreeReport,
+  buildRoundTripTreeReport,
 } from "./workflow/index.js";
 
 export { ToolStateValidator, type ToolStateDiagnostic } from "./tool-state-validator.js";

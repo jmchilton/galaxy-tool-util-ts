@@ -1,0 +1,20 @@
+# Stale State Cleaning Report
+
+Root: `/data/workflows`
+Workflows: 2 | 1 stale key(s) across 1 workflow(s)
+
+## Affected Workflows
+
+| Workflow | Steps Affected | Keys Removed | Details |
+| --- | --- | --- | --- |
+| workflow_clean.ga | 1 | 1 | Step 0 (cat1): runtime_inputs |
+
+## Clean Workflows (1)
+
+All other workflows have no stale keys.
+
+## Per-Workflow Details
+
+### workflow_clean.ga
+- Step 0 (cat1 1.0): Removed `runtime_inputs`
+

@@ -28,7 +28,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/bundle-templates.mjs && tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run",
     "test:watch": "vitest",
@@ -43,9 +43,11 @@
     "ajv": "^8.18.0",
     "commander": "^14.0.0",
     "effect": "^3.21.0",
+    "nunjucks": "^3.2.4",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0"
+    "@types/node": "^25.5.0",
+    "@types/nunjucks": "^3.2.6"
   }
 }

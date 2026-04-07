@@ -1,0 +1,35 @@
+{#-
+  HTML macro overrides for workflow_state report templates.
+  TS-side only — not synced from Python.
+
+  Redefines the same macro signatures as _macros.md.j2 but emits HTML
+  fragments. Body templates (validate_tree.md.j2 etc.) remain unchanged;
+  this file is aliased over _macros.md.j2 by the HTML Nunjucks environment.
+-#}
+
+{% macro status_badge(label) -%}
+<strong>Status:</strong> {{ label }}
+{%- endmacro %}
+
+{% macro kv_summary(summary) -%}
+<dl>
+{% for key, value in summary -%}
+<dt>{{ key }}</dt><dd>{{ value }}</dd>
+{% endfor -%}
+</dl>
+{%- endmacro %}
+
+{% macro workflow_state_cells(r) -%}
+{% if r.skipped_reason -%}
+<td>-</td><td>-</td><td>-</td><td>-</td><td>SKIPPED: {{ r.skipped_reason }}</td>
+{%- elif r.error -%}
+<td>-</td><td>-</td><td>-</td><td>-</td><td>ERROR: {{ r.error }}</td>
+{%- else -%}
+{% set s = r.summary %}
+<td>{{ r.results | length }}</td><td>{{ s.ok }}</td><td>{{ s.fail }}</td><td>{{ s.skip }}</td><td></td>
+{%- endif %}
+{%- endmacro %}
+
+{% macro failure_bullet(f) -%}
+<li><strong>{{ f.workflow }}</strong> Step {{ f.step }} ({{ f.tool_id }}): {{ f.message }}</li>
+{%- endmacro %}

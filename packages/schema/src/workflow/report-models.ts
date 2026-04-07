@@ -92,7 +92,7 @@ export interface SingleValidationReport {
   workflow: string;
   results: ValidationStepResult[];
   connection_report: ConnectionValidationReport | null;
-  skipped_reason: string | null;
+  skipped_reason: SkipWorkflowReason | null;
   structure_errors: string[];
   encoding_errors: string[];
   summary: { ok: number; fail: number; skip: number };
@@ -172,7 +172,7 @@ export interface StepResult {
   success: boolean;
   failure_class: FailureClass | null;
   error: string | null;
-  diffs: string[];
+  diffs: StepDiff[];
   format2_state: Record<string, unknown> | null;
   format2_connections: Record<string, unknown> | null;
 }
@@ -251,7 +251,7 @@ export interface WorkflowValidationResult {
   category: string;
   name: string;
   error: string | null;
-  skipped_reason: string | null;
+  skipped_reason: SkipWorkflowReason | null;
   results: ValidationStepResult[];
   connection_report: null;
   summary: { ok: number; fail: number; skip: number } | null;
@@ -263,7 +263,7 @@ export interface LintWorkflowResult {
   category: string;
   name: string;
   error: string | null;
-  skipped_reason: string | null;
+  skipped_reason: SkipWorkflowReason | null;
   lint_errors: number;
   lint_warnings: number;
   results: ValidationStepResult[];
@@ -275,7 +275,7 @@ export interface WorkflowCleanResult {
   category: string;
   name: string;
   error: string | null;
-  skipped_reason: string | null;
+  skipped_reason: SkipWorkflowReason | null;
   results: CleanStepResult[];
   total_removed: number;
   steps_affected: number;
@@ -407,7 +407,7 @@ export function buildSingleValidationReport(
   workflow: string,
   results: ValidationStepResult[],
   opts?: {
-    skipped_reason?: string | null;
+    skipped_reason?: SkipWorkflowReason | null;
     structure_errors?: string[];
     encoding_errors?: string[];
   },
@@ -470,7 +470,7 @@ export function buildWorkflowValidationResult(
   stepResults: ValidationStepResult[],
   opts?: {
     error?: string | null;
-    skipped_reason?: string | null;
+    skipped_reason?: SkipWorkflowReason | null;
   },
 ): WorkflowValidationResult {
   const hasError = !!(opts?.error || opts?.skipped_reason);
@@ -494,7 +494,7 @@ export function buildLintWorkflowResult(
   stepResults: ValidationStepResult[],
   opts?: {
     error?: string | null;
-    skipped_reason?: string | null;
+    skipped_reason?: SkipWorkflowReason | null;
   },
 ): LintWorkflowResult {
   const hasError = !!(opts?.error || opts?.skipped_reason);
@@ -516,7 +516,7 @@ export function buildWorkflowCleanResult(
   stepResults: CleanStepResult[],
   opts?: {
     error?: string | null;
-    skipped_reason?: string | null;
+    skipped_reason?: SkipWorkflowReason | null;
   },
 ): WorkflowCleanResult {
   return {
@@ -529,6 +529,75 @@ export function buildWorkflowCleanResult(
     total_removed: stepResults.reduce((n, r) => n + r.removed_keys.length, 0),
     steps_affected: stepResults.filter((r) => r.removed_keys.length > 0).length,
   };
+}
+
+// ── Export tree types ────────────────────────────────────────────────
+
+export interface WorkflowExportResult {
+  path: string;
+  category: string;
+  name: string;
+  error: string | null;
+  skipped_reason: string | null; // free-form in Python (not constrained to SkipWorkflowReason)
+  ok: boolean;
+  steps_converted: number;
+  steps_fallback: number;
+  // Server-computed readOnly field
+  readonly status: "ok" | "partial" | "error" | "skipped";
+}
+
+export interface ExportTreeReport {
+  root: string;
+  output_dir: string;
+  workflows: WorkflowExportResult[];
+  // Server-computed readOnly field
+  readonly summary: { ok: number; fail: number; skipped: number };
+}
+
+// ── To-native tree types ─────────────────────────────────────────────
+
+export interface WorkflowToNativeResult {
+  path: string;
+  category: string;
+  name: string;
+  error: string | null;
+  skipped_reason: string | null; // free-form in Python (not constrained to SkipWorkflowReason)
+  ok: boolean;
+  steps_encoded: number;
+  steps_fallback: number;
+  // Server-computed readOnly field
+  readonly status: "ok" | "partial" | "error" | "skipped";
+}
+
+export interface ToNativeTreeReport {
+  root: string;
+  output_dir: string;
+  workflows: WorkflowToNativeResult[];
+  // Server-computed readOnly field
+  readonly summary: { ok: number; fail: number; skipped: number };
+}
+
+// ── Round-trip tree types ────────────────────────────────────────────
+
+export interface ToolFailureMode {
+  tool_id: string | null;
+  failure_class: string;
+  count: number;
+}
+
+export interface RoundTripTreeReport {
+  root: string;
+  workflows: RoundTripValidationResult[];
+  // Server-computed readOnly fields
+  readonly total: number;
+  readonly summary: {
+    clean: number;
+    benign_only: number;
+    fail: number;
+    error: number;
+    skipped: number;
+  };
+  readonly tool_failure_modes: ToolFailureMode[];
 }
 
 // ── Tree report builders ─────────────────────────────────────────────
@@ -604,6 +673,126 @@ export function buildLintTreeReport(root: string, workflows: LintWorkflowResult[
     workflows,
     categories: groupByCategory(workflows),
     summary: { lint_errors, lint_warnings, state_ok, state_fail, state_skip, errors, skipped },
+  };
+}
+
+export function buildWorkflowExportResult(
+  relativePath: string,
+  opts: {
+    ok?: boolean;
+    steps_converted?: number;
+    steps_fallback?: number;
+    error?: string | null;
+    skipped_reason?: SkipWorkflowReason | null;
+  } = {},
+): WorkflowExportResult {
+  const {
+    ok = false,
+    steps_converted = 0,
+    steps_fallback = 0,
+    error = null,
+    skipped_reason = null,
+  } = opts;
+  let status: WorkflowExportResult["status"];
+  if (error) status = "error";
+  else if (skipped_reason) status = "skipped";
+  else if (ok) status = "ok";
+  else status = "partial";
+  return {
+    path: relativePath,
+    category: categoryOf(relativePath),
+    name: baseName(relativePath),
+    error,
+    skipped_reason,
+    ok,
+    steps_converted,
+    steps_fallback,
+    status,
+  };
+}
+
+export function buildExportTreeReport(
+  root: string,
+  output_dir: string,
+  workflows: WorkflowExportResult[],
+): ExportTreeReport {
+  const ok = workflows.filter((r) => r.ok && !r.error && !r.skipped_reason).length;
+  const fail = workflows.filter((r) => !!r.error).length;
+  const skipped = workflows.filter((r) => !!r.skipped_reason).length;
+  return { root, output_dir, workflows, summary: { ok, fail, skipped } };
+}
+
+export function buildWorkflowToNativeResult(
+  relativePath: string,
+  opts: {
+    ok?: boolean;
+    steps_encoded?: number;
+    steps_fallback?: number;
+    error?: string | null;
+    skipped_reason?: SkipWorkflowReason | null;
+  } = {},
+): WorkflowToNativeResult {
+  const {
+    ok = false,
+    steps_encoded = 0,
+    steps_fallback = 0,
+    error = null,
+    skipped_reason = null,
+  } = opts;
+  let status: WorkflowToNativeResult["status"];
+  if (error) status = "error";
+  else if (skipped_reason) status = "skipped";
+  else if (ok) status = "ok";
+  else status = "partial";
+  return {
+    path: relativePath,
+    category: categoryOf(relativePath),
+    name: baseName(relativePath),
+    error,
+    skipped_reason,
+    ok,
+    steps_encoded,
+    steps_fallback,
+    status,
+  };
+}
+
+export function buildToNativeTreeReport(
+  root: string,
+  output_dir: string,
+  workflows: WorkflowToNativeResult[],
+): ToNativeTreeReport {
+  const ok = workflows.filter((r) => r.ok && !r.error && !r.skipped_reason).length;
+  const fail = workflows.filter((r) => !!r.error).length;
+  const skipped = workflows.filter((r) => !!r.skipped_reason).length;
+  return { root, output_dir, workflows, summary: { ok, fail, skipped } };
+}
+
+export function buildRoundTripTreeReport(
+  root: string,
+  workflows: RoundTripValidationResult[],
+): RoundTripTreeReport {
+  let clean = 0,
+    benign_only = 0,
+    fail = 0,
+    error = 0,
+    skipped = 0;
+  for (const r of workflows) {
+    const status = r.status;
+    if (status === "skipped") skipped++;
+    else if (status === "error") error++;
+    else if (status === "ok") {
+      if (r.benign_diffs.length > 0) benign_only++;
+      else clean++;
+    } else fail++;
+  }
+  const tool_failure_modes: ToolFailureMode[] = [];
+  return {
+    root,
+    workflows,
+    total: workflows.length,
+    summary: { clean, benign_only, fail, error, skipped },
+    tool_failure_modes,
   };
 }
 
