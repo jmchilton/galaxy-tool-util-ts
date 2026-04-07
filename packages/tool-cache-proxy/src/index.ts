@@ -6,7 +6,8 @@
  */
 
 /** Load a YAML config file and validate it against the ServerConfig schema. */
-export { loadConfig, defaultConfig, ServerConfig, ToolSource } from "./config.js";
+export { loadConfig, defaultConfig, ServerConfig } from "./config.js";
+export type { ToolSourceConfig, ToolCacheConfig } from "./config.js";
 /** Create a proxy context (ToolInfoService + config) and HTTP server. */
 export { createProxyContext, createProxyServer, createRequestHandler } from "./router.js";
 export type { ProxyContext } from "./router.js";

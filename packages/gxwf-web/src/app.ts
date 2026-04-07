@@ -8,7 +8,7 @@
  */
 
 import { createServer, type Server } from "node:http";
-import { ToolCache } from "@galaxy-tool-util/core";
+import { ToolInfoService, type ToolSource } from "@galaxy-tool-util/core";
 import { createRequestHandler, type AppState } from "./router.js";
 import { discoverWorkflows } from "./workflows.js";
 
@@ -16,6 +16,8 @@ export type { AppState };
 
 export interface CreateAppOptions {
   cacheDir?: string;
+  /** Tool sources to fetch from when a tool is not in cache. */
+  sources?: ToolSource[];
 }
 
 /** Create a configured gxwf-web HTTP server for the given workflow directory. */
@@ -23,7 +25,12 @@ export function createApp(
   directory: string,
   opts: CreateAppOptions = {},
 ): { server: Server; state: AppState; ready: Promise<void> } {
-  const cache = new ToolCache({ cacheDir: opts.cacheDir });
+  const service = new ToolInfoService({
+    cacheDir: opts.cacheDir,
+    sources: opts.sources,
+  });
+  const cache = service.cache;
+
   const state: AppState = {
     directory,
     cache,

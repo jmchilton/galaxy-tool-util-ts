@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync } from "node:fs";
+import {
+  loadWorkflowToolConfig,
+  toolInfoOptionsFromConfig,
+  type ToolSource,
+} from "@galaxy-tool-util/core";
 import { createApp } from "../app.js";
 
 const args = process.argv.slice(2);
@@ -9,6 +14,7 @@ let directory: string | null = null;
 let host = "127.0.0.1";
 let port = 8000;
 let cacheDir: string | undefined;
+let configPath: string | undefined;
 let outputSchema = false;
 
 for (let i = 0; i < args.length; i++) {
@@ -18,6 +24,8 @@ for (let i = 0; i < args.length; i++) {
     port = parseInt(args[++i], 10);
   } else if (args[i] === "--cache-dir" && args[i + 1]) {
     cacheDir = args[++i];
+  } else if (args[i] === "--config" && args[i + 1]) {
+    configPath = args[++i];
   } else if (args[i] === "--output-schema") {
     outputSchema = true;
   } else if (!args[i].startsWith("--")) {
@@ -34,7 +42,7 @@ if (outputSchema) {
 
 if (!directory) {
   console.error(
-    "Usage: gxwf-web <directory> [--host 127.0.0.1] [--port 8000] [--cache-dir <path>] [--output-schema]",
+    "Usage: gxwf-web <directory> [--host 127.0.0.1] [--port 8000] [--cache-dir <path>] [--config <path>] [--output-schema]",
   );
   process.exit(1);
 }
@@ -44,13 +52,35 @@ if (!existsSync(directory)) {
   process.exit(1);
 }
 
-const { server, ready } = createApp(directory, { cacheDir });
+async function main() {
+  let sources: ToolSource[] | undefined;
 
-server.listen(port, host, () => {
-  console.log(`gxwf-web listening on ${host}:${port}`);
-  console.log(`Serving workflows from: ${directory}`);
-});
+  if (configPath) {
+    if (!existsSync(configPath)) {
+      console.error(`Config file not found: ${configPath}`);
+      process.exit(1);
+    }
+    const config = await loadWorkflowToolConfig(configPath);
+    const toolOpts = toolInfoOptionsFromConfig(config);
+    sources = toolOpts.sources;
+    // --cache-dir CLI flag takes precedence over config file
+    cacheDir ??= toolOpts.cacheDir;
+  }
 
-void ready.then(() => {
-  console.log("Tool cache loaded, workflows discovered.");
+  const { server, ready } = createApp(directory!, { cacheDir, sources });
+
+  server.listen(port, host, () => {
+    console.log(`gxwf-web listening on ${host}:${port}`);
+    console.log(`Serving workflows from: ${directory}`);
+    if (configPath) console.log(`Config: ${configPath}`);
+  });
+
+  void ready.then(() => {
+    console.log("Tool cache loaded, workflows discovered.");
+  });
+}
+
+main().catch((err: unknown) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });
