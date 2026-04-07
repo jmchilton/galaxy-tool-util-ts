@@ -69,13 +69,13 @@ importers:
       effect:
         specifier: ^3.21.0
         version: 3.21.0
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
     devDependencies:
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
-      yaml:
-        specifier: ^2.8.3
-        version: 2.8.3
 
   packages/gxwf-web:
     dependencies:
