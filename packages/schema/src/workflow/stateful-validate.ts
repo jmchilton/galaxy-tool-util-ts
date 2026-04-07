@@ -111,3 +111,50 @@ export function validateFormat2StepState(
     throw new ConversionValidationFailure("post", formatIssues(result.left));
   }
 }
+
+/**
+ * A single diagnostic produced by tool-state validation.
+ *
+ * Defined here (lower-level module) so both {@link validateFormat2StepStateStrict}
+ * and the higher-level {@link ToolStateValidator} share one canonical type.
+ */
+export interface ToolStateDiagnostic {
+  /** Dot-separated parameter path, or "" for top-level / unlocated issues. */
+  path: string;
+  message: string;
+  severity: "error" | "warning";
+}
+
+/**
+ * Strict variant of {@link validateFormat2StepState}: reports unknown keys as
+ * diagnostics rather than silently ignoring them.
+ *
+ * Uses `onExcessProperty: "error"` so Effect Schema flags any key that has no
+ * corresponding parameter definition. Returns an empty array if the schema
+ * cannot be built or validation passes.
+ */
+export function validateFormat2StepStateStrict(
+  inputs: ToolParameterModel[],
+  format2State: Record<string, unknown>,
+): ToolStateDiagnostic[] {
+  const bundle = buildBundle(inputs);
+  const model = createFieldModel(bundle, "workflow_step");
+  if (!model) return [];
+
+  const state = deepClone(format2State);
+  stripConnectedValues(inputs, state);
+
+  const decode = S.decodeUnknownEither(model as S.Schema<unknown>, { onExcessProperty: "error" });
+  const result = decode(state);
+  if (result._tag === "Left") {
+    const issues = ParseResult.ArrayFormatter.formatErrorSync(result.left);
+    return issues.map(
+      (i): ToolStateDiagnostic => ({
+        path: i.path.map(String).join("."),
+        message: i.message,
+        severity: "error",
+      }),
+    );
+  }
+  return [];
+}

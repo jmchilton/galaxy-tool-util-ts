@@ -105,8 +105,12 @@ export {
   ConversionValidationFailure,
   validateNativeStepState,
   validateFormat2StepState,
+  validateFormat2StepStateStrict,
+  type ToolStateDiagnostic,
   type ValidationPhase,
 } from "./stateful-validate.js";
+
+export { findParamAtPath, type ParamNavigationResult } from "./param-navigation.js";
 
 export {
   roundtripValidate,
