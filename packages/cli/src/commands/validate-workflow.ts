@@ -28,7 +28,7 @@ import { createDefaultResolver } from "./url-resolver.js";
 import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
-import { writeSingleReportHtml } from "./report-output.js";
+import { writeReportHtml } from "./report-output.js";
 
 export type { WorkflowFormat } from "@galaxy-tool-util/schema";
 
@@ -148,7 +148,7 @@ export async function runValidateWorkflow(
       if (opts.json) {
         console.log(JSON.stringify(report, null, 2));
       }
-      await writeSingleReportHtml("validate", report, opts.reportHtml);
+      await writeReportHtml("validate", report, opts.reportHtml);
     }
     process.exitCode = structOk ? 0 : 1;
     return;
@@ -185,7 +185,7 @@ export async function runValidateWorkflow(
     if (opts.json) {
       console.log(JSON.stringify(report, null, 2));
     }
-    await writeSingleReportHtml("validate", report, opts.reportHtml);
+    await writeReportHtml("validate", report, opts.reportHtml);
     process.exitCode = structOk && stateOk ? 0 : 1;
     return;
   }

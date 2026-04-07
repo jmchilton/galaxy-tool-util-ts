@@ -14,6 +14,22 @@
       v-else-if="report.type === 'roundtrip'"
       :report="report.data as SingleRoundTripReport"
     />
+    <TreeValidationReport
+      v-else-if="report.type === 'validate-tree'"
+      :report="report.data as TreeValidationReportData"
+    />
+    <TreeLintReport
+      v-else-if="report.type === 'lint-tree'"
+      :report="report.data as LintTreeReportData"
+    />
+    <TreeCleanReport
+      v-else-if="report.type === 'clean-tree'"
+      :report="report.data as TreeCleanReportData"
+    />
+    <TreeRoundtripReport
+      v-else-if="report.type === 'roundtrip-tree'"
+      :report="report.data as RoundTripTreeReportData"
+    />
     <p v-else class="unknown-type">Unknown report type: {{ report.type }}</p>
   </div>
 </template>
@@ -25,14 +41,30 @@ import type {
   SingleLintReport,
   SingleCleanReport,
   SingleRoundTripReport,
+  TreeValidationReport as TreeValidationReportData,
+  LintTreeReport as LintTreeReportData,
+  TreeCleanReport as TreeCleanReportData,
+  RoundTripTreeReport as RoundTripTreeReportData,
 } from "@galaxy-tool-util/schema";
 import ValidationReport from "./ValidationReport.vue";
 import LintReport from "./LintReport.vue";
 import CleanReport from "./CleanReport.vue";
 import RoundtripReport from "./RoundtripReport.vue";
+import TreeValidationReport from "./TreeValidationReport.vue";
+import TreeLintReport from "./TreeLintReport.vue";
+import TreeCleanReport from "./TreeCleanReport.vue";
+import TreeRoundtripReport from "./TreeRoundtripReport.vue";
 
 interface ReportPayload {
-  type: "validate" | "lint" | "clean" | "roundtrip";
+  type:
+    | "validate"
+    | "lint"
+    | "clean"
+    | "roundtrip"
+    | "validate-tree"
+    | "lint-tree"
+    | "clean-tree"
+    | "roundtrip-tree";
   data: unknown;
 }
 
@@ -44,13 +76,19 @@ const typeLabel = computed(() => {
     lint: "Lint",
     clean: "Clean",
     roundtrip: "Roundtrip",
+    "validate-tree": "Validate Tree",
+    "lint-tree": "Lint Tree",
+    "clean-tree": "Clean Tree",
+    "roundtrip-tree": "Roundtrip Tree",
   };
   return labels[props.report.type] ?? props.report.type;
 });
 
 const workflowPath = computed(() => {
   const d = props.report.data as Record<string, unknown> | null;
-  return typeof d?.workflow === "string" ? d.workflow : null;
+  if (typeof d?.workflow === "string") return d.workflow;
+  if (typeof d?.root === "string") return d.root;
+  return null;
 });
 </script>
 

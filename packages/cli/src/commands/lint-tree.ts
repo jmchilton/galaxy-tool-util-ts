@@ -14,7 +14,7 @@ import { resolveFormat } from "./workflow-io.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { lintWorkflowReport, type LintReport } from "./lint.js";
 import { collectTree, type TreeResult } from "./tree.js";
-import { writeReportOutput, type ReportOutputOptions } from "./report-output.js";
+import { writeReportOutput, writeReportHtml, type ReportOutputOptions } from "./report-output.js";
 
 export interface LintTreeOptions extends StrictOptions, ReportOutputOptions {
   format?: string;
@@ -64,7 +64,8 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
 
   const report = buildReport(treeResult);
 
-  await writeReportOutput("lint_tree.md.j2", report, opts);
+  await writeReportOutput("lint_tree.md.j2", report, { reportMarkdown: opts.reportMarkdown });
+  await writeReportHtml("lint-tree", report, opts.reportHtml);
 
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));

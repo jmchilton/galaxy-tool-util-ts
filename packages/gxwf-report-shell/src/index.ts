@@ -2,4 +2,8 @@ export { default as ValidationReport } from "./ValidationReport.vue";
 export { default as LintReport } from "./LintReport.vue";
 export { default as CleanReport } from "./CleanReport.vue";
 export { default as RoundtripReport } from "./RoundtripReport.vue";
+export { default as TreeValidationReport } from "./TreeValidationReport.vue";
+export { default as TreeLintReport } from "./TreeLintReport.vue";
+export { default as TreeCleanReport } from "./TreeCleanReport.vue";
+export { default as TreeRoundtripReport } from "./TreeRoundtripReport.vue";
 export { default as ReportShell } from "./ReportShell.vue";

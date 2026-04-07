@@ -8,7 +8,7 @@ import {
   serializeWorkflow,
   writeWorkflowOutput,
 } from "./workflow-io.js";
-import { writeSingleReportHtml } from "./report-output.js";
+import { writeReportHtml } from "./report-output.js";
 
 export interface CleanOptions {
   output?: string;
@@ -32,7 +32,7 @@ export async function runClean(filePath: string, opts: CleanOptions): Promise<vo
     if (opts.json) {
       console.log(JSON.stringify(report, null, 2));
     }
-    await writeSingleReportHtml("clean", report, opts.reportHtml);
+    await writeReportHtml("clean", report, opts.reportHtml);
     return;
   }
 

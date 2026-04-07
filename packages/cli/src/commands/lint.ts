@@ -30,7 +30,7 @@ import {
   decodeStructureErrors,
   detectEncodingErrors,
 } from "./validate-workflow.js";
-import { writeSingleReportHtml } from "./report-output.js";
+import { writeReportHtml } from "./report-output.js";
 
 export interface LintOptions extends StrictOptions {
   format?: string;
@@ -121,7 +121,7 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
     if (opts.json) {
       console.log(JSON.stringify(singleReport, null, 2));
     }
-    await writeSingleReportHtml("lint", singleReport, opts.reportHtml);
+    await writeReportHtml("lint", singleReport, opts.reportHtml);
     process.exitCode = report.exitCode;
     return;
   }

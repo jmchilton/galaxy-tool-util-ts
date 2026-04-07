@@ -4,7 +4,15 @@ import Aura from "@primevue/themes/aura";
 import ReportShell from "./ReportShell.vue";
 
 interface ReportPayload {
-  type: "validate" | "lint" | "clean" | "roundtrip";
+  type:
+    | "validate"
+    | "lint"
+    | "clean"
+    | "roundtrip"
+    | "validate-tree"
+    | "lint-tree"
+    | "clean-tree"
+    | "roundtrip-tree";
   data: unknown;
 }
 
