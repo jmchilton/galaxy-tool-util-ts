@@ -19,6 +19,7 @@ export { createApp } from "./app.js";
 export type { AppState, CreateAppOptions } from "./app.js";
 export { createRequestHandler } from "./router.js";
 export { discoverWorkflows, loadWorkflowFile } from "./workflows.js";
+export type { ValidateOptions, LintOptions, CleanOptions } from "./workflows.js";
 export {
   readContents,
   writeContents,

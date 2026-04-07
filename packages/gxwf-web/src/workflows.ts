@@ -8,19 +8,20 @@
  *
  * Operations delegate to @galaxy-tool-util/schema and @galaxy-tool-util/cli.
  *
- * ## Parity gaps vs Python server (deferred to Phase 4)
+ * ## Parity status vs Python server
  *
- * | Endpoint    | Python params             | TS status         |
- * |-------------|---------------------------|-------------------|
- * | validate    | strict, connections, mode, allow, deny | strict only |
- * | lint        | strict, allow, deny       | strict only        |
- * | clean       | preserve, strip           | not yet supported  |
- * | to-format2  | (none beyond path)        | full parity        |
- * | to-native   | (none beyond path)        | full parity        |
- * | roundtrip   | (none beyond path)        | full parity        |
+ * | Endpoint    | Python params                          | TS status                        |
+ * |-------------|----------------------------------------|----------------------------------|
+ * | validate    | strict, connections, mode, allow, deny | strict wired; rest accepted (no-op) |
+ * | lint        | strict, allow, deny                   | strict wired; allow/deny accepted (no-op) |
+ * | clean       | preserve, strip                       | accepted (no-op; needs StaleKeyPolicy) |
+ * | to-format2  | (none beyond path)                    | full parity                      |
+ * | to-native   | (none beyond path)                    | full parity                      |
+ * | roundtrip   | (none beyond path)                    | full parity                      |
  *
  * TS extension not in Python spec: GET /api/schemas/structural?format=...
- * mode=pydantic (Python default) maps to effect (TS default); mode=json-schema works natively.
+ * mode=pydantic (Python default) maps to effect (TS default); mode=json-schema accepted (no-op).
+ * allow/deny/preserve/strip require StaleKeyPolicy — tracked as future work in stale-keys.ts.
  */
 
 import * as fs from "node:fs";
@@ -199,13 +200,39 @@ export function loadWorkflowFile(directory: string, relPath: string): WorkflowFi
 
 // ── Operations ───────────────────────────────────────────────────────────────
 
+export interface ValidateOptions {
+  /** Treat encoding/structure issues as errors (mirrors Python strict=True). */
+  strict?: boolean;
+  /**
+   * Validate connections between steps. Not yet implemented in TS — accepted
+   * for API parity but silently ignored.
+   */
+  connections?: boolean;
+  /**
+   * Validation mode. Python default "pydantic" maps to TS default "effect".
+   * "json-schema" is accepted but currently treated as "effect".
+   */
+  mode?: string;
+  /**
+   * Tool IDs whose stale keys are allowed. Accepted for API parity; requires
+   * StaleKeyPolicy (future work) — currently ignored.
+   */
+  allow?: string[];
+  /**
+   * Tool IDs whose stale keys are denied. Accepted for API parity; requires
+   * StaleKeyPolicy (future work) — currently ignored.
+   */
+  deny?: string[];
+}
+
 /** Validate a workflow's tool state. */
 export async function operateValidate(
   wf: WorkflowFile,
   cache: ToolCache,
+  opts: ValidateOptions = {},
 ): Promise<SingleValidationReport> {
   const { absPath, data, format } = wf;
-  const structureErrors = decodeStructureErrors(data, format);
+  const structureErrors = opts.strict ? decodeStructureErrors(data, format) : [];
   const expansionOpts: ExpansionOptions = {
     resolver: createDefaultResolver({ workflowDirectory: path.dirname(absPath) }),
   };
@@ -233,11 +260,25 @@ export async function operateValidate(
   });
 }
 
+export interface LintOptions {
+  strict?: boolean;
+  /**
+   * Tool IDs whose stale keys are allowed. Accepted for API parity; requires
+   * StaleKeyPolicy (future work) — currently ignored.
+   */
+  allow?: string[];
+  /**
+   * Tool IDs whose stale keys are denied. Accepted for API parity; requires
+   * StaleKeyPolicy (future work) — currently ignored.
+   */
+  deny?: string[];
+}
+
 /** Lint a workflow — structural checks, best practices, tool state validation. */
 export async function operateLint(
   wf: WorkflowFile,
   cache: ToolCache,
-  opts: { strict?: boolean } = {},
+  opts: LintOptions = {},
 ): Promise<SingleLintReport> {
   const { absPath, data, format } = wf;
   const strict = opts.strict
@@ -267,8 +308,21 @@ export async function operateLint(
   });
 }
 
+export interface CleanOptions {
+  /**
+   * Keys to preserve (not strip). Accepted for API parity; requires
+   * StaleKeyPolicy (future work) — currently ignored.
+   */
+  preserve?: string[];
+  /**
+   * Keys to always strip. Accepted for API parity; requires
+   * StaleKeyPolicy (future work) — currently ignored.
+   */
+  strip?: string[];
+}
+
 /** Report stale keys in a workflow (no tool cache needed). */
-export function operateClean(wf: WorkflowFile): SingleCleanReport {
+export function operateClean(wf: WorkflowFile, _opts: CleanOptions = {}): SingleCleanReport {
   const { absPath, data } = wf;
   const { results } = cleanWorkflow(data);
   return buildSingleCleanReport(absPath, results);

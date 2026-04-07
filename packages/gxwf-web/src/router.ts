@@ -37,6 +37,9 @@ import {
   operateToFormat2,
   operateToNative,
   operateRoundtrip,
+  type ValidateOptions,
+  type LintOptions,
+  type CleanOptions,
 } from "./workflows.js";
 
 // ── State ────────────────────────────────────────────────────────────
@@ -243,17 +246,34 @@ export function createRequestHandler(state: AppState) {
           const wf = loadWorkflowFile(directory, route.filePath);
           let result: unknown;
           switch (route.op) {
-            case "validate":
-              result = await operateValidate(wf, state.cache);
-              break;
-            case "lint":
-              result = await operateLint(wf, state.cache, {
+            case "validate": {
+              const vopts: ValidateOptions = {
                 strict: route.query.get("strict") === "true",
-              });
+                connections: route.query.get("connections") === "true",
+                mode: route.query.get("mode") ?? undefined,
+                allow: route.query.getAll("allow"),
+                deny: route.query.getAll("deny"),
+              };
+              result = await operateValidate(wf, state.cache, vopts);
               break;
-            case "clean":
-              result = operateClean(wf);
+            }
+            case "lint": {
+              const lopts: LintOptions = {
+                strict: route.query.get("strict") === "true",
+                allow: route.query.getAll("allow"),
+                deny: route.query.getAll("deny"),
+              };
+              result = await operateLint(wf, state.cache, lopts);
               break;
+            }
+            case "clean": {
+              const copts: CleanOptions = {
+                preserve: route.query.getAll("preserve"),
+                strip: route.query.getAll("strip"),
+              };
+              result = operateClean(wf, copts);
+              break;
+            }
             case "to-format2":
               result = await operateToFormat2(wf, state.cache);
               break;
