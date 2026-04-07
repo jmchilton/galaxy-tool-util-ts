@@ -19,7 +19,7 @@
     "format-fix": "prettier --write 'src/**/*.{ts,vue}'"
   },
   "dependencies": {
-    "@galaxy-tool-util/gxwf-client": "workspace:*",
+    "@galaxy-tool-util/schema": "workspace:*",
     "@primevue/themes": "^4.3.0",
     "primevue": "^4.3.0",
     "vue": "^3.5.0"

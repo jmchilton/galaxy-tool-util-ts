@@ -8,12 +8,14 @@ import {
   serializeWorkflow,
   writeWorkflowOutput,
 } from "./workflow-io.js";
+import { writeSingleReportHtml } from "./report-output.js";
 
 export interface CleanOptions {
   output?: string;
   diff?: boolean;
   format?: string;
   json?: boolean;
+  reportHtml?: string | boolean;
 }
 
 export async function runClean(filePath: string, opts: CleanOptions): Promise<void> {
@@ -25,9 +27,12 @@ export async function runClean(filePath: string, opts: CleanOptions): Promise<vo
 
   const { results } = cleanWorkflow(data);
 
-  if (opts.json) {
+  if (opts.json || opts.reportHtml) {
     const report = buildSingleCleanReport(filePath, results);
-    console.log(JSON.stringify(report, null, 2));
+    if (opts.json) {
+      console.log(JSON.stringify(report, null, 2));
+    }
+    await writeSingleReportHtml("clean", report, opts.reportHtml);
     return;
   }
 

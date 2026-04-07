@@ -33,7 +33,8 @@ addStrictOptions(
       "--tool-schema-dir <dir>",
       "Directory of pre-exported per-tool JSON Schemas (for offline json-schema mode)",
     )
-    .option("--json", "Output structured JSON report"),
+    .option("--json", "Output structured JSON report")
+    .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)"),
 ).action(runValidateWorkflow);
 
 program
@@ -44,6 +45,7 @@ program
   .option("--diff", "Show diff of changes instead of writing output")
   .option("--format <fmt>", "Force format: native or format2 (auto-detected by default)")
   .option("--json", "Output structured JSON report")
+  .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)")
   .action(runClean);
 
 addStrictOptions(
@@ -55,7 +57,8 @@ addStrictOptions(
     .option("--skip-state-validation", "Skip tool state validation against cached tool definitions")
     .option("--cache-dir <dir>", "Tool cache directory (for state validation)")
     .option("--format <fmt>", "Force format: native or format2 (auto-detected by default)")
-    .option("--json", "Output structured JSON result"),
+    .option("--json", "Output structured JSON result")
+    .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)"),
 ).action(runLint);
 
 addStrictOptions(

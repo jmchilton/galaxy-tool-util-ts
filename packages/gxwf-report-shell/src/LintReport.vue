@@ -41,14 +41,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import type { SingleLintReport, ValidationStepResult } from "@galaxy-tool-util/schema";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
 import Message from "primevue/message";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type SingleLintReport = components["schemas"]["SingleLintReport"];
-type ValidationStepResult = components["schemas"]["ValidationStepResult"];
 
 const props = defineProps<{
   report: SingleLintReport;

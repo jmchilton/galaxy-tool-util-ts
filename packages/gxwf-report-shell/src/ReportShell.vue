@@ -20,16 +20,16 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import type {
+  SingleValidationReport,
+  SingleLintReport,
+  SingleCleanReport,
+  SingleRoundTripReport,
+} from "@galaxy-tool-util/schema";
 import ValidationReport from "./ValidationReport.vue";
 import LintReport from "./LintReport.vue";
 import CleanReport from "./CleanReport.vue";
 import RoundtripReport from "./RoundtripReport.vue";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type SingleValidationReport = components["schemas"]["SingleValidationReport"];
-type SingleLintReport = components["schemas"]["SingleLintReport"];
-type SingleCleanReport = components["schemas"]["SingleCleanReport"];
-type SingleRoundTripReport = components["schemas"]["SingleRoundTripReport"];
 
 interface ReportPayload {
   type: "validate" | "lint" | "clean" | "roundtrip";

@@ -1,11 +1,11 @@
 import { computed, reactive } from "vue";
 import { useApi } from "./useApi";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type SingleValidationReport = components["schemas"]["SingleValidationReport"];
-type SingleLintReport = components["schemas"]["SingleLintReport"];
-type SingleCleanReport = components["schemas"]["SingleCleanReport"];
-type SingleRoundTripReport = components["schemas"]["SingleRoundTripReport"];
+import type {
+  SingleValidationReport,
+  SingleLintReport,
+  SingleCleanReport,
+  SingleRoundTripReport,
+} from "@galaxy-tool-util/schema";
 
 export type OperationName = "validate" | "lint" | "clean" | "roundtrip";
 
@@ -100,7 +100,7 @@ export function useOperation(workflowPath: string) {
       if (error) {
         s.error.validate = "Failed to validate workflow";
       } else {
-        s.results.validate = data ?? null;
+        s.results.validate = (data as unknown as SingleValidationReport) ?? null;
       }
     } finally {
       s.loading.validate = false;
@@ -118,7 +118,7 @@ export function useOperation(workflowPath: string) {
       if (error) {
         s.error.lint = "Failed to lint workflow";
       } else {
-        s.results.lint = data ?? null;
+        s.results.lint = (data as unknown as SingleLintReport) ?? null;
       }
     } finally {
       s.loading.lint = false;
@@ -136,7 +136,7 @@ export function useOperation(workflowPath: string) {
       if (error) {
         s.error.clean = "Failed to clean workflow";
       } else {
-        s.results.clean = data ?? null;
+        s.results.clean = (data as unknown as SingleCleanReport) ?? null;
       }
     } finally {
       s.loading.clean = false;
@@ -154,7 +154,7 @@ export function useOperation(workflowPath: string) {
       if (error) {
         s.error.roundtrip = "Failed to run roundtrip";
       } else {
-        s.results.roundtrip = data ?? null;
+        s.results.roundtrip = (data as unknown as SingleRoundTripReport) ?? null;
       }
     } finally {
       s.loading.roundtrip = false;

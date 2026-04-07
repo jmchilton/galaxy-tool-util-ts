@@ -42,13 +42,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import type { SingleRoundTripReport } from "@galaxy-tool-util/schema";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
 import Message from "primevue/message";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type SingleRoundTripReport = components["schemas"]["SingleRoundTripReport"];
 
 const props = defineProps<{
   report: SingleRoundTripReport;

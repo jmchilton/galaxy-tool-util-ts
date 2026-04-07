@@ -34,12 +34,9 @@
 
 <script setup lang="ts">
 import DataTable from "primevue/datatable";
+import type { SingleCleanReport, CleanStepResult } from "@galaxy-tool-util/schema";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type SingleCleanReport = components["schemas"]["SingleCleanReport"];
-type CleanStepResult = components["schemas"]["CleanStepResult"];
 
 defineProps<{
   report: SingleCleanReport;

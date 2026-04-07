@@ -98,9 +98,9 @@ importers:
 
   packages/gxwf-report-shell:
     dependencies:
-      '@galaxy-tool-util/gxwf-client':
+      '@galaxy-tool-util/schema':
         specifier: workspace:*
-        version: link:../gxwf-client
+        version: link:../schema
       '@primevue/themes':
         specifier: ^4.3.0
         version: 4.5.4
@@ -129,6 +129,9 @@ importers:
       '@galaxy-tool-util/gxwf-report-shell':
         specifier: workspace:*
         version: link:../gxwf-report-shell
+      '@galaxy-tool-util/schema':
+        specifier: workspace:*
+        version: link:../schema
       '@primevue/themes':
         specifier: ^4.3.0
         version: 4.5.4
