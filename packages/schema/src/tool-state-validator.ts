@@ -5,15 +5,12 @@ import {
   validateFormat2StepState,
   validateFormat2StepStateStrict,
   validateNativeStepState,
+  type ToolStateDiagnostic,
 } from "./workflow/stateful-validate.js";
 
-/** A single diagnostic produced by tool-state validation. */
-export interface ToolStateDiagnostic {
-  /** Dot-separated parameter path, or "" for top-level / unlocated issues. */
-  path: string;
-  message: string;
-  severity: "error" | "warning";
-}
+// Re-export so consumers can import the type from this module without
+// needing to know its definition lives in stateful-validate.
+export type { ToolStateDiagnostic };
 
 /**
  * High-level bridge: given a {@link ToolInfoService}, validate tool_state

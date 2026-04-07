@@ -137,7 +137,6 @@ export {
   validateFormat2StepState,
   /** Strict format2 state validation — reports unknown keys as diagnostics. */
   validateFormat2StepStateStrict,
-  type StrictDiagnostic,
   type ValidationPhase,
   /** Navigate a tool parameter tree by path segments (for LSP completion/hover). */
   findParamAtPath,

@@ -112,9 +112,14 @@ export function validateFormat2StepState(
   }
 }
 
-/** Structured diagnostic returned by {@link validateFormat2StepStateStrict}. */
-export interface StrictDiagnostic {
-  /** Dot-separated parameter path, or "" for top-level issues. */
+/**
+ * A single diagnostic produced by tool-state validation.
+ *
+ * Defined here (lower-level module) so both {@link validateFormat2StepStateStrict}
+ * and the higher-level {@link ToolStateValidator} share one canonical type.
+ */
+export interface ToolStateDiagnostic {
+  /** Dot-separated parameter path, or "" for top-level / unlocated issues. */
   path: string;
   message: string;
   severity: "error" | "warning";
@@ -131,7 +136,7 @@ export interface StrictDiagnostic {
 export function validateFormat2StepStateStrict(
   inputs: ToolParameterModel[],
   format2State: Record<string, unknown>,
-): StrictDiagnostic[] {
+): ToolStateDiagnostic[] {
   const bundle = buildBundle(inputs);
   const model = createFieldModel(bundle, "workflow_step");
   if (!model) return [];
@@ -143,10 +148,10 @@ export function validateFormat2StepStateStrict(
   const result = decode(state);
   if (result._tag === "Left") {
     const issues = ParseResult.ArrayFormatter.formatErrorSync(result.left);
-    return issues.map((i) => ({
+    return issues.map((i): ToolStateDiagnostic => ({
       path: i.path.map(String).join("."),
       message: i.message,
-      severity: "error" as const,
+      severity: "error",
     }));
   }
   return [];

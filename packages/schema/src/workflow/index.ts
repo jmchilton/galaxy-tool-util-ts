@@ -106,7 +106,7 @@ export {
   validateNativeStepState,
   validateFormat2StepState,
   validateFormat2StepStateStrict,
-  type StrictDiagnostic,
+  type ToolStateDiagnostic,
   type ValidationPhase,
 } from "./stateful-validate.js";
 
