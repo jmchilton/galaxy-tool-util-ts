@@ -6,11 +6,7 @@
  */
 
 import type { ToolParameterModel } from "../schema/bundle-types.js";
-import {
-  isConditionalParam,
-  isRepeatParam,
-  isSectionParam,
-} from "../schema/type-guards.js";
+import { isConditionalParam, isRepeatParam, isSectionParam } from "../schema/type-guards.js";
 import { selectWhichWhen } from "./walk-helpers.js";
 
 export interface ParamNavigationResult {
@@ -58,20 +54,18 @@ export function findParamAtPath(
 
   if (isConditionalParam(match)) {
     const conditionalState = _getSubState(state, head);
-    // Only filter to a specific branch when state was provided — if no state
-    // is available (e.g. user hasn't set the discriminator yet) show all
-    // branch params so completions aren't artificially restricted.
-    const activeWhen = conditionalState !== undefined
-      ? selectWhichWhen(match, conditionalState)
-      : null;
+    // Only filter to a specific branch when the discriminator key is
+    // explicitly present in state. If state is absent OR the discriminator
+    // key hasn't been set yet, merge all branches so completions/hover
+    // aren't artificially restricted to a default branch the user may not
+    // have chosen.
+    const discriminatorSet =
+      conditionalState !== undefined && match.test_parameter.name in conditionalState;
+    const activeWhen = discriminatorSet ? selectWhichWhen(match, conditionalState!) : null;
     const branchParams = activeWhen
       ? activeWhen.parameters
       : match.whens.flatMap((w) => w.parameters);
-    return findParamAtPath(
-      [match.test_parameter, ...branchParams],
-      tail,
-      conditionalState,
-    );
+    return findParamAtPath([match.test_parameter, ...branchParams], tail, conditionalState);
   }
 
   return { param: undefined, availableParams: params };

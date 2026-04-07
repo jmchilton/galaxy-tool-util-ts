@@ -148,11 +148,13 @@ export function validateFormat2StepStateStrict(
   const result = decode(state);
   if (result._tag === "Left") {
     const issues = ParseResult.ArrayFormatter.formatErrorSync(result.left);
-    return issues.map((i): ToolStateDiagnostic => ({
-      path: i.path.map(String).join("."),
-      message: i.message,
-      severity: "error",
-    }));
+    return issues.map(
+      (i): ToolStateDiagnostic => ({
+        path: i.path.map(String).join("."),
+        message: i.message,
+        severity: "error",
+      }),
+    );
   }
   return [];
 }

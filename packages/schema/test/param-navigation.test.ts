@@ -103,7 +103,11 @@ function repeatParam(name: string, children: ToolParameterModel[]): RepeatParame
 function conditionalParam(
   name: string,
   testParam: BooleanParameterModel | SelectParameterModel,
-  whens: Array<{ discriminator: string | boolean; is_default_when: boolean; parameters: ToolParameterModel[] }>,
+  whens: Array<{
+    discriminator: string | boolean;
+    is_default_when: boolean;
+    parameters: ToolParameterModel[];
+  }>,
 ): ConditionalParameterModel {
   return {
     name,
@@ -206,14 +210,10 @@ describe("findParamAtPath — repeat", () => {
 // ---------------------------------------------------------------------------
 
 describe("findParamAtPath — conditional", () => {
-  const cond = conditionalParam(
-    "mode_cond",
-    selectParam("mode_select", ["fast", "sensitive"]),
-    [
-      { discriminator: "fast", is_default_when: true, parameters: [intParam("fast_param")] },
-      { discriminator: "sensitive", is_default_when: false, parameters: [intParam("sens_param")] },
-    ],
-  );
+  const cond = conditionalParam("mode_cond", selectParam("mode_select", ["fast", "sensitive"]), [
+    { discriminator: "fast", is_default_when: true, parameters: [intParam("fast_param")] },
+    { discriminator: "sensitive", is_default_when: false, parameters: [intParam("sens_param")] },
+  ]);
   const params: ToolParameterModel[] = [cond];
 
   it("resolves to conditional param itself", () => {
@@ -227,29 +227,23 @@ describe("findParamAtPath — conditional", () => {
   });
 
   it("with state=fast, resolves fast branch param", () => {
-    const r = findParamAtPath(
-      params,
-      ["mode_cond", "fast_param"],
-      { mode_cond: { mode_select: "fast" } },
-    );
+    const r = findParamAtPath(params, ["mode_cond", "fast_param"], {
+      mode_cond: { mode_select: "fast" },
+    });
     expect(r.param?.name).toBe("fast_param");
   });
 
   it("with state=sensitive, resolves sensitive branch param", () => {
-    const r = findParamAtPath(
-      params,
-      ["mode_cond", "sens_param"],
-      { mode_cond: { mode_select: "sensitive" } },
-    );
+    const r = findParamAtPath(params, ["mode_cond", "sens_param"], {
+      mode_cond: { mode_select: "sensitive" },
+    });
     expect(r.param?.name).toBe("sens_param");
   });
 
   it("with state=fast, availableParams inside cond are test_param + fast branch only", () => {
-    const r = findParamAtPath(
-      params,
-      ["mode_cond", "fast_param"],
-      { mode_cond: { mode_select: "fast" } },
-    );
+    const r = findParamAtPath(params, ["mode_cond", "fast_param"], {
+      mode_cond: { mode_select: "fast" },
+    });
     expect(r.availableParams.map((p) => p.name)).toEqual(["mode_select", "fast_param"]);
   });
 
@@ -259,29 +253,28 @@ describe("findParamAtPath — conditional", () => {
     expect(r.availableParams.map((p) => p.name)).toContain("sens_param");
   });
 
+  it("with state present but discriminator not set, shows all branches", () => {
+    // e.g. mode_cond: {} in YAML — object exists but mode_select not yet written
+    const r = findParamAtPath(params, ["mode_cond", "fast_param"], { mode_cond: {} });
+    expect(r.availableParams.map((p) => p.name)).toContain("fast_param");
+    expect(r.availableParams.map((p) => p.name)).toContain("sens_param");
+  });
+
   it("with state=fast, sensitive branch param returns undefined param", () => {
-    const r = findParamAtPath(
-      params,
-      ["mode_cond", "sens_param"],
-      { mode_cond: { mode_select: "fast" } },
-    );
+    const r = findParamAtPath(params, ["mode_cond", "sens_param"], {
+      mode_cond: { mode_select: "fast" },
+    });
     expect(r.param).toBeUndefined();
   });
 
   it("with boolean conditional, resolves correct branch", () => {
-    const boolCond = conditionalParam(
-      "flag_cond",
-      boolParam("flag"),
-      [
-        { discriminator: true, is_default_when: true, parameters: [intParam("on_param")] },
-        { discriminator: false, is_default_when: false, parameters: [intParam("off_param")] },
-      ],
-    );
-    const r = findParamAtPath(
-      [boolCond],
-      ["flag_cond", "on_param"],
-      { flag_cond: { flag: "true" } },
-    );
+    const boolCond = conditionalParam("flag_cond", boolParam("flag"), [
+      { discriminator: true, is_default_when: true, parameters: [intParam("on_param")] },
+      { discriminator: false, is_default_when: false, parameters: [intParam("off_param")] },
+    ]);
+    const r = findParamAtPath([boolCond], ["flag_cond", "on_param"], {
+      flag_cond: { flag: "true" },
+    });
     expect(r.param?.name).toBe("on_param");
   });
 });
