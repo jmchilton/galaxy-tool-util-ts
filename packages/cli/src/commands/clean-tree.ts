@@ -12,8 +12,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { resolveFormat, serializeWorkflow } from "./workflow-io.js";
 import { collectTree, type TreeResult } from "./tree.js";
+import { writeReportOutput, type ReportOutputOptions } from "./report-output.js";
 
-export interface CleanTreeOptions {
+export interface CleanTreeOptions extends ReportOutputOptions {
   outputDir?: string;
   format?: string;
   json?: boolean;
@@ -37,6 +38,8 @@ export async function runCleanTree(dir: string, opts: CleanTreeOptions): Promise
   });
 
   const report = buildReport(treeResult);
+
+  await writeReportOutput("clean_tree.md.j2", report, opts);
 
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));
@@ -79,7 +82,7 @@ function buildReport(treeResult: TreeResult<WorkflowCleanResult>): TreeCleanRepo
     if (o.skipped) {
       workflows.push(
         buildWorkflowCleanResult(o.info.relativePath, [], {
-          skipped_reason: o.skipReason ?? "unknown",
+          skipped_reason: (o.skipReason as "legacy_encoding") ?? null,
         }),
       );
       continue;

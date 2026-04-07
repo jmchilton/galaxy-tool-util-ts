@@ -101,7 +101,9 @@ addStrictOptions(
       "--tool-schema-dir <dir>",
       "Directory of pre-exported per-tool JSON Schemas (for offline json-schema mode)",
     )
-    .option("--json", "Output structured JSON report"),
+    .option("--json", "Output structured JSON report")
+    .option("--report-markdown [file]", "Write Markdown report to file (or stdout if omitted)")
+    .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)"),
 ).action(runValidateTree);
 
 addStrictOptions(
@@ -113,7 +115,9 @@ addStrictOptions(
     .option("--skip-state-validation", "Skip tool state validation against cached tool definitions")
     .option("--cache-dir <dir>", "Tool cache directory (for state validation)")
     .option("--format <fmt>", "Force format: native or format2 (auto-detected by default)")
-    .option("--json", "Output structured JSON report"),
+    .option("--json", "Output structured JSON report")
+    .option("--report-markdown [file]", "Write Markdown report to file (or stdout if omitted)")
+    .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)"),
 ).action(runLintTree);
 
 program
@@ -123,6 +127,8 @@ program
   .option("--output-dir <dir>", "Write cleaned workflows to directory (mirrors source tree)")
   .option("--format <fmt>", "Force format: native or format2 (auto-detected by default)")
   .option("--json", "Output structured JSON report")
+  .option("--report-markdown [file]", "Write Markdown report to file (or stdout if omitted)")
+  .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)")
   .action(runCleanTree);
 
 addStrictOptions(
@@ -151,7 +157,9 @@ addStrictOptions(
     .option("--json", "Output structured JSON report")
     .option("--errors-only", "List only files with errors or failures")
     .option("--benign-only", "List only files with benign diffs (no errors, no failures)")
-    .option("--brief", "Omit per-file lines; print only the aggregate summary"),
+    .option("--brief", "Omit per-file lines; print only the aggregate summary")
+    .option("--report-markdown [file]", "Write Markdown report to file (or stdout if omitted)")
+    .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)"),
 ).action(runRoundtripTree);
 
 program.parse();

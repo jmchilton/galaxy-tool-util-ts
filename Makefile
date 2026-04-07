@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-glossary build-glossary
+.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-glossary build-glossary
 
 all: check test
 
@@ -123,6 +123,44 @@ endif
 	mkdir -p $(WFSTATE_DST)/expectations
 	cp $(WFSTATE_EXPECT_SRC)/*.yml $(WFSTATE_DST)/expectations/
 	@echo "Synced $$(ls $(WFSTATE_DST)/expectations/*.yml | wc -l | tr -d ' ') expectation files."
+
+# Sync Jinja2 report templates from Galaxy's workflow_state templates directory.
+#   GALAXY_ROOT=~/projects/worktrees/galaxy/branch/wf_tool_state make sync-wfstate-templates
+WFSTATE_TEMPLATES_SRC = $(GALAXY_ROOT)/lib/galaxy/tool_util/workflow_state/templates/reports
+WFSTATE_TEMPLATES_DST = packages/cli/src/workflow/templates/reports
+
+sync-wfstate-templates:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@test -d "$(WFSTATE_TEMPLATES_SRC)" || (echo "ERROR: $(WFSTATE_TEMPLATES_SRC) not found" && exit 1)
+	@echo "Syncing Jinja report templates from $(WFSTATE_TEMPLATES_SRC)..."
+	mkdir -p $(WFSTATE_TEMPLATES_DST)
+	cp $(WFSTATE_TEMPLATES_SRC)/*.md.j2 $(WFSTATE_TEMPLATES_DST)/
+	@echo "Synced $$(ls $(WFSTATE_TEMPLATES_DST)/*.md.j2 | wc -l | tr -d ' ') templates."
+
+check-sync-wfstate-templates:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@echo "Checking workflow_state report templates..."
+	@ok=true; \
+	for f in $(WFSTATE_TEMPLATES_SRC)/*.md.j2; do \
+		base=$$(basename "$$f"); \
+		local=$(WFSTATE_TEMPLATES_DST)/$$base; \
+		if [ -f "$$local" ] && ! diff -q "$$f" "$$local" >/dev/null 2>&1; then \
+			echo "DIVERGED: $$base"; ok=false; \
+		elif [ ! -f "$$local" ]; then \
+			echo "MISSING:  $$base"; ok=false; \
+		fi; \
+	done; \
+	for f in $(WFSTATE_TEMPLATES_DST)/*.md.j2; do \
+		base=$$(basename "$$f"); \
+		if [ ! -f "$(WFSTATE_TEMPLATES_SRC)/$$base" ]; then \
+			echo "EXTRA:    $$base (not in Galaxy — TS-side only, OK if expected)"; \
+		fi; \
+	done; \
+	if $$ok; then echo "Workflow_state report templates in sync."; else echo "Run 'make sync-wfstate-templates' to update."; exit 1; fi
 
 # Check whether synced files have diverged from their upstream sources (no overwrites).
 check-sync-workflow-fixtures:
@@ -256,8 +294,9 @@ check-sync:
 	if [ -n "$(GALAXY_ROOT)" ]; then \
 		$(MAKE) check-sync-wfstate-fixtures || failed=true; \
 		$(MAKE) check-sync-wfstate-expectations || failed=true; \
+		$(MAKE) check-sync-wfstate-templates || failed=true; \
 	else \
-		echo "SKIP: check-sync-wfstate-{fixtures,expectations} (GALAXY_ROOT not set)"; \
+		echo "SKIP: check-sync-wfstate-{fixtures,expectations,templates} (GALAXY_ROOT not set)"; \
 	fi; \
 	if $$failed; then exit 1; fi
 
@@ -287,7 +326,7 @@ endif
 ifndef GXFORMAT2_ROOT
 	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
 endif
-	$(MAKE) sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations sync-glossary
+	$(MAKE) sync-golden sync-param-spec sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations sync-wfstate-templates sync-glossary
 	$(MAKE) generate-schemas build-glossary
 	$(MAKE) verify-golden
 

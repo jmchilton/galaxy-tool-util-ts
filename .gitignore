@@ -4,3 +4,5 @@ dist/
 *.tgz
 .DS_Store
 docs/api/typedoc*
+# _templates-bundled.ts is committed as a stub; bundle-templates.mjs overwrites it at build time
+# Only ignore the build artifact version if it diverges (not typically needed)

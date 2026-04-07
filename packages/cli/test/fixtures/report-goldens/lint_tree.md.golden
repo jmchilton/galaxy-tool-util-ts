@@ -1,0 +1,10 @@
+# Lint Report
+
+Root: `/data/workflows`
+Workflows: 3 | Lint: 2 errors, 1 warnings | State: 2 OK, 0 FAIL, 0 SKIP
+
+| Workflow | Lint Errors | Lint Warnings | State OK | State Fail | State Skip |
+| --- | --- | --- | --- | --- | --- |
+| good.gxwf.yml | 0 | 0 | 1 | 0 | 0 |
+| bad.gxwf.yml | 2 | 1 | 1 | 0 | 0 |
+| skipped.gxwf.yml | - | - | - | - | SKIPPED |

@@ -1,0 +1,22 @@
+# Workflow Validation Report
+
+Root: `/data/workflows`
+Workflows: 3 | Steps: 2 OK, 1 FAIL, 0 SKIP, 1 ERROR
+
+## (root) (1 workflows)
+
+| Workflow | Steps | OK | Fail | Skip | Details |
+| --- | --- | --- | --- | --- | --- |
+| standalone.ga | - | - | - | - | ERROR: Parse error |
+
+## subdir (2 workflows)
+
+| Workflow | Steps | OK | Fail | Skip | Details |
+| --- | --- | --- | --- | --- | --- |
+| workflow_ok.ga | 1 | 1 | 0 | 0 |  |
+| workflow_fail.ga | 2 | 1 | 1 | 0 | 1 failure(s) |
+
+## Failure Details
+
+- **subdir/workflow_fail.ga** Step 1 (toolshed.g2.bx.psu.edu/repos/devteam/bwa/bwa/0.7.17): Missing required parameter: reference
+

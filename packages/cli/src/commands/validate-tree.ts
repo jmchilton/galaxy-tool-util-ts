@@ -22,8 +22,9 @@ import {
   type ValidationMode,
 } from "./validate-workflow.js";
 import { collectTree, type TreeResult } from "./tree.js";
+import { writeReportOutput, type ReportOutputOptions } from "./report-output.js";
 
-export interface ValidateTreeOptions extends StrictOptions {
+export interface ValidateTreeOptions extends StrictOptions, ReportOutputOptions {
   format?: string;
   toolState?: boolean;
   cacheDir?: string;
@@ -101,6 +102,8 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
 
   const report = buildReport(treeResult);
 
+  await writeReportOutput("validate_tree.md.j2", report, opts);
+
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));
     process.exitCode = computeValidateExitCode(report);
@@ -147,7 +150,7 @@ function buildReport(treeResult: TreeResult<WorkflowValidationResult>): TreeVali
     if (o.skipped) {
       workflows.push(
         buildWorkflowValidationResult(o.info.relativePath, [], {
-          skipped_reason: o.skipReason ?? "unknown",
+          skipped_reason: (o.skipReason as "legacy_encoding") ?? null,
         }),
       );
       continue;

@@ -1,0 +1,7 @@
+# Export Report: /data/workflows
+
+- **ok.ga**: OK (5 steps)
+- **partial.ga**: PARTIAL (2 fallbacks)
+- **err.ga**: ERROR (Unsupported step type)
+
+**Summary**: 1 OK, 1 errors, 0 skipped
