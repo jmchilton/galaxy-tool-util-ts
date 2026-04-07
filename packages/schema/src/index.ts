@@ -135,7 +135,13 @@ export {
   ConversionValidationFailure,
   validateNativeStepState,
   validateFormat2StepState,
+  /** Strict format2 state validation — reports unknown keys as diagnostics. */
+  validateFormat2StepStateStrict,
+  type StrictDiagnostic,
   type ValidationPhase,
+  /** Navigate a tool parameter tree by path segments (for LSP completion/hover). */
+  findParamAtPath,
+  type ParamNavigationResult,
   /** Roundtrip a native workflow through format2 and back, diffing tool_state per step. */
   roundtripValidate,
   type RoundtripResult,

@@ -3,6 +3,7 @@ import type { ToolParameterModel } from "./schema/bundle-types.js";
 import {
   ConversionValidationFailure,
   validateFormat2StepState,
+  validateFormat2StepStateStrict,
   validateNativeStepState,
 } from "./workflow/stateful-validate.js";
 
@@ -58,5 +59,24 @@ export class ToolStateValidator {
       }
       throw e;
     }
+  }
+
+  /**
+   * Strict variant: reports unknown parameter keys as diagnostics.
+   *
+   * Unlike {@link validateFormat2Step} (which uses `onExcessProperty: "ignore"`),
+   * this variant treats excess keys as errors — intended for LSP diagnostics
+   * where unknown params should be flagged. Returns structured diagnostics
+   * with dot-separated paths so callers can locate issues in the YAML AST.
+   */
+  async validateFormat2StepStrict(
+    toolId: string,
+    toolVersion: string | null,
+    format2State: Record<string, unknown>,
+  ): Promise<ToolStateDiagnostic[]> {
+    const parsed = await this.toolInfo.getToolInfo(toolId, toolVersion).catch(() => null);
+    if (!parsed) return [];
+    const inputs = parsed.inputs as ToolParameterModel[];
+    return validateFormat2StepStateStrict(inputs, format2State);
   }
 }

@@ -135,5 +135,59 @@ describe("ToolStateValidator", () => {
       expect(result.length).toBeGreaterThan(0);
       expect(result[0].severity).toBe("error");
     });
+
+    it("does NOT report unknown keys (lenient mode)", async () => {
+      await toolInfo.addTool(TOOL_ID, TOOL_VERSION, makeParsedTool([intParam("count")]));
+      // unknown_key should be silently ignored
+      const result = await validator.validateFormat2Step(TOOL_ID, TOOL_VERSION, {
+        count: 5,
+        unknown_key: "surplus",
+      });
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("validateFormat2StepStrict", () => {
+    it("returns empty array for unknown tool", async () => {
+      const result = await validator.validateFormat2StepStrict(TOOL_ID, TOOL_VERSION, { count: 5 });
+      expect(result).toEqual([]);
+    });
+
+    it("returns empty array for valid state with no extra keys", async () => {
+      await toolInfo.addTool(TOOL_ID, TOOL_VERSION, makeParsedTool([intParam("count")]));
+      const result = await validator.validateFormat2StepStrict(TOOL_ID, TOOL_VERSION, { count: 5 });
+      expect(result).toEqual([]);
+    });
+
+    it("reports unknown key with a non-empty path", async () => {
+      await toolInfo.addTool(TOOL_ID, TOOL_VERSION, makeParsedTool([intParam("count")]));
+      const result = await validator.validateFormat2StepStrict(TOOL_ID, TOOL_VERSION, {
+        count: 5,
+        unknown_key: "surplus",
+      });
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0].severity).toBe("error");
+      // path should identify the unknown key
+      expect(result[0].path).toContain("unknown_key");
+    });
+
+    it("reports value type error with path to the offending param", async () => {
+      await toolInfo.addTool(TOOL_ID, TOOL_VERSION, makeParsedTool([intParam("count")]));
+      const result = await validator.validateFormat2StepStrict(TOOL_ID, TOOL_VERSION, {
+        count: "not-a-number",
+      });
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0].severity).toBe("error");
+      expect(result[0].path).toContain("count");
+    });
+
+    it("returns empty array for tool with no inputs", async () => {
+      await toolInfo.addTool(TOOL_ID, TOOL_VERSION, makeParsedTool([]));
+      // no inputs → schema cannot be built → no diagnostics
+      const result = await validator.validateFormat2StepStrict(TOOL_ID, TOOL_VERSION, {
+        any_key: "value",
+      });
+      expect(result).toEqual([]);
+    });
   });
 });
