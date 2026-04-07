@@ -49,3 +49,15 @@ export type { WorkflowInfo, WorkflowOutcome, TreeResult, TreeSummary } from "./c
 export { renderStepResults } from "./commands/render-results.js";
 /** Write workflow content to file or stdout. */
 export { writeWorkflowOutput } from "./commands/workflow-io.js";
+/** Validate native/format2 workflow steps programmatically (no CLI I/O). */
+export {
+  validateNativeSteps,
+  validateFormat2Steps,
+  decodeStructureErrors,
+  detectEncodingErrors,
+} from "./commands/validate-workflow.js";
+/** Preload tool inputs from a ToolCache into a synchronous ToolInputsResolver. */
+export { loadToolInputsForWorkflow } from "./commands/stateful-tool-inputs.js";
+export type { ToolLoadStatus, LoadedToolInputs } from "./commands/stateful-tool-inputs.js";
+/** Default subworkflow ref resolver (base64, TRS, HTTP, file paths). */
+export { createDefaultResolver } from "./commands/url-resolver.js";

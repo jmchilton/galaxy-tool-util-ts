@@ -1,0 +1,2294 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Galaxy Workflow Development API",
+    "description": "Validate, lint, clean, and convert Galaxy workflows against tool definitions",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/workflows": {
+      "get": {
+        "summary": "List Workflows",
+        "description": "List all discovered workflows in the configured directory.",
+        "operationId": "list_workflows_workflows_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowIndex"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/refresh": {
+      "post": {
+        "summary": "Refresh Workflows",
+        "description": "Re-discover workflows from the configured directory.",
+        "operationId": "refresh_workflows_workflows_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowIndex"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_path}/validate": {
+      "get": {
+        "summary": "Validate Workflow",
+        "description": "Validate a workflow's tool state against tool definitions.",
+        "operationId": "validate_workflow_workflows__workflow_path__validate_get",
+        "parameters": [
+          {
+            "name": "workflow_path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Path"
+            }
+          },
+          {
+            "name": "strict",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Strict"
+            }
+          },
+          {
+            "name": "connections",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Connections"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "pydantic",
+              "title": "Mode"
+            }
+          },
+          {
+            "name": "allow",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Allow"
+            }
+          },
+          {
+            "name": "deny",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Deny"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SingleValidationReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_path}/clean": {
+      "get": {
+        "summary": "Clean Workflow",
+        "description": "Report stale tool state keys in a workflow.",
+        "operationId": "clean_workflow_workflows__workflow_path__clean_get",
+        "parameters": [
+          {
+            "name": "workflow_path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Path"
+            }
+          },
+          {
+            "name": "preserve",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Preserve"
+            }
+          },
+          {
+            "name": "strip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Strip"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SingleCleanReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_path}/to-format2": {
+      "get": {
+        "summary": "To Format2",
+        "description": "Convert a native workflow to format2 with schema-aware state.",
+        "operationId": "to_format2_workflows__workflow_path__to_format2_get",
+        "parameters": [
+          {
+            "name": "workflow_path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SingleExportReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_path}/to-native": {
+      "get": {
+        "summary": "To Native",
+        "description": "Convert a format2 workflow to native Galaxy format with schema-aware state.",
+        "operationId": "to_native_workflows__workflow_path__to_native_get",
+        "parameters": [
+          {
+            "name": "workflow_path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToNativeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_path}/roundtrip": {
+      "get": {
+        "summary": "Roundtrip Workflow",
+        "description": "Run round-trip validation (native -> format2 -> native).",
+        "operationId": "roundtrip_workflow_workflows__workflow_path__roundtrip_get",
+        "parameters": [
+          {
+            "name": "workflow_path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SingleRoundTripReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contents": {
+      "get": {
+        "summary": "Read Root Contents",
+        "description": "Read configured directory root (Jupyter Contents API).",
+        "operationId": "read_root_contents_api_contents_get",
+        "parameters": [
+          {
+            "name": "content",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Content"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentsModel-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Root Untitled",
+        "description": "Create an untitled file or directory in the configured root.",
+        "operationId": "create_root_untitled_api_contents_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentsModel-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contents/{path}/checkpoints": {
+      "get": {
+        "summary": "List File Checkpoints",
+        "description": "List checkpoints for a file (Jupyter Contents API).",
+        "operationId": "list_file_checkpoints_api_contents__path__checkpoints_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CheckpointModel"
+                  },
+                  "title": "Response List File Checkpoints Api Contents  Path  Checkpoints Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create File Checkpoint",
+        "description": "Create a checkpoint snapshot of a file.",
+        "operationId": "create_file_checkpoint_api_contents__path__checkpoints_post",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckpointModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contents/{path}/checkpoints/{checkpoint_id}": {
+      "post": {
+        "summary": "Restore File Checkpoint",
+        "description": "Restore a file from a stored checkpoint.",
+        "operationId": "restore_file_checkpoint_api_contents__path__checkpoints__checkpoint_id__post",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          },
+          {
+            "name": "checkpoint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Checkpoint Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete File Checkpoint",
+        "description": "Delete a stored checkpoint.",
+        "operationId": "delete_file_checkpoint_api_contents__path__checkpoints__checkpoint_id__delete",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          },
+          {
+            "name": "checkpoint_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Checkpoint Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contents/{path}": {
+      "get": {
+        "summary": "Read Path Contents",
+        "description": "Read a file or directory by relative path.",
+        "operationId": "read_path_contents_api_contents__path__get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          },
+          {
+            "name": "content",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Content"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentsModel-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Path Untitled",
+        "description": "Create an untitled file or directory inside {path}.",
+        "operationId": "create_path_untitled_api_contents__path__post",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentsModel-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Write Path Contents",
+        "description": "Save (create-or-replace) a file or create a directory.\n\nOptional ``If-Unmodified-Since`` header (RFC 7232, HTTP-date) enables conflict\ndetection: if the file's on-disk mtime is newer than the supplied date, the\nserver returns 409 instead of overwriting.",
+        "operationId": "write_path_contents_api_contents__path__put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          },
+          {
+            "name": "If-Unmodified-Since",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Unmodified-Since"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentsModel-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentsModel-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Path Contents",
+        "description": "Delete a file or directory (recursive).",
+        "operationId": "delete_path_contents_api_contents__path__delete",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Rename Path Contents",
+        "description": "Rename/move a file or directory.",
+        "operationId": "rename_path_contents_api_contents__path__patch",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentsModel-Output"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_path}/lint": {
+      "get": {
+        "summary": "Lint Workflow",
+        "description": "Lint a workflow (structural + tool state validation).",
+        "operationId": "lint_workflow_workflows__workflow_path__lint_get",
+        "parameters": [
+          {
+            "name": "workflow_path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Path"
+            }
+          },
+          {
+            "name": "strict",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Strict"
+            }
+          },
+          {
+            "name": "allow",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Allow"
+            }
+          },
+          {
+            "name": "deny",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Deny"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SingleLintReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BenignArtifact": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "proven_by": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Proven By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "BenignArtifact"
+      },
+      "CheckpointModel": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "last_modified": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Modified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "last_modified"
+        ],
+        "title": "CheckpointModel",
+        "description": "Checkpoint metadata (Jupyter Contents API shape)."
+      },
+      "CleanStepResult": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "tool_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Id"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "removed_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Removed Keys",
+            "default": []
+          },
+          "skipped": {
+            "type": "boolean",
+            "title": "Skipped",
+            "default": false
+          },
+          "skip_reason": {
+            "type": "string",
+            "title": "Skip Reason",
+            "default": ""
+          },
+          "display_label": {
+            "type": "string",
+            "title": "Display Label",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "display_label"
+        ],
+        "title": "CleanStepResult"
+      },
+      "ConnectionResult": {
+        "properties": {
+          "source_step": {
+            "type": "string",
+            "title": "Source Step"
+          },
+          "source_output": {
+            "type": "string",
+            "title": "Source Output"
+          },
+          "target_step": {
+            "type": "string",
+            "title": "Target Step"
+          },
+          "target_input": {
+            "type": "string",
+            "title": "Target Input"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "invalid",
+              "skip"
+            ],
+            "title": "Status"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mapping"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_step",
+          "source_output",
+          "target_step",
+          "target_input",
+          "status"
+        ],
+        "title": "ConnectionResult",
+        "description": "Single connection between two steps.\n\nstatus and mapping are orthogonal:\n- status: whether the connection is valid (ok/invalid/skip)\n- mapping: what collection type is being mapped over (None = direct match)"
+      },
+      "ConnectionStepResult": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "tool_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Id"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "step_type": {
+            "type": "string",
+            "title": "Step Type",
+            "default": "tool"
+          },
+          "map_over": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Map Over"
+          },
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionResult"
+            },
+            "type": "array",
+            "title": "Connections",
+            "default": []
+          },
+          "resolved_outputs": {
+            "items": {
+              "$ref": "#/components/schemas/ResolvedOutputType"
+            },
+            "type": "array",
+            "title": "Resolved Outputs",
+            "default": []
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "step"
+        ],
+        "title": "ConnectionStepResult",
+        "description": "Connection validation result for one step."
+      },
+      "ConnectionValidationReport": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "step_results": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionStepResult"
+            },
+            "type": "array",
+            "title": "Step Results",
+            "default": []
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary",
+            "default": {}
+          },
+          "has_details": {
+            "type": "boolean",
+            "title": "Has Details",
+            "description": "True iff any step has connection data or step-level errors.\n\nPrecomputed here so templates don't need a mutable accumulator loop\n(Jinja2 namespaces aren't in the Jinja2/Nunjucks shared subset).",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid",
+          "has_details"
+        ],
+        "title": "ConnectionValidationReport",
+        "description": "Connection validation results for one workflow."
+      },
+      "ContentsModel-Input": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "title": "Type"
+          },
+          "writable": {
+            "type": "boolean",
+            "title": "Writable"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created"
+          },
+          "last_modified": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Modified"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "mimetype": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mimetype"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "base64"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ContentsModel-Input"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "path",
+          "type",
+          "writable",
+          "created",
+          "last_modified"
+        ],
+        "title": "ContentsModel",
+        "description": "Jupyter Contents API-shaped model for files and directories."
+      },
+      "ContentsModel-Output": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "title": "Type"
+          },
+          "writable": {
+            "type": "boolean",
+            "title": "Writable"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created"
+          },
+          "last_modified": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Modified"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "mimetype": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mimetype"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "base64"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ContentsModel-Output"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "path",
+          "type",
+          "writable",
+          "created",
+          "last_modified"
+        ],
+        "title": "ContentsModel",
+        "description": "Jupyter Contents API-shaped model for files and directories."
+      },
+      "CreateRequest": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "title": "Type",
+            "default": "file"
+          },
+          "ext": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ext"
+          }
+        },
+        "type": "object",
+        "title": "CreateRequest",
+        "description": "Body for POST /api/contents/{path} \u2014 create untitled file or directory under {path}."
+      },
+      "DiffSeverity": {
+        "type": "string",
+        "enum": [
+          "error",
+          "benign"
+        ],
+        "title": "DiffSeverity"
+      },
+      "DiffType": {
+        "type": "string",
+        "enum": [
+          "value_mismatch",
+          "missing_in_roundtrip",
+          "missing_in_original",
+          "connection_mismatch",
+          "position_mismatch",
+          "label_mismatch",
+          "annotation_mismatch",
+          "comment_mismatch",
+          "step_missing"
+        ],
+        "title": "DiffType"
+      },
+      "FailureClass": {
+        "type": "string",
+        "enum": [
+          "tool_not_found",
+          "native_validation",
+          "conversion_error",
+          "type_not_handled",
+          "format2_validation",
+          "reimport_error",
+          "roundtrip_mismatch",
+          "subworkflow",
+          "parse_error",
+          "other"
+        ],
+        "title": "FailureClass"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "RenameRequest": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "title": "RenameRequest",
+        "description": "Body for PATCH /api/contents/{path} \u2014 rename/move."
+      },
+      "ResolvedOutputType": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "collection_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ResolvedOutputType",
+        "description": "Resolved collection type for a step output."
+      },
+      "RoundTripResult": {
+        "properties": {
+          "workflow_name": {
+            "type": "string",
+            "title": "Workflow Name"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "step_results": {
+            "items": {
+              "$ref": "#/components/schemas/StepResult"
+            },
+            "type": "array",
+            "title": "Step Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_name",
+          "direction"
+        ],
+        "title": "RoundTripResult"
+      },
+      "RoundTripValidationResult": {
+        "properties": {
+          "workflow_path": {
+            "type": "string",
+            "title": "Workflow Path"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "conversion_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoundTripResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "diffs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StepDiff"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diffs"
+          },
+          "step_id_mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StepIdMappingResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stale_clean_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CleanStepResult"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Clean Results"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "skipped_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SkipWorkflowReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "structure_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Structure Errors"
+          },
+          "encoding_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Encoding Errors"
+          },
+          "error_diffs": {
+            "items": {
+              "$ref": "#/components/schemas/StepDiff"
+            },
+            "type": "array",
+            "title": "Error Diffs",
+            "readOnly": true
+          },
+          "benign_diffs": {
+            "items": {
+              "$ref": "#/components/schemas/StepDiff"
+            },
+            "type": "array",
+            "title": "Benign Diffs",
+            "readOnly": true
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "readOnly": true
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "readOnly": true
+          },
+          "conversion_failure_lines": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Conversion Failure Lines",
+            "description": "Pre-formatted per-step conversion failures.\n\nKept identical to the strings ``_format_conversion_failures`` emits so\ntemplates stay inside the Jinja2/Nunjucks shared subset (no method calls).",
+            "readOnly": true
+          },
+          "summary_line": {
+            "type": "string",
+            "title": "Summary Line",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_path",
+          "error_diffs",
+          "benign_diffs",
+          "ok",
+          "status",
+          "conversion_failure_lines",
+          "summary_line"
+        ],
+        "title": "RoundTripValidationResult",
+        "description": "Result of validating a workflow's native\u2192format2\u2192native round-trip."
+      },
+      "SingleCleanReport": {
+        "properties": {
+          "workflow": {
+            "type": "string",
+            "title": "Workflow"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/CleanStepResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "total_removed": {
+            "type": "integer",
+            "title": "Total Removed",
+            "readOnly": true
+          },
+          "steps_with_removals": {
+            "type": "integer",
+            "title": "Steps With Removals",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow",
+          "results",
+          "total_removed",
+          "steps_with_removals"
+        ],
+        "title": "SingleCleanReport",
+        "description": "JSON shape for single-file cleaning."
+      },
+      "SingleExportReport": {
+        "properties": {
+          "workflow": {
+            "type": "string",
+            "title": "Workflow"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": false
+          },
+          "steps_converted": {
+            "type": "integer",
+            "title": "Steps Converted",
+            "default": 0
+          },
+          "steps_fallback": {
+            "type": "integer",
+            "title": "Steps Fallback",
+            "default": 0
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow",
+          "summary"
+        ],
+        "title": "SingleExportReport",
+        "description": "JSON shape for single-file export."
+      },
+      "SingleLintReport": {
+        "properties": {
+          "workflow": {
+            "type": "string",
+            "title": "Workflow"
+          },
+          "lint_errors": {
+            "type": "integer",
+            "title": "Lint Errors",
+            "default": 0
+          },
+          "lint_warnings": {
+            "type": "integer",
+            "title": "Lint Warnings",
+            "default": 0
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationStepResult"
+            },
+            "type": "array",
+            "title": "Results",
+            "default": []
+          },
+          "structure_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Structure Errors"
+          },
+          "encoding_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Encoding Errors"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow",
+          "summary"
+        ],
+        "title": "SingleLintReport",
+        "description": "JSON shape for single-file lint."
+      },
+      "SingleRoundTripReport": {
+        "properties": {
+          "workflow": {
+            "type": "string",
+            "title": "Workflow"
+          },
+          "result": {
+            "$ref": "#/components/schemas/RoundTripValidationResult"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow",
+          "result"
+        ],
+        "title": "SingleRoundTripReport",
+        "description": "JSON shape for single-file roundtrip validation."
+      },
+      "SingleValidationReport": {
+        "properties": {
+          "workflow": {
+            "type": "string",
+            "title": "Workflow"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationStepResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "connection_report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionValidationReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped Reason"
+          },
+          "structure_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Structure Errors"
+          },
+          "encoding_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Encoding Errors"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow",
+          "results",
+          "summary"
+        ],
+        "title": "SingleValidationReport",
+        "description": "JSON shape for single-file validation."
+      },
+      "SkipWorkflowReason": {
+        "type": "string",
+        "enum": [
+          "legacy_encoding"
+        ],
+        "title": "SkipWorkflowReason"
+      },
+      "StepDiff": {
+        "properties": {
+          "step_path": {
+            "type": "string",
+            "title": "Step Path"
+          },
+          "key_path": {
+            "type": "string",
+            "title": "Key Path"
+          },
+          "diff_type": {
+            "$ref": "#/components/schemas/DiffType"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/DiffSeverity"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "original_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Value"
+          },
+          "roundtrip_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roundtrip Value"
+          },
+          "benign_artifact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BenignArtifact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_path",
+          "key_path",
+          "diff_type",
+          "severity",
+          "description"
+        ],
+        "title": "StepDiff"
+      },
+      "StepEncodeStatus": {
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "title": "Step Id"
+          },
+          "step_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Label"
+          },
+          "tool_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Id"
+          },
+          "encoded": {
+            "type": "boolean",
+            "title": "Encoded",
+            "default": false
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_id"
+        ],
+        "title": "StepEncodeStatus"
+      },
+      "StepIdMappingResult": {
+        "properties": {
+          "mapping": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Mapping"
+          },
+          "match_methods": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Match Methods"
+          }
+        },
+        "type": "object",
+        "title": "StepIdMappingResult",
+        "description": "Result of step ID matching between original and roundtripped workflows."
+      },
+      "StepResult": {
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "title": "Step Id"
+          },
+          "tool_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Id"
+          },
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "failure_class": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureClass"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "diffs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Diffs"
+          },
+          "format2_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format2 State"
+          },
+          "format2_connections": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format2 Connections"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_id",
+          "success"
+        ],
+        "title": "StepResult"
+      },
+      "ToNativeResult": {
+        "properties": {
+          "native_dict": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Native Dict"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/StepEncodeStatus"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "all_encoded": {
+            "type": "boolean",
+            "title": "All Encoded",
+            "readOnly": true
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "native_dict",
+          "all_encoded",
+          "summary"
+        ],
+        "title": "ToNativeResult"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationStepResult": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "tool_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Id"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "fail",
+              "skip_tool_not_found",
+              "skip_replacement_params"
+            ],
+            "title": "Status"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "status"
+        ],
+        "title": "ValidationStepResult"
+      },
+      "WorkflowEntry": {
+        "properties": {
+          "relative_path": {
+            "type": "string",
+            "title": "Relative Path"
+          },
+          "format": {
+            "type": "string",
+            "title": "Format"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "relative_path",
+          "format",
+          "category"
+        ],
+        "title": "WorkflowEntry",
+        "description": "A discovered workflow file."
+      },
+      "WorkflowIndex": {
+        "properties": {
+          "directory": {
+            "type": "string",
+            "title": "Directory"
+          },
+          "workflows": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowEntry"
+            },
+            "type": "array",
+            "title": "Workflows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "directory",
+          "workflows"
+        ],
+        "title": "WorkflowIndex",
+        "description": "Index of all workflows in the target directory."
+      }
+    }
+  }
+}

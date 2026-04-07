@@ -1,9 +1,7 @@
 /**
- * Contents API tests — port of Python's tests/test_contents.py.
+ * Contents API + workflow tests — port of Python's tests/test_contents.py.
  *
  * Uses a real HTTP server on a random port (fetch against 127.0.0.1).
- * Workflow-related tests (auto-refresh, /workflows endpoint wiring) are
- * deferred to Phase 2b.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -22,8 +20,9 @@ interface TestServer {
   close: () => Promise<void>;
 }
 
-function startTestServer(directory: string): Promise<TestServer> {
-  const { server } = createApp(directory);
+async function startTestServer(directory: string): Promise<TestServer> {
+  const { server, ready } = createApp(directory);
+  await ready;
   return new Promise((resolve) => {
     server.listen(0, "127.0.0.1", () => {
       const addr = server.address() as AddressInfo;
@@ -695,5 +694,196 @@ describe("checkpoints", () => {
     const res = await fetch(`${srv.baseUrl}/api/contents/sub`, { method: "DELETE" });
     expect(res.status).toBe(204);
     expect(fs.existsSync(path.join(tmpDir, ".checkpoints", "sub"))).toBe(false);
+  });
+});
+
+// ── Workflow discovery + auto-refresh tests ──────────────────────────
+// Port of the 3 deferred workflow tests from Python's test_contents.py.
+
+const VALID_GA = '{"a_galaxy_workflow": "true", "steps": {}}';
+const VALID_GXWF = "class: GalaxyWorkflow\nsteps: []\n";
+
+describe("workflow discovery", () => {
+  it("GET /workflows returns empty list for empty directory", async () => {
+    const res = await fetch(`${srv.baseUrl}/workflows`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { directory: string; workflows: unknown[] };
+    expect(data.workflows).toEqual([]);
+  });
+
+  it("GET /workflows lists pre-existing .ga files after refresh", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const refreshRes = await fetch(`${srv.baseUrl}/workflows/refresh`, { method: "POST" });
+    expect(refreshRes.status).toBe(200);
+    const data = (await refreshRes.json()) as { workflows: { relative_path: string }[] };
+    const paths = data.workflows.map((w) => w.relative_path);
+    expect(paths).toContain("wf.ga");
+  });
+
+  it("GET /workflows lists .gxwf.yml files", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.gxwf.yml"), VALID_GXWF);
+    const res = await fetch(`${srv.baseUrl}/workflows/refresh`, { method: "POST" });
+    const data = (await res.json()) as { workflows: { relative_path: string; format: string }[] };
+    const found = data.workflows.find((w) => w.relative_path === "wf.gxwf.yml");
+    expect(found).toBeDefined();
+    expect(found?.format).toBe("format2");
+  });
+
+  it("category is first parent directory, empty for root-level", async () => {
+    fs.mkdirSync(path.join(tmpDir, "cat"));
+    fs.writeFileSync(path.join(tmpDir, "cat", "wf.ga"), VALID_GA);
+    fs.writeFileSync(path.join(tmpDir, "root.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/refresh`, { method: "POST" });
+    const data = (await res.json()) as {
+      workflows: { relative_path: string; category: string }[];
+    };
+    const sub = data.workflows.find((w) => w.relative_path === "cat/wf.ga");
+    const root = data.workflows.find((w) => w.relative_path === "root.ga");
+    expect(sub?.category).toBe("cat");
+    expect(root?.category).toBe("");
+  });
+
+  // ── Deferred from Phase 1: auto-refresh on contents mutations ──────
+
+  it("auto-refresh on workflow write: PUT /api/contents creates discoverable .ga", async () => {
+    const body = {
+      name: "wf.ga",
+      path: "wf.ga",
+      type: "file",
+      writable: true,
+      created: "2026-01-01T00:00:00Z",
+      last_modified: "2026-01-01T00:00:00Z",
+      format: "text",
+      content: VALID_GA,
+    };
+    const putRes = await fetch(`${srv.baseUrl}/api/contents/wf.ga`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(putRes.status).toBe(200);
+
+    const wfRes = await fetch(`${srv.baseUrl}/workflows`);
+    const data = (await wfRes.json()) as { workflows: { relative_path: string }[] };
+    expect(data.workflows.map((w) => w.relative_path)).toContain("wf.ga");
+  });
+
+  it("auto-refresh on workflow delete: DELETE /api/contents removes .ga from list", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    // Seed the cache via refresh
+    await fetch(`${srv.baseUrl}/workflows/refresh`, { method: "POST" });
+    const before = (await (await fetch(`${srv.baseUrl}/workflows`)).json()) as {
+      workflows: { relative_path: string }[];
+    };
+    expect(before.workflows.map((w) => w.relative_path)).toContain("wf.ga");
+
+    const delRes = await fetch(`${srv.baseUrl}/api/contents/wf.ga`, { method: "DELETE" });
+    expect(delRes.status).toBe(204);
+
+    const after = (await (await fetch(`${srv.baseUrl}/workflows`)).json()) as {
+      workflows: { relative_path: string }[];
+    };
+    expect(after.workflows.map((w) => w.relative_path)).not.toContain("wf.ga");
+  });
+
+  it("POST /api/contents (create untitled .ga) refreshes workflows without error", async () => {
+    const res = await fetch(`${srv.baseUrl}/api/contents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "file", ext: ".ga" }),
+    });
+    expect(res.status).toBe(200);
+    // Newly created empty .ga isn't a valid workflow, but the refresh hook
+    // should still run without error and /workflows should be callable.
+    const wfRes = await fetch(`${srv.baseUrl}/workflows`);
+    expect(wfRes.status).toBe(200);
+  });
+});
+
+// ── Workflow operation route tests ───────────────────────────────────
+
+describe("workflow operations", () => {
+  it("GET /workflows/{path}/validate returns 404 for unknown workflow", async () => {
+    const res = await fetch(`${srv.baseUrl}/workflows/nonexistent.ga/validate`);
+    expect(res.status).toBe(404);
+  });
+
+  it("GET /workflows/{path}/clean returns SingleCleanReport for valid .ga", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/clean`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      workflow: string;
+      results: unknown[];
+      total_removed: number;
+      steps_with_removals: number;
+    };
+    expect(typeof data.workflow).toBe("string");
+    expect(Array.isArray(data.results)).toBe(true);
+    expect(typeof data.total_removed).toBe("number");
+  });
+
+  it("GET /workflows/{path}/validate returns SingleValidationReport", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/validate`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      workflow: string;
+      results: unknown[];
+      structure_errors: unknown[];
+    };
+    expect(typeof data.workflow).toBe("string");
+    expect(Array.isArray(data.results)).toBe(true);
+    expect(Array.isArray(data.structure_errors)).toBe(true);
+  });
+
+  it("GET /workflows/{path}/lint returns SingleLintReport", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/lint`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      workflow: string;
+      lint_errors: number;
+      lint_warnings: number;
+    };
+    expect(typeof data.workflow).toBe("string");
+    expect(typeof data.lint_errors).toBe("number");
+  });
+
+  it("GET /api/schemas/structural returns JSON Schema for format2", async () => {
+    const res = await fetch(`${srv.baseUrl}/api/schemas/structural?format=format2`);
+    expect(res.status).toBe(200);
+    const schema = (await res.json()) as Record<string, unknown>;
+    expect(typeof schema).toBe("object");
+    expect("$schema" in schema || "$defs" in schema || "properties" in schema).toBe(true);
+  });
+
+  it("GET /api/schemas/structural returns JSON Schema for native", async () => {
+    const res = await fetch(`${srv.baseUrl}/api/schemas/structural?format=native`);
+    expect(res.status).toBe(200);
+    const schema = (await res.json()) as Record<string, unknown>;
+    expect(typeof schema).toBe("object");
+  });
+
+  it("GET /api/schemas/structural with unknown format returns 400", async () => {
+    const res = await fetch(`${srv.baseUrl}/api/schemas/structural?format=bogus`);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("--output-schema flag", () => {
+  it("outputs valid OpenAPI 3.1 JSON and exits", async () => {
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execFileAsync = promisify(execFile);
+    const binPath = new URL("../src/bin/gxwf-web.ts", import.meta.url).pathname;
+    // Run via tsx so we don't need a pre-built dist
+    const { stdout } = await execFileAsync("npx", ["tsx", binPath, "--output-schema"], {
+      timeout: 10000,
+    });
+    const spec = JSON.parse(stdout) as Record<string, unknown>;
+    expect(spec.openapi).toBe("3.1.0");
+    expect(typeof spec.paths).toBe("object");
+    expect(typeof spec.components).toBe("object");
   });
 });

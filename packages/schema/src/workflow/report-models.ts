@@ -38,12 +38,60 @@ export interface CleanStepResult {
   display_label: string;
 }
 
+// ── Connection validation types ──────────────────────────────────────
+
+export interface ResolvedOutputType {
+  name: string;
+  collection_type: string | null;
+}
+
+export interface ConnectionResult {
+  source_step: string;
+  source_output: string;
+  target_step: string;
+  target_input: string;
+  status: "ok" | "invalid" | "skip";
+  mapping: string | null;
+  errors: string[];
+}
+
+export interface ConnectionStepResult {
+  step: string;
+  tool_id: string | null;
+  version: string | null;
+  step_type: string;
+  map_over: string | null;
+  connections: ConnectionResult[];
+  resolved_outputs: ResolvedOutputType[];
+  errors: string[];
+}
+
+export interface ConnectionValidationReport {
+  valid: boolean;
+  step_results: ConnectionStepResult[];
+  summary: Record<string, number>;
+  has_details: boolean;
+}
+
+// ── Workflow discovery ───────────────────────────────────────────────
+
+export interface WorkflowEntry {
+  relative_path: string;
+  format: string;
+  category: string;
+}
+
+export interface WorkflowIndex {
+  directory: string;
+  workflows: WorkflowEntry[];
+}
+
 // ── Single-workflow wrappers ─────────────────────────────────────────
 
 export interface SingleValidationReport {
   workflow: string;
   results: ValidationStepResult[];
-  connection_report: null; // placeholder — connection validation out of scope
+  connection_report: ConnectionValidationReport | null;
   skipped_reason: string | null;
   structure_errors: string[];
   encoding_errors: string[];
@@ -71,6 +119,125 @@ export interface SingleCleanReport {
   results: CleanStepResult[];
   total_removed: number;
   steps_with_removals: number;
+}
+
+// ── Round-trip validation types ──────────────────────────────────────
+
+export type DiffType =
+  | "value_mismatch"
+  | "missing_in_roundtrip"
+  | "missing_in_original"
+  | "connection_mismatch"
+  | "position_mismatch"
+  | "label_mismatch"
+  | "annotation_mismatch"
+  | "comment_mismatch"
+  | "step_missing";
+
+export type DiffSeverity = "error" | "benign";
+
+export interface BenignArtifact {
+  reason: string;
+  proven_by: string[];
+}
+
+export interface StepDiff {
+  step_path: string;
+  key_path: string;
+  diff_type: DiffType;
+  severity: DiffSeverity;
+  description: string;
+  original_value: unknown;
+  roundtrip_value: unknown;
+  benign_artifact: BenignArtifact | null;
+}
+
+export type SkipWorkflowReason = "legacy_encoding";
+
+export type FailureClass =
+  | "tool_not_found"
+  | "native_validation"
+  | "conversion_error"
+  | "type_not_handled"
+  | "format2_validation"
+  | "reimport_error"
+  | "roundtrip_mismatch"
+  | "subworkflow"
+  | "parse_error"
+  | "other";
+
+export interface StepResult {
+  step_id: string;
+  tool_id: string | null;
+  success: boolean;
+  failure_class: FailureClass | null;
+  error: string | null;
+  diffs: string[];
+  format2_state: Record<string, unknown> | null;
+  format2_connections: Record<string, unknown> | null;
+}
+
+export interface RoundTripResult {
+  workflow_name: string;
+  direction: string;
+  step_results: StepResult[];
+}
+
+export interface StepIdMappingResult {
+  mapping: Record<string, string | null>;
+  match_methods: Record<string, string>;
+}
+
+export interface RoundTripValidationResult {
+  workflow_path: string;
+  category: string;
+  conversion_result: RoundTripResult | null;
+  diffs: StepDiff[] | null;
+  step_id_mapping: StepIdMappingResult | null;
+  stale_clean_results: CleanStepResult[] | null;
+  error: string | null;
+  skipped_reason: SkipWorkflowReason | null;
+  structure_errors: string[];
+  encoding_errors: string[];
+  // Server-computed readOnly fields — derived from diffs; present in API responses
+  readonly error_diffs: StepDiff[];
+  readonly benign_diffs: StepDiff[];
+  readonly ok: boolean;
+  readonly status: string;
+  readonly conversion_failure_lines: string[];
+  readonly summary_line: string;
+}
+
+export interface SingleRoundTripReport {
+  workflow: string;
+  result: RoundTripValidationResult;
+}
+
+// ── Export / to-native types ─────────────────────────────────────────
+
+export interface SingleExportReport {
+  workflow: string;
+  ok: boolean;
+  steps_converted: number;
+  steps_fallback: number;
+  // Server-computed readOnly field — derived; present in API responses
+  readonly summary: Record<string, number>;
+}
+
+export interface StepEncodeStatus {
+  step_id: string;
+  step_label: string | null;
+  tool_id: string | null;
+  encoded: boolean;
+  error: string | null;
+}
+
+export interface ToNativeResult {
+  native_dict: Record<string, unknown>;
+  steps: StepEncodeStatus[];
+  // Server-computed readOnly fields — derived; present in API responses
+  readonly all_encoded: boolean;
+  readonly summary: string;
 }
 
 // ── Tree workflow-level results ──────────────────────────────────────

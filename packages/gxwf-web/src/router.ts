@@ -1,17 +1,26 @@
 /**
  * HTTP request handler for the gxwf-web API.
  *
- * Routes all /api/contents/* paths to the contents module.
- * A stub /workflows route is provided for Phase 2b wiring.
+ * Routes /api/contents/* paths to the contents module.
+ * Routes /workflows/* paths to workflow operations (Phase 2b).
+ * Routes /api/schemas/structural to the structural JSON Schema export.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { ToolCache } from "@galaxy-tool-util/core";
+import {
+  GalaxyWorkflowSchema,
+  NativeGalaxyWorkflowSchema,
+  type WorkflowIndex,
+} from "@galaxy-tool-util/schema";
+import * as JSONSchema from "effect/JSONSchema";
 import {
   createCheckpoint,
   createUntitled,
   deleteCheckpoint,
   deleteContents,
   HttpError,
+  isWorkflowFile,
   listCheckpoints,
   readContents,
   renameContents,
@@ -19,11 +28,24 @@ import {
   writeContents,
 } from "./contents.js";
 import type { ContentsModel, CreateRequest, RenameRequest } from "./models.js";
+import {
+  discoverWorkflows,
+  loadWorkflowFile,
+  operateValidate,
+  operateLint,
+  operateClean,
+  operateToFormat2,
+  operateToNative,
+  operateRoundtrip,
+} from "./workflows.js";
 
 // ── State ────────────────────────────────────────────────────────────
 
 export interface AppState {
   directory: string;
+  cache: ToolCache;
+  workflows: WorkflowIndex;
+  cacheDir?: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -72,6 +94,16 @@ function parseHttpDate(s: string): Date | null {
 
 const CONTENTS_PREFIX = "/api/contents";
 
+type WorkflowOp = "validate" | "clean" | "lint" | "to-format2" | "to-native" | "roundtrip";
+const WORKFLOW_OPS = new Set<string>([
+  "validate",
+  "clean",
+  "lint",
+  "to-format2",
+  "to-native",
+  "roundtrip",
+]);
+
 type Route =
   | { handler: "readRoot"; query: URLSearchParams }
   | { handler: "createRootUntitled"; query: URLSearchParams }
@@ -85,13 +117,20 @@ type Route =
   | { handler: "restoreCheckpoint"; filePath: string; cpId: string; query: URLSearchParams }
   | { handler: "deleteCheckpoint"; filePath: string; cpId: string; query: URLSearchParams }
   | { handler: "listWorkflows" }
-  | { handler: "refreshWorkflows" };
+  | { handler: "refreshWorkflows" }
+  | { handler: "workflowOp"; filePath: string; op: WorkflowOp; query: URLSearchParams }
+  | { handler: "structuralSchema"; query: URLSearchParams };
 
 function matchRoute(method: string, url: string): Route | null {
   const [rawPath, queryStr] = url.split("?");
   const query = new URLSearchParams(queryStr ?? "");
 
-  // Workflow stubs (Phase 2b wiring point).
+  // Structural schema: GET /api/schemas/structural
+  if (rawPath === "/api/schemas/structural" && method === "GET") {
+    return { handler: "structuralSchema", query };
+  }
+
+  // Workflow list/refresh (must match before the per-workflow op pattern)
   if (rawPath === "/workflows") {
     if (method === "GET") return { handler: "listWorkflows" };
     return null;
@@ -99,6 +138,19 @@ function matchRoute(method: string, url: string): Route | null {
   if (rawPath === "/workflows/refresh") {
     if (method === "POST") return { handler: "refreshWorkflows" };
     return null;
+  }
+
+  // Per-workflow operations: GET /workflows/{filePath}/{op}
+  if (rawPath.startsWith("/workflows/") && method === "GET") {
+    const rest = rawPath.slice("/workflows/".length); // "foo/bar.ga/validate"
+    const lastSlash = rest.lastIndexOf("/");
+    if (lastSlash > 0) {
+      const op = rest.slice(lastSlash + 1);
+      if (WORKFLOW_OPS.has(op)) {
+        const filePath = rest.slice(0, lastSlash);
+        return { handler: "workflowOp", filePath, op: op as WorkflowOp, query };
+      }
+    }
   }
 
   if (!rawPath.startsWith(CONTENTS_PREFIX)) return null;
@@ -150,6 +202,12 @@ function matchRoute(method: string, url: string): Route | null {
 export function createRequestHandler(state: AppState) {
   const { directory } = state;
 
+  function maybeRefreshWorkflows(relPath: string): void {
+    if (isWorkflowFile(relPath)) {
+      state.workflows = discoverWorkflows(directory);
+    }
+  }
+
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     cors(res);
 
@@ -171,13 +229,56 @@ export function createRequestHandler(state: AppState) {
     try {
       switch (route.handler) {
         case "listWorkflows": {
-          // Phase 2b stub — returns empty list until workflow discovery is wired.
-          json(res, 200, { directory, workflows: [] });
+          json(res, 200, state.workflows);
           break;
         }
 
         case "refreshWorkflows": {
-          json(res, 200, { directory, workflows: [] });
+          state.workflows = discoverWorkflows(directory);
+          json(res, 200, state.workflows);
+          break;
+        }
+
+        case "workflowOp": {
+          const wf = loadWorkflowFile(directory, route.filePath);
+          let result: unknown;
+          switch (route.op) {
+            case "validate":
+              result = await operateValidate(wf, state.cache);
+              break;
+            case "lint":
+              result = await operateLint(wf, state.cache, {
+                strict: route.query.get("strict") === "true",
+              });
+              break;
+            case "clean":
+              result = operateClean(wf);
+              break;
+            case "to-format2":
+              result = await operateToFormat2(wf, state.cache);
+              break;
+            case "to-native":
+              result = await operateToNative(wf, state.cache);
+              break;
+            case "roundtrip":
+              result = await operateRoundtrip(wf, state.cache);
+              break;
+          }
+          json(res, 200, result);
+          break;
+        }
+
+        case "structuralSchema": {
+          const format = route.query.get("format") ?? "format2";
+          if (format !== "format2" && format !== "native") {
+            json(res, 400, { detail: `Unknown format: ${format}. Use 'format2' or 'native'.` });
+            break;
+          }
+          const schema =
+            format === "native"
+              ? JSONSchema.make(NativeGalaxyWorkflowSchema)
+              : JSONSchema.make(GalaxyWorkflowSchema);
+          json(res, 200, schema);
           break;
         }
 
@@ -192,6 +293,7 @@ export function createRequestHandler(state: AppState) {
         case "createRootUntitled": {
           const body = await readJsonBody<CreateRequest>(req);
           const result = createUntitled(directory, "", body.type, body.ext);
+          maybeRefreshWorkflows(result.path);
           json(res, 200, result);
           break;
         }
@@ -218,6 +320,7 @@ export function createRequestHandler(state: AppState) {
             expectedMtime = parsed;
           }
           const result = writeContents(directory, route.filePath, model, expectedMtime);
+          maybeRefreshWorkflows(route.filePath);
           json(res, 200, result);
           break;
         }
@@ -225,12 +328,15 @@ export function createRequestHandler(state: AppState) {
         case "renamePath": {
           const body = await readJsonBody<RenameRequest>(req);
           const result = renameContents(directory, route.filePath, body.path);
+          maybeRefreshWorkflows(route.filePath);
+          maybeRefreshWorkflows(body.path);
           json(res, 200, result);
           break;
         }
 
         case "deletePath": {
           deleteContents(directory, route.filePath);
+          maybeRefreshWorkflows(route.filePath);
           noContent(res);
           break;
         }
@@ -238,6 +344,7 @@ export function createRequestHandler(state: AppState) {
         case "createUntitled": {
           const body = await readJsonBody<CreateRequest>(req);
           const result = createUntitled(directory, route.filePath, body.type, body.ext);
+          maybeRefreshWorkflows(result.path);
           json(res, 200, result);
           break;
         }
@@ -256,6 +363,7 @@ export function createRequestHandler(state: AppState) {
 
         case "restoreCheckpoint": {
           restoreCheckpoint(directory, route.filePath, route.cpId);
+          maybeRefreshWorkflows(route.filePath);
           noContent(res);
           break;
         }

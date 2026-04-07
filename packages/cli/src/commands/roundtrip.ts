@@ -165,9 +165,9 @@ function reportResult(filePath: string, result: RoundtripResult, filter: ReportF
         ? step.diffs.filter((d) => d.severity === "benign")
         : step.diffs;
     for (const d of diffsToShow) {
-      const tag = d.severity === "error" ? "ERROR" : `benign:${d.kind ?? "?"}`;
-      const loc = d.path || "<root>";
-      console.log(`${indent}    [${tag}] ${loc}: ${d.message}`);
+      const tag = d.severity === "error" ? "ERROR" : `benign:${d.benign_artifact?.reason ?? "?"}`;
+      const loc = d.key_path || "<root>";
+      console.log(`${indent}    [${tag}] ${loc}: ${d.description}`);
     }
   }
 }
