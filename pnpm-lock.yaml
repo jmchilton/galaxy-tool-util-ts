@@ -96,11 +96,39 @@ importers:
         specifier: ^25.5.0
         version: 25.5.0
 
+  packages/gxwf-report-shell:
+    dependencies:
+      '@galaxy-tool-util/gxwf-client':
+        specifier: workspace:*
+        version: link:../gxwf-client
+      '@primevue/themes':
+        specifier: ^4.3.0
+        version: 4.5.4
+      primevue:
+        specifier: ^4.3.0
+        version: 4.5.4(vue@3.5.32(typescript@6.0.2))
+      vue:
+        specifier: ^3.5.0
+        version: 3.5.32(typescript@6.0.2)
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^5.2.0
+        version: 5.2.4(vite@6.4.2(@types/node@25.5.0)(lightningcss@1.32.0)(yaml@2.8.3))(vue@3.5.32(typescript@6.0.2))
+      vite:
+        specifier: ^6.2.0
+        version: 6.4.2(@types/node@25.5.0)(lightningcss@1.32.0)(yaml@2.8.3)
+      vue-tsc:
+        specifier: ^2.2.0
+        version: 2.2.12(typescript@6.0.2)
+
   packages/gxwf-ui:
     dependencies:
       '@galaxy-tool-util/gxwf-client':
         specifier: workspace:*
         version: link:../gxwf-client
+      '@galaxy-tool-util/gxwf-report-shell':
+        specifier: workspace:*
+        version: link:../gxwf-report-shell
       '@primevue/themes':
         specifier: ^4.3.0
         version: 4.5.4

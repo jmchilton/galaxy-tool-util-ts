@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@galaxy-tool-util/gxwf-client": "workspace:*",
+    "@galaxy-tool-util/gxwf-report-shell": "workspace:*",
     "@primevue/themes": "^4.3.0",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.0",

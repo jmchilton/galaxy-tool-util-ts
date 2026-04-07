@@ -94,10 +94,12 @@ import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
 import Button from "primevue/button";
 import Message from "primevue/message";
-import ValidationReport from "./ValidationReport.vue";
-import LintReport from "./LintReport.vue";
-import CleanReport from "./CleanReport.vue";
-import RoundtripReport from "./RoundtripReport.vue";
+import {
+  ValidationReport,
+  LintReport,
+  CleanReport,
+  RoundtripReport,
+} from "@galaxy-tool-util/gxwf-report-shell";
 import { useOperation } from "../composables/useOperation";
 
 const props = defineProps<{
