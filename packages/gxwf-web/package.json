@@ -1,8 +1,11 @@
 {
-  "name": "@galaxy-tool-util/core",
-  "version": "0.2.0",
-  "description": "Galaxy tool cache, ToolShed client, and ParsedTool models",
+  "name": "@galaxy-tool-util/gxwf-web",
+  "version": "0.1.0",
+  "description": "Galaxy workflow development HTTP server — validate, lint, clean, convert workflows",
   "type": "module",
+  "bin": {
+    "gxwf-web": "dist/bin/gxwf-web.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -11,13 +14,14 @@
   },
   "files": [
     "dist",
+    "openapi.json",
     "README.md",
     "LICENSE"
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
-    "directory": "packages/core"
+    "directory": "packages/gxwf-web"
   },
   "publishConfig": {
     "access": "public",
@@ -25,6 +29,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "codegen": "openapi-typescript openapi.json -o src/generated/api-types.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run",
     "test:watch": "vitest",
@@ -33,11 +38,15 @@
     "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
   },
   "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^25.5.0"
-  },
   "dependencies": {
+    "@galaxy-tool-util/cli": "workspace:*",
+    "@galaxy-tool-util/core": "workspace:*",
+    "@galaxy-tool-util/schema": "workspace:*",
     "effect": "^3.21.0",
     "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "openapi-typescript": "^7.13.0"
   }
 }

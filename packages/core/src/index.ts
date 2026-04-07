@@ -31,3 +31,11 @@ export { fetchFromToolShed, fetchFromGalaxy, ToolFetchError } from "./client/ind
 /** High-level service: fetch tools from multiple sources with automatic caching. */
 export { ToolInfoService } from "./tool-info.js";
 export type { ToolInfoOptions, ToolSource } from "./tool-info.js";
+/** Shared YAML config schema for tool sources and cache settings. */
+export {
+  WorkflowToolConfig,
+  ToolSourceConfig,
+  ToolCacheConfig,
+  loadWorkflowToolConfig,
+  toolInfoOptionsFromConfig,
+} from "./config.js";

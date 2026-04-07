@@ -113,8 +113,6 @@ export {
   type RoundtripResult,
   type RoundtripStrictOptions,
   type StepRoundtripResult,
-  type StepDiff,
-  type DiffSeverity,
   type BenignArtifactKind,
   type RoundtripFailureClass,
 } from "./roundtrip.js";
@@ -146,9 +144,35 @@ export {
   SKIP_STATUSES,
   type ValidationStepResult,
   type CleanStepResult,
+  // Connection validation
+  type ResolvedOutputType,
+  type ConnectionResult,
+  type ConnectionStepResult,
+  type ConnectionValidationReport,
+  // Workflow discovery
+  type WorkflowEntry,
+  type WorkflowIndex,
+  // Single-workflow wrappers
   type SingleValidationReport,
   type SingleLintReport,
   type SingleCleanReport,
+  // Round-trip validation
+  type DiffType,
+  type DiffSeverity,
+  type BenignArtifact,
+  type StepDiff,
+  type SkipWorkflowReason,
+  type FailureClass,
+  type StepResult,
+  type RoundTripResult,
+  type StepIdMappingResult,
+  type RoundTripValidationResult,
+  type SingleRoundTripReport,
+  // Export / to-native
+  type SingleExportReport,
+  type StepEncodeStatus,
+  type ToNativeResult,
+  // Tree-level types (TS-only)
   type WorkflowValidationResult,
   type LintWorkflowResult,
   type WorkflowCleanResult,

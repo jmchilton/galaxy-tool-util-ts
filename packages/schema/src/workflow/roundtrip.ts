@@ -19,9 +19,22 @@ import { isConnectedValue, isRuntimeValue } from "./runtime-markers.js";
 import { STALE_KEYS as SKIP_KEYS, isRuntimeLeakKey } from "./stale-keys.js";
 import { stripStaleKeysToolAware } from "./clean.js";
 import { checkStrictEncoding, checkStrictStructure } from "./strict-checks.js";
+import type { BenignArtifact, DiffSeverity, StepDiff } from "./report-models.js";
 
 // --- Types ---
 
+/**
+ * TS-internal failure class for roundtrip steps. Intentionally narrower than
+ * the Python-API-mirror `FailureClass` in `report-models.ts`.
+ *
+ * Gap vs `FailureClass`: Python has `"native_validation"`, `"type_not_handled"`,
+ * `"format2_validation"`, `"parse_error"`, `"other"` which the TS roundtrip
+ * algorithm does not produce. TS has `"subworkflow_external_ref"` which has no
+ * direct Python equivalent (closest: Python's `"subworkflow"`).
+ *
+ * If building a `StepResult` (Python API shape) from a `StepRoundtripResult`,
+ * map `"subworkflow_external_ref"` → `null` or add it to `FailureClass`.
+ */
 export type RoundtripFailureClass =
   | "conversion_error"
   | "reimport_error"
@@ -29,7 +42,7 @@ export type RoundtripFailureClass =
   /** Subworkflow ref was an external URL/TRS string — inline steps not available for diff. */
   | "subworkflow_external_ref";
 
-export type DiffSeverity = "error" | "benign";
+export type { DiffSeverity, StepDiff };
 
 export type BenignArtifactKind =
   | "type_coercion"
@@ -45,11 +58,9 @@ export type BenignArtifactKind =
    */
   | "runtime_leak_stripped";
 
-export interface StepDiff {
-  path: string;
-  severity: DiffSeverity;
-  kind?: BenignArtifactKind;
-  message: string;
+/** Construct a BenignArtifact from an internal artifact kind. */
+function makeBenignArtifact(kind: BenignArtifactKind): BenignArtifact {
+  return { reason: kind, proven_by: [] };
 }
 
 export interface StepRoundtripResult {
@@ -257,10 +268,14 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
   // element-wise recursion below so identical arrays don't get flagged.
   if (Array.isArray(orig) !== Array.isArray(after) && multiSelectEquivalent(orig, after)) {
     diffs.push({
-      path,
+      step_path: "",
+      key_path: path,
+      diff_type: "value_mismatch",
       severity: "benign",
-      kind: "multi_select_normalized",
-      message: `multi-select representation differs: ${JSON.stringify(orig)} vs ${JSON.stringify(after)}`,
+      description: `multi-select representation differs: ${JSON.stringify(orig)} vs ${JSON.stringify(after)}`,
+      original_value: orig,
+      roundtrip_value: after,
+      benign_artifact: makeBenignArtifact("multi_select_normalized"),
     });
     return;
   }
@@ -273,9 +288,14 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
     !Array.isArray(after)
   ) {
     diffs.push({
-      path,
+      step_path: "",
+      key_path: path,
+      diff_type: "value_mismatch",
       severity: "error",
-      message: `value changed: ${JSON.stringify(orig)} → ${JSON.stringify(after)}`,
+      description: `value changed: ${JSON.stringify(orig)} → ${JSON.stringify(after)}`,
+      original_value: orig,
+      roundtrip_value: after,
+      benign_artifact: null,
     });
     return;
   }
@@ -284,9 +304,14 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
   if (Array.isArray(orig) && Array.isArray(after)) {
     if (orig.length !== after.length) {
       diffs.push({
-        path,
+        step_path: "",
+        key_path: path,
+        diff_type: "value_mismatch",
         severity: "error",
-        message: `array length ${orig.length} → ${after.length}`,
+        description: `array length ${orig.length} → ${after.length}`,
+        original_value: orig,
+        roundtrip_value: after,
+        benign_artifact: null,
       });
       return;
     }
@@ -302,17 +327,26 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
     const benign = classifyMissing(orig) ?? classifyMissing(after);
     if (benign) {
       diffs.push({
-        path,
+        step_path: "",
+        key_path: path,
+        diff_type: "value_mismatch",
         severity: "benign",
-        kind: benign,
-        message: `type change tolerated as ${benign}`,
+        description: `type change tolerated as ${benign}`,
+        original_value: orig,
+        roundtrip_value: after,
+        benign_artifact: makeBenignArtifact(benign),
       });
       return;
     }
     diffs.push({
-      path,
+      step_path: "",
+      key_path: path,
+      diff_type: "value_mismatch",
       severity: "error",
-      message: `structural mismatch: ${typeof orig} vs ${typeof after}`,
+      description: `structural mismatch: ${typeof orig} vs ${typeof after}`,
+      original_value: orig,
+      roundtrip_value: after,
+      benign_artifact: null,
     });
     return;
   }
@@ -325,10 +359,14 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
       // it — avoids noise from reimported state never having it)
       if (key in orig && !(key in after)) {
         diffs.push({
-          path: `${path}.${key}`,
+          step_path: "",
+          key_path: `${path}.${key}`,
+          diff_type: "missing_in_roundtrip",
           severity: "benign",
-          kind: "bookkeeping_stripped",
-          message: `stale key ${key} stripped`,
+          description: `stale key ${key} stripped`,
+          original_value: orig[key],
+          roundtrip_value: undefined,
+          benign_artifact: makeBenignArtifact("bookkeeping_stripped"),
         });
       }
       continue;
@@ -343,10 +381,14 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
       const hasAfter = key in after;
       if (hasOrig !== hasAfter) {
         diffs.push({
-          path: path ? `${path}.${key}` : key,
+          step_path: "",
+          key_path: path ? `${path}.${key}` : key,
+          diff_type: hasOrig ? "missing_in_roundtrip" : "missing_in_original",
           severity: "benign",
-          kind: "runtime_leak_stripped",
-          message: `runtime leak ${key} ${hasOrig ? "stripped" : "appeared"}`,
+          description: `runtime leak ${key} ${hasOrig ? "stripped" : "appeared"}`,
+          original_value: hasOrig ? orig[key] : undefined,
+          roundtrip_value: hasAfter ? after[key] : undefined,
+          benign_artifact: makeBenignArtifact("runtime_leak_stripped"),
         });
       }
       continue;
@@ -374,16 +416,25 @@ function compareTree(orig: unknown, after: unknown, path: string, diffs: StepDif
     const benign = classifyMissing(presentValue);
     if (benign) {
       diffs.push({
-        path: subPath,
+        step_path: "",
+        key_path: subPath,
+        diff_type: hasOrig ? "missing_in_roundtrip" : "missing_in_original",
         severity: "benign",
-        kind: benign,
-        message: `key ${hasOrig ? "dropped" : "added"} (${benign})`,
+        description: `key ${hasOrig ? "dropped" : "added"} (${benign})`,
+        original_value: hasOrig ? orig[key] : undefined,
+        roundtrip_value: hasAfter ? after[key] : undefined,
+        benign_artifact: makeBenignArtifact(benign),
       });
     } else {
       diffs.push({
-        path: subPath,
+        step_path: "",
+        key_path: subPath,
+        diff_type: hasOrig ? "missing_in_roundtrip" : "missing_in_original",
         severity: "error",
-        message: `key ${hasOrig ? "missing after roundtrip" : "appeared after roundtrip"}`,
+        description: `key ${hasOrig ? "missing after roundtrip" : "appeared after roundtrip"}`,
+        original_value: hasOrig ? orig[key] : undefined,
+        roundtrip_value: hasAfter ? after[key] : undefined,
+        benign_artifact: null,
       });
     }
   }
@@ -627,6 +678,9 @@ export function roundtripValidate(
     }
     const diffs: StepDiff[] = [];
     compareTree(origStep.tool_state, afterEntry.step.tool_state, "", diffs);
+    for (const diff of diffs) {
+      diff.step_path = stepId;
+    }
     const hasError = diffs.some((d) => d.severity === "error");
     stepResults.push({
       stepId,
