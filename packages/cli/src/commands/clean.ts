@@ -1,7 +1,11 @@
 /**
  * `gxwf clean` — strip stale keys and decode legacy tool_state encoding.
  */
-import { cleanWorkflow, buildSingleCleanReport } from "@galaxy-tool-util/schema";
+import {
+  cleanWorkflow,
+  buildSingleCleanReport,
+  type CleanWorkflowOptions,
+} from "@galaxy-tool-util/schema";
 import {
   readWorkflowFile,
   resolveFormat,
@@ -16,6 +20,7 @@ export interface CleanOptions {
   format?: string;
   json?: boolean;
   reportHtml?: string | boolean;
+  skipUuid?: boolean;
 }
 
 export async function runClean(filePath: string, opts: CleanOptions): Promise<void> {
@@ -25,7 +30,8 @@ export async function runClean(filePath: string, opts: CleanOptions): Promise<vo
   const format = resolveFormat(data, opts.format);
   const before = opts.diff ? JSON.stringify(data, null, 2) : null;
 
-  const { results } = cleanWorkflow(data);
+  const cleanOpts: CleanWorkflowOptions = { skipUuid: opts.skipUuid };
+  const { results } = await cleanWorkflow(data, cleanOpts);
 
   if (opts.json || opts.reportHtml) {
     const report = buildSingleCleanReport(filePath, results);

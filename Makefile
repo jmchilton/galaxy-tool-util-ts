@@ -103,7 +103,9 @@ endif
 	mkdir -p $(WFSTATE_DST)/fixtures
 	cp $(WFSTATE_SRC)/fixtures/synthetic-cat1-clean.ga $(WFSTATE_DST)/fixtures/
 	cp $(WFSTATE_SRC)/fixtures/synthetic-cat1-stale.ga $(WFSTATE_DST)/fixtures/
+	cp $(WFSTATE_SRC)/fixtures/synthetic-cat1-errors.ga $(WFSTATE_DST)/fixtures/
 	cp $(WFSTATE_SRC)/fixtures/synthetic-cat1.gxwf.yml $(WFSTATE_DST)/fixtures/
+	cp $(WFSTATE_SRC)/fixtures/synthetic-cat1-stale.gxwf.yml $(WFSTATE_DST)/fixtures/
 	cp $(WFSTATE_IWC_SRC)/RepeatMasking-Workflow.ga $(WFSTATE_DST)/fixtures/
 	cp $(WFSTATE_IWC_SRC)/rnaseq-sr.ga $(WFSTATE_DST)/fixtures/
 	cp $(WFSTATE_FWDATA_SRC)/test_workflow_1.ga $(WFSTATE_DST)/fixtures/
@@ -230,7 +232,7 @@ ifndef GALAXY_ROOT
 endif
 	@echo "Checking workflow_state fixtures..."
 	@ok=true; \
-	for f in synthetic-cat1-clean.ga synthetic-cat1-stale.ga synthetic-cat1.gxwf.yml; do \
+	for f in synthetic-cat1-clean.ga synthetic-cat1-stale.ga synthetic-cat1-errors.ga synthetic-cat1.gxwf.yml synthetic-cat1-stale.gxwf.yml; do \
 		src=$(WFSTATE_SRC)/fixtures/$$f; \
 		local=$(WFSTATE_DST)/fixtures/$$f; \
 		if [ -f "$$local" ] && ! diff -q "$$src" "$$local" >/dev/null 2>&1; then \

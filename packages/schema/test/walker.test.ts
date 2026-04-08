@@ -530,14 +530,15 @@ describe("walkFormat2State", () => {
       const repeat = repeatParam("queries", [textParam("input")]);
       const state = { queries: [] };
       const result = walkFormat2State([repeat], state, identity);
-      // Empty array → no instances → omitted from output
-      expect(result).toEqual({});
+      // Explicit empty array preserved (valid state)
+      expect(result).toEqual({ queries: [] });
     });
 
     it("handles missing repeat state", () => {
       const repeat = repeatParam("queries", [textParam("input")]);
       const state = {};
       const result = walkFormat2State([repeat], state, identity);
+      // Absent key stays absent
       expect(result).toEqual({});
     });
   });

@@ -3,6 +3,7 @@
  */
 import {
   cleanWorkflow,
+  type CleanWorkflowOptions,
   type WorkflowCleanResult,
   type TreeCleanReport,
   buildWorkflowCleanResult,
@@ -18,6 +19,7 @@ export interface CleanTreeOptions extends ReportOutputOptions {
   outputDir?: string;
   format?: string;
   json?: boolean;
+  skipUuid?: boolean;
 }
 
 export async function runCleanTree(dir: string, opts: CleanTreeOptions): Promise<void> {
@@ -25,7 +27,8 @@ export async function runCleanTree(dir: string, opts: CleanTreeOptions): Promise
 
   const treeResult = await collectTree<WorkflowCleanResult>(dir, async (info, data) => {
     const format = resolveFormat(data, opts.format);
-    const { results: stepResults } = cleanWorkflow(data);
+    const cleanOpts: CleanWorkflowOptions = { skipUuid: opts.skipUuid };
+    const { results: stepResults } = await cleanWorkflow(data, cleanOpts);
 
     if (outputDir) {
       const outPath = join(outputDir, info.relativePath);

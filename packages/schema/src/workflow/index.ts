@@ -121,7 +121,7 @@ export {
   type RoundtripFailureClass,
 } from "./roundtrip.js";
 
-export { cleanWorkflow, type CleanWorkflowResult } from "./clean.js";
+export { cleanWorkflow, type CleanWorkflowOptions, type CleanWorkflowResult } from "./clean.js";
 
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
 

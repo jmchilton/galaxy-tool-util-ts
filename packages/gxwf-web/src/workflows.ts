@@ -322,9 +322,12 @@ export interface CleanOptions {
 }
 
 /** Report stale keys in a workflow (no tool cache needed). */
-export function operateClean(wf: WorkflowFile, _opts: CleanOptions = {}): SingleCleanReport {
+export async function operateClean(
+  wf: WorkflowFile,
+  _opts: CleanOptions = {},
+): Promise<SingleCleanReport> {
   const { absPath, data } = wf;
-  const { results } = cleanWorkflow(data);
+  const { results } = await cleanWorkflow(data);
   return buildSingleCleanReport(absPath, results);
 }
 

@@ -13,7 +13,8 @@ import * as path from "node:path";
 import * as S from "effect/Schema";
 import * as ParseResult from "effect/ParseResult";
 
-import { ToolCache, cacheKey, getCacheDir, type ParsedTool } from "@galaxy-tool-util/core";
+import { join } from "node:path";
+import { ToolCache, cacheKey, getCacheDir } from "@galaxy-tool-util/core";
 
 import {
   cleanWorkflow,
@@ -27,6 +28,8 @@ import {
   type NormalizedFormat2Workflow,
   type NormalizedFormat2Step,
   type ToolParameterBundleModel,
+  type ToolInputsResolver,
+  type ToolParameterModel,
 } from "../src/index.js";
 
 import { loadExpectations, runAssertions } from "./declarative-test-utils.js";
@@ -411,21 +414,50 @@ async function validateOp(wfDict: unknown): Promise<unknown> {
   return workflow;
 }
 
-function cleanOp(wfDict: unknown): unknown {
+function makeToolInputsResolver(): ToolInputsResolver | undefined {
+  if (!toolCacheAvailable()) return undefined;
+  const cache = new ToolCache();
+  return (toolId: string, toolVersion: string | null) => {
+    const coords = cache.resolveToolCoordinates(toolId, toolVersion);
+    const version = coords.version ?? "_default_";
+    const key = cacheKey(coords.toolshedUrl, coords.trsToolId, version);
+    const filePath = join(cache.cacheDir, `${key}.json`);
+    if (!fs.existsSync(filePath)) return undefined;
+    try {
+      const data = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+      return (data.inputs ?? []) as ToolParameterModel[];
+    } catch {
+      return undefined;
+    }
+  };
+}
+
+async function cleanOp(wfDict: unknown): Promise<unknown> {
   const workflow = structuredClone(wfDict as Record<string, unknown>);
-  return cleanWorkflow(workflow).workflow;
+  return (await cleanWorkflow(workflow, { toolInputsResolver: makeToolInputsResolver() })).workflow;
+}
+
+async function cleanSkipUuidOp(wfDict: unknown): Promise<unknown> {
+  const workflow = structuredClone(wfDict as Record<string, unknown>);
+  return (
+    await cleanWorkflow(workflow, { skipUuid: true, toolInputsResolver: makeToolInputsResolver() })
+  ).workflow;
 }
 
 async function validateCleanOp(wfDict: unknown): Promise<unknown> {
   // Clean an internal copy, then validate it — return original on success
-  const { workflow: cleaned } = cleanWorkflow(structuredClone(wfDict as Record<string, unknown>));
+  const { workflow: cleaned } = await cleanWorkflow(
+    structuredClone(wfDict as Record<string, unknown>),
+  );
   await validateOp(cleaned);
   return wfDict;
 }
 
 async function cleanThenValidateOp(wfDict: unknown): Promise<unknown> {
   // Mutating clean, then validate — return the cleaned workflow
-  const { workflow: cleaned } = cleanWorkflow(structuredClone(wfDict as Record<string, unknown>));
+  const { workflow: cleaned } = await cleanWorkflow(
+    structuredClone(wfDict as Record<string, unknown>),
+  );
   await validateOp(cleaned);
   return cleaned;
 }
@@ -433,6 +465,7 @@ async function cleanThenValidateOp(wfDict: unknown): Promise<unknown> {
 const OPERATIONS: Record<string, Operation> = {
   validate: validateOp,
   clean: cleanOp,
+  clean_skip_uuid: cleanSkipUuidOp,
   validate_clean: validateCleanOp,
   clean_then_validate: cleanThenValidateOp,
 };
