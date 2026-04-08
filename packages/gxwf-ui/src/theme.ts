@@ -23,6 +23,22 @@ const GalaxyPreset = definePreset(Aura, {
       950: "#151304",
     },
     colorScheme: {
+      dark: {
+        surface: {
+          0: "#ffffff",
+          50: "#f5f5f6",
+          100: "#e6e6e7",
+          200: "#d0d0d1",
+          300: "#afafb1",
+          400: "#878789",
+          500: "#6c6c6e",
+          600: "#4c5574", // navy-700
+          700: "#3c435c", // ebony-clay-800
+          800: "#3c435c", // ebony-clay-800 (panel bg)
+          900: "#1a1f2e", // dark navy (page bg)
+          950: "#141828", // deepest
+        },
+      },
       light: {
         primary: {
           color: "{primary.500}",
@@ -50,6 +66,17 @@ const GalaxyPreset = definePreset(Aura, {
           900: "#2c3143", // ebony-clay (dark navy, code block bg etc.)
           950: "#1a1f2e", // darkest navy
         },
+      },
+    },
+  },
+  components: {
+    tabs: {
+      tablist: { background: "{surface.800}" },
+      tabpanels: { background: "{surface.800}" },
+      tab: {
+        color: "rgba(255,255,255,0.75)",
+        hoverColor: "rgba(255,255,255,0.95)",
+        activeColor: "{primary.500}",
       },
     },
   },

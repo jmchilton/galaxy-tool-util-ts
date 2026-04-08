@@ -9,6 +9,9 @@
         <RouterLink to="/" class="nav-link">Workflows</RouterLink>
         <RouterLink to="/files" class="nav-link">Files</RouterLink>
       </nav>
+      <button class="dark-toggle" @click="toggleDark" :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+        <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'" />
+      </button>
     </header>
     <main class="app-main">
       <RouterView />
@@ -17,7 +20,18 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import { RouterLink, RouterView } from "vue-router";
+
+const isDark = ref(localStorage.getItem("gxwf-dark") === "1");
+
+if (isDark.value) document.documentElement.classList.add("dark");
+
+function toggleDark() {
+  isDark.value = !isDark.value;
+  document.documentElement.classList.toggle("dark", isDark.value);
+  localStorage.setItem("gxwf-dark", isDark.value ? "1" : "0");
+}
 </script>
 
 <style>
@@ -32,6 +46,11 @@ body {
   font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
   background: var(--gx-grey-50, #f5f5f6);
   color: var(--gx-grey-700, #4f4e50);
+}
+
+.dark body {
+  background: #2c3143;
+  color: #e6e6e7;
 }
 
 .app-shell {
@@ -120,6 +139,25 @@ body {
   color: #fff;
   background: rgba(208, 189, 42, 0.18);
   border-bottom: 2px solid var(--gx-gold, #d0bd2a);
+}
+
+.dark-toggle {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 1rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  position: relative;
+  z-index: 1;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.dark-toggle:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ── Main content ────────────────────────────────────────── */

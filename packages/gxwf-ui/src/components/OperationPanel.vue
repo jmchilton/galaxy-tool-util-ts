@@ -1,4 +1,5 @@
 <template>
+  <div class="tabs-frame">
   <Tabs value="validate">
     <TabList>
       <Tab value="validate">Validate</Tab>
@@ -124,6 +125,7 @@
       </TabPanel>
     </TabPanels>
   </Tabs>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -175,6 +177,12 @@ const showRaw = reactive({ validate: false, lint: false, clean: false, roundtrip
 </script>
 
 <style scoped>
+.tabs-frame {
+  border: 1px solid var(--gx-gold, #d0bd2a);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
 .panel-content {
   padding: 1rem 0;
   display: flex;

@@ -9,5 +9,5 @@ import GalaxyPreset from "./theme";
 
 const app = createApp(App);
 app.use(router);
-app.use(PrimeVue, { theme: { preset: GalaxyPreset } });
+app.use(PrimeVue, { theme: { preset: GalaxyPreset, options: { darkModeSelector: ".dark" } } });
 app.mount("#app");

@@ -29,7 +29,8 @@
     "provenance": true
   },
   "scripts": {
-    "build": "node scripts/copy-ui.mjs && tsc",
+    "build": "tsc",
+    "copy-ui": "node scripts/copy-ui.mjs",
     "codegen": "openapi-typescript openapi.json -o src/generated/api-types.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run",
@@ -47,7 +48,6 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
-    "@galaxy-tool-util/gxwf-ui": "workspace:*",
     "@types/node": "^25.5.0",
     "openapi-typescript": "^7.13.0"
   }
