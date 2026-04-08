@@ -67,10 +67,12 @@ async function main() {
     cacheDir ??= toolOpts.cacheDir;
   }
 
-  // Resolve bundled UI dist (copied from gxwf-ui during build → public/).
-  // Two levels up from dist/bin/ lands at the package root.
+  // Resolve UI dist: GXWF_UI_DIST env var overrides the bundled copy.
+  // Bundled copy is copied from gxwf-ui during build → public/;
+  // two levels up from dist/bin/ lands at the package root.
+  const uiDirFromEnv = process.env.GXWF_UI_DIST;
   const uiDirCandidate = new URL("../../public", import.meta.url).pathname;
-  const uiDir = existsSync(uiDirCandidate) ? uiDirCandidate : undefined;
+  const uiDir = uiDirFromEnv ?? (existsSync(uiDirCandidate) ? uiDirCandidate : undefined);
 
   const { server, ready } = createApp(directory!, { cacheDir, sources, uiDir });
 
