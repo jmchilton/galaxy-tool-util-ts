@@ -124,22 +124,38 @@ node packages/tool-cache-proxy/dist/bin/galaxy-tool-proxy.js --config proxy.yaml
 
 ### gxwf-web server
 
+The server bundles the gxwf-ui frontend and serves it at the root alongside the API. After a full build it runs as a single process:
+
 ```bash
-# Serve the current directory on localhost:8000
-node packages/gxwf-web/dist/bin/gxwf-web.js .
+# Build gxwf-ui first, then gxwf-web (copy-ui.mjs runs automatically)
+pnpm --filter @galaxy-tool-util/gxwf-ui build
+pnpm --filter @galaxy-tool-util/gxwf-web build
+
+# Start — UI at http://localhost:8000/, API at /workflows and /api
+node packages/gxwf-web/dist/bin/gxwf-web.js ./workflows
 
 # Custom port, with an existing cache dir
 node packages/gxwf-web/dist/bin/gxwf-web.js ./workflows --port 9000 --cache-dir ~/.cache/galaxy-tools
 ```
 
-For active development, run `tsc --watch` in the package you're editing alongside the server so changes are picked up on restart:
+If `pnpm -r build` is run from the monorepo root it will build in the right order automatically (gxwf-ui is declared as a devDependency of gxwf-web).
+
+#### UI development mode
+
+For fast frontend iteration, run the Vite dev server in `gxwf-ui` alongside `gxwf-web`. Vite's proxy forwards `/workflows` and `/api` to the backend:
 
 ```bash
-# Terminal 1 — rebuild on change
-cd packages/gxwf-web && npx tsc --watch
-
-# Terminal 2 — restart server after each rebuild
+# Terminal 1 — API server (no UI bundling needed)
 node packages/gxwf-web/dist/bin/gxwf-web.js ./workflows
+
+# Terminal 2 — Vite dev server with HMR at http://localhost:5173/
+cd packages/gxwf-ui && pnpm dev
+```
+
+For active backend development, add `tsc --watch` in a third terminal so server changes are picked up on restart:
+
+```bash
+cd packages/gxwf-web && npx tsc --watch
 ```
 
 ### Smoke-testing the server

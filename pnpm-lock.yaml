@@ -176,6 +176,9 @@ importers:
         specifier: ^2.8.3
         version: 2.8.3
     devDependencies:
+      '@galaxy-tool-util/gxwf-ui':
+        specifier: workspace:*
+        version: link:../gxwf-ui
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0

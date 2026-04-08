@@ -7,6 +7,9 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
+import * as path from "node:path";
 import type { ToolCache } from "@galaxy-tool-util/core";
 import {
   GalaxyWorkflowSchema,
@@ -49,6 +52,8 @@ export interface AppState {
   cache: ToolCache;
   workflows: WorkflowIndex;
   cacheDir?: string;
+  /** Absolute path to a built gxwf-ui dist directory to serve as the frontend. */
+  uiDir?: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -91,6 +96,58 @@ async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
 function parseHttpDate(s: string): Date | null {
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
+}
+
+// ── Static file serving ──────────────────────────────────────────────
+
+const MIME_TYPES: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "application/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
+  ".woff": "font/woff",
+  ".ttf": "font/ttf",
+  ".map": "application/json",
+};
+
+async function serveStatic(uiDir: string, urlPath: string, res: ServerResponse): Promise<void> {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(urlPath);
+  } catch {
+    json(res, 400, { detail: "Invalid URL encoding" });
+    return;
+  }
+
+  // Normalise to a relative path and guard against traversal
+  const relPath = decoded.replace(/^\/+/, "") || "index.html";
+  const base = path.resolve(uiDir);
+  const resolved = path.resolve(base, relPath);
+  if (resolved !== base && !resolved.startsWith(base + path.sep)) {
+    json(res, 403, { detail: "Forbidden" });
+    return;
+  }
+
+  // Serve the file if it exists, otherwise fall back to index.html (SPA routing)
+  const filePath =
+    fs.existsSync(resolved) && fs.statSync(resolved).isFile()
+      ? resolved
+      : path.join(base, "index.html");
+
+  const ext = path.extname(filePath);
+  const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
+  const content = await fsPromises.readFile(filePath);
+
+  res.writeHead(200, {
+    "Content-Type": contentType,
+    "Content-Length": content.length,
+  });
+  res.end(content);
 }
 
 // ── Route matching ───────────────────────────────────────────────────
@@ -225,6 +282,11 @@ export function createRequestHandler(state: AppState) {
     const route = matchRoute(method, url);
 
     if (!route) {
+      if (state.uiDir && method === "GET") {
+        const [urlPath] = url.split("?");
+        await serveStatic(state.uiDir, urlPath, res);
+        return;
+      }
       json(res, 404, { detail: "Not found" });
       return;
     }

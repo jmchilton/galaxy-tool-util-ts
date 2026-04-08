@@ -18,6 +18,9 @@ export interface CreateAppOptions {
   cacheDir?: string;
   /** Tool sources to fetch from when a tool is not in cache. */
   sources?: ToolSource[];
+  /** Absolute path to a built gxwf-ui dist directory. When set, the server
+   *  serves the frontend at the root and falls back to index.html for SPA routing. */
+  uiDir?: string;
 }
 
 /** Create a configured gxwf-web HTTP server for the given workflow directory. */
@@ -36,6 +39,7 @@ export function createApp(
     cache,
     workflows: { directory, workflows: [] },
     cacheDir: opts.cacheDir,
+    uiDir: opts.uiDir,
   };
 
   const handler = createRequestHandler(state);
