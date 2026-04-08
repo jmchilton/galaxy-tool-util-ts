@@ -101,6 +101,87 @@ The repo should already have an `npm-publish` environment configured under
 package — the trusted publisher config on npmjs.com is per-package, but the
 GitHub environment is shared.
 
+## Running Locally
+
+After `pnpm build`, you can run every binary directly via `node` — no global install needed.
+
+### CLI tools
+
+```bash
+# gxwf — workflow validate / lint / clean / convert
+node packages/cli/dist/bin/gxwf.js --help
+node packages/cli/dist/bin/gxwf.js validate ./my-workflow.ga
+
+# galaxy-tool-cache — inspect and populate the tool cache
+node packages/cli/dist/bin/galaxy-tool-cache.js --help
+```
+
+### Proxy server
+
+```bash
+node packages/tool-cache-proxy/dist/bin/galaxy-tool-proxy.js --config proxy.yaml
+```
+
+### gxwf-web server
+
+```bash
+# Serve the current directory on localhost:8000
+node packages/gxwf-web/dist/bin/gxwf-web.js .
+
+# Custom port, with an existing cache dir
+node packages/gxwf-web/dist/bin/gxwf-web.js ./workflows --port 9000 --cache-dir ~/.cache/galaxy-tools
+```
+
+For active development, run `tsc --watch` in the package you're editing alongside the server so changes are picked up on restart:
+
+```bash
+# Terminal 1 — rebuild on change
+cd packages/gxwf-web && npx tsc --watch
+
+# Terminal 2 — restart server after each rebuild
+node packages/gxwf-web/dist/bin/gxwf-web.js ./workflows
+```
+
+### Smoke-testing the server
+
+Once running, hit the API directly:
+
+```bash
+# List discovered workflows
+curl http://localhost:8000/workflows | jq
+
+# Validate a specific workflow
+curl "http://localhost:8000/workflows/my-workflow.ga/validate" | jq
+
+# Export the structural JSON Schema
+curl "http://localhost:8000/api/schemas/structural?format=native" | jq
+```
+
+### Using local packages in an external project
+
+To point an external project at your local checkout instead of the npm registry, use a `file:` reference in its `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@galaxy-tool-util/core": "file:/path/to/galaxy-tool-util/packages/core",
+    "@galaxy-tool-util/schema": "file:/path/to/galaxy-tool-util/packages/schema"
+  }
+}
+```
+
+Then run `pnpm install` in the external project to wire up the symlinks. Remember to rebuild (`pnpm build`) in this repo whenever you change source files — the `file:` reference points at `dist/`, not the TypeScript sources.
+
+Alternatively, use `pnpm link` for a global symlink approach:
+
+```bash
+# Register the package globally from this repo
+cd packages/core && pnpm link --global
+
+# In your external project
+pnpm link --global @galaxy-tool-util/core
+```
+
 ## Generated Workflow Schemas
 
 Workflow schemas in `packages/schema/src/workflow/raw/` are generated from upstream [schema-salad](https://www.commonwl.org/v1.2/SchemaSalad.html) YAML definitions using [`schema-salad-plus-pydantic`](https://github.com/jmchilton/schema-salad-plus-pydantic). This tool reads the YAML type definitions and emits both TypeScript interfaces and [Effect Schema](https://effect.website/docs/schema/introduction) definitions.
