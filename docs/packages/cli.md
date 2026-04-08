@@ -150,6 +150,12 @@ gxwf validate my-workflow.ga --mode json-schema
 | `--cache-dir <dir>` | Tool cache directory |
 | `--mode <mode>` | Validation backend: `effect` (default) or `json-schema` |
 | `--tool-schema-dir <dir>` | Directory of pre-exported per-tool JSON Schemas |
+| `--strict` | Shorthand for `--strict-structure --strict-encoding --strict-state` |
+| `--strict-structure` | Reject unknown keys at envelope/step level |
+| `--strict-encoding` | Reject JSON-string `tool_state`; reject `tool_state` field in format2 steps |
+| `--strict-state` | Require every tool step to validate; no skips allowed |
+| `--json` | Output structured JSON report |
+| `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
 ### `clean <file>`
 
@@ -171,6 +177,8 @@ gxwf clean my-workflow.ga --diff
 | `--output <file>` | Write cleaned workflow to file (default: stdout) |
 | `--diff` | Show unified diff of changes instead of writing output |
 | `--format <fmt>` | Force format (auto-detected by default) |
+| `--json` | Output structured JSON report |
+| `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
 ### `lint <file>`
 
@@ -203,7 +211,12 @@ Exit codes: 0 = clean, 1 = warnings only, 2 = errors.
 | `--skip-state-validation` | Skip tool state validation |
 | `--cache-dir <dir>` | Tool cache directory (for state validation) |
 | `--format <fmt>` | Force format (auto-detected by default) |
+| `--strict` | Shorthand for `--strict-structure --strict-encoding --strict-state` |
+| `--strict-structure` | Reject unknown keys at envelope/step level |
+| `--strict-encoding` | Reject JSON-string `tool_state`; reject `tool_state` field in format2 steps |
+| `--strict-state` | Require every tool step to validate; no skips allowed |
 | `--json` | Output structured JSON result |
+| `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
 ### `convert <file>`
 
@@ -285,7 +298,13 @@ gxwf validate-tree ./workflows/ --mode json-schema
 | `--cache-dir <dir>` | Tool cache directory |
 | `--mode <mode>` | Validation backend: `effect` (default) or `json-schema` |
 | `--tool-schema-dir <dir>` | Directory of pre-exported per-tool JSON Schemas |
+| `--strict` | Shorthand for all strict flags |
+| `--strict-structure` | Reject unknown keys |
+| `--strict-encoding` | Reject legacy encoding |
+| `--strict-state` | No skipped steps allowed |
 | `--json` | Output structured JSON report |
+| `--report-markdown [file]` | Write Markdown report to file (or stdout if omitted) |
+| `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
 ### `lint-tree <dir>`
 
@@ -302,7 +321,13 @@ gxwf lint-tree ./workflows/ --skip-best-practices --json
 | `--skip-state-validation` | Skip tool state validation |
 | `--cache-dir <dir>` | Tool cache directory |
 | `--format <fmt>` | Force format (auto-detected by default) |
+| `--strict` | Shorthand for all strict flags |
+| `--strict-structure` | Reject unknown keys |
+| `--strict-encoding` | Reject legacy encoding |
+| `--strict-state` | No skipped steps allowed |
 | `--json` | Output structured JSON report |
+| `--report-markdown [file]` | Write Markdown report to file (or stdout if omitted) |
+| `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
 ### `clean-tree <dir>`
 
@@ -323,6 +348,8 @@ Exit code 1 if any workflows had stale keys (useful for CI).
 | `--output-dir <dir>` | Write cleaned workflows to directory (mirrors source tree) |
 | `--format <fmt>` | Force format (auto-detected by default) |
 | `--json` | Output structured JSON report |
+| `--report-markdown [file]` | Write Markdown report to file (or stdout if omitted) |
+| `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
 ### `convert-tree <dir>`
 
@@ -363,10 +390,16 @@ gxwf roundtrip-tree ./workflows/ --json
 |---|---|
 | `--cache-dir <dir>` | Tool cache directory |
 | `--format <fmt>` | Force source format (must resolve to native) |
+| `--strict` | Shorthand for all strict flags |
+| `--strict-structure` | Reject unknown keys |
+| `--strict-encoding` | Reject legacy encoding |
+| `--strict-state` | No skipped steps allowed |
 | `--json` | Output structured JSON report |
 | `--errors-only` | List only files with errors or failures |
 | `--benign-only` | List only files with benign diffs (no errors, no failures) |
 | `--brief` | Omit per-file lines; print only the aggregate summary |
+| `--report-markdown [file]` | Write Markdown report to file (or stdout if omitted) |
+| `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
 Exit codes: 0 = all files clean, 1 = benign diffs only, 2 = any file has real diffs or conversion errors.
 Filter flags affect only the text report — exit codes are unchanged.
