@@ -6,7 +6,6 @@
         <h1>{{ workflowPath }}</h1>
         <div v-if="workflowMeta" class="workflow-meta">
           <Tag :value="workflowMeta.format" severity="secondary" />
-          <Tag v-if="workflowMeta.category" :value="workflowMeta.category" severity="info" />
         </div>
       </div>
     </div>
