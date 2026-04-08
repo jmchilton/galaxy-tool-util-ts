@@ -123,6 +123,9 @@ importers:
 
   packages/gxwf-ui:
     dependencies:
+      '@fontsource/atkinson-hyperlegible':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@galaxy-tool-util/gxwf-client':
         specifier: workspace:*
         version: link:../gxwf-client
@@ -512,6 +515,9 @@ packages:
   '@eslint/plugin-kit@0.6.1':
     resolution: {integrity: sha512-iH1B076HoAshH1mLpHMgwdGeTs0CYwL0SPMkGuSebZrwBp16v415e9NZXg2jtrqPVQjf6IANe2Vtlr5KswtcZQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@fontsource/atkinson-hyperlegible@5.2.8':
+    resolution: {integrity: sha512-HciLcJ5DIK/OVOdo71EbEN4NnvDFlp6/SpAxtcbWf2aAdcsOuPqITxj5KNEXb48qSPSdnnZdGGnSJChPKi3/bA==}
 
   '@gerrit0/mini-shiki@3.23.0':
     resolution: {integrity: sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg==}
@@ -3017,6 +3023,8 @@ snapshots:
     dependencies:
       '@eslint/core': 1.1.1
       levn: 0.4.1
+
+  '@fontsource/atkinson-hyperlegible@5.2.8': {}
 
   '@gerrit0/mini-shiki@3.23.0':
     dependencies:

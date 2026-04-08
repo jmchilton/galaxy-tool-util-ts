@@ -1,0 +1,41 @@
+/* Galaxy Design System — gxwf-ui
+ * Color palette aligned with IWC (Intergalactic Workflow Commission) branding.
+ * Ref: DESIGN_IWC.md — five semantic palettes: bay-of-many, ebony-clay,
+ * hokey-pokey, chicago, gold. */
+
+@import "@fontsource/atkinson-hyperlegible/400.css";
+@import "@fontsource/atkinson-hyperlegible/700.css";
+@import "@fontsource/atkinson-hyperlegible/400-italic.css";
+
+:root {
+  /* Bay of Many (Galaxy Primary Blue) — links, badges, focus rings */
+  --gx-blue-200: #cde0f0;
+  --gx-blue-700: #387dba;
+  --gx-blue-800: #2e689a;
+  --gx-blue-900: #25537b;
+
+  /* Ebony Clay (Galaxy Dark Navy) — header, footers, code bg */
+  --gx-navy: #2c3143;
+  --gx-navy-dark: #1a1f2e;
+  --gx-navy-700: #4c5574;
+  --gx-navy-800: #3c435c;
+
+  /* Hokey Pokey (Galaxy Gold) — primary accent: buttons, active indicators */
+  --gx-gold: #d0bd2a;
+  --gx-gold-300: #e1d36b;
+  --gx-gold-600: #a19321;
+  --gx-gold-700: #736817;
+
+  /* Chicago (Galaxy Grey) — text hierarchy, neutral UI */
+  --gx-grey-50: #f5f5f6;
+  --gx-grey-100: #e6e6e7;
+  --gx-grey-200: #d0d0d1;
+  --gx-grey-300: #afafb1;
+  --gx-grey-400: #878789;
+  --gx-grey-500: #6c6c6e;
+  --gx-grey-600: #58585a;
+  --gx-grey-700: #4f4e50;
+
+  /* Monospace font stack */
+  --gx-mono: "Monaco", "Menlo", "Consolas", "Courier New", monospace;
+}
