@@ -22,7 +22,11 @@
 
     <DataTable :value="report.results" size="small" class="results-table">
       <Column field="step" header="Step" />
-      <Column field="tool_id" header="Tool" />
+      <Column header="Tool">
+        <template #body="{ data }: { data: ValidationStepResult }">
+          <ToolId :tool-id="data.tool_id" />
+        </template>
+      </Column>
       <Column header="Status">
         <template #body="{ data }: { data: ValidationStepResult }">
           <Tag :value="data.status" :severity="statusSeverity(data.status)" />
@@ -46,6 +50,7 @@ import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
 import Message from "primevue/message";
+import ToolId from "./ToolId.vue";
 
 const props = defineProps<{
   report: SingleLintReport;

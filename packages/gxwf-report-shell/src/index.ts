@@ -7,3 +7,7 @@ export { default as TreeLintReport } from "./TreeLintReport.vue";
 export { default as TreeCleanReport } from "./TreeCleanReport.vue";
 export { default as TreeRoundtripReport } from "./TreeRoundtripReport.vue";
 export { default as ReportShell } from "./ReportShell.vue";
+export { default as RawJsonView } from "./RawJsonView.vue";
+export { default as ToolId } from "./ToolId.vue";
+export { parseToolId, formatToolId } from "./toolId.js";
+export type { ParsedToolId } from "./toolId.js";

@@ -72,7 +72,11 @@
     <template v-if="report.tool_failure_modes.length">
       <h3 class="category-heading">Tool Failure Modes</h3>
       <DataTable :value="report.tool_failure_modes" size="small">
-        <Column field="tool_id" header="Tool" />
+        <Column header="Tool">
+          <template #body="{ data }: { data: ToolFailureMode }">
+            <ToolId :tool-id="data.tool_id" />
+          </template>
+        </Column>
         <Column field="failure_class" header="Failure Class" />
         <Column field="count" header="Count" />
       </DataTable>
@@ -82,10 +86,15 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { RoundTripTreeReport, RoundTripValidationResult } from "@galaxy-tool-util/schema";
+import type {
+  RoundTripTreeReport,
+  RoundTripValidationResult,
+  ToolFailureMode,
+} from "@galaxy-tool-util/schema";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
+import ToolId from "./ToolId.vue";
 
 const props = defineProps<{ report: RoundTripTreeReport }>();
 
