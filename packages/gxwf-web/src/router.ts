@@ -207,7 +207,7 @@ function matchRoute(method: string, url: string): Route | null {
     if (lastSlash > 0) {
       const op = rest.slice(lastSlash + 1);
       if (WORKFLOW_OPS.has(op)) {
-        const filePath = rest.slice(0, lastSlash);
+        const filePath = decodeURIComponent(rest.slice(0, lastSlash));
         return { handler: "workflowOp", filePath, op: op as WorkflowOp, query };
       }
     }
@@ -226,7 +226,7 @@ function matchRoute(method: string, url: string): Route | null {
     return null;
   }
 
-  const pathStr = rest.startsWith("/") ? rest.slice(1) : rest;
+  const pathStr = decodeURIComponent(rest.startsWith("/") ? rest.slice(1) : rest);
 
   // /checkpoints/{id}: POST = restore, DELETE = delete checkpoint.
   const cpIdMatch = pathStr.match(/^(.+)\/checkpoints\/([^/]+)$/);
