@@ -22,7 +22,7 @@ import {
   type ValidationMode,
 } from "./validate-workflow.js";
 import { collectTree, type TreeResult } from "./tree.js";
-import { writeReportOutput, type ReportOutputOptions } from "./report-output.js";
+import { writeReportOutput, writeReportHtml, type ReportOutputOptions } from "./report-output.js";
 
 export interface ValidateTreeOptions extends StrictOptions, ReportOutputOptions {
   format?: string;
@@ -102,7 +102,8 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
 
   const report = buildReport(treeResult);
 
-  await writeReportOutput("validate_tree.md.j2", report, opts);
+  await writeReportOutput("validate_tree.md.j2", report, { reportMarkdown: opts.reportMarkdown });
+  await writeReportHtml("validate-tree", report, opts.reportHtml);
 
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));

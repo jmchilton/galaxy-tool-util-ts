@@ -1,8 +1,22 @@
 /**
- * Helpers for writing Markdown/HTML rendered reports from tree commands.
+ * Helpers for writing Markdown/HTML rendered reports from CLI commands.
  */
 import { writeFile } from "node:fs/promises";
-import { renderReport, type ReportFormat } from "../workflow/report-templates.js";
+import { renderReport } from "../workflow/report-templates.js";
+
+// Pin to a specific published gxwf-report-shell version.
+// Bump when a new shell version with user-visible changes is released to npm.
+const SHELL_CDN_VERSION = "0.1.0";
+const SHELL_CDN_BASE = `https://cdn.jsdelivr.net/npm/@galaxy-tool-util/gxwf-report-shell@${SHELL_CDN_VERSION}/dist`;
+
+export type ReportType =
+  | "validate"
+  | "lint"
+  | "clean"
+  | "validate-tree"
+  | "lint-tree"
+  | "clean-tree"
+  | "roundtrip-tree";
 
 export interface ReportOutputOptions {
   /**
@@ -28,16 +42,57 @@ export async function writeReportOutput(
   report: unknown,
   opts: ReportOutputOptions,
 ): Promise<void> {
-  async function emit(format: ReportFormat, dest: string | boolean | undefined): Promise<void> {
-    if (!dest) return;
-    const content = await renderReport(templateName, report, undefined, format);
-    // Commander sets dest = true when flag is passed without a filename argument
-    if (dest === true || dest === "-") {
-      process.stdout.write(content);
-    } else {
-      await writeFile(dest, content, "utf-8");
-    }
+  const dest = opts.reportMarkdown;
+  if (!dest) return;
+  const content = await renderReport(templateName, report);
+  // Commander sets dest = true when flag is passed without a filename argument
+  if (dest === true || dest === "-") {
+    process.stdout.write(content);
+  } else {
+    await writeFile(dest, content, "utf-8");
   }
-  await emit("markdown", opts.reportMarkdown);
-  await emit("html", opts.reportHtml);
+}
+
+/**
+ * Generate a standalone HTML page that loads the gxwf-report-shell IIFE
+ * bundle from CDN and renders the given report data.
+ *
+ * The resulting HTML is self-contained (aside from the CDN network request).
+ * Use this for --report-html on single-workflow and tree commands.
+ */
+export function buildReportHtml(type: ReportType, data: unknown, title = "gxwf Report"): string {
+  const payload = JSON.stringify({ type, data });
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <link rel="stylesheet" href="${SHELL_CDN_BASE}/shell.css">
+</head>
+<body>
+  <div id="gxwf-report"></div>
+  <script>window.__GXWF_REPORT__ = ${payload};</script>
+  <script src="${SHELL_CDN_BASE}/shell.iife.js"></script>
+</body>
+</html>`;
+}
+
+/**
+ * Write an HTML report to the given destination if set.
+ * dest follows the same string | boolean convention as reportHtml/reportMarkdown.
+ */
+export async function writeReportHtml(
+  type: ReportType,
+  data: unknown,
+  dest: string | boolean | undefined,
+  title?: string,
+): Promise<void> {
+  if (!dest) return;
+  const content = buildReportHtml(type, data, title);
+  if (dest === true || dest === "-") {
+    process.stdout.write(content);
+  } else {
+    await writeFile(dest as string, content, "utf-8");
+  }
 }

@@ -28,6 +28,7 @@ import { createDefaultResolver } from "./url-resolver.js";
 import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
+import { writeReportHtml } from "./report-output.js";
 
 export type { WorkflowFormat } from "@galaxy-tool-util/schema";
 
@@ -40,6 +41,7 @@ export interface ValidateWorkflowOptions extends StrictOptions {
   mode?: ValidationMode;
   toolSchemaDir?: string;
   json?: boolean;
+  reportHtml?: string | boolean;
 }
 
 function formatIssues(error: ParseResult.ParseError): string[] {
@@ -139,11 +141,14 @@ export async function runValidateWorkflow(
 
   // --- tool state validation (effect mode) ---
   if (opts.toolState === false) {
-    if (opts.json) {
+    if (opts.json || opts.reportHtml) {
       const report = buildSingleValidationReport(filePath, [], {
         structure_errors: structureErrors,
       });
-      console.log(JSON.stringify(report, null, 2));
+      if (opts.json) {
+        console.log(JSON.stringify(report, null, 2));
+      }
+      await writeReportHtml("validate", report, opts.reportHtml);
     }
     process.exitCode = structOk ? 0 : 1;
     return;
@@ -172,12 +177,15 @@ export async function runValidateWorkflow(
 
   const stateOk = !results.some((r) => r.status === "fail");
 
-  if (opts.json) {
+  if (opts.json || opts.reportHtml) {
     const report = buildSingleValidationReport(filePath, results, {
       structure_errors: structureErrors,
       encoding_errors: encodingErrors,
     });
-    console.log(JSON.stringify(report, null, 2));
+    if (opts.json) {
+      console.log(JSON.stringify(report, null, 2));
+    }
+    await writeReportHtml("validate", report, opts.reportHtml);
     process.exitCode = structOk && stateOk ? 0 : 1;
     return;
   }

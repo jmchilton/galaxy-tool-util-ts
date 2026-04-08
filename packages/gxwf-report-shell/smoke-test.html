@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>gxwf-report-shell smoke test</title>
+    <link rel="stylesheet" href="./dist/shell.css" />
+  </head>
+  <body>
+    <div id="gxwf-report"></div>
+    <script>
+      // Sample SingleValidationReport payload — change report.type and data to
+      // test other report types (lint, clean, roundtrip).
+      window.__GXWF_REPORT__ = {
+        type: "validate",
+        data: {
+          workflow: "test_workflow.ga",
+          skipped_reason: null,
+          structure_errors: [],
+          encoding_errors: [],
+          summary: { ok: 2, fail: 1, skip: 0 },
+          results: [
+            {
+              step: 0,
+              tool_id: "toolshed.g2.bx.psu.edu/repos/foo/bar/baz/1.0",
+              status: "ok",
+              errors: [],
+            },
+            {
+              step: 1,
+              tool_id: "toolshed.g2.bx.psu.edu/repos/foo/bar/qux/2.0",
+              status: "fail",
+              errors: ["Tool not found in cache"],
+            },
+            {
+              step: 2,
+              tool_id: null,
+              status: "ok",
+              errors: [],
+            },
+          ],
+        },
+      };
+    </script>
+    <script src="./dist/shell.iife.js"></script>
+  </body>
+</html>

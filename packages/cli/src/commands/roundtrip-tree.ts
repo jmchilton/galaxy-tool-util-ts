@@ -18,7 +18,7 @@ import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { resolveFormat } from "./workflow-io.js";
 import { collectTree, skipWorkflow } from "./tree.js";
 import { countDiffs } from "./roundtrip.js";
-import { writeReportOutput, type ReportOutputOptions } from "./report-output.js";
+import { writeReportOutput, writeReportHtml, type ReportOutputOptions } from "./report-output.js";
 
 export interface RoundtripTreeOptions extends StrictOptions, ReportOutputOptions {
   cacheDir?: string;
@@ -112,7 +112,10 @@ export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions):
     return makeRoundTripResult(relPath, o.result!.result, null, null);
   });
   const roundtripReport = buildRoundTripTreeReport(treeResult.root, roundtripWorkflows);
-  await writeReportOutput("roundtrip_tree.md.j2", roundtripReport, opts);
+  await writeReportOutput("roundtrip_tree.md.j2", roundtripReport, {
+    reportMarkdown: opts.reportMarkdown,
+  });
+  await writeReportHtml("roundtrip-tree", roundtripReport, opts.reportHtml);
 
   if (opts.json) {
     console.log(

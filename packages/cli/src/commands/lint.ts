@@ -30,6 +30,7 @@ import {
   decodeStructureErrors,
   detectEncodingErrors,
 } from "./validate-workflow.js";
+import { writeReportHtml } from "./report-output.js";
 
 export interface LintOptions extends StrictOptions {
   format?: string;
@@ -37,6 +38,7 @@ export interface LintOptions extends StrictOptions {
   skipStateValidation?: boolean;
   cacheDir?: string;
   json?: boolean;
+  reportHtml?: string | boolean;
 }
 
 export interface LintReportOptions {
@@ -93,7 +95,7 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
     strict,
   });
 
-  if (opts.json) {
+  if (opts.json || opts.reportHtml) {
     const lintErrors = report.structural.error_count + (report.bestPractices?.error_count ?? 0);
     const lintWarnings = report.structural.warn_count + (report.bestPractices?.warn_count ?? 0);
 
@@ -116,7 +118,10 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
       report.stateValidation ?? [],
       { structure_errors: structureErrors, encoding_errors: encodingErrors },
     );
-    console.log(JSON.stringify(singleReport, null, 2));
+    if (opts.json) {
+      console.log(JSON.stringify(singleReport, null, 2));
+    }
+    await writeReportHtml("lint", singleReport, opts.reportHtml);
     process.exitCode = report.exitCode;
     return;
   }

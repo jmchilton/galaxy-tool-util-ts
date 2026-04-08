@@ -12,7 +12,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { resolveFormat, serializeWorkflow } from "./workflow-io.js";
 import { collectTree, type TreeResult } from "./tree.js";
-import { writeReportOutput, type ReportOutputOptions } from "./report-output.js";
+import { writeReportOutput, writeReportHtml, type ReportOutputOptions } from "./report-output.js";
 
 export interface CleanTreeOptions extends ReportOutputOptions {
   outputDir?: string;
@@ -39,7 +39,8 @@ export async function runCleanTree(dir: string, opts: CleanTreeOptions): Promise
 
   const report = buildReport(treeResult);
 
-  await writeReportOutput("clean_tree.md.j2", report, opts);
+  await writeReportOutput("clean_tree.md.j2", report, { reportMarkdown: opts.reportMarkdown });
+  await writeReportHtml("clean-tree", report, opts.reportHtml);
 
   if (opts.json) {
     console.log(JSON.stringify(report, null, 2));
