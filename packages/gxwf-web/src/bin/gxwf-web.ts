@@ -71,6 +71,10 @@ async function main() {
   // Bundled copy is copied from gxwf-ui during build → public/;
   // two levels up from dist/bin/ lands at the package root.
   const uiDirFromEnv = process.env.GXWF_UI_DIST;
+  if (uiDirFromEnv && !existsSync(uiDirFromEnv)) {
+    console.error(`GXWF_UI_DIST points to non-existent path: ${uiDirFromEnv}`);
+    process.exit(1);
+  }
   const uiDirCandidate = new URL("../../public", import.meta.url).pathname;
   const uiDir = uiDirFromEnv ?? (existsSync(uiDirCandidate) ? uiDirCandidate : undefined);
 
