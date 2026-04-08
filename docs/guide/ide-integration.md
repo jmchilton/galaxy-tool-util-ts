@@ -1,77 +1,23 @@
 # IDE Integration
 
-This guide covers how to integrate Galaxy workflow tooling into editors and language servers using the `gxwf-web` HTTP server and the `@galaxy-tool-util/gxwf-client` typed client.
+Guide for building editor extensions and language servers that work with Galaxy workflow files.
 
-## Overview
+Two integration paths are available:
 
-`gxwf-web` is a local HTTP server that exposes workflow operations (validate, lint, clean, convert, roundtrip) and a Jupyter-compatible file contents API over HTTP. Editor extensions and language servers connect to it to provide real-time feedback on Galaxy workflow files without re-implementing the validation logic themselves.
+- **HTTP server** (`gxwf-web`) — run a local server and connect via HTTP. Suitable for any editor that can make HTTP requests. See [gxwf-web Server](guide/gxwf-web.md) for the full server and API reference.
+- **Programmatic** (`ToolStateValidator`) — validate tool state directly in-process without a server. Suitable for TypeScript language servers and plugins.
 
-```
-Editor / language server
-       │  HTTP (localhost)
-       ▼
-  gxwf-web server
-       │
-       ├── /api/contents/*   — file CRUD + checkpoints
-       ├── /workflows         — workflow index
-       └── /workflows/{path}/{op}  — validate / lint / clean / to-format2 / to-native / roundtrip
-```
+## HTTP-based Integration
 
-## Server Setup
-
-### Installation
+### Starting the Server
 
 ```bash
-npm install -g @galaxy-tool-util/gxwf-web
-# or with pnpm / yarn
-pnpm add -g @galaxy-tool-util/gxwf-web
-```
-
-### Starting the server
-
-```bash
-# Serve the current directory on localhost:8000
-gxwf-web .
-
-# Custom host and port
-gxwf-web ./workflows --host 0.0.0.0 --port 9000
-
-# Use a pre-populated tool cache directory
 gxwf-web ./workflows --cache-dir ~/.cache/galaxy-tools
 ```
 
-### CLI flags
+See [gxwf-web Server](guide/gxwf-web.md) for all startup flags, YAML config, and API reference.
 
-| Flag | Default | Description |
-|---|---|---|
-| `<directory>` | (required) | Root directory of workflow files |
-| `--host` | `127.0.0.1` | Bind address |
-| `--port` | `8000` | Bind port |
-| `--cache-dir <path>` | system default | Tool cache directory |
-| `--config <path>` | — | Path to YAML configuration file (see below) |
-| `--output-schema` | — | Print the OpenAPI schema to stdout and exit |
-
-### YAML Configuration
-
-For persistent tool source configuration, pass a YAML config file:
-
-```yaml
-# gxwf.yml
-cache_dir: ~/.cache/galaxy-tools
-sources:
-  - type: toolshed
-    url: https://toolshed.g2.bx.psu.edu
-  - type: galaxy
-    url: https://usegalaxy.org
-```
-
-```bash
-gxwf-web ./workflows --config gxwf.yml
-```
-
-CLI flags take precedence over config file values (e.g. `--cache-dir` overrides `cache_dir` in the file).
-
-## TypeScript Client
+### TypeScript Client
 
 Use `@galaxy-tool-util/gxwf-client` for a fully-typed HTTP client built on [openapi-fetch](https://openapi-ts.pages.dev/openapi-fetch/):
 
@@ -87,7 +33,7 @@ const client = createGxwfClient("http://localhost:8000");
 // List all discovered workflows
 const { data: index } = await client.GET("/workflows", {});
 
-// Validate a workflow
+// Validate a workflow and surface diagnostics
 const { data: report } = await client.GET("/workflows/{workflow_path}/validate", {
   params: {
     path: { workflow_path: "category/my-workflow.ga" },
@@ -104,197 +50,29 @@ if (report && !report.valid) {
 
 The client is fully typed from the server's OpenAPI schema — all request/response shapes are inferred automatically.
 
-## Workflow Operations API
+### Workflow Index
 
-All workflow operations are `GET /workflows/{workflow_path}/{op}`.
+Use the workflow index to build file tree views or keep track of which files are workflows:
 
-`workflow_path` is the relative path from the server's configured directory (e.g. `subdir/my-workflow.ga`).
-
-### `validate`
-
-Validates workflow structure and tool state.
-
-```
-GET /workflows/{workflow_path}/validate
-  ?strict=true          # enable structure + encoding strict checks (not strictState — see note)
-  ?connections=true     # validate step connections (not yet implemented, accepted for parity)
-  ?mode=effect          # validation backend: effect (default) or json-schema
-  ?allow=tool_id        # tool IDs whose stale keys are allowed (future work)
-  ?deny=tool_id         # tool IDs whose stale keys are denied (future work)
+```typescript
+const { data: index } = await client.GET("/workflows", {});
+// index.workflows: Array<{ relative_path, format, category }>
 ```
 
-> **Note:** The HTTP API's `strict` parameter enables `strictStructure` and `strictEncoding` but does **not** enable `strictState`. This differs from the CLI's `--strict` flag, which enables all three. Steps with missing tools are always silently skipped in the HTTP API regardless of `strict`.
+The index updates automatically when files change via the Contents API. Call `POST /workflows/refresh` if files are modified outside the API.
 
-Response: `SingleValidationReport`
+### File Operations via Contents API
 
-```json
-{
-  "workflow": "/abs/path/my-workflow.ga",
-  "valid": true,
-  "steps": [
-    {
-      "step_id": 0,
-      "tool_id": "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc",
-      "status": "ok",
-      "errors": [],
-      "skip": false,
-      "skip_replacement_params": false
-    }
-  ],
-  "structure_errors": [],
-  "encoding_errors": []
-}
-```
+The [Contents API](guide/gxwf-web.md#contents-api) (Jupyter-compatible) lets editors read, write, rename, and delete workflow files, with checkpoint support for undo/restore. This means an editor can:
 
-### `lint`
+- Read the current file content before displaying it
+- Write back validated/cleaned output after user confirmation
+- Create checkpoints before destructive operations
+- Restore checkpoints on undo
 
-Runs structural checks, best-practice checks, and tool state validation.
+## Programmatic Integration (No Server)
 
-```
-GET /workflows/{workflow_path}/lint
-  ?strict=true    # enables strictStructure + strictEncoding (not strictState)
-  ?allow=tool_id
-  ?deny=tool_id
-```
-
-Response: `SingleLintReport` — same shape as validate plus `lint_errors` and `lint_warnings` counts.
-
-### `clean`
-
-Reports stale keys that would be removed by `gxwf clean`.
-
-```
-GET /workflows/{workflow_path}/clean
-  ?preserve=key         # keys to preserve (future work)
-  ?strip=key            # keys to always strip (future work)
-```
-
-Response: `SingleCleanReport`
-
-### `to-format2` / `to-native`
-
-Stateful format conversion.
-
-- `to-format2` requires a native (`.ga`) workflow
-- `to-native` requires a format2 (`.gxwf.yml`) workflow
-
-```
-GET /workflows/{workflow_path}/to-format2
-GET /workflows/{workflow_path}/to-native
-```
-
-### `roundtrip`
-
-Roundtrip-validates a native workflow (native → format2 → native, diffs tool_state per step).
-
-```
-GET /workflows/{workflow_path}/roundtrip
-```
-
-Response: `SingleRoundTripReport`
-
-## Contents API
-
-The contents API mirrors the [Jupyter Contents API](https://jupyter-server.readthedocs.io/en/latest/developers/contents.html), making `gxwf-web` compatible with Jupyter-based editor frameworks.
-
-Base path: `/api/contents`
-
-### Reading files and directories
-
-```
-GET /api/contents                     — list root directory
-GET /api/contents/{path}              — read file or list directory
-  ?content=0                          — omit file content (metadata only)
-  ?format=text|base64                 — encoding for file content
-```
-
-### Writing files
-
-```
-PUT /api/contents/{path}
-```
-
-Request body: `ContentsModel` (JSON). Include `If-Unmodified-Since` header for optimistic concurrency.
-
-### Creating untitled files
-
-```
-POST /api/contents                    — create untitled file in root
-POST /api/contents/{dir}             — create untitled file in directory
-```
-
-Request body: `{ "type": "file", "ext": ".ga" }`
-
-### Renaming / moving
-
-```
-PATCH /api/contents/{path}
-```
-
-Request body: `{ "path": "new/relative/path" }`
-
-### Deleting
-
-```
-DELETE /api/contents/{path}
-```
-
-Returns 204 No Content. Deleting the root returns 403.
-
-### Checkpoints
-
-```
-GET    /api/contents/{path}/checkpoints      — list checkpoints
-POST   /api/contents/{path}/checkpoints      — create checkpoint
-POST   /api/contents/{path}/checkpoints/{id} — restore checkpoint
-DELETE /api/contents/{path}/checkpoints/{id} — delete checkpoint
-```
-
-Checkpoints are stored in a `.checkpoints/` directory alongside the workflow files.
-
-## Structural Schema
-
-Get the JSON Schema for Galaxy workflow structure (for use with external schema validators):
-
-```
-GET /api/schemas/structural
-  ?format=format2    # (default)
-  ?format=native
-```
-
-Or export it via CLI:
-
-```bash
-gxwf-web --output-schema
-```
-
-## Workflow Index
-
-```
-GET /workflows          — list all discovered workflows
-POST /workflows/refresh — re-scan directory for new/removed workflows
-```
-
-Response: `WorkflowIndex`
-
-```json
-{
-  "directory": "/abs/path",
-  "workflows": [
-    {
-      "relative_path": "category/my-workflow.ga",
-      "format": "native",
-      "category": "category"
-    }
-  ]
-}
-```
-
-Workflow discovery is automatic on startup. After adding or removing files via the contents API, the index updates automatically. Use `POST /workflows/refresh` if you modify files outside the API.
-
-## Tool State Validation (Programmatic)
-
-For TypeScript tools that need tool state validation without an HTTP server, use `ToolStateValidator` from `@galaxy-tool-util/schema`. It wraps `ToolInfoService` to produce structured `ToolStateDiagnostic[]` output without exposing Effect library internals.
+For TypeScript tools that need tool state validation in-process, use `ToolStateValidator` from `@galaxy-tool-util/schema`. It wraps `ToolInfoService` and produces structured `ToolStateDiagnostic[]` without exposing Effect library internals.
 
 ```typescript
 import { ToolStateValidator, type ToolStateDiagnostic } from "@galaxy-tool-util/schema";
@@ -318,7 +96,7 @@ const diagnostics2 = await validator.validateFormat2Step(
   step.state,
 );
 
-// Each diagnostic has path, message, and severity
+// Surface diagnostics in the editor
 for (const d of diagnostics) {
   console.log(`${d.severity} at ${d.path || "(top level)"}: ${d.message}`);
 }
@@ -335,8 +113,4 @@ interface ToolStateDiagnostic {
 }
 ```
 
-If the tool is not in the cache, `validate*Step` returns an empty array (rather than an error) — the tool is treated as unknown and silently skipped.
-
-## CORS
-
-The server sends permissive CORS headers (`Access-Control-Allow-Origin: *`) on all responses, suitable for browser-based editors connecting to a local dev server.
+If the tool is not in the cache, `validate*Step` returns an empty array — the tool is treated as unknown and silently skipped (graceful degradation).
