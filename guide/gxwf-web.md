@@ -22,10 +22,13 @@ npm install -g @galaxy-tool-util/gxwf-web
 pnpm add -g @galaxy-tool-util/gxwf-web
 ```
 
+The published package includes the pre-built gxwf-ui frontend. Once installed, `gxwf-web <dir>` starts both the API server and serves the Vue UI at the root — no separate frontend install needed.
+
 ## Starting the Server
 
 ```bash
 # Serve the current directory on localhost:8000
+# UI available at http://localhost:8000/
 gxwf-web .
 
 # Custom host and port
