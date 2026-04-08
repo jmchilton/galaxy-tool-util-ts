@@ -823,6 +823,18 @@ describe("workflow operations", () => {
     expect(typeof data.total_removed).toBe("number");
   });
 
+  it("GET /workflows/{path}/validate decodes percent-encoded slashes in path", async () => {
+    const subDir = path.join(tmpDir, "sub", "dir");
+    fs.mkdirSync(subDir, { recursive: true });
+    fs.writeFileSync(path.join(subDir, "wf.ga"), VALID_GA);
+    // openapi-fetch encodes slashes in path params as %2F
+    const encoded = encodeURIComponent("sub/dir/wf.ga");
+    const res = await fetch(`${srv.baseUrl}/workflows/${encoded}/validate`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { workflow: string };
+    expect(typeof data.workflow).toBe("string");
+  });
+
   it("GET /workflows/{path}/validate returns SingleValidationReport", async () => {
     fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
     const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/validate`);

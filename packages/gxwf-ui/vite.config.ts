@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      "/workflows": "http://localhost:8000",
-      "/api": "http://localhost:8000",
+      "/workflows": process.env.GXWF_BACKEND_URL ?? "http://localhost:8000",
+      "/api": process.env.GXWF_BACKEND_URL ?? "http://localhost:8000",
     },
   },
 });

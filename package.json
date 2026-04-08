@@ -4,7 +4,8 @@
   "packageManager": "pnpm@10.33.0",
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
+    "dev": "concurrently \"node packages/gxwf-web/dist/bin/gxwf-web.js $GXWF_TEST_WORKFLOW_DIRECTORY\" \"pnpm --filter @galaxy-tool-util/gxwf-ui dev\"",
+    "build": "pnpm -r build && pnpm --filter @galaxy-tool-util/gxwf-web copy-ui",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "eslint packages/*/src/ packages/*/test/",
@@ -21,6 +22,7 @@
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.30.0",
     "@eslint/js": "^10.0.1",
+    "concurrently": "^9.2.1",
     "docsify-cli": "^4.4.4",
     "eslint": "^10.1.0",
     "prettier": "^3.8.1",

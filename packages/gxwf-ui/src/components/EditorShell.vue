@@ -92,8 +92,8 @@ const emit = defineEmits<{
 }
 
 .editor-textarea:focus {
-  border-color: var(--p-primary-color, #3b82f6);
-  box-shadow: 0 0 0 2px var(--p-primary-color-alpha, rgba(59, 130, 246, 0.2));
+  border-color: var(--gx-gold, #d0bd2a);
+  box-shadow: 0 0 0 2px rgba(208, 189, 42, 0.2);
 }
 
 .diagnostics-list {

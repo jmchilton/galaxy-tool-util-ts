@@ -12,9 +12,10 @@
     </div>
 
     <DataTable :value="report.results" size="small">
-      <Column header="Step">
+      <Column field="step" header="Step" />
+      <Column header="Tool">
         <template #body="{ data }: { data: CleanStepResult }">
-          {{ data.display_label }}
+          <ToolId :tool-id="data.tool_id" />
         </template>
       </Column>
       <Column header="Removed Keys">
@@ -37,6 +38,7 @@ import DataTable from "primevue/datatable";
 import type { SingleCleanReport, CleanStepResult } from "@galaxy-tool-util/schema";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
+import ToolId from "./ToolId.vue";
 
 defineProps<{
   report: SingleCleanReport;

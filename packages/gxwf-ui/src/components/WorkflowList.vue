@@ -17,7 +17,6 @@
         <Tag :value="(row as WorkflowEntry).format" severity="secondary" />
       </template>
     </Column>
-    <Column field="category" header="Category" />
     <Column header="Last Run">
       <template #body="{ data: row }">
         <Tag

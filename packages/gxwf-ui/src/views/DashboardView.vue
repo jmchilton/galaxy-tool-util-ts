@@ -8,7 +8,9 @@
       <Button label="Refresh" icon="pi pi-refresh" :loading="loading" @click="refreshWorkflows" />
     </div>
     <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
-    <WorkflowList :workflows="workflows" :loading="loading" @select="handleSelect" />
+    <div class="list-frame">
+      <WorkflowList :workflows="workflows" :loading="loading" @select="handleSelect" />
+    </div>
   </div>
 </template>
 
@@ -48,6 +50,12 @@ function handleSelect(workflow: WorkflowEntry) {
 .view-header h1 {
   margin: 0 0 0.25rem;
   font-size: 1.5rem;
+}
+
+.list-frame {
+  border: 1px solid var(--gx-gold, #d0bd2a);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .directory-path {

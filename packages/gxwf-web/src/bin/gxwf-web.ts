@@ -67,11 +67,23 @@ async function main() {
     cacheDir ??= toolOpts.cacheDir;
   }
 
-  const { server, ready } = createApp(directory!, { cacheDir, sources });
+  // Resolve UI dist: GXWF_UI_DIST env var overrides the bundled copy.
+  // Bundled copy is copied from gxwf-ui during build → public/;
+  // two levels up from dist/bin/ lands at the package root.
+  const uiDirFromEnv = process.env.GXWF_UI_DIST;
+  const uiDirCandidate = new URL("../../public", import.meta.url).pathname;
+  const uiDir = uiDirFromEnv ?? (existsSync(uiDirCandidate) ? uiDirCandidate : undefined);
+
+  const { server, ready } = createApp(directory!, { cacheDir, sources, uiDir });
 
   server.listen(port, host, () => {
     console.log(`gxwf-web listening on ${host}:${port}`);
     console.log(`Serving workflows from: ${directory}`);
+    if (uiDir) {
+      console.log(`UI: http://${host}:${port}/`);
+    } else {
+      console.log("UI: not available (run pnpm build to bundle the frontend)");
+    }
     if (configPath) console.log(`Config: ${configPath}`);
   });
 

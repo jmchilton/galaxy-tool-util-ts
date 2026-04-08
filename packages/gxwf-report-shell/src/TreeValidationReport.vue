@@ -66,7 +66,11 @@
       <DataTable :value="report.all_failures" size="small">
         <Column field="workflow" header="Workflow" />
         <Column field="step" header="Step" />
-        <Column field="tool_id" header="Tool" />
+        <Column header="Tool">
+          <template #body="{ data }: { data: { tool_id: string | null } }">
+            <ToolId :tool-id="data.tool_id" />
+          </template>
+        </Column>
         <Column field="message" header="Message" />
       </DataTable>
     </template>
@@ -78,6 +82,7 @@ import type { TreeValidationReport, WorkflowValidationResult } from "@galaxy-too
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
+import ToolId from "./ToolId.vue";
 
 defineProps<{ report: TreeValidationReport }>();
 </script>
