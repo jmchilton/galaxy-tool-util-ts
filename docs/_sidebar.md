@@ -12,6 +12,7 @@
   - [Tool Caching](guide/tool-caching.md)
   - [Proxy Server Setup](guide/proxy-server.md)
   - [Configuration](guide/configuration.md)
+  - [IDE Integration](guide/ide-integration.md)
 - **Architecture**
   - [Parameter Schema System](architecture/parameter-schemas.md)
   - [Effect Schema Usage](architecture/effect-schema.md)
