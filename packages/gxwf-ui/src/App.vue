@@ -9,7 +9,11 @@
         <RouterLink to="/" class="nav-link">Workflows</RouterLink>
         <RouterLink to="/files" class="nav-link">Files</RouterLink>
       </nav>
-      <button class="dark-toggle" @click="toggleDark" :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+      <button
+        class="dark-toggle"
+        @click="toggleDark"
+        :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+      >
         <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'" />
       </button>
     </header>
@@ -152,7 +156,9 @@ body {
   border-radius: 4px;
   position: relative;
   z-index: 1;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .dark-toggle:hover {
