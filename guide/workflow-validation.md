@@ -29,6 +29,29 @@ The CLI auto-detects the workflow format:
 
 Override with `--format native` or `--format format2`.
 
+### Strict Validation
+
+By default, validation is lenient — unknown keys are tolerated and legacy-encoded state is allowed. Use strict flags to harden CI pipelines:
+
+```bash
+# Enable all strict checks at once
+gxwf validate my-workflow.ga --strict
+
+# Or enable individually
+gxwf validate my-workflow.ga --strict-structure   # reject unknown keys
+gxwf validate my-workflow.ga --strict-encoding    # reject legacy JSON-string tool_state
+gxwf validate my-workflow.ga --strict-state       # require every tool step to validate (no skips)
+```
+
+| Flag | What it checks |
+|---|---|
+| `--strict-structure` | Unknown keys at the workflow envelope and step level (via `onExcessProperty: "error"`) |
+| `--strict-encoding` | JSON-string `tool_state` in native workflows; `tool_state` field used instead of `state` in format2 |
+| `--strict-state` | Every tool step must produce a valid result — steps with missing tools or skipped for any reason are treated as failures |
+| `--strict` | Shorthand for all three flags above |
+
+These flags apply to `validate`, `lint`, `convert`, `roundtrip`, and their `-tree` batch variants.
+
 ### Validation Backends
 
 Two backends are available for [tool state](glossary#tool-state) validation:

@@ -39,6 +39,19 @@ The CLI auto-detects the workflow format:
 
 Override with `--format native` or `--format format2`.
 
+### Strict Validation
+
+By default, validation is lenient — unknown keys are tolerated and legacy-encoded state is allowed. Use strict flags to harden CI:
+
+```bash
+gxwf validate my-workflow.ga --strict             # all strict checks
+gxwf validate my-workflow.ga --strict-structure   # reject unknown keys
+gxwf validate my-workflow.ga --strict-encoding    # reject JSON-string tool_state / format2 field misuse
+gxwf validate my-workflow.ga --strict-state       # no skipped steps allowed
+```
+
+See [Strict Validation](guide/workflow-validation.md#strict-validation) for the full flag reference. These flags apply to `validate`, `lint`, `convert`, `roundtrip`, and their `-tree` variants.
+
 ### Validation Backends
 
 Two backends are available for [tool state](glossary#tool-state) validation:
@@ -247,10 +260,81 @@ Tree commands load shared resources once (e.g. tool cache) and reuse them across
 
 - **Text mode** (default): per-file status lines + summary
 - **JSON mode** (`--json` or `--report-json`): structured report with per-file results and aggregate summary, suitable for CI integration
+- **Markdown report** (`--report-markdown [file]`): human-readable Markdown report (Nunjucks-rendered from bundled templates). Pass a file path to write to disk, or omit the path to write to stdout. Available on `validate-tree`, `lint-tree`, `clean-tree`, and `roundtrip-tree`.
+- **HTML report** (`--report-html [file]`): same content as Markdown but rendered as HTML. Available on single-file commands (`validate`, `lint`, `clean`) and all four tree commands.
+
+```bash
+# Write an HTML report to a file
+gxwf validate-tree ./workflows/ --report-html report.html
+
+# Pipe a Markdown report to stdout
+gxwf lint-tree ./workflows/ --report-markdown
+
+# JSON + HTML together
+gxwf roundtrip-tree ./workflows/ --json --report-html report.html
+```
 
 ### Exit Codes
 
 Tree commands use the worst exit code across all files. If any workflow fails, the overall exit code reflects that failure.
+
+## JSON Output Formats
+
+All commands support `--json` for machine-readable output. The report shapes use snake_case field names to match Galaxy's Python report models.
+
+### Validation report (`gxwf validate --json`)
+
+```json
+{
+  "workflow": "/abs/path/my-workflow.ga",
+  "valid": true,
+  "steps": [
+    {
+      "step_id": 0,
+      "tool_id": "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc",
+      "status": "ok",
+      "errors": [],
+      "skip": false,
+      "skip_replacement_params": false
+    }
+  ],
+  "structure_errors": [],
+  "encoding_errors": []
+}
+```
+
+`structure_errors` — schema decode failures (unknown keys, wrong types at the workflow envelope level). Populated when `--strict-structure` is on.
+
+`encoding_errors` — legacy encoding signals (JSON-string `tool_state`, wrong format2 field). Populated when `--strict-encoding` is on.
+
+Step `status` values: `"ok"` | `"failed"` | `"skipped"` | `"tool_not_found"`.
+
+### Lint report (`gxwf lint --json`)
+
+```json
+{
+  "workflow": "/abs/path/my-workflow.ga",
+  "lint_errors": 0,
+  "lint_warnings": 1,
+  "steps": [...],
+  "structure_errors": [],
+  "encoding_errors": []
+}
+```
+
+### Tree reports
+
+Tree commands add a top-level `workflows` array (each entry has `relative_path`, `format`, and `category`) and a `summary` object with `ok`, `fail`, and `skip` counts.
+
+```json
+{
+  "directory": "/abs/path/workflows",
+  "workflows": [
+    { "relative_path": "category/my-workflow.ga", "format": "native", "category": "category" }
+  ],
+  "summary": { "ok": 12, "fail": 1, "skip": 0 }
+}
+```
 
 ## Tool Cache Management
 
