@@ -25,6 +25,9 @@ import type { ToolInputsResolver } from "./normalized/stateful-runner.js";
 /** Keys injected by Galaxy's tool form machinery — never meaningful in saved workflows. */
 const BOOKKEEPING_KEYS = new Set(["__page__", "__rerun_remap_job_id__"]);
 
+/** Canonical position keys — only left/top are kept; browser-computed extras are stripped. */
+const POSITION_CANONICAL_KEYS = new Set(["left", "top"]);
+
 /** Keys leaked from runtime context into saved state. */
 const RUNTIME_LEAK_KEYS = new Set(["chromInfo", "__input_ext"]);
 
@@ -223,6 +226,18 @@ async function cleanNativeStep(
   };
 }
 
+/** Normalize a step's position dict to only canonical keys (left, top). */
+function normalizeStepPosition(stepDef: Record<string, unknown>): void {
+  const pos = stepDef.position;
+  if (pos !== null && typeof pos === "object" && !Array.isArray(pos)) {
+    for (const key of Object.keys(pos as Record<string, unknown>)) {
+      if (!POSITION_CANONICAL_KEYS.has(key)) {
+        delete (pos as Record<string, unknown>)[key];
+      }
+    }
+  }
+}
+
 /** Recursively clean all steps in a native workflow dict. */
 async function cleanNativeSteps(
   workflowDict: Record<string, unknown>,
@@ -235,6 +250,7 @@ async function cleanNativeSteps(
 
   for (const [key, stepDef] of Object.entries(steps)) {
     const stepLabel = prefix ? `${prefix}${key}` : key;
+    normalizeStepPosition(stepDef);
     if (stepDef.type === "subworkflow" && stepDef.subworkflow) {
       results.push(
         ...(await cleanNativeSteps(
