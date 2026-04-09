@@ -104,10 +104,6 @@
                 :loading="cleanLoading"
                 @click="() => void runClean(cleanOpts)"
               />
-              <label class="opt-label">
-                <Checkbox v-model="cleanOpts.include_content" :binary="true" size="small" />
-                Show workflow diff
-              </label>
               <ToggleButton
                 v-if="cleanResult"
                 v-model="showRaw.clean"
@@ -148,10 +144,6 @@
               <label class="opt-label">
                 <Checkbox v-model="roundtripOpts.strict_state" :binary="true" size="small" />
                 Strict state
-              </label>
-              <label class="opt-label">
-                <Checkbox v-model="roundtripOpts.include_content" :binary="true" size="small" />
-                Show workflow content
               </label>
               <ToggleButton
                 v-if="roundtripResult"
@@ -246,15 +238,12 @@ const lintOpts = reactive<LintOpts>({
   strict_encoding: false,
 });
 
-const cleanOpts = reactive<CleanOpts>({
-  include_content: false,
-});
+const cleanOpts = reactive<CleanOpts>({});
 
 const roundtripOpts = reactive<RoundtripOpts>({
   strict_structure: false,
   strict_encoding: false,
   strict_state: false,
-  include_content: false,
 });
 
 const showRaw = reactive({ validate: false, lint: false, clean: false, roundtrip: false });

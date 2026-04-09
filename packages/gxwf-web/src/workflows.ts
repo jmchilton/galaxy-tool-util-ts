@@ -382,23 +382,20 @@ export async function operateClean(
   opts: CleanOptions = {},
 ): Promise<SingleCleanReport> {
   const { absPath, data, format } = wf;
-  const before_content = opts.include_content
-    ? format === "native"
-      ? JSON.stringify(data, null, 2)
-      : stringifyYaml(data)
-    : undefined;
+  // Read raw file before mutation for before_content (mirrors Python clean_single).
+  const before_content = opts.include_content ? fs.readFileSync(absPath, "utf-8") : undefined;
   const cleanResult = await cleanWorkflow(data);
   const after_content = opts.include_content
     ? format === "native"
       ? JSON.stringify(cleanResult.workflow, null, 2)
       : stringifyYaml(cleanResult.workflow)
     : undefined;
-  const report = buildSingleCleanReport(absPath, cleanResult.results);
-  if (opts.include_content) {
-    (report as SingleCleanReport).before_content = before_content ?? null;
-    (report as SingleCleanReport).after_content = after_content ?? null;
-  }
-  return report;
+  const base = buildSingleCleanReport(absPath, cleanResult.results);
+  return {
+    ...base,
+    before_content: before_content ?? null,
+    after_content: after_content ?? null,
+  };
 }
 
 /** Convert native → format2 with schema-aware state re-encoding. */
