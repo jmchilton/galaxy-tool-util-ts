@@ -61,3 +61,9 @@ export { loadToolInputsForWorkflow } from "./commands/stateful-tool-inputs.js";
 export type { ToolLoadStatus, LoadedToolInputs } from "./commands/stateful-tool-inputs.js";
 /** Default subworkflow ref resolver (base64, TRS, HTTP, file paths). */
 export { createDefaultResolver } from "./commands/url-resolver.js";
+/** JSON-Schema-based (AJV) step validation and structural error decoding. */
+export {
+  validateNativeStepsJsonSchema,
+  validateFormat2StepsJsonSchema,
+  decodeStructureErrorsJsonSchema,
+} from "./commands/validate-workflow-json-schema.js";

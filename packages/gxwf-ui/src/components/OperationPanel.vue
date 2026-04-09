@@ -16,8 +16,28 @@
                 icon="pi pi-play"
                 size="small"
                 :loading="validateLoading"
-                @click="() => void runValidate()"
+                @click="() => void runValidate(validateOpts)"
               />
+              <Select
+                v-model="validateOpts.mode"
+                :options="modeOptions"
+                option-label="label"
+                option-value="value"
+                size="small"
+                class="mode-select"
+              />
+              <label class="opt-label">
+                <Checkbox v-model="validateOpts.strict_structure" :binary="true" size="small" />
+                Strict structure
+              </label>
+              <label class="opt-label">
+                <Checkbox v-model="validateOpts.strict_encoding" :binary="true" size="small" />
+                Strict encoding
+              </label>
+              <label class="opt-label">
+                <Checkbox v-model="validateOpts.clean_first" :binary="true" size="small" />
+                Clean first
+              </label>
               <ToggleButton
                 v-if="validateResult"
                 v-model="showRaw.validate"
@@ -45,8 +65,16 @@
                 icon="pi pi-play"
                 size="small"
                 :loading="lintLoading"
-                @click="() => void runLint()"
+                @click="() => void runLint(lintOpts)"
               />
+              <label class="opt-label">
+                <Checkbox v-model="lintOpts.strict_structure" :binary="true" size="small" />
+                Strict structure
+              </label>
+              <label class="opt-label">
+                <Checkbox v-model="lintOpts.strict_encoding" :binary="true" size="small" />
+                Strict encoding
+              </label>
               <ToggleButton
                 v-if="lintResult"
                 v-model="showRaw.lint"
@@ -74,8 +102,12 @@
                 icon="pi pi-play"
                 size="small"
                 :loading="cleanLoading"
-                @click="() => void runClean()"
+                @click="() => void runClean(cleanOpts)"
               />
+              <label class="opt-label">
+                <Checkbox v-model="cleanOpts.include_content" :binary="true" size="small" />
+                Show workflow diff
+              </label>
               <ToggleButton
                 v-if="cleanResult"
                 v-model="showRaw.clean"
@@ -103,8 +135,24 @@
                 icon="pi pi-play"
                 size="small"
                 :loading="roundtripLoading"
-                @click="() => void runRoundtrip()"
+                @click="() => void runRoundtrip(roundtripOpts)"
               />
+              <label class="opt-label">
+                <Checkbox v-model="roundtripOpts.strict_structure" :binary="true" size="small" />
+                Strict structure
+              </label>
+              <label class="opt-label">
+                <Checkbox v-model="roundtripOpts.strict_encoding" :binary="true" size="small" />
+                Strict encoding
+              </label>
+              <label class="opt-label">
+                <Checkbox v-model="roundtripOpts.strict_state" :binary="true" size="small" />
+                Strict state
+              </label>
+              <label class="opt-label">
+                <Checkbox v-model="roundtripOpts.include_content" :binary="true" size="small" />
+                Show workflow content
+              </label>
               <ToggleButton
                 v-if="roundtripResult"
                 v-model="showRaw.roundtrip"
@@ -136,6 +184,8 @@ import Tab from "primevue/tab";
 import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
 import Button from "primevue/button";
+import Checkbox from "primevue/checkbox";
+import Select from "primevue/select";
 import ToggleButton from "primevue/togglebutton";
 import Message from "primevue/message";
 import {
@@ -145,7 +195,13 @@ import {
   RoundtripReport,
   RawJsonView,
 } from "@galaxy-tool-util/gxwf-report-shell";
-import { useOperation } from "../composables/useOperation";
+import {
+  useOperation,
+  type ValidateOpts,
+  type LintOpts,
+  type CleanOpts,
+  type RoundtripOpts,
+} from "../composables/useOperation";
 
 const props = defineProps<{
   workflowPath: string;
@@ -173,6 +229,34 @@ const {
   runRoundtrip,
 } = useOperation(props.workflowPath);
 
+const modeOptions = [
+  { label: "Meta model", value: "effect" },
+  { label: "JSON Schema", value: "json-schema" },
+];
+
+const validateOpts = reactive<ValidateOpts>({
+  strict_structure: false,
+  strict_encoding: false,
+  mode: "effect",
+  clean_first: false,
+});
+
+const lintOpts = reactive<LintOpts>({
+  strict_structure: false,
+  strict_encoding: false,
+});
+
+const cleanOpts = reactive<CleanOpts>({
+  include_content: false,
+});
+
+const roundtripOpts = reactive<RoundtripOpts>({
+  strict_structure: false,
+  strict_encoding: false,
+  strict_state: false,
+  include_content: false,
+});
+
 const showRaw = reactive({ validate: false, lint: false, clean: false, roundtrip: false });
 </script>
 
@@ -194,6 +278,20 @@ const showRaw = reactive({ validate: false, lint: false, clean: false, roundtrip
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mode-select {
+  width: 9rem;
+}
+
+.opt-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .no-results {

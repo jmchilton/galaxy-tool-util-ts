@@ -13,6 +13,15 @@
       </Message>
     </template>
 
+    <Panel
+      v-if="report.clean_report != null"
+      header="Pre-validation clean"
+      :toggleable="true"
+      :collapsed="true"
+    >
+      <CleanReport :report="report.clean_report" />
+    </Panel>
+
     <div class="summary-row">
       <Tag
         v-for="(count, key) in report.summary"
@@ -50,8 +59,10 @@ import { computed } from "vue";
 import type { SingleValidationReport, ValidationStepResult } from "@galaxy-tool-util/schema";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
+import Panel from "primevue/panel";
 import Tag from "primevue/tag";
 import Message from "primevue/message";
+import CleanReport from "./CleanReport.vue";
 import ToolId from "./ToolId.vue";
 
 const props = defineProps<{

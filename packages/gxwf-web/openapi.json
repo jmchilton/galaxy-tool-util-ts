@@ -60,13 +60,23 @@
             }
           },
           {
-            "name": "strict",
+            "name": "strict_structure",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
               "default": false,
-              "title": "Strict"
+              "title": "Strict Structure"
+            }
+          },
+          {
+            "name": "strict_encoding",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Strict Encoding"
             }
           },
           {
@@ -87,6 +97,16 @@
               "type": "string",
               "default": "pydantic",
               "title": "Mode"
+            }
+          },
+          {
+            "name": "clean_first",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Clean First"
             }
           },
           {
@@ -179,6 +199,16 @@
               },
               "default": [],
               "title": "Strip"
+            }
+          },
+          {
+            "name": "include_content",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Content"
             }
           }
         ],
@@ -299,6 +329,46 @@
             "schema": {
               "type": "string",
               "title": "Workflow Path"
+            }
+          },
+          {
+            "name": "strict_structure",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Strict Structure"
+            }
+          },
+          {
+            "name": "strict_encoding",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Strict Encoding"
+            }
+          },
+          {
+            "name": "strict_state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Strict State"
+            }
+          },
+          {
+            "name": "include_content",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Content"
             }
           }
         ],
@@ -857,13 +927,23 @@
             }
           },
           {
-            "name": "strict",
+            "name": "strict_structure",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
               "default": false,
-              "title": "Strict"
+              "title": "Strict Structure"
+            }
+          },
+          {
+            "name": "strict_encoding",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Strict Encoding"
             }
           },
           {
@@ -988,12 +1068,20 @@
             ],
             "title": "Version"
           },
-          "removed_keys": {
+          "removed_state_keys": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Removed Keys",
+            "title": "Removed State Keys",
+            "default": []
+          },
+          "removed_step_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Removed Step Keys",
             "default": []
           },
           "skipped": {
@@ -1692,6 +1780,28 @@
             "type": "array",
             "title": "Results"
           },
+          "before_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Content"
+          },
+          "after_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Content"
+          },
           "total_removed": {
             "type": "integer",
             "title": "Total Removed",
@@ -1814,6 +1924,28 @@
           },
           "result": {
             "$ref": "#/components/schemas/RoundTripValidationResult"
+          },
+          "before_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Content"
+          },
+          "after_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Content"
           }
         },
         "type": "object",
@@ -1871,6 +2003,16 @@
             },
             "type": "array",
             "title": "Encoding Errors"
+          },
+          "clean_report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SingleCleanReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "summary": {
             "additionalProperties": {
@@ -2079,7 +2221,7 @@
           },
           "diffs": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/StepDiff"
             },
             "type": "array",
             "title": "Diffs"

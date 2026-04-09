@@ -71,6 +71,29 @@ export function clearOpCache(workflowPath: string) {
   delete opCache[workflowPath];
 }
 
+export interface ValidateOpts {
+  strict_structure?: boolean;
+  strict_encoding?: boolean;
+  mode?: string;
+  clean_first?: boolean;
+}
+
+export interface LintOpts {
+  strict_structure?: boolean;
+  strict_encoding?: boolean;
+}
+
+export interface CleanOpts {
+  include_content?: boolean;
+}
+
+export interface RoundtripOpts {
+  strict_structure?: boolean;
+  strict_encoding?: boolean;
+  strict_state?: boolean;
+  include_content?: boolean;
+}
+
 export function useOperation(workflowPath: string) {
   const client = useApi();
 
@@ -89,13 +112,21 @@ export function useOperation(workflowPath: string) {
   const cleanError = computed(() => ensureState(workflowPath).error.clean ?? null);
   const roundtripError = computed(() => ensureState(workflowPath).error.roundtrip ?? null);
 
-  async function runValidate() {
+  async function runValidate(opts: ValidateOpts = {}) {
     const s = ensureState(workflowPath);
     s.loading.validate = true;
     s.error.validate = null;
     try {
       const { data, error } = await client.GET("/workflows/{workflow_path}/validate", {
-        params: { path: { workflow_path: workflowPath } },
+        params: {
+          path: { workflow_path: workflowPath },
+          query: {
+            strict_structure: opts.strict_structure ?? false,
+            strict_encoding: opts.strict_encoding ?? false,
+            mode: opts.mode ?? undefined,
+            clean_first: opts.clean_first ?? false,
+          },
+        },
       });
       if (error) {
         s.error.validate = "Failed to validate workflow";
@@ -107,13 +138,19 @@ export function useOperation(workflowPath: string) {
     }
   }
 
-  async function runLint() {
+  async function runLint(opts: LintOpts = {}) {
     const s = ensureState(workflowPath);
     s.loading.lint = true;
     s.error.lint = null;
     try {
       const { data, error } = await client.GET("/workflows/{workflow_path}/lint", {
-        params: { path: { workflow_path: workflowPath } },
+        params: {
+          path: { workflow_path: workflowPath },
+          query: {
+            strict_structure: opts.strict_structure ?? false,
+            strict_encoding: opts.strict_encoding ?? false,
+          },
+        },
       });
       if (error) {
         s.error.lint = "Failed to lint workflow";
@@ -125,13 +162,18 @@ export function useOperation(workflowPath: string) {
     }
   }
 
-  async function runClean() {
+  async function runClean(opts: CleanOpts = {}) {
     const s = ensureState(workflowPath);
     s.loading.clean = true;
     s.error.clean = null;
     try {
       const { data, error } = await client.GET("/workflows/{workflow_path}/clean", {
-        params: { path: { workflow_path: workflowPath } },
+        params: {
+          path: { workflow_path: workflowPath },
+          query: {
+            include_content: opts.include_content ?? false,
+          },
+        },
       });
       if (error) {
         s.error.clean = "Failed to clean workflow";
@@ -143,13 +185,21 @@ export function useOperation(workflowPath: string) {
     }
   }
 
-  async function runRoundtrip() {
+  async function runRoundtrip(opts: RoundtripOpts = {}) {
     const s = ensureState(workflowPath);
     s.loading.roundtrip = true;
     s.error.roundtrip = null;
     try {
       const { data, error } = await client.GET("/workflows/{workflow_path}/roundtrip", {
-        params: { path: { workflow_path: workflowPath } },
+        params: {
+          path: { workflow_path: workflowPath },
+          query: {
+            strict_structure: opts.strict_structure ?? false,
+            strict_encoding: opts.strict_encoding ?? false,
+            strict_state: opts.strict_state ?? false,
+            include_content: opts.include_content ?? false,
+          },
+        },
       });
       if (error) {
         s.error.roundtrip = "Failed to run roundtrip";

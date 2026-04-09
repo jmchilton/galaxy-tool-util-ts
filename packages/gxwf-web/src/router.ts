@@ -43,6 +43,7 @@ import {
   type ValidateOptions,
   type LintOptions,
   type CleanOptions,
+  type RoundtripOptions,
 } from "./workflows.js";
 
 // ── State ────────────────────────────────────────────────────────────
@@ -310,9 +311,11 @@ export function createRequestHandler(state: AppState) {
           switch (route.op) {
             case "validate": {
               const vopts: ValidateOptions = {
-                strict: route.query.get("strict") === "true",
+                strict_structure: route.query.get("strict_structure") === "true",
+                strict_encoding: route.query.get("strict_encoding") === "true",
                 connections: route.query.get("connections") === "true",
                 mode: route.query.get("mode") ?? undefined,
+                clean_first: route.query.get("clean_first") === "true",
                 allow: route.query.getAll("allow"),
                 deny: route.query.getAll("deny"),
               };
@@ -321,7 +324,8 @@ export function createRequestHandler(state: AppState) {
             }
             case "lint": {
               const lopts: LintOptions = {
-                strict: route.query.get("strict") === "true",
+                strict_structure: route.query.get("strict_structure") === "true",
+                strict_encoding: route.query.get("strict_encoding") === "true",
                 allow: route.query.getAll("allow"),
                 deny: route.query.getAll("deny"),
               };
@@ -332,6 +336,7 @@ export function createRequestHandler(state: AppState) {
               const copts: CleanOptions = {
                 preserve: route.query.getAll("preserve"),
                 strip: route.query.getAll("strip"),
+                include_content: route.query.get("include_content") === "true",
               };
               result = await operateClean(wf, copts);
               break;
@@ -342,9 +347,16 @@ export function createRequestHandler(state: AppState) {
             case "to-native":
               result = await operateToNative(wf, state.cache);
               break;
-            case "roundtrip":
-              result = await operateRoundtrip(wf, state.cache);
+            case "roundtrip": {
+              const ropts: RoundtripOptions = {
+                strict_structure: route.query.get("strict_structure") === "true",
+                strict_encoding: route.query.get("strict_encoding") === "true",
+                strict_state: route.query.get("strict_state") === "true",
+                include_content: route.query.get("include_content") === "true",
+              };
+              result = await operateRoundtrip(wf, state.cache, ropts);
               break;
+            }
           }
           json(res, 200, result);
           break;

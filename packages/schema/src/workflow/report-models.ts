@@ -96,6 +96,7 @@ export interface SingleValidationReport {
   structure_errors: string[];
   encoding_errors: string[];
   summary: { ok: number; fail: number; skip: number };
+  clean_report?: SingleCleanReport | null;
 }
 
 export interface SingleLintReport {
@@ -119,6 +120,8 @@ export interface SingleCleanReport {
   results: CleanStepResult[];
   total_removed: number;
   steps_with_removals: number;
+  before_content?: string | null;
+  after_content?: string | null;
 }
 
 // ── Round-trip validation types ──────────────────────────────────────
@@ -211,6 +214,8 @@ export interface RoundTripValidationResult {
 export interface SingleRoundTripReport {
   workflow: string;
   result: RoundTripValidationResult;
+  before_content?: string | null;
+  after_content?: string | null;
 }
 
 // ── Export / to-native types ─────────────────────────────────────────

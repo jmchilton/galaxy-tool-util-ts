@@ -309,10 +309,15 @@ export interface components {
       /** Version */
       version?: string | null;
       /**
-       * Removed Keys
+       * Removed State Keys
        * @default []
        */
-      removed_keys: string[];
+      removed_state_keys: string[];
+      /**
+       * Removed Step Keys
+       * @default []
+       */
+      removed_step_keys: string[];
       /**
        * Skipped
        * @default false
@@ -621,6 +626,10 @@ export interface components {
       workflow: string;
       /** Results */
       results: components["schemas"]["CleanStepResult"][];
+      /** Before Content */
+      before_content?: string | null;
+      /** After Content */
+      after_content?: string | null;
       /** Total Removed */
       readonly total_removed: number;
       /** Steps With Removals */
@@ -692,6 +701,10 @@ export interface components {
       /** Workflow */
       workflow: string;
       result: components["schemas"]["RoundTripValidationResult"];
+      /** Before Content */
+      before_content?: string | null;
+      /** After Content */
+      after_content?: string | null;
     };
     /**
      * SingleValidationReport
@@ -709,6 +722,7 @@ export interface components {
       structure_errors?: string[];
       /** Encoding Errors */
       encoding_errors?: string[];
+      clean_report?: components["schemas"]["SingleCleanReport"] | null;
       /** Summary */
       readonly summary: {
         [key: string]: number;
@@ -777,7 +791,7 @@ export interface components {
       /** Error */
       error?: string | null;
       /** Diffs */
-      diffs?: string[];
+      diffs?: components["schemas"]["StepDiff"][];
       /** Format2 State */
       format2_state?: {
         [key: string]: unknown;
@@ -906,9 +920,11 @@ export interface operations {
   validate_workflow_workflows__workflow_path__validate_get: {
     parameters: {
       query?: {
-        strict?: boolean;
+        strict_structure?: boolean;
+        strict_encoding?: boolean;
         connections?: boolean;
         mode?: string;
+        clean_first?: boolean;
         allow?: string[];
         deny?: string[];
       };
@@ -945,6 +961,7 @@ export interface operations {
       query?: {
         preserve?: string[];
         strip?: string[];
+        include_content?: boolean;
       };
       header?: never;
       path: {
@@ -1038,7 +1055,12 @@ export interface operations {
   };
   roundtrip_workflow_workflows__workflow_path__roundtrip_get: {
     parameters: {
-      query?: never;
+      query?: {
+        strict_structure?: boolean;
+        strict_encoding?: boolean;
+        strict_state?: boolean;
+        include_content?: boolean;
+      };
       header?: never;
       path: {
         workflow_path: string;
@@ -1427,7 +1449,8 @@ export interface operations {
   lint_workflow_workflows__workflow_path__lint_get: {
     parameters: {
       query?: {
-        strict?: boolean;
+        strict_structure?: boolean;
+        strict_encoding?: boolean;
         allow?: string[];
         deny?: string[];
       };

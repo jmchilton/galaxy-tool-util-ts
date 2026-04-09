@@ -93,6 +93,12 @@ export interface RoundtripResult {
   encodingErrors: string[];
   /** Strict-structure errors across all stages (input, forward output, reverse output). */
   structureErrors: string[];
+  /**
+   * The re-imported native workflow dict (result of format2→native reverse pass).
+   * Only populated on successful roundtrip. Cast to Record<string, unknown> for
+   * serialization (same pattern as operateToNative in the server layer).
+   */
+  reimportedWorkflow?: unknown;
 }
 
 /** Options controlling strict validation within roundtripValidate. */
@@ -723,5 +729,6 @@ export function roundtripValidate(
     clean: !anyDiff && !anyError && !hasStrictErrors,
     encodingErrors,
     structureErrors,
+    reimportedWorkflow: reimported,
   };
 }
