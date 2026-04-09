@@ -26,7 +26,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { ToolCache } from "@galaxy-tool-util/core";
 import {
   cleanWorkflow,
@@ -54,6 +54,7 @@ import {
   type ExpansionOptions,
   type ValidationStepResult,
   type RoundtripFailureClass,
+  type CleanStepResult,
 } from "@galaxy-tool-util/schema";
 import {
   validateNativeSteps,
@@ -63,6 +64,9 @@ import {
   loadToolInputsForWorkflow,
   createDefaultResolver,
   lintWorkflowReport,
+  validateNativeStepsJsonSchema,
+  validateFormat2StepsJsonSchema,
+  decodeStructureErrorsJsonSchema,
 } from "@galaxy-tool-util/cli";
 import { HttpError } from "./contents.js";
 
@@ -201,18 +205,26 @@ export function loadWorkflowFile(directory: string, relPath: string): WorkflowFi
 // ── Operations ───────────────────────────────────────────────────────────────
 
 export interface ValidateOptions {
-  /** Treat encoding/structure issues as errors (mirrors Python strict=True). */
-  strict?: boolean;
+  /** Reject unknown keys at envelope/step level (mirrors Python strict_structure). */
+  strict_structure?: boolean;
+  /** Reject JSON-string tool_state and format2 field misuse (mirrors Python strict_encoding). */
+  strict_encoding?: boolean;
   /**
    * Validate connections between steps. Not yet implemented in TS — accepted
    * for API parity but silently ignored.
    */
   connections?: boolean;
   /**
-   * Validation mode. Python default "pydantic" maps to TS default "effect".
-   * "json-schema" is accepted but currently treated as "effect".
+   * Validation mode: "effect" (default) uses Effect Schema decode;
+   * "json-schema" uses AJV against the generated JSON Schema (mirrors Python --mode json-schema).
+   * Python default "pydantic" is treated as "effect".
    */
   mode?: string;
+  /**
+   * Run clean in-memory before validating. Results are embedded in the
+   * returned report as clean_report.
+   */
+  clean_first?: boolean;
   /**
    * Tool IDs whose stale keys are allowed. Accepted for API parity; requires
    * StaleKeyPolicy (future work) — currently ignored.
@@ -231,20 +243,54 @@ export async function operateValidate(
   cache: ToolCache,
   opts: ValidateOptions = {},
 ): Promise<SingleValidationReport> {
-  const { absPath, data, format } = wf;
-  const structureErrors = opts.strict ? decodeStructureErrors(data, format) : [];
+  const { absPath, format } = wf;
+  let { data } = wf;
+  const useJsonSchema = opts.mode === "json-schema";
   const expansionOpts: ExpansionOptions = {
     resolver: createDefaultResolver({ workflowDirectory: path.dirname(absPath) }),
   };
 
-  let results: ValidationStepResult[] = [];
+  // Optional clean-first pass: run clean in-memory, validate on cleaned dict
+  let clean_report: SingleCleanReport | null = null;
+  if (opts.clean_first) {
+    const cleanResult = await cleanWorkflow(data);
+    const cleanResults = cleanResult.results as CleanStepResult[];
+    clean_report = buildSingleCleanReport(absPath, cleanResults);
+    data = cleanResult.workflow as Record<string, unknown>;
+  }
+
+  // Structural validation
+  const structureErrors = useJsonSchema
+    ? decodeStructureErrorsJsonSchema(data, format)
+    : opts.strict_structure
+      ? decodeStructureErrors(data, format)
+      : [];
+
+  // Encoding errors (only in strict_encoding mode via Effect path)
   const encodingErrors: string[] = [];
+  if (opts.strict_encoding && !useJsonSchema) {
+    // decodeStructureErrors covers encoding signals; encoding errors surfaced via detectEncodingErrors
+    if (cache.index.listAll().length > 0) {
+      const encErrors = await detectEncodingErrors(data, cache, format, expansionOpts);
+      encodingErrors.push(...encErrors);
+    }
+  }
+
+  let results: ValidationStepResult[] = [];
 
   try {
-    if (format === "native") {
-      results = await validateNativeSteps(data, cache, "", expansionOpts);
+    if (useJsonSchema) {
+      if (format === "native") {
+        results = await validateNativeStepsJsonSchema(data, cache, undefined, "", expansionOpts);
+      } else {
+        results = await validateFormat2StepsJsonSchema(data, cache, undefined, "", expansionOpts);
+      }
     } else {
-      results = await validateFormat2Steps(data, cache, "", expansionOpts);
+      if (format === "native") {
+        results = await validateNativeSteps(data, cache, "", expansionOpts);
+      } else {
+        results = await validateFormat2Steps(data, cache, "", expansionOpts);
+      }
     }
   } catch (e) {
     if (e instanceof Error && e.message.includes("legacy parameter encoding")) {
@@ -254,14 +300,19 @@ export async function operateValidate(
     }
   }
 
-  return buildSingleValidationReport(absPath, results, {
+  const report = buildSingleValidationReport(absPath, results, {
     structure_errors: structureErrors,
     encoding_errors: encodingErrors,
   });
+  if (clean_report !== null) {
+    (report as SingleValidationReport).clean_report = clean_report;
+  }
+  return report;
 }
 
 export interface LintOptions {
-  strict?: boolean;
+  strict_structure?: boolean;
+  strict_encoding?: boolean;
   /**
    * Tool IDs whose stale keys are allowed. Accepted for API parity; requires
    * StaleKeyPolicy (future work) — currently ignored.
@@ -281,9 +332,11 @@ export async function operateLint(
   opts: LintOptions = {},
 ): Promise<SingleLintReport> {
   const { absPath, data, format } = wf;
-  const strict = opts.strict
-    ? { strictEncoding: true, strictStructure: true, strictState: false }
-    : { strictEncoding: false, strictStructure: false, strictState: false };
+  const strict = {
+    strictEncoding: opts.strict_encoding ?? false,
+    strictStructure: opts.strict_structure ?? false,
+    strictState: false,
+  };
 
   const report = await lintWorkflowReport(absPath, data, format, { cache, strict });
 
@@ -319,16 +372,33 @@ export interface CleanOptions {
    * StaleKeyPolicy (future work) — currently ignored.
    */
   strip?: string[];
+  /** When true, populate before_content and after_content on the returned report. */
+  include_content?: boolean;
 }
 
 /** Report stale keys in a workflow (no tool cache needed). */
 export async function operateClean(
   wf: WorkflowFile,
-  _opts: CleanOptions = {},
+  opts: CleanOptions = {},
 ): Promise<SingleCleanReport> {
-  const { absPath, data } = wf;
-  const { results } = await cleanWorkflow(data);
-  return buildSingleCleanReport(absPath, results);
+  const { absPath, data, format } = wf;
+  const before_content = opts.include_content
+    ? format === "native"
+      ? JSON.stringify(data, null, 2)
+      : stringifyYaml(data)
+    : undefined;
+  const cleanResult = await cleanWorkflow(data);
+  const after_content = opts.include_content
+    ? format === "native"
+      ? JSON.stringify(cleanResult.workflow, null, 2)
+      : stringifyYaml(cleanResult.workflow)
+    : undefined;
+  const report = buildSingleCleanReport(absPath, cleanResult.results);
+  if (opts.include_content) {
+    (report as SingleCleanReport).before_content = before_content ?? null;
+    (report as SingleCleanReport).after_content = after_content ?? null;
+  }
+  return report;
 }
 
 /** Convert native → format2 with schema-aware state re-encoding. */
@@ -391,10 +461,18 @@ export async function operateToNative(wf: WorkflowFile, cache: ToolCache): Promi
   };
 }
 
+export interface RoundtripOptions {
+  strict_structure?: boolean;
+  strict_encoding?: boolean;
+  strict_state?: boolean;
+  include_content?: boolean;
+}
+
 /** Run roundtrip validation (native → format2 → native). */
 export async function operateRoundtrip(
   wf: WorkflowFile,
   cache: ToolCache,
+  opts: RoundtripOptions = {},
 ): Promise<SingleRoundTripReport> {
   const { absPath, data, format } = wf;
   if (format !== "native") {
@@ -405,7 +483,11 @@ export async function operateRoundtrip(
     resolver: createDefaultResolver({ workflowDirectory: path.dirname(absPath) }),
   };
   const { resolver } = await loadToolInputsForWorkflow(data, "native", cache, expansionOpts);
-  const result = roundtripValidate(data, resolver, {});
+  const result = roundtripValidate(data, resolver, {
+    strictStructure: opts.strict_structure,
+    strictEncoding: opts.strict_encoding,
+    strictState: opts.strict_state,
+  });
 
   // Convert TS-internal RoundtripResult → Python-API RoundTripValidationResult
   const allDiffs: StepDiff[] = result.stepResults.flatMap((s) => s.diffs);
@@ -462,7 +544,18 @@ export async function operateRoundtrip(
     summary_line: summaryLine,
   };
 
-  return { workflow: absPath, result: validationResult };
+  const before_content = opts.include_content ? JSON.stringify(data, null, 2) : undefined;
+  const after_content =
+    opts.include_content && result.reimportedWorkflow != null
+      ? JSON.stringify(result.reimportedWorkflow, null, 2)
+      : undefined;
+
+  return {
+    workflow: absPath,
+    result: validationResult,
+    before_content: before_content ?? null,
+    after_content: after_content ?? null,
+  };
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────

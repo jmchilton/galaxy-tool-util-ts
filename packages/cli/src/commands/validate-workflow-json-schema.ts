@@ -157,6 +157,27 @@ function formatAjvErrors(validate: ValidateFunction): string[] {
   });
 }
 
+/**
+ * Validate workflow structure using the AJV-compiled JSON Schema (Draft 2020-12).
+ * Returns an array of error strings; empty if valid.
+ * Mirrors `decodeStructureErrors` but uses the AJV path instead of Effect decode.
+ */
+export function decodeStructureErrorsJsonSchema(
+  data: Record<string, unknown>,
+  format: WorkflowFormat,
+): string[] {
+  const validationData = { ...data };
+  if (format === "native" && !("class" in validationData)) {
+    validationData.class = "NativeGalaxyWorkflow";
+  } else if (format === "format2" && !("class" in validationData)) {
+    validationData.class = "GalaxyWorkflow";
+  }
+  const structValidator =
+    format === "native" ? nativeStructuralValidator() : format2StructuralValidator();
+  const ok = structValidator(validationData);
+  return ok ? [] : formatAjvErrors(structValidator);
+}
+
 // --- main entry point ---
 
 export async function runValidateWorkflowJsonSchema(

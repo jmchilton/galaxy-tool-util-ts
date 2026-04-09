@@ -37,6 +37,28 @@
         <Column field="description" header="Description" />
       </DataTable>
     </template>
+
+    <Panel
+      v-if="report.before_content != null || report.after_content != null"
+      header="Workflow content"
+      :toggleable="true"
+      :collapsed="true"
+    >
+      <Tabs value="original">
+        <TabList>
+          <Tab value="original">Original (native)</Tab>
+          <Tab value="reimported">Re-imported (native)</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel value="original">
+            <pre class="content-pre">{{ report.before_content ?? "(none)" }}</pre>
+          </TabPanel>
+          <TabPanel value="reimported">
+            <pre class="content-pre">{{ report.after_content ?? "(none)" }}</pre>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+    </Panel>
   </div>
 </template>
 
@@ -45,6 +67,12 @@ import { computed } from "vue";
 import type { SingleRoundTripReport } from "@galaxy-tool-util/schema";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
+import Panel from "primevue/panel";
+import Tab from "primevue/tab";
+import TabList from "primevue/tablist";
+import TabPanel from "primevue/tabpanel";
+import TabPanels from "primevue/tabpanels";
+import Tabs from "primevue/tabs";
 import Tag from "primevue/tag";
 import Message from "primevue/message";
 
@@ -85,5 +113,17 @@ const result = computed(() => props.report.result);
   margin: 0;
   padding-left: 1.25rem;
   font-size: 0.85rem;
+}
+
+.content-pre {
+  margin: 0;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  background: var(--p-surface-100, #f8f9fa);
+  border: 1px solid var(--p-surface-300, #dee2e6);
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 500px;
+  white-space: pre;
 }
 </style>
