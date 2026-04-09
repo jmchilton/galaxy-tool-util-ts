@@ -120,7 +120,8 @@ export function walkNativeState(
         instances.push(instanceResult);
       }
 
-      if (instances.length > 0) {
+      // Preserve explicit empty arrays (valid state); omit only when key is absent
+      if (name in state || instances.length > 0) {
         result[name] = instances;
       }
     } else if (parameterType === "gx_section") {
@@ -231,7 +232,8 @@ export function walkFormat2State(
         instances.push(instanceResult);
       }
 
-      if (instances.length > 0) {
+      // Preserve explicit empty arrays (valid state); omit only when key is absent
+      if (name in state || instances.length > 0) {
         result[name] = instances;
       }
     } else if (parameterType === "gx_section") {

@@ -333,7 +333,7 @@ export function createRequestHandler(state: AppState) {
                 preserve: route.query.getAll("preserve"),
                 strip: route.query.getAll("strip"),
               };
-              result = operateClean(wf, copts);
+              result = await operateClean(wf, copts);
               break;
             }
             case "to-format2":

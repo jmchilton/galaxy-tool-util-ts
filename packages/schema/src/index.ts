@@ -238,6 +238,7 @@ export {
   buildWorkflowToNativeResult,
   buildToNativeTreeReport,
   buildRoundTripTreeReport,
+  type CleanWorkflowOptions,
 } from "./workflow/index.js";
 
 export { ToolStateValidator, type ToolStateDiagnostic } from "./tool-state-validator.js";

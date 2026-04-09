@@ -46,6 +46,7 @@ program
   .option("--format <fmt>", "Force format: native or format2 (auto-detected by default)")
   .option("--json", "Output structured JSON report")
   .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)")
+  .option("--skip-uuid", "Skip stripping uuid fields (errors are always stripped)")
   .action(runClean);
 
 addStrictOptions(
@@ -132,6 +133,7 @@ program
   .option("--json", "Output structured JSON report")
   .option("--report-markdown [file]", "Write Markdown report to file (or stdout if omitted)")
   .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)")
+  .option("--skip-uuid", "Skip stripping uuid fields (errors are always stripped)")
   .action(runCleanTree);
 
 addStrictOptions(
