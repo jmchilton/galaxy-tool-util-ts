@@ -42,6 +42,8 @@ const WF_FIXTURES_DIR = path.join(FIXTURES_DIR, "fixtures");
 
 // Operations that require a populated tool cache to produce meaningful results
 const CACHE_DEPENDENT_OPERATIONS = new Set(["validate", "validate_clean", "clean_then_validate"]);
+// Tests that may fail without the tool cache (tool-aware state stripping needs resolver)
+const MAY_FAIL_WITHOUT_CACHE = new Set(["clean_format2_stale_keys_stripped"]);
 
 function toolCacheAvailable(): boolean {
   const dir = getCacheDir();
@@ -524,6 +526,14 @@ describe("declarative workflow_state tests", () => {
 
     if (CACHE_DEPENDENT_OPERATIONS.has(operation) && !toolCacheAvailable()) {
       it.skip(`${testId} (tool cache not populated)`, () => {});
+      continue;
+    }
+
+    if (MAY_FAIL_WITHOUT_CACHE.has(testId) && !toolCacheAvailable()) {
+      it.fails(testId, async () => {
+        const wf = await Promise.resolve(OPERATIONS[operation](loadWorkflow(fixture)));
+        runAssertions(wf, assertions);
+      });
       continue;
     }
 
