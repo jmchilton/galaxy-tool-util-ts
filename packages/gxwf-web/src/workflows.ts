@@ -270,7 +270,7 @@ export async function operateValidate(
   const encodingErrors: string[] = [];
   if (opts.strict_encoding && !useJsonSchema) {
     // decodeStructureErrors covers encoding signals; encoding errors surfaced via detectEncodingErrors
-    if (cache.index.listAll().length > 0) {
+    if ((await cache.index.listAll()).length > 0) {
       const encErrors = await detectEncodingErrors(data, cache, format, expansionOpts);
       encodingErrors.push(...encErrors);
     }
@@ -348,7 +348,7 @@ export async function operateLint(
 
   // Detect legacy encoding errors (when cache is available)
   let encodingErrors: string[] = [];
-  if (cache.index.listAll().length > 0) {
+  if ((await cache.index.listAll()).length > 0) {
     const expansionOpts: ExpansionOptions = {
       resolver: createDefaultResolver({ workflowDirectory: path.dirname(absPath) }),
     };

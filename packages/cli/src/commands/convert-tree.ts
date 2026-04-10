@@ -60,7 +60,7 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
   if (opts.stateful) {
     cache = new ToolCache({ cacheDir: opts.cacheDir });
     await cache.index.load();
-    if (cache.index.listAll().length === 0) {
+    if ((await cache.index.listAll()).length === 0) {
       console.warn("Tool cache is empty — stateful conversion will fall back for every step");
     }
   }

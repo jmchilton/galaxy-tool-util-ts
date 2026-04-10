@@ -39,7 +39,7 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
     try {
       cache = new ToolCache({ cacheDir: opts.cacheDir });
       await cache.index.load();
-      if (cache.index.listAll().length === 0) {
+      if ((await cache.index.listAll()).length === 0) {
         console.warn("Tool cache is empty — skipping tool state validation for all files");
         cache = undefined;
       }
