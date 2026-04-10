@@ -1,0 +1,26 @@
+# @galaxy-tool-util/gxwf-ui
+
+## 0.2.0
+
+### Minor Changes
+
+- [#41](https://github.com/jmchilton/galaxy-tool-util-ts/pull/41) [`ead01c6`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ead01c695830847c8cb2a3ebc745cc18b044e82c) Thanks [@jmchilton](https://github.com/jmchilton)! - Style gxwf-ui with Galaxy/IWC brand identity: Galaxy navy dark mode palette, hokey-pokey gold borders on workflow list and operation panel, class-based dark mode toggle with localStorage persistence, and raw JSON view respecting light/dark mode via PrimeVue content tokens. Drop category column and tag from UI.
+
+### Patch Changes
+
+- [#37](https://github.com/jmchilton/galaxy-tool-util-ts/pull/37) [`62ec18a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/62ec18a96314a88217a7bf55e59d84852610de75) Thanks [@jmchilton](https://github.com/jmchilton)! - Add @galaxy-tool-util/gxwf-report-shell package: pre-built IIFE bundle of Vue 3 workflow report components for CDN delivery. Python can generate standalone HTML reports by injecting serialized Pydantic report JSON. gxwf-ui now imports report components from the new package.
+
+- [#37](https://github.com/jmchilton/galaxy-tool-util-ts/pull/37) [`3826da3`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3826da31ccfc8c24ec9ebee85306e4b8fffb15dd) Thanks [@jmchilton](https://github.com/jmchilton)! - Integrate gxwf-report-shell with CLI report output (Phases 1–4).
+
+  **gxwf-report-shell**: Fix dep direction — switch from `@galaxy-tool-util/gxwf-client` to `@galaxy-tool-util/schema` for all `Single*Report` types. Add four tree-level report components (`TreeValidationReport`, `TreeLintReport`, `TreeCleanReport`, `TreeRoundtripReport`). Extend `ReportShell.vue` and `shell.ts` to dispatch on `validate-tree`, `lint-tree`, `clean-tree`, `roundtrip-tree` types. The same CDN IIFE bundle now renders both single-workflow and tree reports.
+
+  **cli**: Add `--report-html [file]` to `validate`, `lint`, and `clean` single-workflow commands. Add CDN-based HTML output (`buildReportHtml` / `writeReportHtml`) to all four tree commands (`validate-tree`, `lint-tree`, `clean-tree`, `roundtrip-tree`). Tree `--report-html` now uses the Vue shell; `--report-markdown` keeps Nunjucks. Rename `SingleReportType` → `ReportType`, `buildSingleReportHtml` → `buildReportHtml`, `writeSingleReportHtml` → `writeReportHtml`. Remove dead Nunjucks HTML path (`getHtmlEnv`, `_macros.html.j2`).
+
+  **gxwf-ui**: Switch `useOperation.ts` from `gxwf-client` OpenAPI types to `@galaxy-tool-util/schema` types at API response boundaries.
+
+- [#41](https://github.com/jmchilton/galaxy-tool-util-ts/pull/41) [`066a4ac`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/066a4ac6f487da1cf3f767676724ee0ba459a02d) Thanks [@jmchilton](https://github.com/jmchilton)! - Add raw JSON view toggle to operation reports. Each operation tab (Validate/Lint/Clean/Roundtrip) now has a Formatted/Raw JSON toggle button that appears after a run, allowing inspection of the full API response.
+
+- Updated dependencies [[`005adf3`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/005adf3c61b088904f9b665985bba51b5eabf04e), [`7d7e93d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7d7e93d254b8ab440504fcb3ae7b5667505bf0dc), [`62ec18a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/62ec18a96314a88217a7bf55e59d84852610de75), [`3826da3`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3826da31ccfc8c24ec9ebee85306e4b8fffb15dd), [`ead01c6`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ead01c695830847c8cb2a3ebc745cc18b044e82c), [`54fc8f2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/54fc8f20720030cdbf690fd6e72066d7958fc9b5), [`a57f021`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a57f021dbdbe6117a28add2b2e2f7520f09b068c), [`e54a513`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/e54a51342e3930b61bae3b27ce46925f186cc93c), [`066a4ac`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/066a4ac6f487da1cf3f767676724ee0ba459a02d), [`16652a9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/16652a94c21402a3ee9108a0cd118d8af18c4708), [`b3b1b52`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/b3b1b52d9bccd6fdd7e713281be076ecfd74ee34), [`85194f8`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/85194f8e710bc586939bc31b0cf20fc2d1329680), [`20f6943`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/20f694303d2f6b71dcb4689d79107306de5bf5aa), [`7786c6f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7786c6f3a250dba31ba27be9ca0b4431bc0b0065)]:
+  - @galaxy-tool-util/schema@0.3.0
+  - @galaxy-tool-util/gxwf-client@0.2.0
+  - @galaxy-tool-util/gxwf-report-shell@0.2.0

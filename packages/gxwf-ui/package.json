@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/gxwf-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Vue 3 + PrimeVue frontend for the gxwf-web Galaxy workflow development server",
   "private": true,
   "type": "module",
