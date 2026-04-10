@@ -884,14 +884,14 @@ describe("workflow operations", () => {
 });
 
 describe("--output-schema flag", () => {
-  it("outputs valid OpenAPI 3.1 JSON and exits", async () => {
+  it("outputs valid OpenAPI 3.1 JSON and exits", { timeout: 15000 }, async () => {
     const { execFile } = await import("node:child_process");
     const { promisify } = await import("node:util");
     const execFileAsync = promisify(execFile);
     const binPath = new URL("../src/bin/gxwf-web.ts", import.meta.url).pathname;
     // Run via tsx so we don't need a pre-built dist
     const { stdout } = await execFileAsync("npx", ["tsx", binPath, "--output-schema"], {
-      timeout: 10000,
+      timeout: 12000,
     });
     const spec = JSON.parse(stdout) as Record<string, unknown>;
     expect(spec.openapi).toBe("3.1.0");

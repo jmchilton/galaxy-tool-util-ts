@@ -41,7 +41,7 @@ interface FileOutcome {
 export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions): Promise<void> {
   const cache = new ToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
-  if (cache.index.listAll().length === 0) {
+  if ((await cache.index.listAll()).length === 0) {
     console.warn("Tool cache is empty — all steps will fall back (no roundtrip possible)");
   }
 

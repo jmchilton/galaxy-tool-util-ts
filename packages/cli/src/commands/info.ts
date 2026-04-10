@@ -14,7 +14,7 @@ export async function runInfo(toolId: string, opts: InfoOptions): Promise<void> 
     process.exitCode = 1;
     return;
   }
-  const key = cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
+  const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
   const tool = await cache.loadCached(key);
   if (tool === null) {
     console.error(`Tool not found in cache: ${toolId}`);
@@ -22,7 +22,7 @@ export async function runInfo(toolId: string, opts: InfoOptions): Promise<void> 
     return;
   }
 
-  const indexEntry = cache.index.listAll().find((e) => e.cache_key === key);
+  const indexEntry = (await cache.index.listAll()).find((e) => e.cache_key === key);
 
   console.log(`Name:        ${tool.name}`);
   console.log(`ID:          ${tool.id}`);

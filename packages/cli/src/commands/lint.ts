@@ -218,7 +218,7 @@ export async function lintWorkflowReport(
       stateSkipped = true;
     } else {
       try {
-        const isEmpty = cache.index.listAll().length === 0;
+        const isEmpty = (await cache.index.listAll()).length === 0;
         if (isEmpty) {
           console.warn("Tool cache is empty — skipping tool state validation");
           stateSkipped = true;

@@ -83,15 +83,14 @@ export interface LintOpts {
   strict_encoding?: boolean;
 }
 
-export interface CleanOpts {
-  include_content?: boolean;
-}
+// include_content always sent as true; no UI-exposed options
+export type CleanOpts = Record<string, never>;
 
 export interface RoundtripOpts {
   strict_structure?: boolean;
   strict_encoding?: boolean;
   strict_state?: boolean;
-  include_content?: boolean;
+  // include_content always sent as true; not exposed as a UI option
 }
 
 export function useOperation(workflowPath: string) {
@@ -171,7 +170,8 @@ export function useOperation(workflowPath: string) {
         params: {
           path: { workflow_path: workflowPath },
           query: {
-            include_content: opts.include_content ?? false,
+            include_content: true,
+            ...opts,
           },
         },
       });
@@ -197,7 +197,7 @@ export function useOperation(workflowPath: string) {
             strict_structure: opts.strict_structure ?? false,
             strict_encoding: opts.strict_encoding ?? false,
             strict_state: opts.strict_state ?? false,
-            include_content: opts.include_content ?? false,
+            include_content: true,
           },
         },
       });

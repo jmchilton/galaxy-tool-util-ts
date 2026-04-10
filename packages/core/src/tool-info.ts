@@ -2,6 +2,7 @@ import type { ParsedTool } from "./models/parsed-tool.js";
 import { ToolCache } from "./cache/tool-cache.js";
 import { cacheKey } from "./cache/cache-key.js";
 import { fetchFromToolShed, fetchFromGalaxy } from "./client/toolshed.js";
+import type { CacheStorage } from "./cache/storage/interface.js";
 
 /** A remote source for fetching tool metadata. */
 export interface ToolSource {
@@ -18,6 +19,8 @@ export interface ToolInfoOptions {
   /** @deprecated Use sources instead. Kept for simple single-source usage. */
   galaxyUrl?: string;
   fetcher?: typeof fetch;
+  /** Custom cache storage backend (e.g. IndexedDBCacheStorage for browser contexts). */
+  storage?: CacheStorage;
 }
 
 /**
@@ -33,6 +36,7 @@ export class ToolInfoService {
     this.cache = new ToolCache({
       cacheDir: opts?.cacheDir,
       defaultToolshedUrl: opts?.defaultToolshedUrl,
+      storage: opts?.storage,
     });
     this.fetcher = opts?.fetcher ?? globalThis.fetch;
 
@@ -57,9 +61,9 @@ export class ToolInfoService {
     if (coords.version === null) {
       throw new Error(`No version available for tool: ${toolId}`);
     }
-    const key = cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
 
-    // Check filesystem cache (ToolCache checks memory first internally)
+    // Check storage cache (ToolCache checks memory first internally)
     const cached = await this.cache.loadCached(key);
     if (cached !== null) return cached;
 
@@ -114,7 +118,7 @@ export class ToolInfoService {
   ): Promise<string> {
     const coords = this.cache.resolveToolCoordinates(toolId, toolVersion);
     const version = coords.version ?? toolVersion;
-    const key = cacheKey(coords.toolshedUrl, coords.trsToolId, version);
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, version);
     await this.cache.saveTool(key, parsedTool, coords.readableId, version, source, sourceUrl);
     return key;
   }

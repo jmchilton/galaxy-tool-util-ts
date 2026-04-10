@@ -37,16 +37,20 @@
       :toggleable="true"
       :collapsed="true"
     >
-      <div class="content-panes">
-        <div class="content-pane">
-          <div class="pane-label">Before</div>
-          <pre class="content-pre">{{ report.before_content ?? "(none)" }}</pre>
-        </div>
-        <div class="content-pane">
-          <div class="pane-label">After</div>
-          <pre class="content-pre">{{ report.after_content ?? "(none)" }}</pre>
-        </div>
-      </div>
+      <Tabs value="before">
+        <TabList>
+          <Tab value="before">Before</Tab>
+          <Tab value="after">After</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel value="before">
+            <pre class="content-pre">{{ report.before_content ?? "(none)" }}</pre>
+          </TabPanel>
+          <TabPanel value="after">
+            <pre class="content-pre">{{ report.after_content ?? "(none)" }}</pre>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </Panel>
   </div>
 </template>
@@ -54,6 +58,11 @@
 <script setup lang="ts">
 import DataTable from "primevue/datatable";
 import Panel from "primevue/panel";
+import Tab from "primevue/tab";
+import TabList from "primevue/tablist";
+import TabPanel from "primevue/tabpanel";
+import TabPanels from "primevue/tabpanels";
+import Tabs from "primevue/tabs";
 import type { SingleCleanReport, CleanStepResult } from "@galaxy-tool-util/schema";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
@@ -88,36 +97,16 @@ defineProps<{
   font-style: italic;
 }
 
-.content-panes {
-  display: flex;
-  gap: 1rem;
-}
-
-.content-pane {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.pane-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--p-text-color-secondary, #6c757d);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .content-pre {
   margin: 0;
   padding: 0.5rem;
   font-size: 0.75rem;
-  background: var(--p-surface-100, #f8f9fa);
-  border: 1px solid var(--p-surface-300, #dee2e6);
+  background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color);
   border-radius: 4px;
+  color: var(--p-text-color);
   overflow: auto;
-  max-height: 400px;
+  max-height: 500px;
   white-space: pre;
 }
 </style>
