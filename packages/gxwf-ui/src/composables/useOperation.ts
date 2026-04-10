@@ -83,9 +83,8 @@ export interface LintOpts {
   strict_encoding?: boolean;
 }
 
-export interface CleanOpts {
-  // include_content always sent as true; not exposed as a UI option
-}
+// include_content always sent as true; no UI-exposed options
+export type CleanOpts = Record<string, never>;
 
 export interface RoundtripOpts {
   strict_structure?: boolean;

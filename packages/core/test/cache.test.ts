@@ -9,6 +9,7 @@ import {
   cacheKey,
   CacheIndex,
   ToolCache,
+  FilesystemCacheStorage,
 } from "../src/cache/index.js";
 
 describe("parseToolshedToolId", () => {
@@ -63,8 +64,12 @@ describe("toolIdFromTrs", () => {
 });
 
 describe("cacheKey", () => {
-  it("matches Python implementation", () => {
-    const key = cacheKey("https://toolshed.g2.bx.psu.edu", "devteam~fastqc~fastqc", "0.74+galaxy0");
+  it("matches Python implementation", async () => {
+    const key = await cacheKey(
+      "https://toolshed.g2.bx.psu.edu",
+      "devteam~fastqc~fastqc",
+      "0.74+galaxy0",
+    );
     expect(key).toBe("4442926e78fe6e6574ffb9110be50f9b72cc3eb3b133e5435cf7b8658cd0a0f5");
   });
 });
@@ -75,22 +80,22 @@ describe("CacheIndex", () => {
 
   beforeEach(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), "cache-test-"));
-    index = new CacheIndex(tmpDir);
+    index = new CacheIndex(new FilesystemCacheStorage(tmpDir));
   });
 
   afterEach(async () => {
     await rm(tmpDir, { recursive: true });
   });
 
-  it("starts empty", () => {
-    expect(index.listAll()).toEqual([]);
-    expect(index.has("nonexistent")).toBe(false);
+  it("starts empty", async () => {
+    expect(await index.listAll()).toEqual([]);
+    expect(await index.has("nonexistent")).toBe(false);
   });
 
   it("add + has + listAll", async () => {
     await index.add("key1", "tool/id", "1.0", "api", "http://example.com");
-    expect(index.has("key1")).toBe(true);
-    const all = index.listAll();
+    expect(await index.has("key1")).toBe(true);
+    const all = await index.listAll();
     expect(all).toHaveLength(1);
     expect(all[0].cache_key).toBe("key1");
     expect(all[0].tool_id).toBe("tool/id");
@@ -100,29 +105,29 @@ describe("CacheIndex", () => {
   it("remove", async () => {
     await index.add("key1", "tool/id", "1.0", "api");
     await index.remove("key1");
-    expect(index.has("key1")).toBe(false);
-    expect(index.listAll()).toHaveLength(0);
+    expect(await index.has("key1")).toBe(false);
+    expect(await index.listAll()).toHaveLength(0);
   });
 
   it("clear", async () => {
     await index.add("key1", "tool1", "1.0", "api");
     await index.add("key2", "tool2", "2.0", "api");
     await index.clear();
-    expect(index.listAll()).toHaveLength(0);
+    expect(await index.listAll()).toHaveLength(0);
   });
 
   it("persists to disk and reloads", async () => {
     await index.add("key1", "tool/id", "1.0", "api", "http://example.com");
-    const index2 = new CacheIndex(tmpDir);
+    const index2 = new CacheIndex(new FilesystemCacheStorage(tmpDir));
     await index2.load();
-    expect(index2.has("key1")).toBe(true);
-    expect(index2.listAll()[0].tool_id).toBe("tool/id");
+    expect(await index2.has("key1")).toBe(true);
+    expect((await index2.listAll())[0].tool_id).toBe("tool/id");
   });
 
   it("handles missing index file gracefully", async () => {
-    const emptyIndex = new CacheIndex(join(tmpDir, "nonexistent"));
+    const emptyIndex = new CacheIndex(new FilesystemCacheStorage(join(tmpDir, "nonexistent")));
     await emptyIndex.load();
-    expect(emptyIndex.listAll()).toEqual([]);
+    expect(await emptyIndex.listAll()).toEqual([]);
   });
 });
 
@@ -171,7 +176,11 @@ describe("ToolCache", () => {
   });
 
   it("save + load round-trip", async () => {
-    const key = cacheKey("https://toolshed.g2.bx.psu.edu", "devteam~fastqc~fastqc", "0.74+galaxy0");
+    const key = await cacheKey(
+      "https://toolshed.g2.bx.psu.edu",
+      "devteam~fastqc~fastqc",
+      "0.74+galaxy0",
+    );
     await cache.saveTool(
       key,
       sampleTool,
@@ -187,19 +196,19 @@ describe("ToolCache", () => {
 
   it("hasCached returns true after save", async () => {
     const toolId = "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
-    expect(cache.hasCached(toolId)).toBe(false);
+    expect(await cache.hasCached(toolId)).toBe(false);
 
     const coords = cache.resolveToolCoordinates(toolId);
-    const key = cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version!);
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version!);
     await cache.saveTool(key, sampleTool, coords.readableId, coords.version!, "api");
-    expect(cache.hasCached(toolId)).toBe(true);
+    expect(await cache.hasCached(toolId)).toBe(true);
   });
 
   it("listCached shows entries", async () => {
-    expect(cache.listCached()).toHaveLength(0);
+    expect(await cache.listCached()).toHaveLength(0);
     const key = "testkey";
     await cache.saveTool(key, sampleTool, "tool/id", "1.0", "api");
-    const list = cache.listCached();
+    const list = await cache.listCached();
     expect(list).toHaveLength(1);
     expect(list[0].tool_id).toBe("tool/id");
   });
@@ -207,9 +216,9 @@ describe("ToolCache", () => {
   it("clearCache removes all entries", async () => {
     await cache.saveTool("k1", sampleTool, "tool1", "1.0", "api");
     await cache.saveTool("k2", sampleTool, "tool2", "2.0", "api");
-    expect(cache.listCached()).toHaveLength(2);
+    expect(await cache.listCached()).toHaveLength(2);
     await cache.clearCache();
-    expect(cache.listCached()).toHaveLength(0);
+    expect(await cache.listCached()).toHaveLength(0);
   });
 
   it("clearCache with prefix removes matching entries", async () => {
@@ -228,7 +237,7 @@ describe("ToolCache", () => {
       "api",
     );
     await cache.clearCache("toolshed.g2.bx.psu.edu/repos/devteam");
-    const remaining = cache.listCached();
+    const remaining = await cache.listCached();
     expect(remaining).toHaveLength(1);
     expect(remaining[0].tool_id).toContain("multiqc");
   });

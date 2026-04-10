@@ -121,7 +121,7 @@ export function createRequestHandler(ctx: ProxyContext) {
       switch (route.handler) {
         case "listTools": {
           await ctx.service.cache.index.load();
-          const entries = ctx.service.cache.listCached();
+          const entries = await ctx.service.cache.listCached();
           json(res, 200, entries);
           break;
         }

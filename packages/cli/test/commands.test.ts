@@ -60,7 +60,11 @@ const simpleTool = {
 
 async function seedCache(cacheDir: string) {
   const cache = new ToolCache({ cacheDir });
-  const key = cacheKey("https://toolshed.g2.bx.psu.edu", "devteam~fastqc~fastqc", "0.74+galaxy0");
+  const key = await cacheKey(
+    "https://toolshed.g2.bx.psu.edu",
+    "devteam~fastqc~fastqc",
+    "0.74+galaxy0",
+  );
   const parsed = S.decodeUnknownSync(ParsedTool)(fastqcFixture);
   await cache.saveTool(
     key,
@@ -75,7 +79,7 @@ async function seedCache(cacheDir: string) {
 
 async function seedSimpleTool(cacheDir: string) {
   const cache = new ToolCache({ cacheDir });
-  const key = cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
+  const key = await cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
   const parsed = S.decodeUnknownSync(ParsedTool)(simpleTool);
   await cache.saveTool(
     key,

@@ -43,7 +43,7 @@ const simpleTool = {
 
 async function seedTool(cacheDir: string, trsId: string, version: string, toolData: unknown) {
   const cache = new ToolCache({ cacheDir });
-  const key = cacheKey("https://toolshed.g2.bx.psu.edu", trsId, version);
+  const key = await cacheKey("https://toolshed.g2.bx.psu.edu", trsId, version);
   const parsed = S.decodeUnknownSync(ParsedTool)(toolData);
   await cache.saveTool(key, parsed, trsId, version, "api");
 }
