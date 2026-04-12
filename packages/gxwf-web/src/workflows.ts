@@ -8,16 +8,20 @@
  *
  * Operations delegate to @galaxy-tool-util/schema and @galaxy-tool-util/cli.
  *
+ * All six operation endpoints are POST. clean/export/convert are mutating by
+ * default — dry_run=true returns the would-be content without touching disk.
+ * validate/lint/roundtrip are read-only regardless.
+ *
  * ## Parity status vs Python server
  *
- * | Endpoint    | Python params                          | TS status                        |
- * |-------------|----------------------------------------|----------------------------------|
- * | validate    | strict, connections, mode, allow, deny | strict wired; rest accepted (no-op) |
- * | lint        | strict, allow, deny                   | strict wired; allow/deny accepted (no-op) |
- * | clean       | preserve, strip, dry_run              | dry_run wired; preserve/strip no-op |
- * | export      | dry_run                                | full parity                      |
- * | convert     | dry_run                                | full parity                      |
- * | roundtrip   | (none beyond path)                    | full parity                      |
+ * | Endpoint  | Python params                          | TS status                                |
+ * |-----------|----------------------------------------|------------------------------------------|
+ * | validate  | strict, connections, mode, allow, deny | strict wired; rest accepted (no-op)      |
+ * | lint      | strict, allow, deny                    | strict wired; allow/deny accepted (no-op)|
+ * | clean     | preserve, strip, dry_run               | writes back; dry_run wired; preserve/strip no-op |
+ * | export    | dry_run                                | full parity                              |
+ * | convert   | dry_run                                | full parity                              |
+ * | roundtrip | strict_structure, strict_encoding, strict_state, include_content | full parity |
  *
  * TS extension not in Python spec: GET /api/schemas/structural?format=...
  * mode=pydantic (Python default) maps to effect (TS default); mode=json-schema accepted (no-op).
