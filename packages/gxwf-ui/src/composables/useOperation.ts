@@ -5,15 +5,19 @@ import type {
   SingleLintReport,
   SingleCleanReport,
   SingleRoundTripReport,
+  ExportResult,
+  ConvertResult,
 } from "@galaxy-tool-util/schema";
 
-export type OperationName = "validate" | "lint" | "clean" | "roundtrip";
+export type OperationName = "validate" | "lint" | "clean" | "roundtrip" | "export" | "convert";
 
 interface OperationResults {
   validate: SingleValidationReport | null;
   lint: SingleLintReport | null;
   clean: SingleCleanReport | null;
   roundtrip: SingleRoundTripReport | null;
+  export: ExportResult | null;
+  convert: ConvertResult | null;
 }
 
 interface OperationState {
@@ -61,7 +65,7 @@ export function getLastRunStatus(workflowPath: string): "ok" | "fail" | null {
     anyRun = true;
     if (!rr.result.ok) anyFail = true;
   }
-  // clean alone doesn't indicate pass/fail
+  // clean, export, convert alone don't indicate pass/fail
   if (!anyRun) return null;
   return anyFail ? "fail" : "ok";
 }
@@ -69,6 +73,19 @@ export function getLastRunStatus(workflowPath: string): "ok" | "fail" | null {
 /** Drop all cached results for a workflow path (e.g. after the file is saved). */
 export function clearOpCache(workflowPath: string) {
   delete opCache[workflowPath];
+}
+
+/**
+ * Invalidate cached results for a workflow path that may be stale because
+ * the underlying file changed, but preserve the result of the op that just
+ * produced the mutation (so the user can still see its report).
+ */
+export function invalidateStaleOps(workflowPath: string, keep: OperationName) {
+  const state = opCache[workflowPath];
+  if (!state) return;
+  for (const op of Object.keys(state.results) as OperationName[]) {
+    if (op !== keep) delete state.results[op];
+  }
 }
 
 export interface ValidateOpts {
@@ -83,8 +100,9 @@ export interface LintOpts {
   strict_encoding?: boolean;
 }
 
-// include_content always sent as true; no UI-exposed options
-export type CleanOpts = Record<string, never>;
+export interface CleanOpts {
+  dry_run?: boolean;
+}
 
 export interface RoundtripOpts {
   strict_structure?: boolean;
@@ -93,6 +111,12 @@ export interface RoundtripOpts {
   // include_content always sent as true; not exposed as a UI option
 }
 
+export interface ExportOpts {
+  dry_run?: boolean;
+}
+
+export type ConvertOpts = ExportOpts;
+
 export function useOperation(workflowPath: string) {
   const client = useApi();
 
@@ -100,23 +124,29 @@ export function useOperation(workflowPath: string) {
   const lintResult = computed(() => ensureState(workflowPath).results.lint ?? null);
   const cleanResult = computed(() => ensureState(workflowPath).results.clean ?? null);
   const roundtripResult = computed(() => ensureState(workflowPath).results.roundtrip ?? null);
+  const exportResult = computed(() => ensureState(workflowPath).results.export ?? null);
+  const convertResult = computed(() => ensureState(workflowPath).results.convert ?? null);
 
   const validateLoading = computed(() => ensureState(workflowPath).loading.validate ?? false);
   const lintLoading = computed(() => ensureState(workflowPath).loading.lint ?? false);
   const cleanLoading = computed(() => ensureState(workflowPath).loading.clean ?? false);
   const roundtripLoading = computed(() => ensureState(workflowPath).loading.roundtrip ?? false);
+  const exportLoading = computed(() => ensureState(workflowPath).loading.export ?? false);
+  const convertLoading = computed(() => ensureState(workflowPath).loading.convert ?? false);
 
   const validateError = computed(() => ensureState(workflowPath).error.validate ?? null);
   const lintError = computed(() => ensureState(workflowPath).error.lint ?? null);
   const cleanError = computed(() => ensureState(workflowPath).error.clean ?? null);
   const roundtripError = computed(() => ensureState(workflowPath).error.roundtrip ?? null);
+  const exportError = computed(() => ensureState(workflowPath).error.export ?? null);
+  const convertError = computed(() => ensureState(workflowPath).error.convert ?? null);
 
   async function runValidate(opts: ValidateOpts = {}) {
     const s = ensureState(workflowPath);
     s.loading.validate = true;
     s.error.validate = null;
     try {
-      const { data, error } = await client.GET("/workflows/{workflow_path}/validate", {
+      const { data, error } = await client.POST("/workflows/{workflow_path}/validate", {
         params: {
           path: { workflow_path: workflowPath },
           query: {
@@ -142,7 +172,7 @@ export function useOperation(workflowPath: string) {
     s.loading.lint = true;
     s.error.lint = null;
     try {
-      const { data, error } = await client.GET("/workflows/{workflow_path}/lint", {
+      const { data, error } = await client.POST("/workflows/{workflow_path}/lint", {
         params: {
           path: { workflow_path: workflowPath },
           query: {
@@ -166,12 +196,11 @@ export function useOperation(workflowPath: string) {
     s.loading.clean = true;
     s.error.clean = null;
     try {
-      const { data, error } = await client.GET("/workflows/{workflow_path}/clean", {
+      const { data, error } = await client.POST("/workflows/{workflow_path}/clean", {
         params: {
           path: { workflow_path: workflowPath },
           query: {
-            include_content: true,
-            ...opts,
+            dry_run: opts.dry_run ?? false,
           },
         },
       });
@@ -190,7 +219,7 @@ export function useOperation(workflowPath: string) {
     s.loading.roundtrip = true;
     s.error.roundtrip = null;
     try {
-      const { data, error } = await client.GET("/workflows/{workflow_path}/roundtrip", {
+      const { data, error } = await client.POST("/workflows/{workflow_path}/roundtrip", {
         params: {
           path: { workflow_path: workflowPath },
           query: {
@@ -211,22 +240,72 @@ export function useOperation(workflowPath: string) {
     }
   }
 
+  async function runExport(opts: ExportOpts = {}) {
+    const s = ensureState(workflowPath);
+    s.loading.export = true;
+    s.error.export = null;
+    try {
+      const { data, error } = await client.POST("/workflows/{workflow_path}/export", {
+        params: {
+          path: { workflow_path: workflowPath },
+          query: { dry_run: opts.dry_run ?? false },
+        },
+      });
+      if (error) {
+        s.error.export = "Failed to export workflow";
+      } else {
+        s.results.export = (data as unknown as ExportResult) ?? null;
+      }
+    } finally {
+      s.loading.export = false;
+    }
+  }
+
+  async function runConvert(opts: ConvertOpts = {}) {
+    const s = ensureState(workflowPath);
+    s.loading.convert = true;
+    s.error.convert = null;
+    try {
+      const { data, error } = await client.POST("/workflows/{workflow_path}/convert", {
+        params: {
+          path: { workflow_path: workflowPath },
+          query: { dry_run: opts.dry_run ?? false },
+        },
+      });
+      if (error) {
+        s.error.convert = "Failed to convert workflow";
+      } else {
+        s.results.convert = (data as unknown as ConvertResult) ?? null;
+      }
+    } finally {
+      s.loading.convert = false;
+    }
+  }
+
   return {
     validateResult,
     lintResult,
     cleanResult,
     roundtripResult,
+    exportResult,
+    convertResult,
     validateLoading,
     lintLoading,
     cleanLoading,
     roundtripLoading,
+    exportLoading,
+    convertLoading,
     validateError,
     lintError,
     cleanError,
     roundtripError,
+    exportError,
+    convertError,
     runValidate,
     runLint,
     runClean,
     runRoundtrip,
+    runExport,
+    runConvert,
   };
 }

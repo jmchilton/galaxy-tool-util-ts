@@ -179,6 +179,10 @@ export {
   type SingleExportReport,
   type StepEncodeStatus,
   type ToNativeResult,
+  // API result wrappers
+  type WorkflowSourceFormat,
+  type ExportResult,
+  type ConvertResult,
   // Tree-level types (TS-only)
   type WorkflowValidationResult,
   type LintWorkflowResult,
