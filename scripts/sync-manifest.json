@@ -1,0 +1,86 @@
+{
+  "groups": [
+    {
+      "name": "workflow-fixtures",
+      "label": "workflow fixtures (gxformat2)",
+      "src_root": "gxformat2_root",
+      "entries": [
+        {
+          "src": "gxformat2/examples/format2/",
+          "dst": "packages/schema/test/fixtures/workflows/format2/",
+          "patterns": ["synthetic-*.gxwf.yml"]
+        },
+        {
+          "src": "gxformat2/examples/native/",
+          "dst": "packages/schema/test/fixtures/workflows/native/",
+          "patterns": ["synthetic-*.ga", "real-*.ga"]
+        }
+      ]
+    },
+    {
+      "name": "workflow-expectations",
+      "label": "workflow expectations (gxformat2)",
+      "src_root": "gxformat2_root",
+      "entries": [
+        {
+          "src": "gxformat2/examples/expectations/",
+          "dst": "packages/schema/test/fixtures/expectations/",
+          "patterns": ["*.yml"]
+        }
+      ]
+    },
+    {
+      "name": "wfstate-fixtures",
+      "label": "workflow-state fixtures (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "test/unit/tool_util/workflow_state/fixtures/",
+          "dst": "packages/schema/test/fixtures/workflow-state/fixtures/",
+          "files": [
+            "synthetic-cat1-clean.ga",
+            "synthetic-cat1-stale.ga",
+            "synthetic-cat1-errors.ga",
+            "synthetic-cat1.gxwf.yml",
+            "synthetic-cat1-stale.gxwf.yml",
+            "real-sars-cov2-variant-calling.ga"
+          ]
+        },
+        {
+          "src": "test/unit/workflows/iwc/",
+          "dst": "packages/schema/test/fixtures/workflow-state/fixtures/",
+          "files": ["RepeatMasking-Workflow.ga", "rnaseq-sr.ga"]
+        },
+        {
+          "src": "lib/galaxy_test/base/data/",
+          "dst": "packages/schema/test/fixtures/workflow-state/fixtures/",
+          "files": ["test_workflow_1.ga", "test_workflow_2.ga"]
+        }
+      ]
+    },
+    {
+      "name": "wfstate-expectations",
+      "label": "workflow-state expectations (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "test/unit/tool_util/workflow_state/expectations/",
+          "dst": "packages/schema/test/fixtures/workflow-state/expectations/",
+          "patterns": ["*.yml"]
+        }
+      ]
+    },
+    {
+      "name": "wfstate-templates",
+      "label": "workflow-state report templates (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "lib/galaxy/tool_util/workflow_state/templates/reports/",
+          "dst": "packages/cli/src/workflow/templates/reports/",
+          "patterns": ["*.md.j2"]
+        }
+      ]
+    }
+  ]
+}
