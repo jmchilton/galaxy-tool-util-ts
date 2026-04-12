@@ -194,6 +194,9 @@ importers:
       effect:
         specifier: ^3.21.0
         version: 3.21.0
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
     devDependencies:
       '@galaxy-tool-util/core':
         specifier: workspace:*
@@ -201,9 +204,6 @@ importers:
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
-      yaml:
-        specifier: ^2.8.3
-        version: 2.8.3
 
   packages/tool-cache-proxy:
     dependencies:

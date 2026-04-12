@@ -1,5 +1,7 @@
 /** Request/response models for the gxwf-web API. */
 
+import type { SingleExportReport, ToNativeResult } from "@galaxy-tool-util/schema";
+
 export interface ContentsModel {
   name: string;
   path: string;
@@ -25,4 +27,20 @@ export interface RenameRequest {
 export interface CreateRequest {
   type: "file" | "directory";
   ext?: string | null;
+}
+
+export type WorkflowSourceFormat = "native" | "format2";
+
+export interface ExportResult {
+  source_path: string;
+  output_path: string;
+  source_format: WorkflowSourceFormat;
+  target_format: WorkflowSourceFormat;
+  report: SingleExportReport | ToNativeResult;
+  dry_run: boolean;
+  content: string | null;
+}
+
+export interface ConvertResult extends ExportResult {
+  removed_path: string;
 }

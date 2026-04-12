@@ -803,41 +803,65 @@ describe("workflow discovery", () => {
 // ── Workflow operation route tests ───────────────────────────────────
 
 describe("workflow operations", () => {
-  it("GET /workflows/{path}/validate returns 404 for unknown workflow", async () => {
-    const res = await fetch(`${srv.baseUrl}/workflows/nonexistent.ga/validate`);
+  it("POST /workflows/{path}/validate returns 404 for unknown workflow", async () => {
+    const res = await fetch(`${srv.baseUrl}/workflows/nonexistent.ga/validate`, {
+      method: "POST",
+    });
     expect(res.status).toBe(404);
   });
 
-  it("GET /workflows/{path}/clean returns SingleCleanReport for valid .ga", async () => {
+  it("GET /workflows/{path}/validate returns 404 (ops are POST only)", async () => {
     fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
-    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/clean`);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/validate`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /workflows/{path}/clean with dry_run returns report and leaves file unchanged", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/clean?dry_run=true`, {
+      method: "POST",
+    });
     expect(res.status).toBe(200);
     const data = (await res.json()) as {
       workflow: string;
       results: unknown[];
       total_removed: number;
-      steps_with_removals: number;
+      before_content: string | null;
+      after_content: string | null;
     };
     expect(typeof data.workflow).toBe("string");
     expect(Array.isArray(data.results)).toBe(true);
     expect(typeof data.total_removed).toBe("number");
+    expect(fs.readFileSync(path.join(tmpDir, "wf.ga"), "utf-8")).toBe(VALID_GA);
   });
 
-  it("GET /workflows/{path}/validate decodes percent-encoded slashes in path", async () => {
+  it("POST /workflows/{path}/clean writes back cleaned content by default", async () => {
+    // File with a trailing space so cleaning/re-serialization actually changes bytes.
+    const raw = '{"a_galaxy_workflow": "true", "steps": {}, "unused": 1 }\n';
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), raw);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/clean`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const after = fs.readFileSync(path.join(tmpDir, "wf.ga"), "utf-8");
+    // Re-serialized as JSON with 2-space indent — different shape from raw one-liner.
+    expect(after).not.toBe(raw);
+    // Still a parseable workflow.
+    expect(() => JSON.parse(after)).not.toThrow();
+  });
+
+  it("POST /workflows/{path}/validate decodes percent-encoded slashes in path", async () => {
     const subDir = path.join(tmpDir, "sub", "dir");
     fs.mkdirSync(subDir, { recursive: true });
     fs.writeFileSync(path.join(subDir, "wf.ga"), VALID_GA);
-    // openapi-fetch encodes slashes in path params as %2F
     const encoded = encodeURIComponent("sub/dir/wf.ga");
-    const res = await fetch(`${srv.baseUrl}/workflows/${encoded}/validate`);
+    const res = await fetch(`${srv.baseUrl}/workflows/${encoded}/validate`, { method: "POST" });
     expect(res.status).toBe(200);
     const data = (await res.json()) as { workflow: string };
     expect(typeof data.workflow).toBe("string");
   });
 
-  it("GET /workflows/{path}/validate returns SingleValidationReport", async () => {
+  it("POST /workflows/{path}/validate returns SingleValidationReport", async () => {
     fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
-    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/validate`);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/validate`, { method: "POST" });
     expect(res.status).toBe(200);
     const data = (await res.json()) as {
       workflow: string;
@@ -849,9 +873,9 @@ describe("workflow operations", () => {
     expect(Array.isArray(data.structure_errors)).toBe(true);
   });
 
-  it("GET /workflows/{path}/lint returns SingleLintReport", async () => {
+  it("POST /workflows/{path}/lint returns SingleLintReport", async () => {
     fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
-    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/lint`);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/lint`, { method: "POST" });
     expect(res.status).toBe(200);
     const data = (await res.json()) as {
       workflow: string;
@@ -860,6 +884,84 @@ describe("workflow operations", () => {
     };
     expect(typeof data.workflow).toBe("string");
     expect(typeof data.lint_errors).toBe("number");
+  });
+
+  it("POST /workflows/{path}/export (native) writes .gxwf.yml alongside original", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/export`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      source_path: string;
+      output_path: string;
+      source_format: string;
+      target_format: string;
+      dry_run: boolean;
+      content: string | null;
+    };
+    expect(data.source_format).toBe("native");
+    expect(data.target_format).toBe("format2");
+    expect(data.dry_run).toBe(false);
+    expect(data.content).toBeNull();
+    expect(data.output_path.endsWith("wf.gxwf.yml")).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "wf.gxwf.yml"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "wf.ga"))).toBe(true); // original kept
+  });
+
+  it("POST /workflows/{path}/export (format2) writes .ga alongside original", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.gxwf.yml"), VALID_GXWF);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.gxwf.yml/export`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { output_path: string; target_format: string };
+    expect(data.target_format).toBe("native");
+    expect(data.output_path.endsWith("wf.ga")).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "wf.ga"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "wf.gxwf.yml"))).toBe(true);
+  });
+
+  it("POST /workflows/{path}/export with dry_run returns content without writing", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/export?dry_run=true`, {
+      method: "POST",
+    });
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { dry_run: boolean; content: string | null };
+    expect(data.dry_run).toBe(true);
+    expect(typeof data.content).toBe("string");
+    expect(fs.existsSync(path.join(tmpDir, "wf.gxwf.yml"))).toBe(false);
+  });
+
+  it("POST /workflows/{path}/convert writes new file and removes original", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/convert`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { removed_path: string; output_path: string };
+    expect(data.removed_path.endsWith("wf.ga")).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "wf.gxwf.yml"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "wf.ga"))).toBe(false);
+  });
+
+  it("POST /workflows/{path}/convert with dry_run leaves everything untouched", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/convert?dry_run=true`, {
+      method: "POST",
+    });
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { dry_run: boolean; content: string | null };
+    expect(data.dry_run).toBe(true);
+    expect(typeof data.content).toBe("string");
+    expect(fs.existsSync(path.join(tmpDir, "wf.ga"))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, "wf.gxwf.yml"))).toBe(false);
+  });
+
+  it("non-dry-run convert refreshes workflow list (original gone, new file listed)", async () => {
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    await fetch(`${srv.baseUrl}/workflows/refresh`, { method: "POST" });
+    await fetch(`${srv.baseUrl}/workflows/wf.ga/convert`, { method: "POST" });
+    const res = await fetch(`${srv.baseUrl}/workflows`);
+    const data = (await res.json()) as { workflows: { relative_path: string }[] };
+    const paths = data.workflows.map((w) => w.relative_path);
+    expect(paths).toContain("wf.gxwf.yml");
+    expect(paths).not.toContain("wf.ga");
   });
 
   it("GET /api/schemas/structural returns JSON Schema for format2", async () => {

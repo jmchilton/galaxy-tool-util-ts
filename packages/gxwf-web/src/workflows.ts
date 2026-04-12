@@ -14,9 +14,9 @@
  * |-------------|----------------------------------------|----------------------------------|
  * | validate    | strict, connections, mode, allow, deny | strict wired; rest accepted (no-op) |
  * | lint        | strict, allow, deny                   | strict wired; allow/deny accepted (no-op) |
- * | clean       | preserve, strip                       | accepted (no-op; needs StaleKeyPolicy) |
- * | to-format2  | (none beyond path)                    | full parity                      |
- * | to-native   | (none beyond path)                    | full parity                      |
+ * | clean       | preserve, strip, dry_run              | dry_run wired; preserve/strip no-op |
+ * | export      | dry_run                                | full parity                      |
+ * | convert     | dry_run                                | full parity                      |
  * | roundtrip   | (none beyond path)                    | full parity                      |
  *
  * TS extension not in Python spec: GET /api/schemas/structural?format=...
@@ -26,7 +26,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { parse as parseYaml } from "yaml";
 import type { ToolCache } from "@galaxy-tool-util/core";
 import {
   cleanWorkflow,
@@ -37,6 +37,7 @@ import {
   buildSingleLintReport,
   buildSingleCleanReport,
   detectFormat,
+  serializeWorkflow,
   type WorkflowFormat,
   type WorkflowIndex,
   type WorkflowEntry,
@@ -69,6 +70,7 @@ import {
   decodeStructureErrorsJsonSchema,
 } from "@galaxy-tool-util/cli";
 import { HttpError } from "./contents.js";
+import type { ConvertResult, ExportResult } from "./models.js";
 
 // ── Discovery ────────────────────────────────────────────────────────────────
 
@@ -372,73 +374,94 @@ export interface CleanOptions {
    * StaleKeyPolicy (future work) — currently ignored.
    */
   strip?: string[];
-  /** When true, populate before_content and after_content on the returned report. */
-  include_content?: boolean;
+  /** When true, return the cleaned content without writing it back to disk. */
+  dry_run?: boolean;
 }
 
-/** Report stale keys in a workflow (no tool cache needed). */
+/** Clean stale tool state keys in a workflow; writes back to disk unless dry_run. */
 export async function operateClean(
   wf: WorkflowFile,
   opts: CleanOptions = {},
 ): Promise<SingleCleanReport> {
   const { absPath, data, format } = wf;
-  // Read raw file before mutation for before_content (mirrors Python clean_single).
-  const before_content = opts.include_content ? fs.readFileSync(absPath, "utf-8") : undefined;
+  const before_content = fs.readFileSync(absPath, "utf-8");
   const cleanResult = await cleanWorkflow(data);
-  const after_content = opts.include_content
-    ? format === "native"
-      ? JSON.stringify(cleanResult.workflow, null, 2)
-      : stringifyYaml(cleanResult.workflow)
-    : undefined;
+  // Match Python clean_single's after_content: indent=2, no trailing newline.
+  const after_content = serializeWorkflow(cleanResult.workflow as Record<string, unknown>, format, {
+    indent: 2,
+    trailingNewline: false,
+  });
+  if (!opts.dry_run) {
+    fs.writeFileSync(absPath, after_content);
+  }
   const base = buildSingleCleanReport(absPath, cleanResult.results);
   return {
     ...base,
-    before_content: before_content ?? null,
-    after_content: after_content ?? null,
+    before_content,
+    after_content,
   };
 }
 
-/** Convert native → format2 with schema-aware state re-encoding. */
-export async function operateToFormat2(
-  wf: WorkflowFile,
-  cache: ToolCache,
-): Promise<SingleExportReport> {
-  const { absPath, data, format } = wf;
-  if (format !== "native") {
-    throw new HttpError(422, "to-format2 requires a native (.ga) workflow");
-  }
+// ── Export / Convert ─────────────────────────────────────────────────────────
 
-  const expansionOpts: ExpansionOptions = {
-    resolver: createDefaultResolver({ workflowDirectory: path.dirname(absPath) }),
-  };
-  const { resolver } = await loadToolInputsForWorkflow(data, "native", cache, expansionOpts);
-  const result = toFormat2Stateful(data, resolver);
-
-  const converted = result.steps.filter((s) => s.converted).length;
-  const fallback = result.steps.length - converted;
-
-  return {
-    workflow: absPath,
-    ok: fallback === 0,
-    steps_converted: converted,
-    steps_fallback: fallback,
-    summary: { converted, fallback },
-  };
+interface ExportOutcome {
+  output_path: string;
+  content: string;
+  report: SingleExportReport | ToNativeResult;
+  source_format: "native" | "format2";
+  target_format: "native" | "format2";
 }
 
-/** Convert format2 → native with schema-aware state re-encoding. */
-export async function operateToNative(wf: WorkflowFile, cache: ToolCache): Promise<ToNativeResult> {
-  const { absPath, data, format } = wf;
-  if (format !== "format2") {
-    throw new HttpError(422, "to-native requires a format2 (.gxwf.yml) workflow");
+/**
+ * Compute the output path for an export/convert.
+ * Native `.ga` → `.gxwf.yml`; format2 `.gxwf.yml`/`.gxwf.yaml` → `.ga`.
+ */
+function computeOutputPath(absPath: string, sourceFormat: "native" | "format2"): string {
+  if (sourceFormat === "native") {
+    // foo.ga → foo.gxwf.yml
+    const base = absPath.endsWith(".ga") ? absPath.slice(0, -".ga".length) : absPath;
+    return `${base}.gxwf.yml`;
   }
+  // foo.gxwf.yml / foo.gxwf.yaml → foo.ga
+  const dir = path.dirname(absPath);
+  const name = path.basename(absPath);
+  const stem = name.endsWith(".gxwf.yml")
+    ? name.slice(0, -".gxwf.yml".length)
+    : name.endsWith(".gxwf.yaml")
+      ? name.slice(0, -".gxwf.yaml".length)
+      : name.replace(/\.[^.]+$/, "");
+  return path.join(dir, `${stem}.ga`);
+}
 
+async function performExport(wf: WorkflowFile, cache: ToolCache): Promise<ExportOutcome> {
+  const { absPath, data, format } = wf;
   const expansionOpts: ExpansionOptions = {
     resolver: createDefaultResolver({ workflowDirectory: path.dirname(absPath) }),
   };
+
+  if (format === "native") {
+    const { resolver } = await loadToolInputsForWorkflow(data, "native", cache, expansionOpts);
+    const result = toFormat2Stateful(data, resolver);
+    const converted = result.steps.filter((s) => s.converted).length;
+    const fallback = result.steps.length - converted;
+    const report: SingleExportReport = {
+      workflow: absPath,
+      ok: fallback === 0,
+      steps_converted: converted,
+      steps_fallback: fallback,
+      summary: { converted, fallback },
+    };
+    return {
+      output_path: computeOutputPath(absPath, "native"),
+      content: serializeWorkflow(result.workflow as Record<string, unknown>, "format2"),
+      report,
+      source_format: "native",
+      target_format: "format2",
+    };
+  }
+
   const { resolver } = await loadToolInputsForWorkflow(data, "format2", cache, expansionOpts);
   const result = toNativeStateful(data, resolver);
-
   const steps: StepEncodeStatus[] = result.steps.map((s) => ({
     step_id: s.stepId,
     step_label: null,
@@ -446,15 +469,70 @@ export async function operateToNative(wf: WorkflowFile, cache: ToolCache): Promi
     encoded: s.converted,
     error: s.error ?? null,
   }));
-
   const allEncoded = steps.every((s) => s.encoded);
   const encodedCount = steps.filter((s) => s.encoded).length;
-
-  return {
-    native_dict: result.workflow as unknown as Record<string, unknown>,
+  const nativeDict = result.workflow as unknown as Record<string, unknown>;
+  const report: ToNativeResult = {
+    native_dict: nativeDict,
     steps,
     all_encoded: allEncoded,
     summary: `${encodedCount}/${steps.length} steps encoded`,
+  };
+  return {
+    output_path: computeOutputPath(absPath, "format2"),
+    // Match Python format_native_json: JSON indent=4 + trailing newline.
+    content: serializeWorkflow(nativeDict, "native", { indent: 4 }),
+    report,
+    source_format: "format2",
+    target_format: "native",
+  };
+}
+
+export interface ExportConvertOptions {
+  dry_run?: boolean;
+}
+
+/** Export: write converted workflow alongside the original (or return content on dry_run). */
+export async function operateExport(
+  wf: WorkflowFile,
+  cache: ToolCache,
+  opts: ExportConvertOptions = {},
+): Promise<ExportResult> {
+  const outcome = await performExport(wf, cache);
+  if (!opts.dry_run) {
+    fs.writeFileSync(outcome.output_path, outcome.content);
+  }
+  return {
+    source_path: wf.absPath,
+    output_path: outcome.output_path,
+    source_format: outcome.source_format,
+    target_format: outcome.target_format,
+    report: outcome.report,
+    dry_run: !!opts.dry_run,
+    content: opts.dry_run ? outcome.content : null,
+  };
+}
+
+/** Convert: like export, but also removes the original file. */
+export async function operateConvert(
+  wf: WorkflowFile,
+  cache: ToolCache,
+  opts: ExportConvertOptions = {},
+): Promise<ConvertResult> {
+  const outcome = await performExport(wf, cache);
+  if (!opts.dry_run) {
+    fs.writeFileSync(outcome.output_path, outcome.content);
+    fs.unlinkSync(wf.absPath);
+  }
+  return {
+    source_path: wf.absPath,
+    output_path: outcome.output_path,
+    removed_path: wf.absPath,
+    source_format: outcome.source_format,
+    target_format: outcome.target_format,
+    report: outcome.report,
+    dry_run: !!opts.dry_run,
+    content: opts.dry_run ? outcome.content : null,
   };
 }
 

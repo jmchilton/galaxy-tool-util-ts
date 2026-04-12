@@ -1,3 +1,6 @@
+// Format-aware serialization helpers
+export { serializeWorkflow, resolveFormat, type SerializeWorkflowOptions } from "./serialize.js";
+
 // Raw (generated) workflow schema types
 export {
   type GalaxyWorkflow,

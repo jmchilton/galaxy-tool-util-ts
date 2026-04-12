@@ -159,6 +159,11 @@ export {
   /** Detect whether a workflow dict is native (.ga) or format2 (.gxwf.yml). */
   detectFormat,
   type WorkflowFormat,
+  /** Format-aware workflow serializer (JSON/YAML, configurable indent and newline). */
+  serializeWorkflow,
+  type SerializeWorkflowOptions,
+  /** Resolve workflow format from an optional override, falling back to detectFormat. */
+  resolveFormat,
   /** Lint context for tracking errors and warnings during workflow linting. */
   LintContext,
   /** Lint a native Galaxy workflow (.ga format). */

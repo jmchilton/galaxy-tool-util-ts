@@ -37,12 +37,13 @@ import {
   operateValidate,
   operateLint,
   operateClean,
-  operateToFormat2,
-  operateToNative,
+  operateExport,
+  operateConvert,
   operateRoundtrip,
   type ValidateOptions,
   type LintOptions,
   type CleanOptions,
+  type ExportConvertOptions,
   type RoundtripOptions,
 } from "./workflows.js";
 
@@ -155,15 +156,16 @@ async function serveStatic(uiDir: string, urlPath: string, res: ServerResponse):
 
 const CONTENTS_PREFIX = "/api/contents";
 
-type WorkflowOp = "validate" | "clean" | "lint" | "to-format2" | "to-native" | "roundtrip";
+type WorkflowOp = "validate" | "clean" | "lint" | "export" | "convert" | "roundtrip";
 const WORKFLOW_OPS = new Set<string>([
   "validate",
   "clean",
   "lint",
-  "to-format2",
-  "to-native",
+  "export",
+  "convert",
   "roundtrip",
 ]);
+const MUTATING_OPS = new Set<string>(["clean", "export", "convert"]);
 
 type Route =
   | { handler: "readRoot"; query: URLSearchParams }
@@ -201,8 +203,8 @@ function matchRoute(method: string, url: string): Route | null {
     return null;
   }
 
-  // Per-workflow operations: GET /workflows/{filePath}/{op}
-  if (rawPath.startsWith("/workflows/") && method === "GET") {
+  // Per-workflow operations: POST /workflows/{filePath}/{op}
+  if (rawPath.startsWith("/workflows/") && method === "POST") {
     const rest = rawPath.slice("/workflows/".length); // "foo/bar.ga/validate"
     const lastSlash = rest.lastIndexOf("/");
     if (lastSlash > 0) {
@@ -336,17 +338,25 @@ export function createRequestHandler(state: AppState) {
               const copts: CleanOptions = {
                 preserve: route.query.getAll("preserve"),
                 strip: route.query.getAll("strip"),
-                include_content: route.query.get("include_content") === "true",
+                dry_run: route.query.get("dry_run") === "true",
               };
               result = await operateClean(wf, copts);
               break;
             }
-            case "to-format2":
-              result = await operateToFormat2(wf, state.cache);
+            case "export": {
+              const eopts: ExportConvertOptions = {
+                dry_run: route.query.get("dry_run") === "true",
+              };
+              result = await operateExport(wf, state.cache, eopts);
               break;
-            case "to-native":
-              result = await operateToNative(wf, state.cache);
+            }
+            case "convert": {
+              const eopts: ExportConvertOptions = {
+                dry_run: route.query.get("dry_run") === "true",
+              };
+              result = await operateConvert(wf, state.cache, eopts);
               break;
+            }
             case "roundtrip": {
               const ropts: RoundtripOptions = {
                 strict_structure: route.query.get("strict_structure") === "true",
@@ -357,6 +367,9 @@ export function createRequestHandler(state: AppState) {
               result = await operateRoundtrip(wf, state.cache, ropts);
               break;
             }
+          }
+          if (MUTATING_OPS.has(route.op) && route.query.get("dry_run") !== "true") {
+            state.workflows = discoverWorkflows(directory);
           }
           json(res, 200, result);
           break;
