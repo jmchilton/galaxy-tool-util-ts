@@ -479,9 +479,9 @@ export const NativeGalaxyWorkflowSchema = Schema.Struct({
   name: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
   class: Schema.Literal("NativeGalaxyWorkflow"),
   /** Format marker. Always the string ``"true"``. */
-  a_galaxy_workflow: Schema.String,
+  a_galaxy_workflow: Schema.Literal("true"),
   /** Format version. Always ``"0.1"`` currently. In the JSON document this field is written as ``format-version``. */
-  "format-version": Schema.String,
+  "format-version": Schema.Literal("0.1"),
   /** Human-readable workflow description. */
   annotation: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
   /** Classification tags for the workflow. */
@@ -625,14 +625,7 @@ export const NativeStepSchema = Schema.Struct({
     ),
   ),
   /** Embedded subworkflow definition. A complete native workflow document (with ``a_galaxy_workflow``, ``format-version``, ``steps``, etc.) nested inside this step. */
-  subworkflow: Schema.optional(
-    Schema.Union(
-      Schema.suspend((): Schema.Schema<any> => NativeGalaxyWorkflowSchema).annotations({
-        identifier: "NativeGalaxyWorkflowSchema",
-      }),
-      Schema.Null,
-    ),
-  ),
+  subworkflow: Schema.optional(Schema.Union(NativeGalaxyWorkflowSchema, Schema.Null)),
   /** Embedded tool definition for user-defined (dynamic) tools. Present when the step uses a ``GalaxyUserTool`` instead of a registered tool. Contains the full tool definition including ``class: GalaxyU... */
   tool_representation: Schema.optional(
     Schema.Union(Schema.Record({ key: Schema.String, value: Schema.Unknown }), Schema.Null),
