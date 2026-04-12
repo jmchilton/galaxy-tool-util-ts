@@ -181,7 +181,7 @@ export const COND_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/cond/cond_tool";
 /** Seed cache with the text-only simple tool. */
 export async function seedSimpleTool(cacheDir: string): Promise<void> {
   const cache = new ToolCache({ cacheDir });
-  const key = cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
+  const key = await cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
   await cache.saveTool(
     key,
     S.decodeUnknownSync(ParsedTool)(textOnlyTool),
@@ -194,7 +194,11 @@ export async function seedSimpleTool(cacheDir: string): Promise<void> {
 /** Seed cache with text+integer simple tool and data input tool. */
 export async function seedAllTools(cacheDir: string): Promise<void> {
   const cache = new ToolCache({ cacheDir });
-  const simpleKey = cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
+  const simpleKey = await cacheKey(
+    "https://toolshed.g2.bx.psu.edu",
+    "test~simple~simple_tool",
+    "1.0",
+  );
   await cache.saveTool(
     simpleKey,
     S.decodeUnknownSync(ParsedTool)(textIntegerTool),
@@ -202,7 +206,7 @@ export async function seedAllTools(cacheDir: string): Promise<void> {
     "1.0",
     "api",
   );
-  const dataKey = cacheKey("https://toolshed.g2.bx.psu.edu", "test~data~data_tool", "1.0");
+  const dataKey = await cacheKey("https://toolshed.g2.bx.psu.edu", "test~data~data_tool", "1.0");
   await cache.saveTool(
     dataKey,
     S.decodeUnknownSync(ParsedTool)(dataInputTool),
@@ -210,7 +214,7 @@ export async function seedAllTools(cacheDir: string): Promise<void> {
     "1.0",
     "api",
   );
-  const condKey = cacheKey("https://toolshed.g2.bx.psu.edu", "test~cond~cond_tool", "1.0");
+  const condKey = await cacheKey("https://toolshed.g2.bx.psu.edu", "test~cond~cond_tool", "1.0");
   await cache.saveTool(
     condKey,
     S.decodeUnknownSync(ParsedTool)(conditionalTool),

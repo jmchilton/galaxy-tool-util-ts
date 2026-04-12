@@ -25,7 +25,17 @@ export {
   DEFAULT_TOOLSHED_URL,
   TOOLSHED_URL_ENV_VAR,
 } from "./cache/index.js";
-export type { ToolCoordinates, CacheIndexEntry, CacheIndexData } from "./cache/index.js";
+export type {
+  ToolCoordinates,
+  CacheIndexEntry,
+  CacheIndexData,
+  CacheStorage,
+  ResolvedCoordinates,
+} from "./cache/index.js";
+/** Node.js filesystem-backed cache storage (default). */
+export { FilesystemCacheStorage } from "./cache/index.js";
+/** IndexedDB-backed cache storage for browser/Web Worker contexts. */
+export { IndexedDBCacheStorage } from "./cache/index.js";
 /** Fetch parsed tool metadata from a ToolShed instance via TRS API. */
 export { fetchFromToolShed, fetchFromGalaxy, ToolFetchError } from "./client/index.js";
 /** High-level service: fetch tools from multiple sources with automatic caching. */

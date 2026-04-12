@@ -13,6 +13,7 @@ import * as path from "node:path";
 import * as S from "effect/Schema";
 import * as ParseResult from "effect/ParseResult";
 
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { ToolCache, cacheKey, getCacheDir } from "@galaxy-tool-util/core";
 
@@ -65,7 +66,7 @@ function createToolInfo(): GetToolInfo {
       const coords = cache.resolveToolCoordinates(toolId, toolVersion);
       // Match Galaxy's convention: stock tools without a version use "_default_"
       const version = coords.version ?? "_default_";
-      const key = cacheKey(coords.toolshedUrl, coords.trsToolId, version);
+      const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, version);
       return cache.loadCached(key);
     },
   };
@@ -422,7 +423,9 @@ function makeToolInputsResolver(): ToolInputsResolver | undefined {
   return (toolId: string, toolVersion: string | null) => {
     const coords = cache.resolveToolCoordinates(toolId, toolVersion);
     const version = coords.version ?? "_default_";
-    const key = cacheKey(coords.toolshedUrl, coords.trsToolId, version);
+    // Sync hash (node:crypto) required here since ToolInputsResolver is synchronous.
+    const raw = `${coords.toolshedUrl}/${coords.trsToolId}/${version}`;
+    const key = createHash("sha256").update(raw).digest("hex");
     const filePath = join(cache.cacheDir, `${key}.json`);
     if (!fs.existsSync(filePath)) return undefined;
     try {

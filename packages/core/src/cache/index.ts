@@ -11,3 +11,7 @@ export {
   DEFAULT_TOOLSHED_URL,
   TOOLSHED_URL_ENV_VAR,
 } from "./tool-cache.js";
+export type { ResolvedCoordinates } from "./tool-cache.js";
+export type { CacheStorage } from "./storage/interface.js";
+export { FilesystemCacheStorage } from "./storage/filesystem.js";
+export { IndexedDBCacheStorage } from "./storage/indexeddb.js";

@@ -8,7 +8,7 @@ export interface ListOptions {
 export async function runList(opts: ListOptions): Promise<void> {
   const cache = new ToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
-  const entries = cache.listCached();
+  const entries = await cache.listCached();
 
   if (entries.length === 0) {
     console.log("Cache is empty.");

@@ -1,6 +1,7 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import type { CacheStorage } from "./storage/interface.js";
+
+/** Reserved storage key for the index metadata object. */
+const INDEX_KEY = "__index__";
 
 /** Metadata for a single cached tool entry. */
 export interface CacheIndexEntry {
@@ -13,63 +14,38 @@ export interface CacheIndexEntry {
   cached_at: string;
 }
 
-/** Serialized cache index structure (persisted as index.json). */
+/** Serialized cache index structure. */
 export interface CacheIndexData {
   entries: Record<string, CacheIndexEntry>;
 }
 
 /**
- * Manages the cache index file (index.json) that tracks metadata about cached tools.
- * Supports lazy loading, add/remove, and listing operations.
+ * Manages the cache index that tracks metadata about cached tools.
+ * Backed by a {@link CacheStorage} — works on both filesystem (Node.js) and
+ * IndexedDB (browser/Web Worker).
+ *
+ * Call `await load()` before using `has()` or `listAll()` if you need
+ * the persisted state. ToolCache calls load() automatically on first use.
  */
 export class CacheIndex {
-  private indexPath: string;
-  private entries: Record<string, CacheIndexEntry> | null = null;
+  private entries: Record<string, CacheIndexEntry> = {};
+  private loaded = false;
 
-  constructor(readonly cacheDir: string) {
-    this.indexPath = join(cacheDir, "index.json");
-  }
-
-  private getEntries(): Record<string, CacheIndexEntry> {
-    if (this.entries === null) {
-      this.entries = this.loadSync();
-    }
-    return this.entries;
-  }
-
-  private loadSync(): Record<string, CacheIndexEntry> {
-    if (!existsSync(this.indexPath)) {
-      return {};
-    }
-    try {
-      const raw = readFileSync(this.indexPath, "utf-8");
-      const data = JSON.parse(raw) as CacheIndexData;
-      return data.entries ?? {};
-    } catch (err) {
-      console.debug(`Failed to load cache index (sync): ${err}`);
-      return {};
-    }
-  }
+  constructor(private readonly storage: CacheStorage) {}
 
   async load(): Promise<void> {
-    if (!existsSync(this.indexPath)) {
-      this.entries = {};
-      return;
-    }
-    try {
-      const raw = await readFile(this.indexPath, "utf-8");
-      const data = JSON.parse(raw) as CacheIndexData;
-      this.entries = data.entries ?? {};
-    } catch (err) {
-      console.debug(`Failed to load cache index: ${err}`);
-      this.entries = {};
-    }
+    const data = (await this.storage.load(INDEX_KEY)) as CacheIndexData | null;
+    this.entries = data?.entries ?? {};
+    this.loaded = true;
   }
 
-  async save(): Promise<void> {
-    await mkdir(this.cacheDir, { recursive: true });
-    const data: CacheIndexData = { entries: this.getEntries() };
-    await writeFile(this.indexPath, JSON.stringify(data, null, 2));
+  private async ensureLoaded(): Promise<void> {
+    if (!this.loaded) await this.load();
+  }
+
+  private async save(): Promise<void> {
+    const data: CacheIndexData = { entries: this.entries };
+    await this.storage.save(INDEX_KEY, data);
   }
 
   async add(
@@ -79,7 +55,8 @@ export class CacheIndex {
     source: string,
     sourceUrl: string = "",
   ): Promise<void> {
-    this.getEntries()[key] = {
+    await this.ensureLoaded();
+    this.entries[key] = {
       tool_id: toolId,
       tool_version: toolVersion,
       source,
@@ -90,19 +67,21 @@ export class CacheIndex {
   }
 
   async remove(key: string): Promise<void> {
-    const entries = this.getEntries();
-    if (key in entries) {
-      delete entries[key];
+    await this.ensureLoaded();
+    if (key in this.entries) {
+      delete this.entries[key];
       await this.save();
     }
   }
 
-  has(key: string): boolean {
-    return key in this.getEntries();
+  async has(key: string): Promise<boolean> {
+    await this.ensureLoaded();
+    return key in this.entries;
   }
 
-  listAll(): Array<CacheIndexEntry & { cache_key: string }> {
-    return Object.entries(this.getEntries()).map(([key, entry]) => ({
+  async listAll(): Promise<Array<CacheIndexEntry & { cache_key: string }>> {
+    await this.ensureLoaded();
+    return Object.entries(this.entries).map(([key, entry]) => ({
       cache_key: key,
       ...entry,
     }));
@@ -110,6 +89,7 @@ export class CacheIndex {
 
   async clear(): Promise<void> {
     this.entries = {};
+    this.loaded = true;
     await this.save();
   }
 }

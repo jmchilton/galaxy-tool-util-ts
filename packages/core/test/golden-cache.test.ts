@@ -176,8 +176,12 @@ describe("Golden cache contract — toolshed tools", () => {
         expect(parsed!.toolVersion).toBe(entry.expected_version);
       });
 
-      it("computes correct cache key", () => {
-        const key = cacheKey(entry.expected_url, entry.expected_trs_id, entry.expected_version);
+      it("computes correct cache key", async () => {
+        const key = await cacheKey(
+          entry.expected_url,
+          entry.expected_trs_id,
+          entry.expected_version,
+        );
         expect(key).toBe(entry.expected_cache_key);
       });
 
@@ -217,8 +221,8 @@ describe("Golden cache contract — stock tools", () => {
         expect(parseToolshedToolId(entry.tool_id)).toBeNull();
       });
 
-      it("computes correct cache key", () => {
-        const key = cacheKey(
+      it("computes correct cache key", async () => {
+        const key = await cacheKey(
           entry.default_toolshed_url,
           entry.expected_trs_id,
           entry.expected_version,
@@ -274,8 +278,12 @@ describe("Golden cache contract — version from separate arg", () => {
         expect(parsed!.toolVersion).toBeNull();
       });
 
-      it("computes same cache key with separate version", () => {
-        const key = cacheKey(entry.expected_url, entry.expected_trs_id, entry.expected_version);
+      it("computes same cache key with separate version", async () => {
+        const key = await cacheKey(
+          entry.expected_url,
+          entry.expected_trs_id,
+          entry.expected_version,
+        );
         expect(key).toBe(entry.expected_cache_key);
       });
 

@@ -22,7 +22,7 @@ export async function loadCachedTool(
   if (coords.version === null) {
     return { kind: "no_version", toolId };
   }
-  const key = cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
+  const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
   const tool = await cache.loadCached(key);
   if (tool === null) {
     return { kind: "not_cached", toolId, key };

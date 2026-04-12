@@ -450,9 +450,9 @@ export interface NativeGalaxyWorkflow extends HasUUID {
   name?: null | string;
   class: "NativeGalaxyWorkflow";
   /** Format marker. Always the string ``"true"``. */
-  a_galaxy_workflow: string;
+  a_galaxy_workflow: "true";
   /** Format version. Always ``"0.1"`` currently. In the JSON document this field is written as ``format-version``. */
-  "format-version": string;
+  "format-version": "0.1";
   /** Human-readable workflow description. */
   annotation?: null | string;
   /** Classification tags for the workflow. */
