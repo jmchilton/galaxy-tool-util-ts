@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync } from "node:fs";
-import {
-  loadWorkflowToolConfig,
-  toolInfoOptionsFromConfig,
-  type ToolSource,
-} from "@galaxy-tool-util/core";
+import { toolInfoOptionsFromConfig, type ToolSource } from "@galaxy-tool-util/core";
+import { loadWorkflowToolConfig } from "@galaxy-tool-util/core/node";
 import { createApp } from "../app.js";
 
 const args = process.argv.slice(2);

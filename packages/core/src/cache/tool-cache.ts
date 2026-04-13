@@ -1,5 +1,3 @@
-import { join } from "node:path";
-import { homedir } from "node:os";
 import * as S from "effect/Schema";
 
 import { ParsedTool } from "../models/parsed-tool.js";
@@ -7,20 +5,15 @@ import { CacheIndex } from "./cache-index.js";
 import { cacheKey } from "./cache-key.js";
 import { parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
 import type { CacheStorage } from "./storage/interface.js";
-import { FilesystemCacheStorage } from "./storage/filesystem.js";
+import { DEFAULT_TOOLSHED_URL, TOOLSHED_URL_ENV_VAR } from "./tool-cache-defaults.js";
 
-/** Default cache directory: `~/.galaxy/tool_info_cache`. */
-export const DEFAULT_CACHE_DIR = join(homedir(), ".galaxy", "tool_info_cache");
-/** Environment variable to override the cache directory. */
-export const CACHE_DIR_ENV_VAR = "GALAXY_TOOL_CACHE_DIR";
-/** Default Galaxy ToolShed URL. */
-export const DEFAULT_TOOLSHED_URL = "https://toolshed.g2.bx.psu.edu";
-/** Environment variable to override the default ToolShed URL. */
-export const TOOLSHED_URL_ENV_VAR = "GALAXY_TOOLSHED_URL";
+export { DEFAULT_TOOLSHED_URL, TOOLSHED_URL_ENV_VAR };
 
-/** Resolve cache directory: explicit override > env var > default. */
-export function getCacheDir(override?: string): string {
-  return override ?? process.env[CACHE_DIR_ENV_VAR] ?? DEFAULT_CACHE_DIR;
+function envToolshedUrl(): string | undefined {
+  if (typeof process !== "undefined" && process.env) {
+    return process.env[TOOLSHED_URL_ENV_VAR];
+  }
+  return undefined;
 }
 
 export interface ResolvedCoordinates {
@@ -34,28 +27,19 @@ export interface ResolvedCoordinates {
  * Two-layer cache (memory + storage) for parsed Galaxy tool metadata.
  * Resolves tool IDs to cache keys, loads/saves tool JSON, and manages the cache index.
  *
- * @param storage - Storage backend. Defaults to {@link FilesystemCacheStorage} (Node.js).
- *   Pass an {@link IndexedDBCacheStorage} for browser/Web Worker contexts.
+ * `storage` is required — pass a `FilesystemCacheStorage` (Node.js) or
+ * `IndexedDBCacheStorage` (browser). Node callers can use `makeNodeToolCache`
+ * from `@galaxy-tool-util/core/node` to get the default filesystem setup.
  */
 export class ToolCache {
-  /** Cache directory — only meaningful when using the default FilesystemCacheStorage. */
-  readonly cacheDir: string;
   readonly defaultToolshedUrl: string;
   readonly index: CacheIndex;
   private readonly storage: CacheStorage;
   private memoryCache = new Map<string, ParsedTool>();
 
-  constructor(opts?: { cacheDir?: string; defaultToolshedUrl?: string; storage?: CacheStorage }) {
-    this.defaultToolshedUrl =
-      opts?.defaultToolshedUrl ?? process.env[TOOLSHED_URL_ENV_VAR] ?? DEFAULT_TOOLSHED_URL;
-
-    if (opts?.storage !== undefined) {
-      this.storage = opts.storage;
-      this.cacheDir = opts?.cacheDir ?? "";
-    } else {
-      this.cacheDir = getCacheDir(opts?.cacheDir);
-      this.storage = new FilesystemCacheStorage(this.cacheDir);
-    }
+  constructor(opts: { storage: CacheStorage; defaultToolshedUrl?: string }) {
+    this.defaultToolshedUrl = opts.defaultToolshedUrl ?? envToolshedUrl() ?? DEFAULT_TOOLSHED_URL;
+    this.storage = opts.storage;
     this.index = new CacheIndex(this.storage);
   }
 

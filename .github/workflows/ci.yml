@@ -12,6 +12,7 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm lint
       - run: pnpm format
+      - run: pnpm lint:unused:ci
 
   typecheck:
     runs-on: ubuntu-latest

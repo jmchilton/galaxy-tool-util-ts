@@ -1,4 +1,4 @@
-import { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   createFieldModel,
   STATE_REPRESENTATIONS,
@@ -27,7 +27,7 @@ export async function runSchema(toolId: string, opts: SchemaOptions): Promise<vo
   }
   const stateRep = repName as StateRepresentation;
 
-  const cache = new ToolCache({ cacheDir: opts.cacheDir });
+  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
   const result = await loadCachedTool(cache, toolId, opts.version);
   if (isResolveError(result)) {

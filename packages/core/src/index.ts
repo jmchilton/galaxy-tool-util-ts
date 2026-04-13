@@ -1,8 +1,9 @@
 /**
  * @module @galaxy-tool-util/core
  *
- * Galaxy tool cache, ToolShed/Galaxy API client, and ParsedTool model.
- * Handles fetching tool metadata from remote sources and caching locally.
+ * Universal entry — safe to import in Node or browser. Symbols that require
+ * Node built-ins (filesystem cache storage, YAML config loading) live under
+ * `@galaxy-tool-util/core/node`.
  */
 
 /** Effect Schema for parsed tool metadata (id, version, name, inputs, outputs, etc.). */
@@ -16,12 +17,8 @@ export {
   cacheKey,
   /** Cache metadata index — tracks tool IDs, versions, sources, and timestamps. */
   CacheIndex,
-  /** Two-layer cache (memory + filesystem) for parsed tool metadata. */
+  /** Two-layer cache (memory + storage) for parsed tool metadata. */
   ToolCache,
-  /** Resolve cache directory from explicit override, env var, or default. */
-  getCacheDir,
-  DEFAULT_CACHE_DIR,
-  CACHE_DIR_ENV_VAR,
   DEFAULT_TOOLSHED_URL,
   TOOLSHED_URL_ENV_VAR,
 } from "./cache/index.js";
@@ -32,8 +29,6 @@ export type {
   CacheStorage,
   ResolvedCoordinates,
 } from "./cache/index.js";
-/** Node.js filesystem-backed cache storage (default). */
-export { FilesystemCacheStorage } from "./cache/index.js";
 /** IndexedDB-backed cache storage for browser/Web Worker contexts. */
 export { IndexedDBCacheStorage } from "./cache/index.js";
 /** Fetch parsed tool metadata from a ToolShed instance via TRS API. */
@@ -46,6 +41,6 @@ export {
   WorkflowToolConfig,
   ToolSourceConfig,
   ToolCacheConfig,
-  loadWorkflowToolConfig,
   toolInfoOptionsFromConfig,
 } from "./config.js";
+export type { ConfigToolInfoOptions } from "./config.js";

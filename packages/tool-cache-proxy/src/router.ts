@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { ToolInfoService, type ToolSource as CoreToolSource } from "@galaxy-tool-util/core";
+import type { ToolInfoService, ToolSource as CoreToolSource } from "@galaxy-tool-util/core";
+import { makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
 import {
   createFieldModel,
   STATE_REPRESENTATIONS,
@@ -23,7 +24,7 @@ export function createProxyContext(config: ServerConfig): ProxyContext {
     url: s.url,
   }));
 
-  const service = new ToolInfoService({
+  const service = makeNodeToolInfoService({
     cacheDir: config["galaxy.workflows.toolCache"]?.directory,
     sources: coreSources,
   });

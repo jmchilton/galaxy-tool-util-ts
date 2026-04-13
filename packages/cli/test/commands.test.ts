@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as S from "effect/Schema";
 
-import { ToolCache, cacheKey, ParsedTool } from "@galaxy-tool-util/core";
+import { cacheKey, ParsedTool } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import { runAdd } from "../src/commands/add.js";
 import { runList } from "../src/commands/list.js";
 import { runInfo } from "../src/commands/info.js";
@@ -59,7 +60,7 @@ const simpleTool = {
 };
 
 async function seedCache(cacheDir: string) {
-  const cache = new ToolCache({ cacheDir });
+  const cache = makeNodeToolCache({ cacheDir });
   const key = await cacheKey(
     "https://toolshed.g2.bx.psu.edu",
     "devteam~fastqc~fastqc",
@@ -78,7 +79,7 @@ async function seedCache(cacheDir: string) {
 }
 
 async function seedSimpleTool(cacheDir: string) {
-  const cache = new ToolCache({ cacheDir });
+  const cache = makeNodeToolCache({ cacheDir });
   const key = await cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
   const parsed = S.decodeUnknownSync(ParsedTool)(simpleTool);
   await cache.saveTool(

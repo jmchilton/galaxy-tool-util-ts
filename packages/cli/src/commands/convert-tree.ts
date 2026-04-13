@@ -1,7 +1,8 @@
 /**
  * `gxwf convert-tree` — batch convert all workflows under a directory.
  */
-import { ToolCache } from "@galaxy-tool-util/core";
+import type { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   toFormat2,
   toFormat2Stateful,
@@ -58,7 +59,7 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
   // Shared tool cache for stateful mode (loaded once per run)
   let cache: ToolCache | null = null;
   if (opts.stateful) {
-    cache = new ToolCache({ cacheDir: opts.cacheDir });
+    cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
     await cache.index.load();
     if ((await cache.index.listAll()).length === 0) {
       console.warn("Tool cache is empty — stateful conversion will fall back for every step");

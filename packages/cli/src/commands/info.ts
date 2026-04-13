@@ -1,4 +1,5 @@
-import { ToolCache, cacheKey } from "@galaxy-tool-util/core";
+import { cacheKey } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 
 export interface InfoOptions {
   version?: string;
@@ -6,7 +7,7 @@ export interface InfoOptions {
 }
 
 export async function runInfo(toolId: string, opts: InfoOptions): Promise<void> {
-  const cache = new ToolCache({ cacheDir: opts.cacheDir });
+  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
   const coords = cache.resolveToolCoordinates(toolId, opts.version);
   if (coords.version === null) {

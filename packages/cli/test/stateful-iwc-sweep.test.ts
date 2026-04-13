@@ -15,7 +15,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { ToolCache } from "@galaxy-tool-util/core";
+import type { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   roundtripValidate,
   type BenignArtifactKind,
@@ -56,7 +57,7 @@ describe.skipIf(!IWC_DIR)("IWC stateful sweep: convert + roundtrip", { timeout: 
 
   beforeAll(async () => {
     workflows = await discoverNativeWorkflows(join(IWC_DIR!, "workflows"));
-    cache = new ToolCache();
+    cache = makeNodeToolCache();
     await cache.index.load();
   });
 

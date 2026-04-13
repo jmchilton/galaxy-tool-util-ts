@@ -10,6 +10,8 @@
     "test": "pnpm -r --filter=!@galaxy-tool-util/gxwf-e2e test",
     "test:e2e": "pnpm --filter @galaxy-tool-util/gxwf-e2e test",
     "lint": "eslint packages/*/src/ packages/*/test/",
+    "lint:unused": "knip",
+    "lint:unused:ci": "knip --include files,dependencies,unlisted,binaries,unresolved",
     "format": "pnpm -r format",
     "format-fix": "pnpm -r format-fix",
     "changeset": "changeset",
@@ -20,16 +22,24 @@
     "docs:build": "pnpm run build && pnpm run docs:api"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.30.0",
     "@eslint/js": "^10.0.1",
+    "@vitest/browser": "^4.1.4",
+    "@vitest/browser-playwright": "4.1.4",
+    "@vitest/coverage-v8": "4.1.4",
     "concurrently": "^9.2.1",
     "docsify-cli": "^4.4.4",
+    "esbuild": "^0.28.0",
     "eslint": "^10.1.0",
+    "knip": "^6.4.1",
+    "playwright": "^1.59.1",
     "prettier": "^3.8.1",
+    "publint": "^0.3.18",
     "typedoc": "^0.28.18",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.57.2",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.4"
   }
 }

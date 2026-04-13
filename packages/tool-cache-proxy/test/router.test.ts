@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import * as S from "effect/Schema";
 
-import { ToolCache, cacheKey, ParsedTool } from "@galaxy-tool-util/core";
+import { cacheKey, ParsedTool } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import { createProxyContext, createRequestHandler } from "../src/router.js";
 import { defaultConfig, type ServerConfig } from "../src/config.js";
 import fastqcFixture from "../../core/test/fixtures/fastqc-parsed-tool.json" with { type: "json" };
@@ -42,7 +43,7 @@ const simpleTool = {
 };
 
 async function seedTool(cacheDir: string, trsId: string, version: string, toolData: unknown) {
-  const cache = new ToolCache({ cacheDir });
+  const cache = makeNodeToolCache({ cacheDir });
   const key = await cacheKey("https://toolshed.g2.bx.psu.edu", trsId, version);
   const parsed = S.decodeUnknownSync(ParsedTool)(toolData);
   await cache.saveTool(key, parsed, trsId, version, "api");

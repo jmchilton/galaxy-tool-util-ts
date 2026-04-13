@@ -1,0 +1,47 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.mjs"],
+      "project": [],
+      "ignoreDependencies": ["yaml"]
+    },
+    "packages/schema": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/core": {
+      "entry": ["test/**/*.test.ts", "scripts/*.mjs"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/cli": {
+      "entry": ["test/**/*.test.ts", "scripts/*.mjs"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/tool-cache-proxy": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/gxwf-web": {
+      "entry": ["test/**/*.test.ts", "scripts/*.mjs"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/gxwf-client": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/gxwf-report-shell": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/gxwf-ui": {
+      "entry": ["index.html"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@galaxy-tool-util/gxwf-report-shell"]
+    },
+    "packages/gxwf-e2e": {
+      "entry": ["scripts/*.mjs", "tests/**/*.spec.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts"]
+    }
+  },
+  "ignoreDependencies": ["@fontsource/atkinson-hyperlegible"]
+}

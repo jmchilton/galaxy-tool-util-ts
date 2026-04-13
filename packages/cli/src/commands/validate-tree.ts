@@ -1,7 +1,8 @@
 /**
  * `gxwf validate-tree` — batch validate all workflows under a directory.
  */
-import { ToolCache } from "@galaxy-tool-util/core";
+import type { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   checkStrictEncoding,
   checkStrictStructure,
@@ -40,7 +41,7 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
   let cache: ToolCache | undefined;
   if (opts.toolState !== false) {
     try {
-      cache = new ToolCache({ cacheDir: opts.cacheDir });
+      cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
       await cache.index.load();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

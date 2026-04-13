@@ -12,15 +12,14 @@ export interface ToolSource {
 
 /** Options for constructing a {@link ToolInfoService}. */
 export interface ToolInfoOptions {
-  cacheDir?: string;
+  /** Cache storage backend — FilesystemCacheStorage (Node) or IndexedDBCacheStorage (browser). */
+  storage: CacheStorage;
   defaultToolshedUrl?: string;
   /** Multiple sources tried in order. If provided, overrides defaultToolshedUrl/galaxyUrl. */
   sources?: ToolSource[];
   /** @deprecated Use sources instead. Kept for simple single-source usage. */
   galaxyUrl?: string;
   fetcher?: typeof fetch;
-  /** Custom cache storage backend (e.g. IndexedDBCacheStorage for browser contexts). */
-  storage?: CacheStorage;
 }
 
 /**
@@ -32,25 +31,23 @@ export class ToolInfoService {
   private readonly sources: ToolSource[];
   private readonly fetcher: typeof fetch;
 
-  constructor(opts?: ToolInfoOptions) {
+  constructor(opts: ToolInfoOptions) {
     this.cache = new ToolCache({
-      cacheDir: opts?.cacheDir,
-      defaultToolshedUrl: opts?.defaultToolshedUrl,
-      storage: opts?.storage,
+      storage: opts.storage,
+      defaultToolshedUrl: opts.defaultToolshedUrl,
     });
-    this.fetcher = opts?.fetcher ?? globalThis.fetch;
+    this.fetcher = opts.fetcher ?? globalThis.fetch;
 
-    if (opts?.sources && opts.sources.length > 0) {
+    if (opts.sources && opts.sources.length > 0) {
       this.sources = opts.sources;
     } else {
-      // Build sources from legacy options
       this.sources = [
         {
           type: "toolshed",
-          url: opts?.defaultToolshedUrl ?? this.cache.defaultToolshedUrl,
+          url: opts.defaultToolshedUrl ?? this.cache.defaultToolshedUrl,
         },
       ];
-      if (opts?.galaxyUrl) {
+      if (opts.galaxyUrl) {
         this.sources.push({ type: "galaxy", url: opts.galaxyUrl });
       }
     }

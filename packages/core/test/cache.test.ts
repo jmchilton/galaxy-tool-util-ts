@@ -9,8 +9,8 @@ import {
   cacheKey,
   CacheIndex,
   ToolCache,
-  FilesystemCacheStorage,
 } from "../src/cache/index.js";
+import { FilesystemCacheStorage, makeNodeToolCache } from "../src/cache/node.js";
 
 describe("parseToolshedToolId", () => {
   it("parses full toolshed tool ID with version", () => {
@@ -152,7 +152,7 @@ describe("ToolCache", () => {
 
   beforeEach(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), "toolcache-test-"));
-    cache = new ToolCache({ cacheDir: tmpDir });
+    cache = makeNodeToolCache({ cacheDir: tmpDir });
   });
 
   afterEach(async () => {

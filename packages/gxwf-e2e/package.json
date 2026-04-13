@@ -14,7 +14,6 @@
     "format-fix": "prettier --write 'src/**/*.ts' 'tests/**/*.ts' 'playwright.config.ts'"
   },
   "dependencies": {
-    "@galaxy-tool-util/core": "workspace:*",
     "@galaxy-tool-util/gxwf-web": "workspace:*",
     "yaml": "^2.8.3"
   },
