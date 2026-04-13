@@ -1,7 +1,8 @@
 /**
  * Shared tool fixtures and cache seeding for CLI workflow tests.
  */
-import { ToolCache, cacheKey, ParsedTool } from "@galaxy-tool-util/core";
+import { cacheKey, ParsedTool } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import * as S from "effect/Schema";
 
 /** Simple tool with a single text input. */
@@ -180,7 +181,7 @@ export const COND_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/cond/cond_tool";
 
 /** Seed cache with the text-only simple tool. */
 export async function seedSimpleTool(cacheDir: string): Promise<void> {
-  const cache = new ToolCache({ cacheDir });
+  const cache = makeNodeToolCache({ cacheDir });
   const key = await cacheKey("https://toolshed.g2.bx.psu.edu", "test~simple~simple_tool", "1.0");
   await cache.saveTool(
     key,
@@ -193,7 +194,7 @@ export async function seedSimpleTool(cacheDir: string): Promise<void> {
 
 /** Seed cache with text+integer simple tool and data input tool. */
 export async function seedAllTools(cacheDir: string): Promise<void> {
-  const cache = new ToolCache({ cacheDir });
+  const cache = makeNodeToolCache({ cacheDir });
   const simpleKey = await cacheKey(
     "https://toolshed.g2.bx.psu.edu",
     "test~simple~simple_tool",

@@ -1,0 +1,15 @@
+import { defineProject } from "vitest/config";
+import { playwright } from "@vitest/browser-playwright";
+
+export default defineProject({
+  test: {
+    include: ["test/**/*.browser.test.ts"],
+    globals: false,
+    browser: {
+      enabled: true,
+      provider: playwright(),
+      headless: true,
+      instances: [{ browser: "chromium" }],
+    },
+  },
+});

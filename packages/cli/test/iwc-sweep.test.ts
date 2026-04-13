@@ -10,7 +10,8 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { readFile, readdir } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { ToolCache } from "@galaxy-tool-util/core";
+import type { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import { checkStrictEncoding, checkStrictStructure } from "@galaxy-tool-util/schema";
 import {
   validateNativeSteps,
@@ -45,7 +46,7 @@ function runSweep(
 
     beforeAll(async () => {
       workflows = await discoverNativeWorkflows(join(IWC_DIR!, "workflows"));
-      cache = new ToolCache();
+      cache = makeNodeToolCache();
       await cache.index.load();
     });
 
@@ -173,7 +174,7 @@ describe.skipIf(!IWC_DIR)("IWC sweep: strict (all)", { timeout: 300_000 }, () =>
 
   beforeAll(async () => {
     workflows = await discoverNativeWorkflows(join(IWC_DIR!, "workflows"));
-    cache = new ToolCache();
+    cache = makeNodeToolCache();
     await cache.index.load();
   });
 

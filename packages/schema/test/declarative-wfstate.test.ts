@@ -15,7 +15,8 @@ import * as ParseResult from "effect/ParseResult";
 
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { ToolCache, cacheKey, getCacheDir } from "@galaxy-tool-util/core";
+import { cacheKey } from "@galaxy-tool-util/core";
+import { getCacheDir, makeNodeToolCache } from "@galaxy-tool-util/core/node";
 
 import {
   cleanWorkflow,
@@ -60,7 +61,7 @@ interface GetToolInfo {
 }
 
 function createToolInfo(): GetToolInfo {
-  const cache = new ToolCache();
+  const cache = makeNodeToolCache();
   return {
     async getToolInfo(toolId: string, toolVersion?: string | null): Promise<ParsedTool | null> {
       const coords = cache.resolveToolCoordinates(toolId, toolVersion);
@@ -419,14 +420,15 @@ async function validateOp(wfDict: unknown): Promise<unknown> {
 
 function makeToolInputsResolver(): ToolInputsResolver | undefined {
   if (!toolCacheAvailable()) return undefined;
-  const cache = new ToolCache();
+  const cache = makeNodeToolCache();
+  const cacheDir = getCacheDir();
   return (toolId: string, toolVersion: string | null) => {
     const coords = cache.resolveToolCoordinates(toolId, toolVersion);
     const version = coords.version ?? "_default_";
     // Sync hash (node:crypto) required here since ToolInputsResolver is synchronous.
     const raw = `${coords.toolshedUrl}/${coords.trsToolId}/${version}`;
     const key = createHash("sha256").update(raw).digest("hex");
-    const filePath = join(cache.cacheDir, `${key}.json`);
+    const filePath = join(cacheDir, `${key}.json`);
     if (!fs.existsSync(filePath)) return undefined;
     try {
       const data = JSON.parse(fs.readFileSync(filePath, "utf-8"));

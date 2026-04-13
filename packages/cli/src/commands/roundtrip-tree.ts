@@ -2,7 +2,7 @@
  * `gxwf roundtrip-tree` — batch roundtrip validation across a directory.
  * Mirrors the patterns in convert-tree.ts.
  */
-import { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   roundtripValidate,
   type ExpansionOptions,
@@ -39,7 +39,7 @@ interface FileOutcome {
 }
 
 export async function runRoundtripTree(dir: string, opts: RoundtripTreeOptions): Promise<void> {
-  const cache = new ToolCache({ cacheDir: opts.cacheDir });
+  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
   if ((await cache.index.listAll()).length === 0) {
     console.warn("Tool cache is empty — all steps will fall back (no roundtrip possible)");

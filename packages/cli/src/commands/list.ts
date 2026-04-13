@@ -1,4 +1,4 @@
-import { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 
 export interface ListOptions {
   json?: boolean;
@@ -6,7 +6,7 @@ export interface ListOptions {
 }
 
 export async function runList(opts: ListOptions): Promise<void> {
-  const cache = new ToolCache({ cacheDir: opts.cacheDir });
+  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
   const entries = await cache.listCached();
 

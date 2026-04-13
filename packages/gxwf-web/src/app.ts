@@ -8,7 +8,8 @@
  */
 
 import { createServer, type Server } from "node:http";
-import { ToolInfoService, type ToolSource } from "@galaxy-tool-util/core";
+import type { ToolSource } from "@galaxy-tool-util/core";
+import { makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
 import { createRequestHandler, type AppState } from "./router.js";
 import { discoverWorkflows } from "./workflows.js";
 
@@ -28,7 +29,7 @@ export function createApp(
   directory: string,
   opts: CreateAppOptions = {},
 ): { server: Server; state: AppState; ready: Promise<void> } {
-  const service = new ToolInfoService({
+  const service = makeNodeToolInfoService({
     cacheDir: opts.cacheDir,
     sources: opts.sources,
   });

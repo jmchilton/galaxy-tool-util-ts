@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { ToolInfoService } from "../src/tool-info.js";
+import { makeNodeToolInfoService } from "../src/cache/node.js";
 import fastqcFixture from "./fixtures/fastqc-parsed-tool.json" with { type: "json" };
 
 function mockFetch(responseBody: unknown, status = 200): typeof fetch {
@@ -31,7 +31,7 @@ describe("ToolInfoService", () => {
       fetchCount++;
       return mockFetch(fastqcFixture)(...args);
     };
-    const service = new ToolInfoService({
+    const service = makeNodeToolInfoService({
       cacheDir: tmpDir,
       fetcher: countingFetch,
     });
@@ -51,7 +51,7 @@ describe("ToolInfoService", () => {
   });
 
   it("returns null when all sources fail", async () => {
-    const service = new ToolInfoService({
+    const service = makeNodeToolInfoService({
       cacheDir: tmpDir,
       fetcher: mockFetch({}, 404),
     });
@@ -68,7 +68,7 @@ describe("ToolInfoService", () => {
       }
       return mockFetch(fastqcFixture)(url, init);
     };
-    const service = new ToolInfoService({
+    const service = makeNodeToolInfoService({
       cacheDir: tmpDir,
       galaxyUrl: "https://usegalaxy.org",
       fetcher: selectiveFetch,
@@ -79,7 +79,7 @@ describe("ToolInfoService", () => {
   });
 
   it("addTool caches directly", async () => {
-    const service = new ToolInfoService({
+    const service = makeNodeToolInfoService({
       cacheDir: tmpDir,
       fetcher: mockFetch({}, 500), // should not be called
     });
@@ -93,7 +93,7 @@ describe("ToolInfoService", () => {
   });
 
   it("persists cache across service instances", async () => {
-    const service1 = new ToolInfoService({
+    const service1 = makeNodeToolInfoService({
       cacheDir: tmpDir,
       fetcher: mockFetch(fastqcFixture),
     });
@@ -102,7 +102,7 @@ describe("ToolInfoService", () => {
 
     // New instance — should read from disk
     let fetchCount = 0;
-    const service2 = new ToolInfoService({
+    const service2 = makeNodeToolInfoService({
       cacheDir: tmpDir,
       fetcher: async (...args) => {
         fetchCount++;
@@ -115,7 +115,7 @@ describe("ToolInfoService", () => {
   });
 
   it("throws when no version available", async () => {
-    const service = new ToolInfoService({ cacheDir: tmpDir });
+    const service = makeNodeToolInfoService({ cacheDir: tmpDir });
     await expect(
       service.getToolInfo("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc"),
     ).rejects.toThrow("No version");

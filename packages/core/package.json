@@ -3,11 +3,18 @@
   "version": "0.2.0",
   "description": "Galaxy tool cache, ToolShed client, and ParsedTool models",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "browser": "./dist/index.js",
       "import": "./dist/index.js"
-    }
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -30,7 +37,11 @@
     "test:watch": "vitest",
     "lint": "eslint src/ test/",
     "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
-    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
+    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "lint:pkg": "publint",
+    "check:types": "attw --pack . --profile esm-only",
+    "check:browser": "node scripts/verify-browser-entry.mjs",
+    "test:browser": "vitest run --config vitest.browser.config.ts"
   },
   "license": "MIT",
   "devDependencies": {

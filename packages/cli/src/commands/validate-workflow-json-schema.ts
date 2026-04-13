@@ -8,7 +8,8 @@
  * Mirrors Galaxy's validation_json_schema.py.
  */
 
-import { ToolCache } from "@galaxy-tool-util/core";
+import type { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   createFieldModel,
   GalaxyWorkflowSchema,
@@ -230,7 +231,7 @@ export async function runValidateWorkflowJsonSchema(
     return;
   }
 
-  const cache = new ToolCache({ cacheDir: opts.cacheDir });
+  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
 
   let results: StepValidationResult[] = [];

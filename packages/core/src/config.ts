@@ -10,9 +10,7 @@
  */
 
 import * as S from "effect/Schema";
-import { readFile } from "node:fs/promises";
-import YAML from "yaml";
-import type { ToolInfoOptions, ToolSource } from "./tool-info.js";
+import type { ToolSource } from "./tool-info.js";
 
 /** Effect Schema for a tool source entry. */
 export const ToolSourceConfig = S.Struct({
@@ -55,20 +53,20 @@ export const WorkflowToolConfig = S.Struct({
 export type WorkflowToolConfig = S.Schema.Type<typeof WorkflowToolConfig>;
 
 /**
- * Load the shared tool configuration portion from a YAML file.
- * Unknown fields (e.g. `port`, `host`) are silently ignored.
+ * Config-derived runtime options. Narrow subset of tool-info + cache options
+ * that come from a YAML config, without any backend/storage choice.
  */
-export async function loadWorkflowToolConfig(configPath: string): Promise<WorkflowToolConfig> {
-  const raw = await readFile(configPath, "utf-8");
-  const parsed = YAML.parse(raw) as unknown;
-  return S.decodeUnknownSync(WorkflowToolConfig)(parsed);
+export interface ConfigToolInfoOptions {
+  cacheDir?: string;
+  sources?: ToolSource[];
 }
 
 /**
- * Convert a WorkflowToolConfig to ToolInfoOptions for constructing a
- * ToolInfoService. Filters out disabled sources.
+ * Convert a WorkflowToolConfig to runtime options. Filters out disabled sources.
+ * Node callers pair this with `makeNodeToolInfoService` (from `/node`) to
+ * construct a ToolInfoService with filesystem storage.
  */
-export function toolInfoOptionsFromConfig(config: WorkflowToolConfig): ToolInfoOptions {
+export function toolInfoOptionsFromConfig(config: WorkflowToolConfig): ConfigToolInfoOptions {
   const enabledSources: ToolSource[] = config["galaxy.workflows.toolSources"]
     .filter((s) => s.enabled)
     .map((s) => ({ type: s.type, url: s.url }));

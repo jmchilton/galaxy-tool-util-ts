@@ -1,11 +1,11 @@
-import { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 
 export interface ClearOptions {
   cacheDir?: string;
 }
 
 export async function runClear(prefix: string | undefined, opts: ClearOptions): Promise<void> {
-  const cache = new ToolCache({ cacheDir: opts.cacheDir });
+  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
   const before = (await cache.listCached()).length;
   await cache.clearCache(prefix);

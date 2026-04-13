@@ -2,7 +2,8 @@
  * `gxwf lint` — unified lint combining structural checks, best practices,
  * and tool state validation.
  */
-import { ToolCache } from "@galaxy-tool-util/core";
+import type { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   lintWorkflow,
   lintBestPracticesNative,
@@ -79,7 +80,7 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
   let cache: ToolCache | undefined;
   if (!opts.skipStateValidation) {
     try {
-      cache = new ToolCache({ cacheDir: opts.cacheDir });
+      cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
       await cache.index.load();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

@@ -2,7 +2,7 @@
  * `galaxy-tool-cache populate-workflow` — scan workflow(s) for tool references
  * and populate the cache with each unique tool.
  */
-import { ToolInfoService } from "@galaxy-tool-util/core";
+import { makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
 import {
   expandedNative,
   expandedFormat2,
@@ -45,7 +45,7 @@ export async function runPopulateWorkflow(
     return;
   }
 
-  const service = new ToolInfoService({
+  const service = makeNodeToolInfoService({
     cacheDir: opts.cacheDir,
     galaxyUrl: opts.galaxyUrl,
   });

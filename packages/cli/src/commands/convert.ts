@@ -1,7 +1,7 @@
 /**
  * `gxwf convert` — convert between native (.ga) and format2 (.gxwf.yml) formats.
  */
-import { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   toFormat2,
   toFormat2Stateful,
@@ -76,7 +76,7 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
   let stepStatuses: StepConversionStatus[] | null = null;
 
   if (opts.stateful) {
-    const cache = new ToolCache({ cacheDir: opts.cacheDir });
+    const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
     await cache.index.load();
 
     if ((await cache.index.listAll()).length === 0) {

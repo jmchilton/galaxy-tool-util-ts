@@ -1,7 +1,8 @@
 /**
  * `gxwf lint-tree` — batch lint all workflows under a directory.
  */
-import { ToolCache } from "@galaxy-tool-util/core";
+import type { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import type {
   LintWorkflowResult,
   LintTreeReport as SchemaLintTreeReport,
@@ -37,7 +38,7 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
   let cache: ToolCache | undefined;
   if (!opts.skipStateValidation) {
     try {
-      cache = new ToolCache({ cacheDir: opts.cacheDir });
+      cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
       await cache.index.load();
       if ((await cache.index.listAll()).length === 0) {
         console.warn("Tool cache is empty — skipping tool state validation for all files");
