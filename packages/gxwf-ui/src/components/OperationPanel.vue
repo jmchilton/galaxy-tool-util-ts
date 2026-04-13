@@ -2,22 +2,23 @@
   <div class="tabs-frame">
     <Tabs value="validate">
       <TabList>
-        <Tab value="validate">Validate</Tab>
-        <Tab value="lint">Lint</Tab>
-        <Tab value="clean">Clean</Tab>
-        <Tab value="roundtrip">Roundtrip</Tab>
-        <Tab value="export">Export</Tab>
-        <Tab value="convert">Convert</Tab>
+        <Tab value="validate" data-description="validate tab">Validate</Tab>
+        <Tab value="lint" data-description="lint tab">Lint</Tab>
+        <Tab value="clean" data-description="clean tab">Clean</Tab>
+        <Tab value="roundtrip" data-description="roundtrip tab">Roundtrip</Tab>
+        <Tab value="export" data-description="export tab">Export</Tab>
+        <Tab value="convert" data-description="convert tab">Convert</Tab>
       </TabList>
       <TabPanels>
-        <TabPanel value="validate">
-          <div class="panel-content">
+        <TabPanel value="validate" data-description="validate panel">
+          <div class="panel-content" data-description="validate result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="validateLoading"
+                data-description="run validate operation"
                 @click="() => void runValidate(validateOpts)"
               />
               <Select
@@ -59,14 +60,15 @@
           </div>
         </TabPanel>
 
-        <TabPanel value="lint">
-          <div class="panel-content">
+        <TabPanel value="lint" data-description="lint panel">
+          <div class="panel-content" data-description="lint result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="lintLoading"
+                data-description="run lint operation"
                 @click="() => void runLint(lintOpts)"
               />
               <label class="opt-label">
@@ -96,17 +98,18 @@
           </div>
         </TabPanel>
 
-        <TabPanel value="clean">
-          <div class="panel-content">
+        <TabPanel value="clean" data-description="clean panel">
+          <div class="panel-content" data-description="clean result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="cleanLoading"
+                data-description="run clean operation"
                 @click="() => void handleClean()"
               />
-              <label class="opt-label">
+              <label class="opt-label" data-description="clean dry-run toggle">
                 <Checkbox v-model="cleanOpts.dry_run" :binary="true" size="small" />
                 Dry run
               </label>
@@ -129,14 +132,15 @@
           </div>
         </TabPanel>
 
-        <TabPanel value="roundtrip">
-          <div class="panel-content">
+        <TabPanel value="roundtrip" data-description="roundtrip panel">
+          <div class="panel-content" data-description="roundtrip result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="roundtripLoading"
+                data-description="run roundtrip operation"
                 @click="() => void runRoundtrip(roundtripOpts)"
               />
               <label class="opt-label">
@@ -170,17 +174,18 @@
           </div>
         </TabPanel>
 
-        <TabPanel value="export">
-          <div class="panel-content">
+        <TabPanel value="export" data-description="export panel">
+          <div class="panel-content" data-description="export result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="exportLoading"
+                data-description="run export operation"
                 @click="() => void handleExport()"
               />
-              <label class="opt-label">
+              <label class="opt-label" data-description="export dry-run toggle">
                 <Checkbox v-model="exportOpts.dry_run" :binary="true" size="small" />
                 Dry run
               </label>
@@ -203,8 +208,8 @@
           </div>
         </TabPanel>
 
-        <TabPanel value="convert">
-          <div class="panel-content">
+        <TabPanel value="convert" data-description="convert panel">
+          <div class="panel-content" data-description="convert result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
@@ -212,9 +217,10 @@
                 severity="danger"
                 size="small"
                 :loading="convertLoading"
+                data-description="run convert operation"
                 @click="() => void handleConvert()"
               />
-              <label class="opt-label">
+              <label class="opt-label" data-description="convert dry-run toggle">
                 <Checkbox v-model="convertOpts.dry_run" :binary="true" size="small" />
                 Dry run
               </label>

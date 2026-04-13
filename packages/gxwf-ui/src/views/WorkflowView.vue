@@ -1,9 +1,9 @@
 <template>
-  <div>
+  <div data-description="workflow view">
     <div class="view-header">
       <Button icon="pi pi-arrow-left" text rounded @click="router.push('/')" aria-label="Back" />
       <div>
-        <h1>{{ workflowPath }}</h1>
+        <h1 data-description="workflow view path">{{ workflowPath }}</h1>
         <div v-if="workflowMeta" class="workflow-meta">
           <Tag :value="workflowMeta.format" severity="secondary" />
         </div>

@@ -1,0 +1,25 @@
+{
+  "name": "@galaxy-tool-util/gxwf-e2e",
+  "version": "0.0.0",
+  "description": "Playwright end-to-end tests for gxwf-web + gxwf-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ tests/",
+    "format": "prettier --check 'src/**/*.ts' 'tests/**/*.ts' 'playwright.config.ts'",
+    "format-fix": "prettier --write 'src/**/*.ts' 'tests/**/*.ts' 'playwright.config.ts'"
+  },
+  "dependencies": {
+    "@galaxy-tool-util/core": "workspace:*",
+    "@galaxy-tool-util/gxwf-web": "workspace:*",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^25.5.0"
+  }
+}
