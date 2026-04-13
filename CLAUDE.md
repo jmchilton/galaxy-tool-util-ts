@@ -45,7 +45,7 @@ Individual targets (e.g. `make sync-golden`, `make sync-param-spec`) are availab
 
 ## Releases
 
-Uses changesets with `@changesets/changelog-github`. All 4 packages version together (linked). Repo: `jmchilton/galaxy-tool-util-ts`.
+Uses changesets with `@changesets/changelog-github`. All published packages version together (linked). Repo: `jmchilton/galaxy-tool-util-ts`. See `docs/development/publication.md` for full details on how publication works and how to onboard new packages.
 
 **Changesets are required** for commits that affect published packages (`packages/*/src/`). When committing user-visible changes (features, fixes, API changes), include a changeset:
 
