@@ -14,6 +14,10 @@
       v-else-if="report.type === 'roundtrip'"
       :report="report.data as SingleRoundTripReport"
     />
+    <ExportReport
+      v-else-if="report.type === 'export' || report.type === 'convert'"
+      :result="report.data as ExportResult | ConvertResult"
+    />
     <TreeValidationReport
       v-else-if="report.type === 'validate-tree'"
       :report="report.data as TreeValidationReportData"
@@ -41,6 +45,8 @@ import type {
   SingleLintReport,
   SingleCleanReport,
   SingleRoundTripReport,
+  ExportResult,
+  ConvertResult,
   TreeValidationReport as TreeValidationReportData,
   LintTreeReport as LintTreeReportData,
   TreeCleanReport as TreeCleanReportData,
@@ -50,6 +56,7 @@ import ValidationReport from "./ValidationReport.vue";
 import LintReport from "./LintReport.vue";
 import CleanReport from "./CleanReport.vue";
 import RoundtripReport from "./RoundtripReport.vue";
+import ExportReport from "./ExportReport.vue";
 import TreeValidationReport from "./TreeValidationReport.vue";
 import TreeLintReport from "./TreeLintReport.vue";
 import TreeCleanReport from "./TreeCleanReport.vue";
@@ -61,6 +68,8 @@ interface ReportPayload {
     | "lint"
     | "clean"
     | "roundtrip"
+    | "export"
+    | "convert"
     | "validate-tree"
     | "lint-tree"
     | "clean-tree"
@@ -76,6 +85,8 @@ const typeLabel = computed(() => {
     lint: "Lint",
     clean: "Clean",
     roundtrip: "Roundtrip",
+    export: "Export",
+    convert: "Convert",
     "validate-tree": "Validate Tree",
     "lint-tree": "Lint Tree",
     "clean-tree": "Clean Tree",
@@ -87,6 +98,7 @@ const typeLabel = computed(() => {
 const workflowPath = computed(() => {
   const d = props.report.data as Record<string, unknown> | null;
   if (typeof d?.workflow === "string") return d.workflow;
+  if (typeof d?.source_path === "string") return d.source_path;
   if (typeof d?.root === "string") return d.root;
   return null;
 });

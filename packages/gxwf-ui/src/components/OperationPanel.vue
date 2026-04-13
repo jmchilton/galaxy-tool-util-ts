@@ -2,20 +2,23 @@
   <div class="tabs-frame">
     <Tabs value="validate">
       <TabList>
-        <Tab value="validate">Validate</Tab>
-        <Tab value="lint">Lint</Tab>
-        <Tab value="clean">Clean</Tab>
-        <Tab value="roundtrip">Roundtrip</Tab>
+        <Tab value="validate" data-description="validate tab">Validate</Tab>
+        <Tab value="lint" data-description="lint tab">Lint</Tab>
+        <Tab value="clean" data-description="clean tab">Clean</Tab>
+        <Tab value="roundtrip" data-description="roundtrip tab">Roundtrip</Tab>
+        <Tab value="export" data-description="export tab">Export</Tab>
+        <Tab value="convert" data-description="convert tab">Convert</Tab>
       </TabList>
       <TabPanels>
-        <TabPanel value="validate">
-          <div class="panel-content">
+        <TabPanel value="validate" data-description="validate panel">
+          <div class="panel-content" data-description="validate result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="validateLoading"
+                data-description="run validate operation"
                 @click="() => void runValidate(validateOpts)"
               />
               <Select
@@ -57,14 +60,15 @@
           </div>
         </TabPanel>
 
-        <TabPanel value="lint">
-          <div class="panel-content">
+        <TabPanel value="lint" data-description="lint panel">
+          <div class="panel-content" data-description="lint result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="lintLoading"
+                data-description="run lint operation"
                 @click="() => void runLint(lintOpts)"
               />
               <label class="opt-label">
@@ -94,16 +98,21 @@
           </div>
         </TabPanel>
 
-        <TabPanel value="clean">
-          <div class="panel-content">
+        <TabPanel value="clean" data-description="clean panel">
+          <div class="panel-content" data-description="clean result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="cleanLoading"
-                @click="() => void runClean(cleanOpts)"
+                data-description="run clean operation"
+                @click="() => void handleClean()"
               />
+              <label class="opt-label" data-description="clean dry-run toggle">
+                <Checkbox v-model="cleanOpts.dry_run" :binary="true" size="small" />
+                Dry run
+              </label>
               <ToggleButton
                 v-if="cleanResult"
                 v-model="showRaw.clean"
@@ -123,14 +132,15 @@
           </div>
         </TabPanel>
 
-        <TabPanel value="roundtrip">
-          <div class="panel-content">
+        <TabPanel value="roundtrip" data-description="roundtrip panel">
+          <div class="panel-content" data-description="roundtrip result panel">
             <div class="panel-toolbar">
               <Button
                 label="Run"
                 icon="pi pi-play"
                 size="small"
                 :loading="roundtripLoading"
+                data-description="run roundtrip operation"
                 @click="() => void runRoundtrip(roundtripOpts)"
               />
               <label class="opt-label">
@@ -163,6 +173,84 @@
             <p v-else-if="!roundtripLoading" class="no-results">No results yet. Click Run.</p>
           </div>
         </TabPanel>
+
+        <TabPanel value="export" data-description="export panel">
+          <div class="panel-content" data-description="export result panel">
+            <div class="panel-toolbar">
+              <Button
+                label="Run"
+                icon="pi pi-play"
+                size="small"
+                :loading="exportLoading"
+                data-description="run export operation"
+                @click="() => void handleExport()"
+              />
+              <label class="opt-label" data-description="export dry-run toggle">
+                <Checkbox v-model="exportOpts.dry_run" :binary="true" size="small" />
+                Dry run
+              </label>
+              <ToggleButton
+                v-if="exportResult"
+                v-model="showRaw.export"
+                onLabel="Raw JSON"
+                offLabel="Formatted"
+                onIcon="pi pi-code"
+                offIcon="pi pi-list"
+                size="small"
+              />
+              <Message v-if="exportError" severity="error" :closable="false" size="small">
+                {{ exportError }}
+              </Message>
+            </div>
+            <RawJsonView v-if="exportResult && showRaw.export" :data="exportResult" />
+            <ExportReport v-else-if="exportResult" :result="exportResult" />
+            <p v-else-if="!exportLoading" class="no-results">No results yet. Click Run.</p>
+          </div>
+        </TabPanel>
+
+        <TabPanel value="convert" data-description="convert panel">
+          <div class="panel-content" data-description="convert result panel">
+            <div class="panel-toolbar">
+              <Button
+                label="Run"
+                icon="pi pi-play"
+                severity="danger"
+                size="small"
+                :loading="convertLoading"
+                data-description="run convert operation"
+                @click="() => void handleConvert()"
+              />
+              <label class="opt-label" data-description="convert dry-run toggle">
+                <Checkbox v-model="convertOpts.dry_run" :binary="true" size="small" />
+                Dry run
+              </label>
+              <ToggleButton
+                v-if="convertResult"
+                v-model="showRaw.convert"
+                onLabel="Raw JSON"
+                offLabel="Formatted"
+                onIcon="pi pi-code"
+                offIcon="pi pi-list"
+                size="small"
+              />
+              <Message v-if="convertError" severity="error" :closable="false" size="small">
+                {{ convertError }}
+              </Message>
+            </div>
+            <Message
+              v-if="!convertOpts.dry_run"
+              severity="warn"
+              :closable="false"
+              size="small"
+              class="convert-warning"
+            >
+              Convert writes the new file and deletes the original. Enable Dry run to preview.
+            </Message>
+            <RawJsonView v-if="convertResult && showRaw.convert" :data="convertResult" />
+            <ExportReport v-else-if="convertResult" :result="convertResult" />
+            <p v-else-if="!convertLoading" class="no-results">No results yet. Click Run.</p>
+          </div>
+        </TabPanel>
       </TabPanels>
     </Tabs>
   </div>
@@ -185,15 +273,21 @@ import {
   LintReport,
   CleanReport,
   RoundtripReport,
+  ExportReport,
   RawJsonView,
 } from "@galaxy-tool-util/gxwf-report-shell";
+import { useRouter } from "vue-router";
 import {
   useOperation,
+  invalidateStaleOps,
   type ValidateOpts,
   type LintOpts,
   type CleanOpts,
   type RoundtripOpts,
+  type ExportOpts,
+  type ConvertOpts,
 } from "../composables/useOperation";
+import { useWorkflows } from "../composables/useWorkflows";
 
 const props = defineProps<{
   workflowPath: string;
@@ -207,19 +301,30 @@ const {
   lintResult,
   cleanResult,
   roundtripResult,
+  exportResult,
+  convertResult,
   validateLoading,
   lintLoading,
   cleanLoading,
   roundtripLoading,
+  exportLoading,
+  convertLoading,
   validateError,
   lintError,
   cleanError,
   roundtripError,
+  exportError,
+  convertError,
   runValidate,
   runLint,
   runClean,
   runRoundtrip,
+  runExport,
+  runConvert,
 } = useOperation(props.workflowPath);
+
+const { refreshWorkflows } = useWorkflows();
+const router = useRouter();
 
 const modeOptions = [
   { label: "Meta model", value: "effect" },
@@ -238,7 +343,7 @@ const lintOpts = reactive<LintOpts>({
   strict_encoding: false,
 });
 
-const cleanOpts = reactive<CleanOpts>({});
+const cleanOpts = reactive<CleanOpts>({ dry_run: false });
 
 const roundtripOpts = reactive<RoundtripOpts>({
   strict_structure: false,
@@ -246,7 +351,48 @@ const roundtripOpts = reactive<RoundtripOpts>({
   strict_state: false,
 });
 
-const showRaw = reactive({ validate: false, lint: false, clean: false, roundtrip: false });
+const exportOpts = reactive<ExportOpts>({ dry_run: false });
+const convertOpts = reactive<ConvertOpts>({ dry_run: false });
+
+const showRaw = reactive({
+  validate: false,
+  lint: false,
+  clean: false,
+  roundtrip: false,
+  export: false,
+  convert: false,
+});
+
+async function handleClean() {
+  await runClean(cleanOpts);
+  if (!cleanOpts.dry_run && !cleanError.value) {
+    invalidateStaleOps(props.workflowPath, "clean");
+    await refreshWorkflows();
+  }
+}
+
+async function handleExport() {
+  await runExport(exportOpts);
+  if (!exportOpts.dry_run && !exportError.value) {
+    // Source file is unchanged on export; new file appeared alongside.
+    await refreshWorkflows();
+  }
+}
+
+async function handleConvert() {
+  if (!convertOpts.dry_run) {
+    const confirmed = window.confirm(
+      `Convert will delete the original file at ${props.workflowPath} after writing the converted output. Continue?`,
+    );
+    if (!confirmed) return;
+  }
+  await runConvert(convertOpts);
+  if (!convertOpts.dry_run && !convertError.value) {
+    // Original path is gone — refresh list and navigate back to dashboard.
+    await refreshWorkflows();
+    void router.push("/");
+  }
+}
 </script>
 
 <style scoped>
@@ -281,6 +427,10 @@ const showRaw = reactive({ validate: false, lint: false, clean: false, roundtrip
   font-size: 0.875rem;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.convert-warning {
+  align-self: flex-start;
 }
 
 .no-results {

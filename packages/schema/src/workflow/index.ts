@@ -1,3 +1,6 @@
+// Format-aware serialization helpers
+export { serializeWorkflow, resolveFormat, type SerializeWorkflowOptions } from "./serialize.js";
+
 // Raw (generated) workflow schema types
 export {
   type GalaxyWorkflow,
@@ -176,6 +179,10 @@ export {
   type SingleExportReport,
   type StepEncodeStatus,
   type ToNativeResult,
+  // API result wrappers
+  type WorkflowSourceFormat,
+  type ExportResult,
+  type ConvertResult,
   // Tree-level types (TS-only)
   type WorkflowValidationResult,
   type LintWorkflowResult,

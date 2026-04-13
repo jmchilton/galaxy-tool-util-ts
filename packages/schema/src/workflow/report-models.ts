@@ -245,6 +245,25 @@ export interface ToNativeResult {
   readonly summary: string;
 }
 
+// ── Export / Convert API result wrappers ─────────────────────────────
+// Mirrors Python ExportResult / ConvertResult in gxwf_web.models.
+
+export type WorkflowSourceFormat = "native" | "format2";
+
+export interface ExportResult {
+  source_path: string;
+  output_path: string;
+  source_format: WorkflowSourceFormat;
+  target_format: WorkflowSourceFormat;
+  report: SingleExportReport | ToNativeResult;
+  dry_run: boolean;
+  content: string | null;
+}
+
+export interface ConvertResult extends ExportResult {
+  removed_path: string;
+}
+
 // ── Tree workflow-level results ──────────────────────────────────────
 // Note: tree-level types intentionally omit structure_errors and encoding_errors.
 // Those fields exist only on SingleValidationReport / SingleLintReport for

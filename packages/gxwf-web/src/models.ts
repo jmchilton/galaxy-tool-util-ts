@@ -1,5 +1,7 @@
 /** Request/response models for the gxwf-web API. */
 
+export type { WorkflowSourceFormat, ExportResult, ConvertResult } from "@galaxy-tool-util/schema";
+
 export interface ContentsModel {
   name: string;
   path: string;

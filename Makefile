@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-glossary build-glossary check-sync-all
+.PHONY: all lint format typecheck test test-e2e check fix format-fix sync-golden sync-param-spec sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-glossary build-glossary check-sync-all
 
 all: check test
 
@@ -15,7 +15,10 @@ typecheck:
 	pnpm -r typecheck
 
 test:
-	pnpm -r test
+	pnpm -r --filter "!@galaxy-tool-util/gxwf-e2e" test
+
+test-e2e:
+	pnpm --filter @galaxy-tool-util/gxwf-e2e test
 
 check: lint format typecheck
 

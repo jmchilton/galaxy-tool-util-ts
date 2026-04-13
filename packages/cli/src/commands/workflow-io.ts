@@ -1,9 +1,16 @@
 /**
- * Shared workflow file I/O helpers for CLI commands.
+ * Workflow file I/O helpers for CLI commands.
+ *
+ * `resolveFormat` and `serializeWorkflow` are now provided by
+ * `@galaxy-tool-util/schema` so the web server can share them; this file
+ * re-exports them for callers that used the older cli-local paths and keeps
+ * the fs-based read/write helpers here (Node-only).
  */
-import { detectFormat, type WorkflowFormat } from "@galaxy-tool-util/schema";
 import { readFile, writeFile } from "node:fs/promises";
 import * as YAML from "yaml";
+
+export { resolveFormat, serializeWorkflow } from "@galaxy-tool-util/schema";
+export type { SerializeWorkflowOptions } from "@galaxy-tool-util/schema";
 
 /** Read and parse a workflow file, auto-detecting JSON vs YAML by extension. */
 export async function readWorkflowFile(filePath: string): Promise<Record<string, unknown> | null> {
@@ -19,25 +26,6 @@ export async function readWorkflowFile(filePath: string): Promise<Record<string,
     process.exitCode = 1;
     return null;
   }
-}
-
-/** Resolve workflow format from user option or auto-detect. */
-export function resolveFormat(data: Record<string, unknown>, formatOpt?: string): WorkflowFormat {
-  if (formatOpt === "native" || formatOpt === "format2") return formatOpt;
-  return detectFormat(data);
-}
-
-/** Serialize a workflow to JSON or YAML string based on format. */
-export function serializeWorkflow(
-  data: Record<string, unknown>,
-  format: WorkflowFormat,
-  opts?: { json?: boolean; yaml?: boolean },
-): string {
-  const useYaml = opts?.yaml || (!opts?.json && format === "format2");
-  if (useYaml) {
-    return YAML.stringify(data, { lineWidth: 0 });
-  }
-  return JSON.stringify(data, null, 2) + "\n";
 }
 
 /** Write serialized workflow content to a file or stdout. */

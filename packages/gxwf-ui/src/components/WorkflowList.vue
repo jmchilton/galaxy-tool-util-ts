@@ -6,12 +6,19 @@
     :value="workflows"
     :loading="loading"
     dataKey="relative_path"
+    data-description="workflow list"
     @row-click="onRowClick"
     :rowHover="true"
     stripedRows
   >
     <template #empty>No workflows found.</template>
-    <Column field="relative_path" header="Path" style="font-family: monospace" />
+    <Column field="relative_path" header="Path" style="font-family: monospace">
+      <template #body="{ data: row }">
+        <span :data-description="`workflow list item ${(row as WorkflowEntry).relative_path}`">
+          {{ (row as WorkflowEntry).relative_path }}
+        </span>
+      </template>
+    </Column>
     <Column field="format" header="Format">
       <template #body="{ data: row }">
         <Tag :value="(row as WorkflowEntry).format" severity="secondary" />

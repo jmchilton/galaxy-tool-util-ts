@@ -51,13 +51,13 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    get?: never;
+    put?: never;
     /**
      * Validate Workflow
      * @description Validate a workflow's tool state against tool definitions.
      */
-    get: operations["validate_workflow_workflows__workflow_path__validate_get"];
-    put?: never;
-    post?: never;
+    post: operations["validate_workflow_workflows__workflow_path__validate_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -71,53 +71,53 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    get?: never;
+    put?: never;
     /**
      * Clean Workflow
-     * @description Report stale tool state keys in a workflow.
+     * @description Clean stale tool state keys in a workflow. Writes back by default; use dry_run=true to preview.
      */
-    get: operations["clean_workflow_workflows__workflow_path__clean_get"];
-    put?: never;
-    post?: never;
+    post: operations["clean_workflow_workflows__workflow_path__clean_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/workflows/{workflow_path}/to-format2": {
+  "/workflows/{workflow_path}/export": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /**
-     * To Format2
-     * @description Convert a native workflow to format2 with schema-aware state.
-     */
-    get: operations["to_format2_workflows__workflow_path__to_format2_get"];
+    get?: never;
     put?: never;
-    post?: never;
+    /**
+     * Export Workflow
+     * @description Convert a workflow to the other format, writing the result alongside the original.
+     */
+    post: operations["export_workflow_workflows__workflow_path__export_post"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/workflows/{workflow_path}/to-native": {
+  "/workflows/{workflow_path}/convert": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /**
-     * To Native
-     * @description Convert a format2 workflow to native Galaxy format with schema-aware state.
-     */
-    get: operations["to_native_workflows__workflow_path__to_native_get"];
+    get?: never;
     put?: never;
-    post?: never;
+    /**
+     * Convert Workflow
+     * @description Convert a workflow to the other format, removing the original.
+     */
+    post: operations["convert_workflow_workflows__workflow_path__convert_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -131,13 +131,13 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    get?: never;
+    put?: never;
     /**
      * Roundtrip Workflow
      * @description Run round-trip validation (native -> format2 -> native).
      */
-    get: operations["roundtrip_workflow_workflows__workflow_path__roundtrip_get"];
-    put?: never;
-    post?: never;
+    post: operations["roundtrip_workflow_workflows__workflow_path__roundtrip_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -263,13 +263,13 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    get?: never;
+    put?: never;
     /**
      * Lint Workflow
      * @description Lint a workflow (structural + tool state validation).
      */
-    get: operations["lint_workflow_workflows__workflow_path__lint_get"];
-    put?: never;
-    post?: never;
+    post: operations["lint_workflow_workflows__workflow_path__lint_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -494,6 +494,28 @@ export interface components {
       content?: string | components["schemas"]["ContentsModel-Output"][] | null;
     };
     /**
+     * ConvertResult
+     * @description Result of a convert operation (export + remove original).
+     */
+    ConvertResult: {
+      /** Source Path */
+      source_path: string;
+      /** Output Path */
+      output_path: string;
+      /** Removed Path */
+      removed_path: string;
+      /** Source Format */
+      source_format: string;
+      /** Target Format */
+      target_format: string;
+      /** Report */
+      report: components["schemas"]["SingleExportReport"] | components["schemas"]["ToNativeResult"];
+      /** Dry Run */
+      dry_run: boolean;
+      /** Content */
+      content?: string | null;
+    };
+    /**
      * CreateRequest
      * @description Body for POST /api/contents/{path} — create untitled file or directory under {path}.
      */
@@ -526,6 +548,26 @@ export interface components {
       | "annotation_mismatch"
       | "comment_mismatch"
       | "step_missing";
+    /**
+     * ExportResult
+     * @description Result of an export (format conversion) operation.
+     */
+    ExportResult: {
+      /** Source Path */
+      source_path: string;
+      /** Output Path */
+      output_path: string;
+      /** Source Format */
+      source_format: string;
+      /** Target Format */
+      target_format: string;
+      /** Report */
+      report: components["schemas"]["SingleExportReport"] | components["schemas"]["ToNativeResult"];
+      /** Dry Run */
+      dry_run: boolean;
+      /** Content */
+      content?: string | null;
+    };
     /**
      * FailureClass
      * @enum {string}
@@ -917,7 +959,7 @@ export interface operations {
       };
     };
   };
-  validate_workflow_workflows__workflow_path__validate_get: {
+  validate_workflow_workflows__workflow_path__validate_post: {
     parameters: {
       query?: {
         strict_structure?: boolean;
@@ -956,12 +998,12 @@ export interface operations {
       };
     };
   };
-  clean_workflow_workflows__workflow_path__clean_get: {
+  clean_workflow_workflows__workflow_path__clean_post: {
     parameters: {
       query?: {
         preserve?: string[];
         strip?: string[];
-        include_content?: boolean;
+        dry_run?: boolean;
       };
       header?: never;
       path: {
@@ -991,9 +1033,11 @@ export interface operations {
       };
     };
   };
-  to_format2_workflows__workflow_path__to_format2_get: {
+  export_workflow_workflows__workflow_path__export_post: {
     parameters: {
-      query?: never;
+      query?: {
+        dry_run?: boolean;
+      };
       header?: never;
       path: {
         workflow_path: string;
@@ -1008,7 +1052,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SingleExportReport"];
+          "application/json": components["schemas"]["ExportResult"];
         };
       };
       /** @description Validation Error */
@@ -1022,9 +1066,11 @@ export interface operations {
       };
     };
   };
-  to_native_workflows__workflow_path__to_native_get: {
+  convert_workflow_workflows__workflow_path__convert_post: {
     parameters: {
-      query?: never;
+      query?: {
+        dry_run?: boolean;
+      };
       header?: never;
       path: {
         workflow_path: string;
@@ -1039,7 +1085,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ToNativeResult"];
+          "application/json": components["schemas"]["ConvertResult"];
         };
       };
       /** @description Validation Error */
@@ -1053,7 +1099,7 @@ export interface operations {
       };
     };
   };
-  roundtrip_workflow_workflows__workflow_path__roundtrip_get: {
+  roundtrip_workflow_workflows__workflow_path__roundtrip_post: {
     parameters: {
       query?: {
         strict_structure?: boolean;
@@ -1446,7 +1492,7 @@ export interface operations {
       };
     };
   };
-  lint_workflow_workflows__workflow_path__lint_get: {
+  lint_workflow_workflows__workflow_path__lint_post: {
     parameters: {
       query?: {
         strict_structure?: boolean;

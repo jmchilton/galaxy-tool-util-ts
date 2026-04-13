@@ -36,20 +36,22 @@ for (let i = 0; i < args.length; i++) {
 if (outputSchema) {
   // openapi.json lives at <package-root>/openapi.json — two levels above dist/bin/
   const specPath = new URL("../../openapi.json", import.meta.url);
-  process.stdout.write(readFileSync(specPath));
-  process.exit(0);
-}
-
-if (!directory) {
+  // Write through the stream and exit in the drain callback so large specs
+  // (which exceed typical OS pipe buffers) aren't truncated by process.exit.
+  process.stdout.write(readFileSync(specPath), () => process.exit(0));
+} else if (!directory) {
   console.error(
     "Usage: gxwf-web <directory> [--host 127.0.0.1] [--port 8000] [--cache-dir <path>] [--config <path>] [--output-schema]",
   );
   process.exit(1);
-}
-
-if (!existsSync(directory)) {
+} else if (!existsSync(directory)) {
   console.error(`Directory does not exist: ${directory}`);
   process.exit(1);
+} else {
+  main().catch((err: unknown) => {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  });
 }
 
 async function main() {
@@ -95,8 +97,3 @@ async function main() {
     console.log("Tool cache loaded, workflows discovered.");
   });
 }
-
-main().catch((err: unknown) => {
-  console.error("Failed to start server:", err);
-  process.exit(1);
-});

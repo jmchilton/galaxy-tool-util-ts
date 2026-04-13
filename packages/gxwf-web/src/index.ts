@@ -19,7 +19,13 @@ export { createApp } from "./app.js";
 export type { AppState, CreateAppOptions } from "./app.js";
 export { createRequestHandler } from "./router.js";
 export { discoverWorkflows, loadWorkflowFile } from "./workflows.js";
-export type { ValidateOptions, LintOptions, CleanOptions } from "./workflows.js";
+export type {
+  ValidateOptions,
+  LintOptions,
+  CleanOptions,
+  ExportConvertOptions,
+  RoundtripOptions,
+} from "./workflows.js";
 export {
   readContents,
   writeContents,
@@ -35,4 +41,12 @@ export {
   isWorkflowFile,
   HttpError,
 } from "./contents.js";
-export type { ContentsModel, CheckpointModel, RenameRequest, CreateRequest } from "./models.js";
+export type {
+  ContentsModel,
+  CheckpointModel,
+  RenameRequest,
+  CreateRequest,
+  ExportResult,
+  ConvertResult,
+  WorkflowSourceFormat,
+} from "./models.js";
