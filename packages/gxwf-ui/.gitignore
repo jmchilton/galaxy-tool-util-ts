@@ -1,0 +1,9 @@
+# Staged by scripts/copy-monaco-iframe.mjs at postinstall. Regenerated on
+# every install; must not be committed because its source tracks the pinned
+# @codingame/monaco-vscode-extensions-service-override version.
+public/monaco/
+
+# Contributor-supplied galaxy-workflows-vscode .vsix; opt-in Monaco fixture.
+# See README "Monaco editor" section for the build recipe.
+fixtures/
+public/ext/

@@ -5,7 +5,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/copy-monaco-iframe.mjs",
+    "predev": "node scripts/stage-extension.mjs",
     "dev": "vite",
+    "dev:with-ext": "node scripts/dev-with-ext.mjs",
+    "prebuild": "node scripts/stage-extension.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
@@ -14,18 +18,33 @@
     "format-fix": "prettier --write 'src/**/*.{ts,vue}'"
   },
   "dependencies": {
+    "@codingame/monaco-vscode-api": "30.0.1",
+    "@codingame/monaco-vscode-configuration-service-override": "30.0.1",
+    "@codingame/monaco-vscode-editor-api": "30.0.1",
+    "@codingame/monaco-vscode-extensions-service-override": "30.0.1",
+    "@codingame/monaco-vscode-files-service-override": "30.0.1",
+    "@codingame/monaco-vscode-keybindings-service-override": "30.0.1",
+    "@codingame/monaco-vscode-languages-service-override": "30.0.1",
+    "@codingame/monaco-vscode-notifications-service-override": "30.0.1",
+    "@codingame/monaco-vscode-quickaccess-service-override": "30.0.1",
+    "@codingame/monaco-vscode-textmate-service-override": "30.0.1",
+    "@codingame/monaco-vscode-theme-service-override": "30.0.1",
     "@fontsource/atkinson-hyperlegible": "^5.2.8",
     "@galaxy-tool-util/gxwf-client": "workspace:*",
     "@galaxy-tool-util/gxwf-report-shell": "workspace:*",
     "@galaxy-tool-util/schema": "workspace:*",
     "@primevue/themes": "^4.3.0",
+    "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@30.0.1",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.0",
+    "reflect-metadata": "0.2.2",
+    "vscode": "npm:@codingame/monaco-vscode-extension-api@30.0.1",
     "vue": "^3.5.0",
     "vue-router": "^4.4.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
+    "fflate": "0.8.2",
     "vite": "^8.0.0",
     "vue-tsc": "^2.2.0"
   }

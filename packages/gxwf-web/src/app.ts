@@ -22,6 +22,9 @@ export interface CreateAppOptions {
   /** Absolute path to a built gxwf-ui dist directory. When set, the server
    *  serves the frontend at the root and falls back to index.html for SPA routing. */
   uiDir?: string;
+  /** Extra origins appended to the CSP `connect-src` directive (tool-cache
+   *  proxies, custom ToolShed mirrors). Applied when uiDir is set. */
+  extraConnectSrc?: string[];
 }
 
 /** Create a configured gxwf-web HTTP server for the given workflow directory. */
@@ -41,6 +44,7 @@ export function createApp(
     workflows: { directory, workflows: [] },
     cacheDir: opts.cacheDir,
     uiDir: opts.uiDir,
+    extraConnectSrc: opts.extraConnectSrc,
   };
 
   const handler = createRequestHandler(state);
