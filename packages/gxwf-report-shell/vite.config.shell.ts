@@ -11,7 +11,7 @@ export default defineConfig({
       formats: ["iife"],
       fileName: () => "shell.iife.js",
     },
-    rollupOptions: {
+    rolldownOptions: {
       // Bundle everything — no externals. Self-contained for CDN delivery.
       external: [],
       output: {
