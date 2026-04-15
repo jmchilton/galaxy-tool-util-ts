@@ -183,6 +183,14 @@ export {
   checkStrictEncoding,
   /** Strict structure check — reject unknown keys via onExcessProperty: "error". */
   checkStrictStructure,
+  /** Inject `class` discriminator into workflow dict when missing (recursive over step subworkflows). */
+  withClass,
+  /** Effect-schema validator dispatch mirroring gxformat2/validators.py. */
+  validateFormat2,
+  validateFormat2Strict,
+  validateNative,
+  validateNativeStrict,
+  validatorForFixture,
   // Structured report models (mirrors Python _report_models.py)
   type StepStatus,
   SKIP_STATUSES,

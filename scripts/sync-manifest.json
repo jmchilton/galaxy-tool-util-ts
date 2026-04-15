@@ -18,6 +18,18 @@
       ]
     },
     {
+      "name": "schema-rules",
+      "label": "schema-rule catalog (gxformat2)",
+      "src_root": "gxformat2_root",
+      "entries": [
+        {
+          "src": "gxformat2/",
+          "dst": "packages/schema/src/workflow/",
+          "files": ["schema_rules.yml"]
+        }
+      ]
+    },
+    {
       "name": "workflow-expectations",
       "label": "workflow expectations (gxformat2)",
       "src_root": "gxformat2_root",

@@ -129,6 +129,15 @@ export { cleanWorkflow, type CleanWorkflowOptions, type CleanWorkflowResult } fr
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
 
 export {
+  withClass,
+  validateFormat2,
+  validateFormat2Strict,
+  validateNative,
+  validateNativeStrict,
+  validatorForFixture,
+} from "./validators.js";
+
+export {
   validateEncodingNative,
   validateEncodingFormat2,
   checkStrictEncoding,

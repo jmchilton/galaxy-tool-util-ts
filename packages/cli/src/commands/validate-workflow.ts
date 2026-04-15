@@ -11,6 +11,7 @@ import {
   scanForReplacements,
   checkStrictEncoding,
   checkStrictStructure,
+  withClass,
   scanToolState,
   buildSingleValidationReport,
   type NormalizedNativeStep,
@@ -55,12 +56,8 @@ export function decodeStructureErrors(
   data: Record<string, unknown>,
   format: WorkflowFormat,
 ): string[] {
-  const validationData = { ...data };
-  if (format === "native" && !("class" in validationData)) {
-    validationData.class = "NativeGalaxyWorkflow";
-  } else if (format === "format2" && !("class" in validationData)) {
-    validationData.class = "GalaxyWorkflow";
-  }
+  const cls = format === "native" ? "NativeGalaxyWorkflow" : "GalaxyWorkflow";
+  const validationData = withClass(data, cls);
 
   const schema: S.Schema<any> =
     format === "native" ? NativeGalaxyWorkflowSchema : GalaxyWorkflowSchema;

@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test test-e2e check fix format-fix sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-glossary build-glossary check-sync-all
+.PHONY: all lint format typecheck test test-e2e check fix format-fix sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-glossary build-glossary check-sync-all
 
 all: check test
 
@@ -111,6 +111,9 @@ sync-workflow-fixtures:
 sync-workflow-expectations:
 	node scripts/sync-fixtures.mjs --sync --group workflow-expectations
 
+sync-schema-rules:
+	node scripts/sync-fixtures.mjs --sync --group schema-rules
+
 sync-wfstate-fixtures:
 	node scripts/sync-fixtures.mjs --sync --group wfstate-fixtures
 
@@ -125,6 +128,9 @@ check-sync-workflow-fixtures:
 
 check-sync-workflow-expectations:
 	node scripts/sync-fixtures.mjs --check --group workflow-expectations
+
+check-sync-schema-rules:
+	node scripts/sync-fixtures.mjs --check --group schema-rules
 
 check-sync-wfstate-fixtures:
 	node scripts/sync-fixtures.mjs --check --group wfstate-fixtures
@@ -165,7 +171,7 @@ endif
 ifndef GXFORMAT2_ROOT
 	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
 endif
-	$(MAKE) sync-golden sync-param-spec sync-test-format-schema sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-wfstate-fixtures sync-wfstate-expectations sync-wfstate-templates sync-glossary
+	$(MAKE) sync-golden sync-param-spec sync-test-format-schema sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-wfstate-fixtures sync-wfstate-expectations sync-wfstate-templates sync-glossary
 	$(MAKE) generate-schemas build-glossary
 	$(MAKE) verify-golden
 
