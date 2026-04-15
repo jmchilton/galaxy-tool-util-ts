@@ -17,6 +17,7 @@
 - **Architecture**
   - [Parameter Schema System](architecture/parameter-schemas.md)
   - [Effect Schema Usage](architecture/effect-schema.md)
+  - [gxwf-ui Frontend](architecture/gxwf-ui.md)
 - **API Reference**
   - [Overview](api/README.md)
   - [TypeDoc Reference](api/typedoc/index.html ':ignore')
@@ -24,5 +25,6 @@
 - **Development**
   - [Contributing](development/contributing.md)
   - [Testing](development/testing.md)
+  - [End-to-End Tests](development/e2e-testing.md)
   - [Building](development/building.md)
   - [Publication](development/publication.md)
