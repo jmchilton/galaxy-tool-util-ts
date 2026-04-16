@@ -146,13 +146,32 @@ export {
 
 export {
   LintContext,
+  LintMessage,
+  Linter,
+  LEVEL_ERROR,
+  LEVEL_WARN,
   lintNative,
   lintFormat2,
   lintWorkflow,
   lintBestPracticesFormat2,
   lintBestPracticesNative,
+  type LintLevel,
   type LintResult,
+  type LinterRef,
+  type EmitOptions,
 } from "./lint.js";
+
+export { NativeStepKeyNotInteger } from "./lint-rules.js";
+
+export {
+  parseLintProfiles,
+  lintProfilesById,
+  rulesForProfile,
+  iwcRuleIds,
+  LINT_PROFILES_FILENAME,
+  IWC_PROFILE_NAMES,
+  type LintProfile,
+} from "./lint-profiles.js";
 
 // Structured report models (mirrors Python _report_models.py)
 export {

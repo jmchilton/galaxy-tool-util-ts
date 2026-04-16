@@ -79,19 +79,36 @@ export function navigate(obj: unknown, pathElements: unknown[]): unknown {
 
 // --- Assertions ---
 
+/**
+ * Coerce structured message objects (e.g. LintMessage) to their prose when
+ * a string assertion is applied. Mirrors Python where LintMessage is a
+ * `str` subclass — `errors[0] contains "foo"` works transparently.
+ */
+function coerceMessageLike(value: unknown): unknown {
+  if (value && typeof value === "object" && "message" in value) {
+    const msg = (value as { message: unknown }).message;
+    if (typeof msg === "string") return msg;
+  }
+  return value;
+}
+
 export function assertValue(actual: unknown, expected: unknown): void {
   expect(actual).toEqual(expected);
 }
 
 export function assertValueContains(actual: unknown, expected: string): void {
-  expect(typeof actual).toBe("string");
-  expect(actual as string).toContain(expected);
+  const coerced = coerceMessageLike(actual);
+  expect(typeof coerced).toBe("string");
+  expect(coerced as string).toContain(expected);
 }
 
 export function assertValueAnyContains(actual: unknown, expected: string): void {
   expect(Array.isArray(actual)).toBe(true);
   const arr = actual as unknown[];
-  const found = arr.some((item) => typeof item === "string" && item.includes(expected));
+  const found = arr.some((item) => {
+    const coerced = coerceMessageLike(item);
+    return typeof coerced === "string" && coerced.includes(expected);
+  });
   expect(found).toBe(true);
 }
 

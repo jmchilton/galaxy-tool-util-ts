@@ -11,6 +11,7 @@ import {
   checkStrictEncoding,
   checkStrictStructure,
   buildSingleLintReport,
+  type LintMessage,
   type LintResult,
   type ExpansionOptions,
   type WorkflowFormat,
@@ -60,8 +61,8 @@ export interface LintReport {
 }
 
 function mergeLintResults(...results: (LintResult | null)[]): LintResult {
-  const errors: string[] = [];
-  const warnings: string[] = [];
+  const errors: LintMessage[] = [];
+  const warnings: LintMessage[] = [];
   for (const r of results) {
     if (!r) continue;
     errors.push(...r.errors);

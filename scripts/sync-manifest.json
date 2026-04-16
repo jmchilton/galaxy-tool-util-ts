@@ -30,6 +30,18 @@
       ]
     },
     {
+      "name": "lint-profiles",
+      "label": "lint profile catalog (gxformat2)",
+      "src_root": "gxformat2_root",
+      "entries": [
+        {
+          "src": "gxformat2/",
+          "dst": "packages/schema/src/workflow/",
+          "files": ["lint_profiles.yml"]
+        }
+      ]
+    },
+    {
       "name": "workflow-expectations",
       "label": "workflow expectations (gxformat2)",
       "src_root": "gxformat2_root",

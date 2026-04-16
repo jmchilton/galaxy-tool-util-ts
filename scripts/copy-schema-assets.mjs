@@ -15,6 +15,7 @@ const PKG_ROOT = resolve(__dirname, "..", "packages", "schema");
 
 const ASSETS = [
   ["src/workflow/schema_rules.yml", "dist/workflow/schema_rules.yml"],
+  ["src/workflow/lint_profiles.yml", "dist/workflow/lint_profiles.yml"],
 ];
 
 for (const [src, dst] of ASSETS) {

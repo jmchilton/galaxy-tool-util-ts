@@ -1,9 +1,8 @@
 /**
  * Workflow linting — structural checks and best-practice warnings.
  *
- * Port of gxformat2's lint.py + linting.py. Checks workflow structure,
- * output labels, step errors, tool references, output source resolution,
- * input default types, and report markdown.
+ * Port of gxformat2's lint.py. Emission primitives live in `linting.ts`
+ * (LintContext / LintMessage / Linter base); rule classes in `lint-rules.ts`.
  */
 
 import { normalizedFormat2 } from "./normalized/format2.js";
@@ -12,49 +11,20 @@ import { ensureFormat2 } from "./normalized/ensure.js";
 import type { NormalizedFormat2Workflow, NormalizedFormat2Step } from "./normalized/format2.js";
 import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./normalized/native.js";
 import { detectFormat } from "./detect-format.js";
+import { LintContext, type LintResult } from "./linting.js";
+import { NativeStepKeyNotInteger } from "./lint-rules.js";
 
-// ---------------------------------------------------------------------------
-// LintContext — tracks errors and warnings during linting
-// ---------------------------------------------------------------------------
-
-export class LintContext {
-  errors: string[] = [];
-  warnings: string[] = [];
-  private _prefix: string;
-
-  constructor(prefix = "") {
-    this._prefix = prefix;
-  }
-
-  error(message: string): void {
-    this.errors.push(`${this._prefix}${message}`);
-  }
-
-  warn(message: string): void {
-    this.warnings.push(`${this._prefix}${message}`);
-  }
-
-  child(prefix: string): LintContext {
-    const fullPrefix = this._prefix ? `${this._prefix.slice(0, -1)} > ${prefix}] ` : `[${prefix}] `;
-    const ctx = new LintContext();
-    ctx._prefix = fullPrefix;
-    // Share message arrays with parent
-    ctx.errors = this.errors;
-    ctx.warnings = this.warnings;
-    return ctx;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// LintResult — the return type for lint operations
-// ---------------------------------------------------------------------------
-
-export interface LintResult {
-  errors: string[];
-  warnings: string[];
-  error_count: number;
-  warn_count: number;
-}
+export {
+  LintContext,
+  LintMessage,
+  Linter,
+  LEVEL_ERROR,
+  LEVEL_WARN,
+  type LintLevel,
+  type LintResult,
+  type LinterRef,
+  type EmitOptions,
+} from "./linting.js";
 
 function toLintResult(ctx: LintContext): LintResult {
   return {
@@ -131,7 +101,10 @@ function lintNativeWorkflow(
 
   for (const [orderIndex, step] of Object.entries(nnw.steps)) {
     if (!/^\d+$/.test(orderIndex)) {
-      ctx.error(`expected step_key to be integer not [${orderIndex}]`);
+      ctx.error(`expected step_key to be integer not [${orderIndex}]`, {
+        linter: NativeStepKeyNotInteger,
+        json_pointer: `/steps/${orderIndex}`,
+      });
     }
 
     for (const wo of step.workflow_outputs) {
