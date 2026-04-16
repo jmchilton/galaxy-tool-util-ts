@@ -166,6 +166,12 @@ export {
   resolveFormat,
   /** Lint context for tracking errors and warnings during workflow linting. */
   LintContext,
+  /** Structured lint emission (message + level + linter + json_pointer). */
+  LintMessage,
+  /** Metadata-only base class for lint rules. */
+  Linter,
+  LEVEL_ERROR,
+  LEVEL_WARN,
   /** Lint a native Galaxy workflow (.ga format). */
   lintNative,
   /** Lint a Format2 Galaxy workflow (.gxwf.yml format). */
@@ -176,7 +182,20 @@ export {
   lintBestPracticesFormat2,
   /** Lint best practices for a native Galaxy workflow. */
   lintBestPracticesNative,
+  type LintLevel,
   type LintResult,
+  type LinterRef,
+  type EmitOptions,
+  /** Lint rule classes (one per rule id). */
+  NativeStepKeyNotInteger,
+  /** Lint profile catalog loader — parses `lint_profiles.yml`. */
+  parseLintProfiles,
+  lintProfilesById,
+  rulesForProfile,
+  iwcRuleIds,
+  LINT_PROFILES_FILENAME,
+  IWC_PROFILE_NAMES,
+  type LintProfile,
   /** Strict encoding check — reject JSON-string tool_state (native) or tool_state field misuse (format2). */
   validateEncodingNative,
   validateEncodingFormat2,
