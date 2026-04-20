@@ -96,6 +96,21 @@ Monaco user config is assembled from env vars at init:
 
 See `src/editor/services.ts` for defaults.
 
+## Keybinding contract for the embedded extension
+
+The Monaco host runs a single-file workflow editor, not an IDE. Extension
+keybinding contributions (`contributes.keybindings` in the extension
+`package.json`) must declare a `when` clause scoped to editor focus — use
+`editorFocus` or `editorTextFocus` — so that browser shortcuts (Ctrl+T,
+Ctrl+W, Ctrl+Shift+I, F5, Ctrl+F outside the editor) and gxwf-ui chrome
+shortcuts are never intercepted when the editor isn't active.
+
+The upstream pin currently contributes zero keybindings, so the only binding
+we override is the workbench's built-in `workbench.action.files.save`
+(`src/editor/saveCommand.ts`) — Ctrl+S / Cmd+S routes into `FileView.onSave`
+alongside the toolbar Save button. New contributions that add keybindings
+must clear review against this rule.
+
 ## Tool cache (browser mode)
 
 The embedded extension binds `TYPES.CacheStorageFactory` to an

@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent, onMounted, watch } from "vue";
+import { ref, computed, defineAsyncComponent, onMounted, onBeforeUnmount, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Message from "primevue/message";
 import Button from "primevue/button";
@@ -274,6 +274,26 @@ watch(selectedPath, (next) => {
   if (next && next !== routeFilePath()) {
     void router.replace(`/files/${next}`);
   }
+});
+
+// Ctrl+S / Cmd+S → onSave. Override the workbench save command the first time
+// Monaco boots (CommandsRegistry isn't usable before services.initialize). The
+// keybinding is built into monaco-vscode-api's default keymap; we only supply
+// the handler. EditorShell (textarea) path is unaffected — the override never
+// installs because `editor` never flips live.
+let saveCmdDispose: (() => void) | null = null;
+if (monacoEnabled) {
+  const stop = watch(editor, async (ed) => {
+    if (!ed || saveCmdDispose) return;
+    const { registerGxwfSaveHandler } = await import("../editor/saveCommand");
+    const reg = registerGxwfSaveHandler(() => onSave());
+    saveCmdDispose = () => reg.dispose();
+    stop();
+  });
+}
+onBeforeUnmount(() => {
+  saveCmdDispose?.();
+  saveCmdDispose = null;
 });
 </script>
 

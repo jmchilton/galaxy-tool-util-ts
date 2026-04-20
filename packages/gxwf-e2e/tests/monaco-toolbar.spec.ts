@@ -88,4 +88,24 @@ monacoHarnessSuite("monaco editor toolbar", ({ harness }) => {
     await page.locator(byDescription(EditorToolbar.save)).click();
     await savePromise;
   });
+
+  test("Ctrl+S / Cmd+S keybinding triggers a PUT to /api/contents", async ({ page }) => {
+    // Phase 6.2: the workbench.action.files.save command is overridden to call
+    // FileView.onSave. Keybinding-side of the shared-handler contract (button
+    // side is covered by the previous test).
+    await openFileViaUrl(page, harness().baseUrl, "synthetic/simple-format2.gxwf.yml");
+    await waitForMonaco(page);
+
+    await page.locator(".monaco-editor textarea").first().focus();
+    await page.keyboard.press("End");
+    await page.keyboard.type("# keybinding save\n");
+
+    const savePromise = page.waitForRequest(
+      (req) => req.method() === "PUT" && /\/api\/contents\//.test(req.url()),
+      { timeout: 10_000 },
+    );
+    const mod = process.platform === "darwin" ? "Meta" : "Control";
+    await page.keyboard.press(`${mod}+s`);
+    await savePromise;
+  });
 });
