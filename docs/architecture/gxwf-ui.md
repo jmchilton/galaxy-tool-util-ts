@@ -217,6 +217,7 @@ Most of these are artifacts of how `@codingame/monaco-vscode-api` works under th
 6. **The iframe HTML (`webWorkerExtensionHostIframe.html`) can't be deep-imported.** The override package's `exports` map only matches `.js`/`.css`/`.d.ts`. A postinstall script copies it into `public/monaco/`.
 7. **Extension-host worker entry uses a static import** of the monaco-vscode-api worker main. Vite's worker bundling can't follow a dynamic `import()` to that path.
 8. **Vite config:** `optimizeDeps.exclude` every `@codingame/monaco-vscode-*` package (the optimizer strands sibling assets), `worker.format: "es"`, `build.target: "esnext"`, and add the extension worktree root to `server.fs.allow` for `folder:` delivery.
+9. **`monaco.editor.defineTheme(...)` is unsupported** under our service-override stack — it throws `defineTheme is not a function`. Contribute themes through an extension manifest instead (see [Custom themes](#custom-themes)).
 
 Service override naming at v30 has its own quirks (`quickaccess-service-override`, not `quickinput-*`; no `language-detection-worker-service-override`; `shouldUseGlobalKeybindings`, not `…GlobalStorage`; `initUserConfiguration(jsonString)` must be called *before* `initialize(...)`). Check the comments in `packages/gxwf-ui/src/editor/services.ts` when adding an override.
 
@@ -238,6 +239,14 @@ Build-time env vars are assembled into a `configurationService` JSON blob and ha
 | `VITE_GXWF_VALIDATION_PROFILE` | `galaxyWorkflows.validation.profile` |
 
 These map to `workspace.getConfiguration("galaxyWorkflows")` inside the loaded extension. The cache-DB name is worth overriding per-deployment if multiple gxwf-web instances share an origin and should not cross-contaminate IndexedDB.
+
+## Custom themes
+
+Monaco inside monaco-vscode-api does **not** honor the standalone `monaco.editor.defineTheme(...)` call — the workbench theme service owns theme resolution once `getThemeServiceOverride()` is installed, and `defineTheme` throws at runtime. The supported channel is the same one VS Code itself uses: an extension manifest `contributes.themes` entry pointing at a JSON color theme.
+
+`packages/gxwf-ui/src/editor/themesExtension.ts` builds a synthetic extension manifest contributing two themes — `gxwf-dark` and `gxwf-light` — and registers it via `registerExtension(...)` + `registerFileUrl(...)`. The JSON files live under `src/editor/themes/`, imported with Vite's `?url` query so they're fingerprinted and emitted as static assets. Both themes share the brand palette (Hokey Pokey gold accents, Ebony Clay navy on dark, Chicago grey on light) pinned from `src/styles/galaxy.css`.
+
+Which theme is active is driven by `workbench.colorTheme` in the workbench configuration service. `services.ts` seeds it at boot from the `dark` class on `<html>` (which `App.vue` writes synchronously from `localStorage["gxwf-dark"]`), and `themeSync.ts` watches that class with a `MutationObserver`, calling `updateUserConfiguration({ "workbench.colorTheme": ... })` whenever the user flips the dark-mode toggle. The workbench theme service swaps the active theme in place; no editor remount is needed.
 
 ## CSS scoping
 

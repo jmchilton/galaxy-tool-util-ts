@@ -26,9 +26,8 @@ const props = withDefaults(
     content: string;
     fileName: string;
     readonly?: boolean;
-    theme?: string;
   }>(),
-  { readonly: false, theme: "vs-dark" },
+  { readonly: false },
 );
 
 const emit = defineEmits<{
@@ -63,7 +62,6 @@ onMounted(async () => {
     editor.value = monaco.editor.create(hostEl.value, {
       model: m,
       automaticLayout: true,
-      theme: props.theme,
       readOnly: props.readonly,
       minimap: { enabled: false },
     });
@@ -87,6 +85,10 @@ onMounted(async () => {
   }
 });
 
+// Parent-facing handle so FileView can drive the live editor (toolbar actions,
+// keybinding overrides) without a test-only global.
+defineExpose({ editor, model, ready });
+
 // Keep the model in sync with external content updates (e.g. when FileView
 // re-fetches after a restore). Skip no-op writes to avoid cursor churn.
 watch(
@@ -106,11 +108,6 @@ watch(
 watch(
   () => props.readonly,
   (next) => editor.value?.updateOptions({ readOnly: next }),
-);
-
-watch(
-  () => props.theme,
-  (next) => monaco.editor.setTheme(next),
 );
 
 onBeforeUnmount(() => {

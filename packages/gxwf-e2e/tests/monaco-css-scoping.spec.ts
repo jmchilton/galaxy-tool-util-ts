@@ -232,4 +232,203 @@ monacoHarnessSuite("monaco css scoping", ({ harness }) => {
 
     expect(violations, formatViolations(violations)).toEqual([]);
   });
+
+  // Companion to the selector-bleed scan above: even when Monaco's selectors
+  // are well-scoped, the editor surface can silently inherit `font-family`
+  // from `body` (or any ancestor that sets a font on a non-monospace family).
+  // gxwf-ui's body uses Atkinson Hyperlegible for legibility on prose; that
+  // font is a sans-serif and would destroy column alignment if it leaked into
+  // the editor. Monaco's standalone editor sets its own monospace font via
+  // inline style on `.monaco-editor`, so this assertion holds today; if a
+  // future bump or a service-override change drops that, this test catches it.
+  test("monaco editor renders in monospace, does not inherit body font", async ({ page }) => {
+    await openFileViaUrl(page, harness().baseUrl, "synthetic/simple-format2.gxwf.yml");
+    await waitForMonaco(page, 30_000);
+    // Brief settle so Monaco's font measurement + font-family application has
+    // resolved before we read computed styles.
+    await page.waitForTimeout(500);
+
+    const fonts = await page.evaluate(() => {
+      const editor = document.querySelector(".monaco-editor");
+      const viewLines = document.querySelector(".monaco-editor .view-lines");
+      return {
+        body: getComputedStyle(document.body).fontFamily,
+        editor: editor ? getComputedStyle(editor).fontFamily : null,
+        viewLines: viewLines ? getComputedStyle(viewLines).fontFamily : null,
+      };
+    });
+
+    // Premise check: this test only proves something if the body still uses
+    // Atkinson Hyperlegible. If the brand font is removed from the app, this
+    // assertion flags that the test's premise no longer holds — update the
+    // probe to whatever the new app body font is, don't silence it.
+    expect(
+      fonts.body.toLowerCase(),
+      "App body no longer uses Atkinson Hyperlegible (see App.vue). Update this " +
+        "test's premise — the body-font-vs-editor-font contrast is what we're guarding.",
+    ).toContain("atkinson hyperlegible");
+
+    expect(fonts.editor, "Monaco .monaco-editor not found — editor failed to mount").not.toBeNull();
+    expect(
+      fonts.viewLines,
+      "Monaco .view-lines not found — editor failed to render content",
+    ).not.toBeNull();
+
+    const fontFailureMessage = (where: string, value: string) =>
+      [
+        `Monaco ${where} resolved to font-family: '${value}'`,
+        `App body resolved to font-family: '${fonts.body}'`,
+        ``,
+        `The editor surface has inherited (or partially inherited) the app's`,
+        `body font. Code in the editor will render in a non-monospace family,`,
+        `breaking column alignment, indent guides, and the typographic contract`,
+        `users expect of an IDE-like surface.`,
+        ``,
+        `Likely causes, in order of probability:`,
+        `  1. A new app-side rule with a globally-reaching selector`,
+        `     (e.g. \`*\`, \`body *\`, \`.app-shell *\`) sets font-family and`,
+        `     descends into \`.monaco-editor\`. Scope it tighter.`,
+        `  2. A monaco-vscode-api / extension bump dropped the inline`,
+        `     font-family Monaco normally sets on \`.monaco-editor\`.`,
+        `     Pin back, or pass an explicit \`fontFamily\` editor option.`,
+        `  3. The loaded extension contributed a font that overrode Monaco's`,
+        `     monospace default. Audit the pinned extension's CSS.`,
+        ``,
+        `Fix: ensure \`.monaco-editor\` and its descendants resolve to a`,
+        `monospace stack (Menlo / Consolas / Monaco / monospace), not the app`,
+        `body font.`,
+      ].join("\n");
+
+    expect(
+      fonts.editor!.toLowerCase(),
+      fontFailureMessage(".monaco-editor", fonts.editor!),
+    ).not.toContain("atkinson hyperlegible");
+    expect(
+      fonts.viewLines!.toLowerCase(),
+      fontFailureMessage(".monaco-editor .view-lines", fonts.viewLines!),
+    ).not.toContain("atkinson hyperlegible");
+  });
+
+  // Guards the "holistic theme" overhaul: monaco-vscode-api resolves its theme
+  // via the workbench theme service from user-config `workbench.colorTheme`.
+  // services.ts seeds that setting from the dark-mode class on <html> (which
+  // App.vue writes synchronously from localStorage "gxwf-dark" at boot), and a
+  // MutationObserver keeps it in sync if the user toggles dark mode mid-session.
+  // If the contributed themes stop registering, or the seed/sync wiring breaks,
+  // the editor will fall back to vs-dark/vs-light and the background color
+  // assertion below will flag it.
+  const DARK_BG = "rgb(44, 49, 67)"; // --gx-navy = #2c3143
+  const LIGHT_BG = "rgb(245, 245, 246)"; // --gx-grey-50 = #f5f5f6
+  const DARK_KEY_FG = "rgb(208, 189, 42)"; // --gx-gold = #d0bd2a
+  const LIGHT_KEY_FG = "rgb(115, 104, 23)"; // --gx-gold-700 = #736817
+
+  async function readEditorBg(page: import("@playwright/test").Page): Promise<string> {
+    return page.evaluate(() => {
+      const el = document.querySelector(".monaco-editor");
+      return el ? getComputedStyle(el).backgroundColor : "";
+    });
+  }
+
+  test("monaco editor uses gxwf-dark theme when dark mode is on", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("gxwf-dark", "1"));
+    await openFileViaUrl(page, harness().baseUrl, "synthetic/simple-format2.gxwf.yml");
+    await waitForMonaco(page, 30_000);
+    await page.waitForFunction((expected) => {
+      const el = document.querySelector(".monaco-editor");
+      return el && getComputedStyle(el).backgroundColor === expected;
+    }, DARK_BG);
+    expect(await readEditorBg(page)).toBe(DARK_BG);
+  });
+
+  test("monaco editor uses gxwf-light theme when dark mode is off", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("gxwf-dark", "0"));
+    await openFileViaUrl(page, harness().baseUrl, "synthetic/simple-format2.gxwf.yml");
+    await waitForMonaco(page, 30_000);
+    await page.waitForFunction((expected) => {
+      const el = document.querySelector(".monaco-editor");
+      return el && getComputedStyle(el).backgroundColor === expected;
+    }, LIGHT_BG);
+    expect(await readEditorBg(page)).toBe(LIGHT_BG);
+  });
+
+  test("monaco editor swaps theme live when dark-mode toggle flips", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("gxwf-dark", "1"));
+    await openFileViaUrl(page, harness().baseUrl, "synthetic/simple-format2.gxwf.yml");
+    await waitForMonaco(page, 30_000);
+    await page.waitForFunction((expected) => {
+      const el = document.querySelector(".monaco-editor");
+      return el && getComputedStyle(el).backgroundColor === expected;
+    }, DARK_BG);
+
+    await page.locator(".dark-toggle").click();
+    await page.waitForFunction((expected) => {
+      const el = document.querySelector(".monaco-editor");
+      return el && getComputedStyle(el).backgroundColor === expected;
+    }, LIGHT_BG);
+    expect(await readEditorBg(page)).toBe(LIGHT_BG);
+  });
+
+  // Key contrast is the load-bearing visual choice in the overhaul — if the
+  // contributed tokenColors rule stops firing (e.g. because the theme JSON
+  // shape regressed, or the grammar's scope name changed upstream), keys no
+  // longer lead the eye. Probe the actual computed style on the `class` key
+  // span in both modes.
+  async function keyTokenStyle(
+    page: import("@playwright/test").Page,
+  ): Promise<{ color: string; weight: string } | null> {
+    return page.evaluate(() => {
+      // Every .view-line's text is split across <span class="mtk*"> spans; find
+      // the span whose text is the `class` key (exact match, no colon —
+      // punctuation lands in a different span) and read its computed style.
+      const spans = Array.from(
+        document.querySelectorAll<HTMLSpanElement>(".monaco-editor .view-line span"),
+      );
+      const span = spans.find((s) => s.textContent === "class");
+      if (!span) return null;
+      const cs = getComputedStyle(span);
+      return { color: cs.color, weight: cs.fontWeight };
+    });
+  }
+
+  test("monaco renders YAML keys in gold-bold in both themes", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("gxwf-dark", "1"));
+    await openFileViaUrl(page, harness().baseUrl, "synthetic/simple-format2.gxwf.yml");
+    await waitForMonaco(page, 30_000);
+    await page.waitForFunction((expected) => {
+      const el = document.querySelector(".monaco-editor");
+      return el && getComputedStyle(el).backgroundColor === expected;
+    }, DARK_BG);
+    // Key spans render on first paint; poll briefly in case tokenization lags.
+    await page.waitForFunction(() => {
+      const spans = Array.from(
+        document.querySelectorAll<HTMLSpanElement>(".monaco-editor .view-line span"),
+      );
+      return spans.some((s) => s.textContent === "class");
+    });
+
+    const darkStyle = await keyTokenStyle(page);
+    expect(darkStyle, "`class` key span not found in view lines").not.toBeNull();
+    expect(darkStyle!.color).toBe(DARK_KEY_FG);
+    expect(darkStyle!.weight).toBe("700");
+
+    await page.locator(".dark-toggle").click();
+    await page.waitForFunction((expected) => {
+      const el = document.querySelector(".monaco-editor");
+      return el && getComputedStyle(el).backgroundColor === expected;
+    }, LIGHT_BG);
+    // Theme flip re-paints view-lines; wait for the `class` span to re-render
+    // under the light theme before probing computed styles.
+    await page.waitForFunction((expected) => {
+      const spans = Array.from(
+        document.querySelectorAll<HTMLSpanElement>(".monaco-editor .view-line span"),
+      );
+      const span = spans.find((s) => s.textContent === "class");
+      return span && getComputedStyle(span).color === expected;
+    }, LIGHT_KEY_FG);
+
+    const lightStyle = await keyTokenStyle(page);
+    expect(lightStyle, "`class` key span not found after theme flip").not.toBeNull();
+    expect(lightStyle!.color).toBe(LIGHT_KEY_FG);
+    expect(lightStyle!.weight).toBe("700");
+  });
 });
