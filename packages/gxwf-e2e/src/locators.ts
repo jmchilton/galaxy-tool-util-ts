@@ -54,3 +54,15 @@ export const Monaco = {
   quickInput: ".quick-input-widget",
   failureBanner: "text=/Monaco editor failed to load/",
 } as const;
+
+export const EditorToolbar = {
+  root: "editor toolbar",
+  save: "editor toolbar save",
+  undo: "editor toolbar undo",
+  redo: "editor toolbar redo",
+  format: "editor toolbar format",
+  find: "editor toolbar find",
+  palette: "editor toolbar palette",
+  problems: "editor toolbar problems",
+  problemsBadge: "editor toolbar problems badge",
+} as const;

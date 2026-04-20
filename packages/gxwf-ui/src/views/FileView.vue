@@ -27,6 +27,17 @@
           @click="() => void onSave()"
         />
       </div>
+      <!-- Monaco-only editor toolbar. Renders only when MonacoEditor has booted
+           (editor ref populated via defineExpose). EditorShell path keeps the
+           chrome above verbatim. -->
+      <EditorToolbar
+        v-if="monacoEnabled && !monacoFailed && editor"
+        :editor="editor"
+        :model="model"
+        :dirty="dirty"
+        :saving="saving"
+        :on-save="() => void onSave()"
+      />
       <Message v-if="editorError" severity="error" :closable="false">{{ editorError }}</Message>
       <Message v-if="saveSuccess" severity="success" :closable="false">Saved.</Message>
       <ProgressSpinner v-if="loadingFile" style="width: 2rem; height: 2rem" />
@@ -40,6 +51,7 @@
         </Message>
         <MonacoEditor
           v-if="monacoEnabled && !monacoFailed && selectedPath"
+          ref="monacoRef"
           :content="editorContent"
           :file-name="selectedPath"
           @update:content="onEdit($event)"
@@ -68,6 +80,7 @@ import Button from "primevue/button";
 import ProgressSpinner from "primevue/progressspinner";
 import FileBrowser from "../components/FileBrowser.vue";
 import EditorShell from "../components/EditorShell.vue";
+import EditorToolbar from "../components/EditorToolbar.vue";
 import { useContents } from "../composables/useContents";
 import type { ContentsModel, CheckpointModel } from "../composables/useContents";
 import { clearOpCache } from "../composables/useOperation";
@@ -110,6 +123,21 @@ const checkpoint = ref<CheckpointModel | null>(null);
 // and EditorShell renders as today.
 const monacoFailed = ref(false);
 const monacoErrorMessage = ref("");
+
+// Handle to the MonacoEditor component instance. Its defineExpose surfaces
+// `editor` + `model` shallowRefs; we reach them via computeds so EditorToolbar
+// re-renders when they flip null → live.
+const monacoRef = ref<{
+  editor: import("monaco-editor").editor.IStandaloneCodeEditor | null;
+  model: import("monaco-editor").editor.ITextModel | null;
+} | null>(null);
+const editor = computed(() => monacoRef.value?.editor ?? null);
+const model = computed(() => monacoRef.value?.model ?? null);
+const dirty = computed(() => {
+  const fm = fileModel.value;
+  if (!fm || fm.type !== "file") return false;
+  return editorContent.value !== (typeof fm.content === "string" ? fm.content : "");
+});
 
 function onMonacoError(err: Error) {
   monacoFailed.value = true;
