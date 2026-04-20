@@ -20,14 +20,20 @@ import { buildMonacoUserConfigFromEnv, initMonacoServices } from "../editor/serv
 import { loadGalaxyWorkflowsExtension } from "../editor/extensionSource";
 import { resolveLanguageId } from "../editor/languageId";
 import { upsertMemoryFile } from "../editor/fileSystem";
+import { registerGxwfSaveHandler, type SaveHandlerRegistration } from "../editor/saveCommand";
 
 const props = withDefaults(
   defineProps<{
     content: string;
     fileName: string;
     readonly?: boolean;
+    // Optional save handler. When provided, registered against the workbench
+    // `workbench.action.files.save` command before the ready marker is set —
+    // so Ctrl+S / Cmd+S route here instead of the default (which writes to
+    // our in-memory FSP and never hits the backend).
+    onSave?: () => void | Promise<void>;
   }>(),
-  { readonly: false },
+  { readonly: false, onSave: undefined },
 );
 
 const emit = defineEmits<{
@@ -44,6 +50,7 @@ const ready = ref(false);
 // and a data-monaco-ready attribute so E2E specs can drive the live editor.
 const exposeForTests = import.meta.env.DEV || import.meta.env.VITE_GXWF_EXPOSE_MONACO === "1";
 let contentSub: monaco.IDisposable | null = null;
+let saveCmdReg: SaveHandlerRegistration | null = null;
 // Guards the update-from-prop vs. update-from-user race: avoid re-emitting
 // `update:content` for changes we just applied from the prop.
 let applyingProp = false;
@@ -71,11 +78,22 @@ onMounted(async () => {
       emit("update:content", m.getValue());
     });
 
+    // Register the save-command override BEFORE the ready marker — any test
+    // or user action that waits on ready sees the handler in place.
+    if (props.onSave) {
+      const handler = props.onSave;
+      saveCmdReg = registerGxwfSaveHandler(() => handler());
+    }
+
     if (exposeForTests) {
+      const { getService, ICommandService } = await import("@codingame/monaco-vscode-api/services");
+      const commandService = await getService(ICommandService);
       (window as unknown as { __gxwfMonaco?: unknown }).__gxwfMonaco = {
         monaco,
         editor: editor.value,
         model: m,
+        executeCommand: (id: string, ...args: unknown[]) =>
+          commandService.executeCommand(id, ...args),
       };
     }
     ready.value = true;
@@ -111,6 +129,8 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  saveCmdReg?.dispose();
+  saveCmdReg = null;
   contentSub?.dispose();
   contentSub = null;
   editor.value?.dispose();

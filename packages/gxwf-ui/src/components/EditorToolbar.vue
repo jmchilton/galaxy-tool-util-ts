@@ -13,6 +13,7 @@ import * as monaco from "monaco-editor";
 import Button from "primevue/button";
 import Badge from "primevue/badge";
 import { useEditorMarkers } from "../composables/useEditorMarkers";
+import { showCommandPalette } from "../editor/commandPalette";
 
 const props = defineProps<{
   editor: monaco.editor.IStandaloneCodeEditor | null;
@@ -96,7 +97,10 @@ function runPalette() {
   const ed = props.editor;
   if (!ed) return;
   ed.focus();
-  ed.trigger("toolbar", "editor.action.quickCommand", {});
+  // `editor.action.quickCommand` isn't registered as an editor-level action
+  // under monaco-vscode-api — the command palette is the workbench's
+  // `workbench.action.showCommands`. Invoke via ICommandService.
+  void showCommandPalette();
 }
 
 const problemsCount = computed(() => errors.value + warnings.value);

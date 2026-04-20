@@ -11,6 +11,7 @@ declare global {
     monaco: any;
     editor: any;
     model: any;
+    executeCommand?: (id: string, ...args: unknown[]) => Promise<unknown>;
   }
   interface Window {
     __gxwfMonaco?: MonacoTestHandle;
