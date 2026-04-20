@@ -248,6 +248,18 @@ Monaco inside monaco-vscode-api does **not** honor the standalone `monaco.editor
 
 Which theme is active is driven by `workbench.colorTheme` in the workbench configuration service. `services.ts` seeds it at boot from the `dark` class on `<html>` (which `App.vue` writes synchronously from `localStorage["gxwf-dark"]`), and `themeSync.ts` watches that class with a `MutationObserver`, calling `updateUserConfiguration({ "workbench.colorTheme": ... })` whenever the user flips the dark-mode toggle. The workbench theme service swaps the active theme in place; no editor remount is needed.
 
+## Save + keybindings
+
+The workbench's default `workbench.action.files.save` handler writes to whatever `FileSystemProvider` backs the active editor — in our case the in-memory `gxwf-ui` scheme registered by `fileSystem.ts`. That's never what we want; the user's mental model is "save to the gxwf-web backend." So we stack an override:
+
+- **`src/editor/saveCommand.ts`** — `registerGxwfSaveHandler(fn)` wraps `CommandsRegistry.registerCommand("workbench.action.files.save", ...)` and returns a disposable. Later registrations win; disposing restores the previous handler (standard VS Code contract).
+- **`MonacoEditor.vue`** takes an `onSave` prop and calls `registerGxwfSaveHandler` inside its `onMounted` — **before** the `data-monaco-ready` marker flips and before `window.__gxwfMonaco` is exposed. This closes a race where a fast Ctrl+S after `waitForMonaco` would hit the default handler instead of ours.
+- **`FileView.vue`** passes `() => onSave()` as the prop. The toolbar Save button invokes the same `onSave` directly — two surfaces, one code path.
+
+### Command palette
+
+`editor.action.quickCommand` is **not** an editor-level action under monaco-vscode-api; the palette is owned by the workbench as `workbench.action.showCommands`. Toolbar button and programmatic triggers must invoke it via `ICommandService.executeCommand` (see `src/editor/commandPalette.ts`), not via `editor.trigger(...)`. The default F1 / Ctrl+Shift+P keybindings from the quickaccess override already route to the same command.
+
 ## CSS scoping
 
 Mounting Monaco inside an existing PrimeVue-themed Vue app raises the obvious concern: will Monaco's stylesheets clobber app chrome, or will PrimeVue's preflight break editor internals? Today the answer is "neither" — Monaco's contributed selectors stay inside `.monaco-*` / `.codicon-*` and PrimeVue's preflight doesn't reach into the editor's shadow-like internals.
