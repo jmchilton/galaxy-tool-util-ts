@@ -36,7 +36,12 @@
     "packages/gxwf-ui": {
       "entry": ["index.html"],
       "project": ["src/**/*.ts"],
-      "ignoreDependencies": ["@galaxy-tool-util/gxwf-report-shell"]
+      "ignoreDependencies": [
+        "@galaxy-tool-util/gxwf-report-shell",
+        "@codingame/monaco-vscode-editor-api",
+        "reflect-metadata",
+        "vscode"
+      ]
     },
     "packages/gxwf-e2e": {
       "entry": ["scripts/*.mjs", "tests/**/*.spec.ts"],
