@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/gxwf-web",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Galaxy workflow development HTTP server — validate, lint, clean, convert workflows",
   "type": "module",
   "bin": {

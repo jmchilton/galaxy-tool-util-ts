@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Galaxy tool cache, ToolShed client, and ParsedTool models",
   "type": "module",
   "sideEffects": false,
