@@ -35,4 +35,5 @@ export interface WorkflowOutput {
   name: string;
   doc?: string;
   uuid?: string;
+  type?: WorkflowDataType;
 }
