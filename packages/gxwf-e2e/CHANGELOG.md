@@ -1,5 +1,12 @@
 # @galaxy-tool-util/gxwf-e2e
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @galaxy-tool-util/gxwf-web@0.4.0
+
 ## 0.0.1
 
 ### Patch Changes
