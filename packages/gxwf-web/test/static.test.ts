@@ -18,8 +18,12 @@ interface TestServer {
   close: () => Promise<void>;
 }
 
-async function startTestServer(directory: string, uiDir?: string): Promise<TestServer> {
-  const { server, ready } = createApp(directory, { uiDir });
+async function startTestServer(
+  directory: string,
+  uiDir?: string,
+  extraConnectSrc?: string[],
+): Promise<TestServer> {
+  const { server, ready } = createApp(directory, { uiDir, extraConnectSrc });
   await ready;
   return new Promise((resolve) => {
     server.listen(0, "127.0.0.1", () => {
@@ -124,6 +128,34 @@ describe("static file serving", () => {
   it("rejects path traversal attempts", async () => {
     const res = await fetch(`${srv.baseUrl}/..%2F..%2Fetc%2Fpasswd`);
     expect(res.status).toBe(403);
+  });
+
+  it("sets a Monaco-compatible CSP header on static responses", async () => {
+    const res = await fetch(`${srv.baseUrl}/`);
+    const csp = res.headers.get("content-security-policy");
+    expect(csp).not.toBeNull();
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("'wasm-unsafe-eval'");
+    expect(csp).toContain("worker-src 'self' blob:");
+    expect(csp).toContain("frame-src 'self' blob:");
+    expect(csp).not.toContain("https://open-vsx.org");
+    expect(csp).toContain("https://toolshed.g2.bx.psu.edu");
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'");
+  });
+
+  it("appends extraConnectSrc origins to connect-src", async () => {
+    const extra = await startTestServer(tmpDir, uiDir, [
+      "https://proxy.example.org",
+      "https://toolshed.example.org",
+    ]);
+    try {
+      const res = await fetch(`${extra.baseUrl}/`);
+      const csp = res.headers.get("content-security-policy") ?? "";
+      expect(csp).toContain("https://proxy.example.org");
+      expect(csp).toContain("https://toolshed.example.org");
+    } finally {
+      await extra.close();
+    }
   });
 });
 

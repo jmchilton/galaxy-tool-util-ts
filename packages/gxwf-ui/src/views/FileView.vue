@@ -27,17 +27,44 @@
           @click="() => void onSave()"
         />
       </div>
+      <!-- Monaco-only editor toolbar. Renders only when MonacoEditor has booted
+           (editor ref populated via defineExpose). EditorShell path keeps the
+           chrome above verbatim. -->
+      <EditorToolbar
+        v-if="monacoEnabled && !monacoFailed && editor"
+        :editor="editor"
+        :model="model"
+        :dirty="dirty"
+        :saving="saving"
+        :on-save="() => void onSave()"
+      />
       <Message v-if="editorError" severity="error" :closable="false">{{ editorError }}</Message>
       <Message v-if="saveSuccess" severity="success" :closable="false">Saved.</Message>
       <ProgressSpinner v-if="loadingFile" style="width: 2rem; height: 2rem" />
       <!-- diagnostics prop intentionally omitted: wired in Phase 5 when operation
            results are mapped to line-level diagnostics for Monaco integration -->
-      <EditorShell
-        v-else
-        :content="editorContent"
-        :language="editorLanguage"
-        @update:content="onEdit($event)"
-      />
+      <template v-else>
+        <Message v-if="monacoFailed" severity="warn" :closable="false">
+          Monaco editor failed to load ({{ monacoErrorMessage }}). Falling back to the basic editor;
+          reload the page to retry. If VITE_GXWF_MONACO=1 was intentional, check that
+          public/ext/galaxy-workflows.vsix exists and the devtools console for details.
+        </Message>
+        <MonacoEditor
+          v-if="monacoEnabled && !monacoFailed && selectedPath"
+          ref="monacoRef"
+          :content="editorContent"
+          :file-name="selectedPath"
+          :on-save="() => void onSave()"
+          @update:content="onEdit($event)"
+          @error="onMonacoError"
+        />
+        <EditorShell
+          v-else
+          :content="editorContent"
+          :language="editorLanguage"
+          @update:content="onEdit($event)"
+        />
+      </template>
     </div>
 
     <div v-else class="editor-placeholder">
@@ -47,17 +74,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { onMounted } from "vue";
+import { ref, computed, defineAsyncComponent, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import Message from "primevue/message";
 import Button from "primevue/button";
 import ProgressSpinner from "primevue/progressspinner";
 import FileBrowser from "../components/FileBrowser.vue";
 import EditorShell from "../components/EditorShell.vue";
+import EditorToolbar from "../components/EditorToolbar.vue";
 import { useContents } from "../composables/useContents";
 import type { ContentsModel, CheckpointModel } from "../composables/useContents";
 import { clearOpCache } from "../composables/useOperation";
 import { useWorkflows } from "../composables/useWorkflows";
+
+// Dynamic import gated on the build-time flag. When VITE_GXWF_MONACO is unset,
+// the import() branch is dead code and Vite drops Monaco + the 12 @codingame
+// packages from the default bundle.
+const monacoEnabled = import.meta.env.VITE_GXWF_MONACO === "1";
+const MonacoEditor = monacoEnabled
+  ? defineAsyncComponent(() => import("../components/MonacoEditor.vue"))
+  : null;
 
 const {
   root,
@@ -83,6 +119,37 @@ const saveSuccess = ref(false);
 // Saving again overwrites checkpoint so undo always targets the last save point.
 const checkpoint = ref<CheckpointModel | null>(null);
 
+// Build-time opt-in (see packages/gxwf-ui/.env.local.example). When unset,
+// the Monaco bundle is dead-code-eliminated (see defineAsyncComponent above)
+// and EditorShell renders as today.
+const monacoFailed = ref(false);
+const monacoErrorMessage = ref("");
+
+// Handle to the MonacoEditor component instance. Its defineExpose surfaces
+// `editor` + `model` shallowRefs; we reach them via computeds so EditorToolbar
+// re-renders when they flip null → live.
+const monacoRef = ref<{
+  editor: import("monaco-editor").editor.IStandaloneCodeEditor | null;
+  model: import("monaco-editor").editor.ITextModel | null;
+} | null>(null);
+const editor = computed(() => monacoRef.value?.editor ?? null);
+const model = computed(() => monacoRef.value?.model ?? null);
+const dirty = computed(() => {
+  const fm = fileModel.value;
+  if (!fm || fm.type !== "file") return false;
+  return editorContent.value !== (typeof fm.content === "string" ? fm.content : "");
+});
+
+function onMonacoError(err: Error) {
+  monacoFailed.value = true;
+  monacoErrorMessage.value = err.message;
+  console.error("[gxwf-ui] Monaco failed to load:", err);
+}
+
+// Used only by the EditorShell fallback. MonacoEditor resolves its own
+// language from the filename via src/editor/languageId.ts; the two maps are
+// intentionally separate (Monaco needs gxformat2/gxwftests IDs contributed
+// by the extension; textarea-mode needs plain "yaml" for Prism-style hints).
 const editorLanguage = computed(() => {
   if (!selectedPath.value) return "text";
   const ext = selectedPath.value.split(".").pop() ?? "";
@@ -173,8 +240,41 @@ async function onRestore() {
   }
 }
 
+const route = useRoute();
+const router = useRouter();
+
+// Load the file named in the route param when the URL drives navigation
+// (bookmark, shared link, or E2E harness). Mirrors WorkflowView's pattern.
+function routeFilePath(): string | null {
+  const raw = route.params.path;
+  if (!raw) return null;
+  const value = Array.isArray(raw) ? raw.join("/") : raw;
+  return value || null;
+}
+
 onMounted(async () => {
   await fetchRoot();
+  const initial = routeFilePath();
+  if (initial) await onFileSelect(initial);
+});
+
+watch(
+  () => route.params.path,
+  async (next, prev) => {
+    if (next === prev) return;
+    const path = routeFilePath();
+    if (path && path !== selectedPath.value) {
+      await onFileSelect(path);
+    }
+  },
+);
+
+// Keep the URL in sync with user-driven tree selection so reloads land back
+// on the same file. Pushes a new history entry only when the path changes.
+watch(selectedPath, (next) => {
+  if (next && next !== routeFilePath()) {
+    void router.replace(`/files/${next}`);
+  }
 });
 </script>
 

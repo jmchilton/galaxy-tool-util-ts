@@ -1,0 +1,3 @@
+class: NotAGalaxyWorkflow
+inputs: "should-be-a-mapping"
+steps: 42

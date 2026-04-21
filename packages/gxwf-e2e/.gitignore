@@ -1,2 +1,6 @@
 test-results/
 playwright-report/
+
+# Output of the opt-in CSS inventory spec (see tests/_inventory-monaco-css.spec.ts).
+# Markdown report + reference screenshots; regenerated on demand.
+.inventory/

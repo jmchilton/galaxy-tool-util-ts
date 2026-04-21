@@ -13,6 +13,7 @@ let port = 8000;
 let cacheDir: string | undefined;
 let configPath: string | undefined;
 let outputSchema = false;
+const extraConnectSrc: string[] = [];
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--host" && args[i + 1]) {
@@ -23,6 +24,8 @@ for (let i = 0; i < args.length; i++) {
     cacheDir = args[++i];
   } else if (args[i] === "--config" && args[i + 1]) {
     configPath = args[++i];
+  } else if (args[i] === "--csp-connect-src" && args[i + 1]) {
+    extraConnectSrc.push(args[++i]);
   } else if (args[i] === "--output-schema") {
     outputSchema = true;
   } else if (!args[i].startsWith("--")) {
@@ -38,7 +41,7 @@ if (outputSchema) {
   process.stdout.write(readFileSync(specPath), () => process.exit(0));
 } else if (!directory) {
   console.error(
-    "Usage: gxwf-web <directory> [--host 127.0.0.1] [--port 8000] [--cache-dir <path>] [--config <path>] [--output-schema]",
+    "Usage: gxwf-web <directory> [--host 127.0.0.1] [--port 8000] [--cache-dir <path>] [--config <path>] [--csp-connect-src <origin>]... [--output-schema]",
   );
   process.exit(1);
 } else if (!existsSync(directory)) {
@@ -77,7 +80,12 @@ async function main() {
   const uiDirCandidate = new URL("../../public", import.meta.url).pathname;
   const uiDir = uiDirFromEnv ?? (existsSync(uiDirCandidate) ? uiDirCandidate : undefined);
 
-  const { server, ready } = createApp(directory!, { cacheDir, sources, uiDir });
+  const { server, ready } = createApp(directory!, {
+    cacheDir,
+    sources,
+    uiDir,
+    extraConnectSrc,
+  });
 
   server.listen(port, host, () => {
     console.log(`gxwf-web listening on ${host}:${port}`);

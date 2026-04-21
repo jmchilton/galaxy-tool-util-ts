@@ -46,3 +46,23 @@ export const WorkflowList = {
 export function byDescription(value: string): string {
   return `[data-description="${value}"]`;
 }
+
+export const Monaco = {
+  readyHost: "[data-monaco-ready='true']",
+  hoverWidget: "div.monaco-hover",
+  suggestWidget: ".suggest-widget",
+  quickInput: ".quick-input-widget",
+  failureBanner: "text=/Monaco editor failed to load/",
+} as const;
+
+export const EditorToolbar = {
+  root: "editor toolbar",
+  save: "editor toolbar save",
+  undo: "editor toolbar undo",
+  redo: "editor toolbar redo",
+  format: "editor toolbar format",
+  find: "editor toolbar find",
+  palette: "editor toolbar palette",
+  problems: "editor toolbar problems",
+  problemsBadge: "editor toolbar problems badge",
+} as const;

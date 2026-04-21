@@ -56,6 +56,8 @@ export interface AppState {
   cacheDir?: string;
   /** Absolute path to a built gxwf-ui dist directory to serve as the frontend. */
   uiDir?: string;
+  /** Extra origins appended to the CSP `connect-src` directive. */
+  extraConnectSrc?: string[];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -100,6 +102,48 @@ function parseHttpDate(s: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// ── Content Security Policy ──────────────────────────────────────────
+
+// Baseline connect-src origins: the public Galaxy ToolShed for direct
+// tool-cache reads. Per-deployment tool-cache proxies or alternate ToolShed
+// mirrors extend this via `extraConnectSrc` on CreateAppOptions. The Monaco
+// extension is now served from `/ext/` on this same origin (staged-unpacked
+// .vsix), so no extra origins are needed for the extension file fetches.
+const CSP_CONNECT_SRC_BASE = ["https://toolshed.g2.bx.psu.edu"];
+
+export function buildCspHeader(extraConnectSrc: string[] = []): string {
+  const connectSrc = ["'self'", ...CSP_CONNECT_SRC_BASE, ...extraConnectSrc].join(" ");
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "worker-src 'self' blob:",
+    "frame-src 'self' blob:",
+    `connect-src ${connectSrc}`,
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "img-src 'self' data:",
+  ].join("; ");
+}
+
+// Served only for /monaco/* assets (e.g. webWorkerExtensionHostIframe.html,
+// workers). The iframe ships its own meta CSP tight enough for the extension
+// host; the HTTP CSP here just needs to be permissive enough not to intersect
+// that meta policy into uselessness. Inline scripts + `unsafe-eval` are the
+// extension host's baseline requirements.
+export function buildMonacoCspHeader(extraConnectSrc: string[] = []): string {
+  const connectSrc = ["'self'", ...CSP_CONNECT_SRC_BASE, ...extraConnectSrc].join(" ");
+  return [
+    "default-src 'self' blob: data:",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:",
+    "worker-src 'self' blob:",
+    "frame-src 'self' blob:",
+    `connect-src ${connectSrc}`,
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "img-src 'self' data: blob:",
+  ].join("; ");
+}
+
 // ── Static file serving ──────────────────────────────────────────────
 
 const MIME_TYPES: Record<string, string> = {
@@ -117,7 +161,12 @@ const MIME_TYPES: Record<string, string> = {
   ".map": "application/json",
 };
 
-async function serveStatic(uiDir: string, urlPath: string, res: ServerResponse): Promise<void> {
+async function serveStatic(
+  uiDir: string,
+  urlPath: string,
+  res: ServerResponse,
+  cspHeader: string,
+): Promise<void> {
   let decoded: string;
   try {
     decoded = decodeURIComponent(urlPath);
@@ -148,6 +197,7 @@ async function serveStatic(uiDir: string, urlPath: string, res: ServerResponse):
   res.writeHead(200, {
     "Content-Type": contentType,
     "Content-Length": content.length,
+    "Content-Security-Policy": cspHeader,
   });
   res.end(content);
 }
@@ -264,6 +314,8 @@ function matchRoute(method: string, url: string): Route | null {
 
 export function createRequestHandler(state: AppState) {
   const { directory } = state;
+  const cspHeader = buildCspHeader(state.extraConnectSrc);
+  const monacoCspHeader = buildMonacoCspHeader(state.extraConnectSrc);
 
   function maybeRefreshWorkflows(relPath: string): void {
     if (isWorkflowFile(relPath)) {
@@ -287,7 +339,10 @@ export function createRequestHandler(state: AppState) {
     if (!route) {
       if (state.uiDir && method === "GET") {
         const [urlPath] = url.split("?");
-        await serveStatic(state.uiDir, urlPath, res);
+        // /monaco/* ships the extension-host iframe and its workers; they need
+        // a more permissive CSP than the Vue shell to boot.
+        const staticCsp = urlPath.startsWith("/monaco/") ? monacoCspHeader : cspHeader;
+        await serveStatic(state.uiDir, urlPath, res, staticCsp);
         return;
       }
       json(res, 404, { detail: "Not found" });

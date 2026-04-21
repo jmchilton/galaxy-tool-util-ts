@@ -1,0 +1,162 @@
+<script setup lang="ts">
+// Monaco editor host — mounts a monaco-vscode-api-backed editor bound to a
+// single in-memory file. Extension + services init are one-shot per page;
+// the model and editor are per-mount and disposed on unmount.
+//
+// Intentional lifecycle:
+//   mount  → await services + extension load → create model + editor
+//   update → push prop changes into the live model
+//   unmount → dispose editor, model, and content-change subscription
+//
+// Leak check: `monaco.editor.getEditors().length` before vs. after a
+// mount/unmount cycle should return to its prior value.
+
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+// Side-effect: installs MonacoEnvironment on self before anything else
+// touches monaco / workers.
+import "../editor/monacoEnvironment";
+import * as monaco from "monaco-editor";
+import { buildMonacoUserConfigFromEnv, initMonacoServices } from "../editor/services";
+import { loadGalaxyWorkflowsExtension } from "../editor/extensionSource";
+import { resolveLanguageId } from "../editor/languageId";
+import { upsertMemoryFile } from "../editor/fileSystem";
+import { registerGxwfSaveHandler, type SaveHandlerRegistration } from "../editor/saveCommand";
+
+const props = withDefaults(
+  defineProps<{
+    content: string;
+    fileName: string;
+    readonly?: boolean;
+    // Optional save handler. When provided, registered against the workbench
+    // `workbench.action.files.save` command before the ready marker is set —
+    // so Ctrl+S / Cmd+S route here instead of the default (which writes to
+    // our in-memory FSP and never hits the backend).
+    onSave?: () => void | Promise<void>;
+  }>(),
+  { readonly: false, onSave: undefined },
+);
+
+const emit = defineEmits<{
+  "update:content": [value: string];
+  ready: [];
+  error: [err: Error];
+}>();
+
+const hostEl = ref<HTMLDivElement | null>(null);
+const editor = shallowRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+const model = shallowRef<monaco.editor.ITextModel | null>(null);
+const ready = ref(false);
+// Build-time flag (see .env.local.example). When set, expose a global handle
+// and a data-monaco-ready attribute so E2E specs can drive the live editor.
+const exposeForTests = import.meta.env.DEV || import.meta.env.VITE_GXWF_EXPOSE_MONACO === "1";
+let contentSub: monaco.IDisposable | null = null;
+let saveCmdReg: SaveHandlerRegistration | null = null;
+// Guards the update-from-prop vs. update-from-user race: avoid re-emitting
+// `update:content` for changes we just applied from the prop.
+let applyingProp = false;
+
+onMounted(async () => {
+  try {
+    await initMonacoServices(buildMonacoUserConfigFromEnv());
+    await loadGalaxyWorkflowsExtension();
+    if (!hostEl.value) return;
+
+    const uri = upsertMemoryFile(props.fileName, props.content);
+    const languageId = resolveLanguageId(props.fileName);
+    const m = monaco.editor.createModel(props.content, languageId, uri);
+    model.value = m;
+
+    editor.value = monaco.editor.create(hostEl.value, {
+      model: m,
+      automaticLayout: true,
+      readOnly: props.readonly,
+      minimap: { enabled: false },
+    });
+
+    contentSub = m.onDidChangeContent(() => {
+      if (applyingProp) return;
+      emit("update:content", m.getValue());
+    });
+
+    // Register the save-command override BEFORE the ready marker — any test
+    // or user action that waits on ready sees the handler in place.
+    if (props.onSave) {
+      const handler = props.onSave;
+      saveCmdReg = registerGxwfSaveHandler(() => handler());
+    }
+
+    if (exposeForTests) {
+      const { getService, ICommandService } = await import("@codingame/monaco-vscode-api/services");
+      const commandService = await getService(ICommandService);
+      (window as unknown as { __gxwfMonaco?: unknown }).__gxwfMonaco = {
+        monaco,
+        editor: editor.value,
+        model: m,
+        executeCommand: (id: string, ...args: unknown[]) =>
+          commandService.executeCommand(id, ...args),
+      };
+    }
+    ready.value = true;
+    emit("ready");
+  } catch (err) {
+    emit("error", err as Error);
+  }
+});
+
+// Parent-facing handle so FileView can drive the live editor (toolbar actions,
+// keybinding overrides) without a test-only global.
+defineExpose({ editor, model, ready });
+
+// Keep the model in sync with external content updates (e.g. when FileView
+// re-fetches after a restore). Skip no-op writes to avoid cursor churn.
+watch(
+  () => props.content,
+  (next) => {
+    const m = model.value;
+    if (!m || m.getValue() === next) return;
+    applyingProp = true;
+    try {
+      m.setValue(next);
+    } finally {
+      applyingProp = false;
+    }
+  },
+);
+
+watch(
+  () => props.readonly,
+  (next) => editor.value?.updateOptions({ readOnly: next }),
+);
+
+onBeforeUnmount(() => {
+  saveCmdReg?.dispose();
+  saveCmdReg = null;
+  contentSub?.dispose();
+  contentSub = null;
+  editor.value?.dispose();
+  editor.value = null;
+  model.value?.dispose();
+  model.value = null;
+  ready.value = false;
+  if (exposeForTests) {
+    delete (window as unknown as { __gxwfMonaco?: unknown }).__gxwfMonaco;
+  }
+});
+</script>
+
+<template>
+  <div
+    ref="hostEl"
+    class="monaco-host"
+    :data-monaco-ready="exposeForTests && ready ? 'true' : undefined"
+  />
+</template>
+
+<style scoped>
+.monaco-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+</style>
