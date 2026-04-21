@@ -18,6 +18,7 @@ import {
   expandedFormat2,
   injectConnectionsIntoState,
   scanForReplacements,
+  withClass,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
   type NormalizedFormat2Step,
@@ -167,12 +168,8 @@ export function decodeStructureErrorsJsonSchema(
   data: Record<string, unknown>,
   format: WorkflowFormat,
 ): string[] {
-  const validationData = { ...data };
-  if (format === "native" && !("class" in validationData)) {
-    validationData.class = "NativeGalaxyWorkflow";
-  } else if (format === "format2" && !("class" in validationData)) {
-    validationData.class = "GalaxyWorkflow";
-  }
+  const cls = format === "native" ? "NativeGalaxyWorkflow" : "GalaxyWorkflow";
+  const validationData = withClass(data, cls);
   const structValidator =
     format === "native" ? nativeStructuralValidator() : format2StructuralValidator();
   const ok = structValidator(validationData);
@@ -189,12 +186,8 @@ export async function runValidateWorkflowJsonSchema(
   expansionOpts?: ExpansionOptions,
 ): Promise<void> {
   // --- structural validation ---
-  const validationData = { ...data };
-  if (format === "native" && !("class" in validationData)) {
-    validationData.class = "NativeGalaxyWorkflow";
-  } else if (format === "format2" && !("class" in validationData)) {
-    validationData.class = "GalaxyWorkflow";
-  }
+  const cls = format === "native" ? "NativeGalaxyWorkflow" : "GalaxyWorkflow";
+  const validationData = withClass(data, cls);
 
   const structValidator =
     format === "native" ? nativeStructuralValidator() : format2StructuralValidator();
