@@ -2,7 +2,7 @@
 
 ## Test Runner
 
-All tests use [Vitest](https://vitest.dev/).
+Unit and integration tests use [Vitest](https://vitest.dev/). End-to-end tests for `gxwf-web` + `gxwf-ui` use [Playwright](https://playwright.dev/) and live in `packages/gxwf-e2e/`.
 
 ```bash
 # Run all tests
@@ -12,6 +12,20 @@ pnpm -r test
 cd packages/schema && pnpm test
 cd packages/core && pnpm test
 ```
+
+## End-to-End Tests
+
+The `@galaxy-tool-util/gxwf-e2e` package drives the built `gxwf-ui` bundle against an in-process `gxwf-web` via Playwright. Default runs exercise the Vue app only; Monaco-backed specs self-skip unless a local extension fixture is present, so fresh clones and CI stay Monaco-free.
+
+```bash
+# Full e2e suite
+pnpm --filter @galaxy-tool-util/gxwf-e2e test
+
+# Skip the implicit gxwf-ui rebuild when iterating locally
+GXWF_E2E_SKIP_UI_BUILD=1 pnpm --filter @galaxy-tool-util/gxwf-e2e test
+```
+
+See [End-to-End Tests](development/e2e-testing.md) for the harness, the opt-in Monaco specs and how to produce the fixture, shared helpers, the CSS scoping regression guard, and the upgrade procedures for `@codingame/monaco-vscode-*` and `galaxy-workflows-vscode`. The architectural context for those specs — CSP, monaco-vscode-api pitfalls, CSS scoping rationale — lives in [gxwf-ui Frontend](architecture/gxwf-ui.md).
 
 ## Fixture Syncing
 
