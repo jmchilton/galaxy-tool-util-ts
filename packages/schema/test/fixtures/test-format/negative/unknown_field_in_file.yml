@@ -1,0 +1,7 @@
+- doc: class:File with an unknown field — must be rejected (Pydantic extra=forbid)
+  job:
+    input_file:
+      class: File
+      path: test-data/foo.txt
+      bogus_field: nope
+  outputs: {}

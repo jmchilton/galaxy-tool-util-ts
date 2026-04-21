@@ -1,0 +1,13 @@
+class: GalaxyWorkflow
+label: Shorthand input syntax
+inputs:
+  bare_file: File
+  bare_int: int
+outputs:
+  out:
+    outputSource: t/out
+steps:
+  t:
+    tool_id: t
+    in:
+      input: bare_file

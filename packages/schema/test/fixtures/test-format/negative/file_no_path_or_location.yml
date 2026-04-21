@@ -1,0 +1,6 @@
+- doc: class:File with neither path, location, nor composite_data — must be rejected
+  job:
+    input_file:
+      class: File
+      filetype: txt
+  outputs: {}

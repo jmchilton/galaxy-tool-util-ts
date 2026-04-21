@@ -1,0 +1,8 @@
+- doc: required input_file missing from job and workflow has no default
+  job:
+    threshold: 10
+  outputs:
+    result:
+      asserts:
+        has_size:
+          size: 42

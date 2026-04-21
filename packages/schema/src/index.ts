@@ -250,3 +250,35 @@ export {
 } from "./workflow/index.js";
 
 export { ToolStateValidator, type ToolStateDiagnostic } from "./tool-state-validator.js";
+
+export {
+  /** Validate a parsed *.gxwf-tests.yml / Planemo *-tests.yml document. */
+  validateTestsFile,
+  /** Raw JSON Schema synced from galaxy.tool_util_models.Tests (Python source of truth). */
+  testsSchema,
+  type TestFormatDiagnostic,
+  /** Workflow-input DTO shared with the VS Code plugin. */
+  type WorkflowInput,
+  /** Workflow-output DTO shared with the VS Code plugin. */
+  type WorkflowOutput,
+  /** Workflow parameter type vocabulary (stringified; extractors don't canonicalize). */
+  type WorkflowDataType,
+  /** Workflow shape consumed by `checkTestsAgainstWorkflow`. */
+  type WorkflowShape,
+  /** Extract inputs from a parsed workflow dict (auto-detects format). */
+  extractWorkflowInputs,
+  /** Extract outputs from a parsed workflow dict (auto-detects format). */
+  extractWorkflowOutputs,
+  /** Format2-specific extractors (operate on raw parsed dicts, not AST). */
+  extractFormat2Inputs,
+  extractFormat2Outputs,
+  /** Native (.ga) extractors (read step-level tool_state for default/optional). */
+  extractNativeInputs,
+  extractNativeOutputs,
+  /** Coarse type compatibility used by cross-check; permissive default. Takes type *strings* on both sides. */
+  isCompatibleType,
+  /** Runtime type tag for a JS value, in the YAML-language-server AST vocabulary. */
+  jsTypeOf,
+  /** Cross-check a tests doc against workflow shape; emits JSON-pointer diagnostics. */
+  checkTestsAgainstWorkflow,
+} from "./test-format/index.js";

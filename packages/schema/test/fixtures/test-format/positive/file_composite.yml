@@ -1,0 +1,8 @@
+- doc: class:File with composite_data
+  job:
+    input_file:
+      class: File
+      composite_data:
+        - test-data/a.dat
+        - test-data/b.dat
+  outputs: {}

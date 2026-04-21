@@ -1,0 +1,8 @@
+- doc: list of files (multiple data param)
+  job:
+    input_files:
+      - class: File
+        path: test-data/a.txt
+      - class: File
+        path: test-data/b.txt
+  outputs: {}

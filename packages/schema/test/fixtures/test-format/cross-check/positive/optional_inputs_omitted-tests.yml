@@ -1,0 +1,10 @@
+- doc: only required input provided; optional inputs omitted
+  job:
+    input_file:
+      class: File
+      location: https://example.org/data.txt
+  outputs:
+    result:
+      asserts:
+        has_size:
+          size: 42

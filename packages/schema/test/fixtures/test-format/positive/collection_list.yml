@@ -1,0 +1,13 @@
+- doc: class:Collection with list type
+  job:
+    input_collection:
+      class: Collection
+      collection_type: list
+      elements:
+        - class: File
+          identifier: one
+          path: test-data/one.txt
+        - class: File
+          identifier: two
+          path: test-data/two.txt
+  outputs: {}
