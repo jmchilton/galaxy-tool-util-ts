@@ -91,6 +91,8 @@ export {
   injectConnectionsIntoState,
   /** Strip ConnectedValue markers from state using parameter tree. */
   stripConnectedValues,
+  /** Expand defaults into a tool state dict (port of Python fill_static_defaults). */
+  expandToolStateDefaults,
   /** Flatten a nested parameter path to a dot-separated string. */
   flatStatePath,
   keysStartingWith,

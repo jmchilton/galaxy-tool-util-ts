@@ -71,6 +71,8 @@ export {
 
 export { injectConnectionsIntoState, stripConnectedValues } from "./state-merge.js";
 
+export { expandToolStateDefaults } from "./fill-defaults.js";
+
 export { scanForReplacements, type ReplacementClassification } from "./replacement-scan.js";
 
 export {
