@@ -1,5 +1,62 @@
 # @galaxy-tool-util/schema
 
+## 0.4.0
+
+### Minor Changes
+
+- [#56](https://github.com/jmchilton/galaxy-tool-util-ts/pull/56) [`8404313`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8404313159eb3950fefbb4c6c2ad2c7ddc79eef5) Thanks [@jmchilton](https://github.com/jmchilton)! - Port linting-abstraction overhaul from gxformat2 (`adabd80..0aaf7ce`).
+
+  **Structured `LintMessage`.** `LintContext.errors` / `warnings` are now
+  `LintMessage[]` — each carries `message`, `level`, `linter`, and
+  `json_pointer` alongside the prose. `toString()` returns the message so
+  template interpolation (`${m}`) and existing string-like callers keep
+  working. Primitives extracted into `packages/schema/src/workflow/linting.ts`
+  mirroring Python's `linting.py`.
+
+  **`Linter` base + pilot rule.** New `lint-rules.ts` carries metadata-only
+  `Linter` subclasses. `NativeStepKeyNotInteger` is the first live rule, wired
+  through `lint.ts` with `linter=` and `json_pointer=` options. `LintContext.child()`
+  composes RFC 6901 JSON pointers instead of prefixing message text.
+
+  **Lint profile catalog.** `lint_profiles.yml` (structural / best-practices /
+  release) synced from gxformat2 via new `sync-lint-profiles` Makefile target
+  and `lint-profiles` group in `scripts/sync-manifest.json`. Loader
+  `parseLintProfiles` + helpers (`lintProfilesById`, `rulesForProfile`,
+  `iwcRuleIds`, `IWC_PROFILE_NAMES`) re-exported from the package entry.
+  YAML copied into `dist/` by `copy-schema-assets.mjs` so runtime consumers
+  can load it from the published package.
+
+  **Tests.** New `lint-context.test.ts` (mirrors `test_linting.py`) and
+  `lint-profiles.test.ts` (mirrors `test_lint_profiles.py`). Declarative
+  expectation assertions `[errors, 0, linter]` and `[errors, 0, json_pointer]`
+  flow through the existing path navigator unchanged; `assertValueContains` /
+  `assertValueAnyContains` coerce `LintMessage` objects via `.message` so
+  prior string-based expectations remain green.
+
+- [#56](https://github.com/jmchilton/galaxy-tool-util-ts/pull/56) [`f4ea125`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/f4ea12548ffe1a69f33970cd8de18b76cbe2e744) Thanks [@jmchilton](https://github.com/jmchilton)! - Add schema-rule catalog port from gxformat2.
+
+  Mirrors gxformat2 commit `4b6ecd6`: synced `schema_rules.yml` describes
+  decode-enforced checks with positive/negative fixtures and lax/strict scope.
+  New `packages/schema/test/schema-rules-catalog.test.ts` parametrizes validation
+  over the catalog (22 cases across 7 rules) and enforces integrity: every rule
+  has positive + negative fixtures, fixture extensions match `applies_to`,
+  referenced fixtures exist on disk and are covered by `scripts/sync-manifest.json`.
+
+  Shared Effect-schema validator dispatch lifted into
+  `src/workflow/validators.ts` and re-exported from the package entry point:
+  `validateFormat2{,Strict}`, `validateNative{,Strict}`, `validatorForFixture`,
+  and `withClass`. The `withClass` helper (class-discriminator injection, recursive
+  over `.subworkflow` and format2 `.run` inline subworkflows) replaces ad-hoc
+  copies in `validate-workflow.ts`, `validate-workflow-json-schema.ts`, and
+  `strict-checks.ts`.
+
+  The synced YAML catalog is now copied into `dist/` by a new
+  `scripts/copy-schema-assets.mjs` build step so runtime consumers (future
+  `--list-rules`, tooling) can load it from the published package.
+
+  New Makefile target `sync-schema-rules` (and `check-sync-schema-rules`) keeps
+  the catalog in lockstep with the upstream gxformat2 source.
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,12 @@
 # @galaxy-tool-util/gxwf-client
 
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @galaxy-tool-util/gxwf-web@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
