@@ -1,0 +1,7 @@
+- doc: class:File with path
+  job:
+    input_file:
+      class: File
+      path: test-data/foo.txt
+      filetype: txt
+  outputs: {}

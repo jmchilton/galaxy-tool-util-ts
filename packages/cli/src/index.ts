@@ -17,6 +17,15 @@ export { runClear } from "./commands/clear.js";
 export { runSchema } from "./commands/schema.js";
 /** Validate a Galaxy workflow file (structure + optional tool state). */
 export { runValidateWorkflow } from "./commands/validate-workflow.js";
+/** Validate a workflow-test file (*-tests.yml / *.gxwf-tests.yml). */
+export { runValidateTests } from "./commands/validate-tests.js";
+export type { ValidateTestsOptions, ValidateTestsReport } from "./commands/validate-tests.js";
+/** Batch-validate workflow-test files under a directory. */
+export { runValidateTestsTree } from "./commands/validate-tests-tree.js";
+export type {
+  ValidateTestsTreeOptions,
+  ValidateTestsTreeReport,
+} from "./commands/validate-tests-tree.js";
 /** Clean a Galaxy workflow — strip stale keys and decode legacy encoding. */
 export { runClean } from "./commands/clean.js";
 /** Lint a Galaxy workflow — structural checks, best practices, tool state validation. */

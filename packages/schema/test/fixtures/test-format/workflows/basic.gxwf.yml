@@ -1,0 +1,24 @@
+class: GalaxyWorkflow
+label: Basic cross-check workflow
+inputs:
+  input_file:
+    type: File
+    doc: required input dataset
+  threshold:
+    type: int
+    default: 5
+    optional: true
+    doc: optional numeric threshold
+  description:
+    type: string
+    optional: true
+outputs:
+  result:
+    outputSource: some_tool/out_file
+  summary:
+    outputSource: some_tool/out_summary
+steps:
+  some_tool:
+    tool_id: some_tool
+    in:
+      input: input_file

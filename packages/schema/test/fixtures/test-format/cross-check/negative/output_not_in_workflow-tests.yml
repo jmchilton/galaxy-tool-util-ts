@@ -1,0 +1,14 @@
+- doc: output assertion references an output not declared in the workflow
+  job:
+    input_file:
+      class: File
+      location: https://example.org/data.txt
+  outputs:
+    result:
+      asserts:
+        has_size:
+          size: 42
+    phantom_output:
+      asserts:
+        has_text:
+          text: nope

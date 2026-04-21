@@ -1,0 +1,16 @@
+- doc: all declared inputs provided, all outputs referenced exist
+  job:
+    input_file:
+      class: File
+      location: https://example.org/data.txt
+    threshold: 10
+    description: a run
+  outputs:
+    result:
+      asserts:
+        has_size:
+          size: 42
+    summary:
+      asserts:
+        has_text:
+          text: ok

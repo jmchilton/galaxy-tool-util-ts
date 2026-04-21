@@ -1,0 +1,9 @@
+- doc: elements present but no class:Collection tag — must be rejected
+  job:
+    input_collection:
+      collection_type: list
+      elements:
+        - class: File
+          identifier: one
+          path: test-data/one.txt
+  outputs: {}

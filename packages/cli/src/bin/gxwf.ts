@@ -10,6 +10,8 @@ import { runRoundtripTree } from "../commands/roundtrip-tree.js";
 import { runLint } from "../commands/lint.js";
 import { runLintTree } from "../commands/lint-tree.js";
 import { runValidateWorkflow } from "../commands/validate-workflow.js";
+import { runValidateTests } from "../commands/validate-tests.js";
+import { runValidateTestsTree } from "../commands/validate-tests-tree.js";
 import { runValidateTree } from "../commands/validate-tree.js";
 import { addStrictOptions } from "../commands/strict-options.js";
 
@@ -36,6 +38,19 @@ addStrictOptions(
     .option("--json", "Output structured JSON report")
     .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)"),
 ).action(runValidateWorkflow);
+
+program
+  .command("validate-tests")
+  .description(
+    "Validate a workflow-test file (*-tests.yml, *.gxwf-tests.yml) against the Galaxy Tests schema",
+  )
+  .argument("<file>", "Tests file (*-tests.yml)")
+  .option("--json", "Output structured JSON report")
+  .option(
+    "--workflow <path>",
+    "Cross-check job inputs + output assertions against a workflow (.ga / .gxwf.yml)",
+  )
+  .action(runValidateTests);
 
 program
   .command("clean")
@@ -166,5 +181,18 @@ addStrictOptions(
     .option("--report-markdown [file]", "Write Markdown report to file (or stdout if omitted)")
     .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)"),
 ).action(runRoundtripTree);
+
+program
+  .command("validate-tests-tree")
+  .description(
+    "Batch validate workflow-test files (*-tests.yml / *.gxwf-tests.yml) under a directory",
+  )
+  .argument("<dir>", "Directory to scan for test files")
+  .option("--json", "Output structured JSON report")
+  .option(
+    "--auto-workflow",
+    "Pair each tests file with a sibling workflow by filename convention (foo.gxwf-tests.yml ↔ foo.gxwf.yml/foo.ga) and cross-check inputs/outputs",
+  )
+  .action(runValidateTestsTree);
 
 program.parse();

@@ -1,0 +1,57 @@
+{
+    "a_galaxy_workflow": "true",
+    "format-version": "0.1",
+    "name": "Basic cross-check workflow",
+    "annotation": "",
+    "steps": {
+        "0": {
+            "id": 0,
+            "type": "data_input",
+            "label": "input_file",
+            "annotation": "required input dataset",
+            "position": {"left": 0, "top": 0},
+            "input_connections": {},
+            "inputs": [{"name": "input_file", "description": "required input dataset"}],
+            "tool_state": "{\"name\": \"input_file\", \"optional\": false}"
+        },
+        "1": {
+            "id": 1,
+            "type": "parameter_input",
+            "label": "threshold",
+            "annotation": "optional numeric threshold",
+            "position": {"left": 0, "top": 100},
+            "input_connections": {},
+            "inputs": [{"name": "threshold", "description": "optional numeric threshold"}],
+            "tool_state": "{\"parameter_type\": \"integer\", \"optional\": true, \"default\": 5}"
+        },
+        "2": {
+            "id": 2,
+            "type": "parameter_input",
+            "label": "description",
+            "annotation": "",
+            "position": {"left": 0, "top": 200},
+            "input_connections": {},
+            "inputs": [{"name": "description", "description": ""}],
+            "tool_state": "{\"parameter_type\": \"text\", \"optional\": true}"
+        },
+        "3": {
+            "id": 3,
+            "type": "tool",
+            "tool_id": "some_tool",
+            "name": "some_tool",
+            "label": "some_tool",
+            "annotation": "",
+            "position": {"left": 400, "top": 0},
+            "tool_version": null,
+            "post_job_actions": {},
+            "input_connections": {
+                "input": [{"id": 0, "output_name": "output"}]
+            },
+            "tool_state": "{\"__page__\": 0}",
+            "workflow_outputs": [
+                {"output_name": "out_file", "label": "result", "uuid": "11111111-1111-1111-1111-111111111111"},
+                {"output_name": "out_summary", "label": "summary", "uuid": "22222222-2222-2222-2222-222222222222"}
+            ]
+        }
+    }
+}

@@ -1,0 +1,7 @@
+- doc: list of scalars (multiple text param)
+  job:
+    strings:
+      - foo
+      - bar
+      - baz
+  outputs: {}

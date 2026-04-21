@@ -1,0 +1,6 @@
+- doc: legacy "type:File + value:" form — must be rejected in favor of class:File
+  job:
+    input_file:
+      type: File
+      value: foo.txt
+  outputs: {}

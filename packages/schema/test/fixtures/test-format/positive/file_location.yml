@@ -1,0 +1,9 @@
+- doc: class:File with location and hashes
+  job:
+    input_file:
+      class: File
+      location: https://example.org/foo.txt
+      hashes:
+        - hash_function: MD5
+          hash_value: d41d8cd98f00b204e9800998ecf8427e
+  outputs: {}

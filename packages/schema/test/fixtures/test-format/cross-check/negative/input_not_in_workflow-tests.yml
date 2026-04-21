@@ -1,0 +1,11 @@
+- doc: job references an input name not declared in the workflow
+  job:
+    input_file:
+      class: File
+      location: https://example.org/data.txt
+    mystery_input: 42
+  outputs:
+    result:
+      asserts:
+        has_size:
+          size: 42

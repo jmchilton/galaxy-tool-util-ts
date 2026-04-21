@@ -1,0 +1,11 @@
+- doc: threshold declared as int but provided as a string
+  job:
+    input_file:
+      class: File
+      location: https://example.org/data.txt
+    threshold: not_a_number
+  outputs:
+    result:
+      asserts:
+        has_size:
+          size: 42
