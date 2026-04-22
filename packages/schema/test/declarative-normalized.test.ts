@@ -31,6 +31,7 @@ import {
   validateNative,
   validateNativeStrict,
 } from "../src/workflow/validators.js";
+import { workflowToMermaid } from "../src/workflow/mermaid.js";
 
 // --- Directories ---
 
@@ -63,6 +64,10 @@ const OPERATIONS: Record<string, Operation> = {
     lintBestPracticesFormat2(raw as Record<string, unknown>),
   lint_best_practices_native: (raw: unknown) =>
     lintBestPracticesNative(raw as Record<string, unknown>),
+  workflow_to_mermaid: (raw: unknown) => workflowToMermaid(raw),
+  workflow_to_mermaid_lines: (raw: unknown) => workflowToMermaid(raw).split("\n"),
+  workflow_to_mermaid_with_comments_lines: (raw: unknown) =>
+    workflowToMermaid(raw, { comments: true }).split("\n"),
 };
 
 const UNSUPPORTED_OPERATIONS = new Set<string>([]);

@@ -172,6 +172,8 @@ export {
   /** Clean a workflow — strip stale keys, decode legacy tool_state encoding. */
   cleanWorkflow,
   type CleanWorkflowResult,
+  workflowToMermaid,
+  type MermaidOptions,
   /** Detect whether a workflow dict is native (.ga) or format2 (.gxwf.yml). */
   detectFormat,
   type WorkflowFormat,

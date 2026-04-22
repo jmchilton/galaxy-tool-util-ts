@@ -135,6 +135,8 @@ export {
 
 export { cleanWorkflow, type CleanWorkflowOptions, type CleanWorkflowResult } from "./clean.js";
 
+export { workflowToMermaid, type MermaidOptions } from "./mermaid.js";
+
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
 
 export {
