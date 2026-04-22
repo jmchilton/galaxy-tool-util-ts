@@ -1,7 +1,7 @@
 {
-  "name": "@galaxy-tool-util/core",
-  "version": "0.3.0",
-  "description": "Galaxy tool cache, ToolShed client, and ParsedTool models",
+  "name": "@galaxy-tool-util/search",
+  "version": "0.1.0",
+  "description": "Tool discovery — Tool Shed search client, result normalization, and ranking",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -9,10 +9,6 @@
       "types": "./dist/index.d.ts",
       "browser": "./dist/index.js",
       "import": "./dist/index.js"
-    },
-    "./node": {
-      "types": "./dist/node.d.ts",
-      "import": "./dist/node.js"
     },
     "./package.json": "./package.json"
   },
@@ -24,7 +20,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
-    "directory": "packages/core"
+    "directory": "packages/search"
   },
   "publishConfig": {
     "access": "public",
@@ -40,16 +36,14 @@
     "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "lint:pkg": "publint",
     "check:types": "attw --pack . --profile esm-only",
-    "check:browser": "node scripts/verify-browser-entry.mjs",
-    "test:browser": "vitest run --config vitest.browser.config.ts"
+    "check:browser": "node scripts/verify-browser-entry.mjs"
   },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.5.0"
   },
   "dependencies": {
-    "@galaxy-tool-util/schema": "workspace:*",
-    "effect": "^3.21.0",
-    "yaml": "^2.8.3"
+    "@galaxy-tool-util/core": "workspace:*",
+    "@galaxy-tool-util/schema": "workspace:*"
   }
 }

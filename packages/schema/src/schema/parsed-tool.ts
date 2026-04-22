@@ -1,5 +1,7 @@
 import * as S from "effect/Schema";
 
+import type { ToolParameterModel } from "./bundle-types.js";
+
 /** Tool help content with format (rst, markdown, etc.) and rendered content. */
 export const HelpContent = S.Struct({
   format: S.String,
@@ -25,6 +27,18 @@ const NullableDescription = S.transform(S.NullOr(S.String), S.NullOr(S.String), 
 });
 
 /**
+ * Trusted-peer schema for a single tool input parameter. Effect Schema does
+ * not describe the full `ToolParameterModel` discriminated union (that lives
+ * as plain TS interfaces in `bundle-types.ts`), so we use a permissive
+ * object-shaped guard here and supply the TS type via the generic parameter.
+ * `ParsedTool` payloads come from Python's `model_dump()` — already trusted.
+ */
+const ToolParameterModelSchema: S.Schema<ToolParameterModel> = S.declare(
+  (input: unknown): input is ToolParameterModel =>
+    typeof input === "object" && input !== null && !Array.isArray(input),
+);
+
+/**
  * Effect Schema for parsed Galaxy tool metadata as returned by the ToolShed TRS API
  * or Galaxy's /api/tools/:id/parsed endpoint.
  */
@@ -33,7 +47,7 @@ export const ParsedTool = S.Struct({
   version: S.NullOr(S.String),
   name: S.String,
   description: NullableDescription,
-  inputs: S.Array(S.Unknown),
+  inputs: S.Array(ToolParameterModelSchema),
   outputs: S.Array(S.Unknown),
   citations: S.Array(Citation),
   license: S.NullOr(S.String),

@@ -114,10 +114,44 @@ describe("ToolInfoService", () => {
     expect(fetchCount).toBe(0);
   });
 
-  it("throws when no version available", async () => {
-    const service = makeNodeToolInfoService({ cacheDir: tmpDir });
+  it("throws when no version is available and TRS returns none", async () => {
+    const service = makeNodeToolInfoService({
+      cacheDir: tmpDir,
+      fetcher: mockFetch([]),
+    });
     await expect(
       service.getToolInfo("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc"),
     ).rejects.toThrow("No version");
+  });
+
+  it("resolves the latest TRS version when the caller omits one", async () => {
+    let versionsFetched = 0;
+    let toolFetched = 0;
+    const fetcher: typeof fetch = async (input) => {
+      const url = typeof input === "string" ? input : (input as URL).toString();
+      if (url.includes("/api/ga4gh/trs/v2/tools/")) {
+        versionsFetched++;
+        return new Response(
+          JSON.stringify([
+            {
+              id: "0.74+galaxy0",
+              name: null,
+              url: "https://example/tool",
+              descriptor_type: ["GALAXY"],
+              author: [],
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+      toolFetched++;
+      expect(url).toContain("/versions/0.74+galaxy0");
+      return new Response(JSON.stringify(fastqcFixture), { status: 200 });
+    };
+    const service = makeNodeToolInfoService({ cacheDir: tmpDir, fetcher });
+    const result = await service.getToolInfo("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc");
+    expect(result).not.toBeNull();
+    expect(versionsFetched).toBe(1);
+    expect(toolFetched).toBe(1);
   });
 });

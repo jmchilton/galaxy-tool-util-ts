@@ -1,6 +1,6 @@
 import * as S from "effect/Schema";
 
-import { ParsedTool } from "../models/parsed-tool.js";
+import { ParsedTool } from "@galaxy-tool-util/schema";
 import { CacheIndex } from "./cache-index.js";
 import { cacheKey } from "./cache-key.js";
 import { parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";

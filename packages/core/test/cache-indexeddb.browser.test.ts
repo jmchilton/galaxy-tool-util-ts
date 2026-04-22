@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
 import { IndexedDBCacheStorage, ToolCache, cacheKey } from "../src/index.js";
-import type { ParsedTool } from "../src/index.js";
+import type { ParsedTool } from "@galaxy-tool-util/schema";
 
 const sampleTool = {
   id: "fastqc",

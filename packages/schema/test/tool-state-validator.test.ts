@@ -6,9 +6,10 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ToolInfoService, ParsedTool } from "@galaxy-tool-util/core";
+import type { ToolInfoService } from "@galaxy-tool-util/core";
 import { makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
 import { ToolStateValidator } from "../src/tool-state-validator.js";
+import type { ParsedTool } from "../src/schema/parsed-tool.js";
 import type { IntegerParameterModel } from "../src/schema/bundle-types.js";
 
 // ---------------------------------------------------------------------------

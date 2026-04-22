@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import * as S from "effect/Schema";
 
-import { cacheKey, ParsedTool } from "@galaxy-tool-util/core";
+import { cacheKey } from "@galaxy-tool-util/core";
+import { ParsedTool } from "@galaxy-tool-util/schema";
 import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import { createProxyContext, createRequestHandler } from "../src/router.js";
 import { defaultConfig, type ServerConfig } from "../src/config.js";

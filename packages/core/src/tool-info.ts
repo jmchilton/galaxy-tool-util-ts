@@ -1,7 +1,8 @@
-import type { ParsedTool } from "./models/parsed-tool.js";
+import type { ParsedTool } from "@galaxy-tool-util/schema";
 import { ToolCache } from "./cache/tool-cache.js";
 import { cacheKey } from "./cache/cache-key.js";
 import { fetchFromToolShed, fetchFromGalaxy } from "./client/toolshed.js";
+import { getLatestTRSToolVersion } from "./client/trs.js";
 import type { CacheStorage } from "./cache/storage/interface.js";
 
 /** A remote source for fetching tool metadata. */
@@ -55,10 +56,14 @@ export class ToolInfoService {
 
   async getToolInfo(toolId: string, toolVersion?: string | null): Promise<ParsedTool | null> {
     const coords = this.cache.resolveToolCoordinates(toolId, toolVersion);
-    if (coords.version === null) {
-      throw new Error(`No version available for tool: ${toolId}`);
+    let resolvedVersion = coords.version;
+    if (resolvedVersion === null) {
+      resolvedVersion = await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId);
+      if (resolvedVersion === null) {
+        throw new Error(`No version available for tool: ${toolId}`);
+      }
     }
-    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion);
 
     // Check storage cache (ToolCache checks memory first internally)
     const cached = await this.cache.loadCached(key);
@@ -75,13 +80,13 @@ export class ToolInfoService {
           parsedTool = await fetchFromToolShed(
             source.url,
             coords.trsToolId,
-            coords.version,
+            resolvedVersion,
             this.fetcher,
           );
           sourceLabel = "api";
-          sourceUrl = `${source.url}/api/tools/${coords.trsToolId}/versions/${coords.version}`;
+          sourceUrl = `${source.url}/api/tools/${coords.trsToolId}/versions/${resolvedVersion}`;
         } else {
-          parsedTool = await fetchFromGalaxy(source.url, toolId, toolVersion, this.fetcher);
+          parsedTool = await fetchFromGalaxy(source.url, toolId, resolvedVersion, this.fetcher);
           sourceLabel = "galaxy";
           sourceUrl = `${source.url}/api/tools/${encodeURIComponent(toolId)}/parsed`;
         }
@@ -90,7 +95,7 @@ export class ToolInfoService {
           key,
           parsedTool,
           coords.readableId,
-          coords.version,
+          resolvedVersion,
           sourceLabel,
           sourceUrl,
         );
@@ -104,6 +109,23 @@ export class ToolInfoService {
     }
 
     return null;
+  }
+
+  /**
+   * Resolve the latest TRS version for a tool on a Tool Shed. Returns `null`
+   * if the tool is unknown to the shed or has no published versions.
+   */
+  private async resolveLatestVersion(
+    toolshedUrl: string,
+    trsToolId: string,
+  ): Promise<string | null> {
+    try {
+      return await getLatestTRSToolVersion(toolshedUrl, trsToolId, this.fetcher);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.debug(`TRS latest-version lookup failed for ${trsToolId} on ${toolshedUrl}: ${msg}`);
+      return null;
+    }
   }
 
   async addTool(

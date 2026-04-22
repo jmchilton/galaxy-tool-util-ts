@@ -1,4 +1,5 @@
-import { type ToolCache, cacheKey, type ParsedTool } from "@galaxy-tool-util/core";
+import { type ToolCache, cacheKey } from "@galaxy-tool-util/core";
+import type { ParsedTool } from "@galaxy-tool-util/schema";
 
 export interface ResolvedTool {
   tool: ParsedTool;

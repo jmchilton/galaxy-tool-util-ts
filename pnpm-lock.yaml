@@ -102,6 +102,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@galaxy-tool-util/schema':
+        specifier: workspace:*
+        version: link:../schema
       effect:
         specifier: ^3.21.0
         version: 3.21.0
@@ -295,6 +298,19 @@ importers:
       '@galaxy-tool-util/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/search:
+    dependencies:
+      '@galaxy-tool-util/core':
+        specifier: workspace:*
+        version: link:../core
+      '@galaxy-tool-util/schema':
+        specifier: workspace:*
+        version: link:../schema
+    devDependencies:
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
 
   packages/tool-cache-proxy:
     dependencies:

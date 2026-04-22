@@ -58,6 +58,8 @@ export {
   isConditionalParam,
 } from "./schema/type-guards.js";
 
+export { ParsedTool, HelpContent, XrefDict, Citation } from "./schema/parsed-tool.js";
+
 export {
   type GalaxyWorkflow,
   /** Union schema accepting any Galaxy workflow format (format2 or native). */
@@ -93,6 +95,15 @@ export {
   stripConnectedValues,
   /** Expand defaults into a tool state dict (port of Python fill_static_defaults). */
   expandToolStateDefaults,
+  /** Build the minimal `tool_state` for a freshly inserted step. Today returns `{}`; designated extension point. */
+  buildMinimalToolState,
+  /** Build a native (.ga) step skeleton for an inserted tool. */
+  buildNativeStep,
+  /** Build a format2 (.gxwf.yml) step skeleton for an inserted tool. */
+  buildFormat2Step,
+  /** Build a step skeleton for an inserted tool; dispatches on format. */
+  buildStep,
+  type StepSkeletonInputs,
   /** Flatten a nested parameter path to a dot-separated string. */
   flatStatePath,
   keysStartingWith,
