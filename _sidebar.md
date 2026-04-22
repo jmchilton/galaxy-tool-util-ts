@@ -4,6 +4,7 @@
 - **Packages**
   - [Schema](packages/schema.md)
   - [Core](packages/core.md)
+  - [Search](packages/search.md)
   - [CLI](packages/cli.md)
   - [Tool Cache Proxy](packages/tool-cache-proxy.md)
 - **Guides**

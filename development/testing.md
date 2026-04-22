@@ -13,6 +13,12 @@ cd packages/schema && pnpm test
 cd packages/core && pnpm test
 ```
 
+## Cross-Layer Integration Tests
+
+`packages/integration-tests/` (private, unpublished) is the home for tests that exercise more than one published package together — e.g. schema's `ToolStateValidator` driven by core's real `ToolInfoService` and on-disk `ToolCache`. Keeping them out of individual packages preserves a strict one-way dep graph (`schema ← core ← …`) — no package needs a test-time dep back on a consumer, so pnpm sees no cycles.
+
+Shared helpers and fixtures are symlinked into `packages/integration-tests/test/` from their source-of-truth package (usually `packages/schema/test/`) to avoid duplication.
+
 ## End-to-End Tests
 
 The `@galaxy-tool-util/gxwf-e2e` package drives the built `gxwf-ui` bundle against an in-process `gxwf-web` via Playwright. Default runs exercise the Vue app only; Monaco-backed specs self-skip unless a local extension fixture is present, so fresh clones and CI stay Monaco-free.
