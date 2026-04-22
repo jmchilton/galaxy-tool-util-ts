@@ -1,0 +1,35 @@
+# TS-only declarative cases for normalized_format2 / expanded_format2.
+#
+# These cover TS-specific behavior (@import and URL `run` pass-through when
+# no resolver is provided) that gxformat2's Python implementation does not
+# share — Python normalized_format2 keeps ImportReference as an object, and
+# expanded_format2 raises without a resolver. Kept out of the synced
+# normalized_format2.yml so check-sync-workflow-expectations stays clean.
+
+test_import_ref_normalized_to_string:
+  fixture: synthetic-import-run.gxwf.yml
+  operation: normalized_format2
+  assertions:
+    - path: [steps, 0, run]
+      value: "inner.gxwf.yml"
+
+test_import_ref_passes_through_without_resolver:
+  fixture: synthetic-import-run.gxwf.yml
+  operation: expanded_format2
+  assertions:
+    - path: [steps, 0, run]
+      value: "inner.gxwf.yml"
+
+test_url_run_passes_through_without_resolver:
+  fixture: synthetic-url-run-yml.gxwf.yml
+  operation: expanded_format2
+  assertions:
+    - path: [steps, 0, run]
+      value: "https://example.com/wf.yml"
+
+test_native_url_content_id_passes_through_without_resolver:
+  fixture: synthetic-outer-url-subworkflow.ga
+  operation: expanded_native
+  assertions:
+    - path: [steps, "1", content_id]
+      value: "https://example.com/inner.ga"
