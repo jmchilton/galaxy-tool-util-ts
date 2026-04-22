@@ -8,6 +8,7 @@ import { runConvertTree } from "../commands/convert-tree.js";
 import { runRoundtrip } from "../commands/roundtrip.js";
 import { runRoundtripTree } from "../commands/roundtrip-tree.js";
 import { runLint } from "../commands/lint.js";
+import { runMermaid } from "../commands/mermaid.js";
 import { runLintTree } from "../commands/lint-tree.js";
 import { runValidateWorkflow } from "../commands/validate-workflow.js";
 import { runValidateTests } from "../commands/validate-tests.js";
@@ -104,6 +105,16 @@ addStrictOptions(
     .option("--benign-only", "Show only steps with benign diffs (no errors, no failures)")
     .option("--brief", "Omit per-diff list; show only the one-line summary"),
 ).action(runRoundtrip);
+
+program
+  .command("mermaid")
+  .description("Render a Galaxy workflow as a Mermaid flowchart diagram")
+  .argument("<file>", "Workflow file (.ga, .gxwf.yml)")
+  .argument("[output]", "Output path (.mmd for raw, .md for fenced code block); stdout if omitted")
+  .option("--comments", "Render frame comments as Mermaid subgraphs")
+  .action((file: string, output: string | undefined, opts: { comments?: boolean }) =>
+    runMermaid(file, { output, comments: opts.comments }),
+  );
 
 // -- Tree (batch) variants --
 

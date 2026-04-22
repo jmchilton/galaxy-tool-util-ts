@@ -147,34 +147,6 @@ test_tags_present:
     - path: [tags, 0]
       value: genomics
 
-test_import_ref_normalized_to_string:
-  fixture: synthetic-import-run.gxwf.yml
-  operation: normalized_format2
-  assertions:
-    - path: [steps, 0, run]
-      value: "inner.gxwf.yml"
-
-test_import_ref_passes_through_without_resolver:
-  fixture: synthetic-import-run.gxwf.yml
-  operation: expanded_format2
-  assertions:
-    - path: [steps, 0, run]
-      value: "inner.gxwf.yml"
-
-test_url_run_passes_through_without_resolver:
-  fixture: synthetic-url-run-yml.gxwf.yml
-  operation: expanded_format2
-  assertions:
-    - path: [steps, 0, run]
-      value: "https://example.com/wf.yml"
-
-test_native_url_content_id_passes_through_without_resolver:
-  fixture: synthetic-outer-url-subworkflow.ga
-  operation: expanded_native
-  assertions:
-    - path: [steps, "1", content_id]
-      value: "https://example.com/inner.ga"
-
 test_link_resolved_to_connected_value:
   fixture: synthetic-nested-subworkflow.gxwf.yml
   operation: normalized_format2

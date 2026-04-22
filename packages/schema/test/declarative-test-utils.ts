@@ -185,6 +185,12 @@ export function assertValueTruthy(actual: unknown): void {
   expect(actual).toBeTruthy();
 }
 
+export function assertValueMatches(actual: unknown, pattern: string): void {
+  // Python re.search semantics (no flags); supports embedded inline flags like (?s).
+  const re = new RegExp(pattern);
+  expect(re.test(String(actual))).toBe(true);
+}
+
 export function assertValueAbsent(actual: unknown): void {
   // Accept both null and undefined — Python None maps to either depending on context
   expect(actual == null).toBe(true);
@@ -197,6 +203,7 @@ export interface Assertion {
   value?: unknown;
   value_contains?: string;
   value_any_contains?: string;
+  value_matches?: string;
   value_set?: unknown[];
   value_type?: string;
   value_truthy?: boolean;
@@ -249,6 +256,8 @@ export function runAssertions(result: unknown, assertions: Assertion[]): void {
       assertValueContains(obj, assertion.value_contains!);
     } else if ("value_any_contains" in assertion) {
       assertValueAnyContains(obj, assertion.value_any_contains!);
+    } else if ("value_matches" in assertion) {
+      assertValueMatches(obj, assertion.value_matches!);
     } else if ("value_set" in assertion) {
       assertValueSet(obj, assertion.value_set!);
     } else if ("value_type" in assertion) {
