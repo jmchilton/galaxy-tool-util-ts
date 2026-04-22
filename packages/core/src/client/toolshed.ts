@@ -1,5 +1,5 @@
 import * as S from "effect/Schema";
-import { ParsedTool } from "../models/parsed-tool.js";
+import { ParsedTool } from "@galaxy-tool-util/schema";
 
 /** Error thrown when fetching a tool from a remote source fails. */
 export class ToolFetchError extends Error {

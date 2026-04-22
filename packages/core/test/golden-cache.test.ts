@@ -6,7 +6,7 @@ import { parse as parseYaml } from "yaml";
 import * as S from "effect/Schema";
 
 import { parseToolshedToolId, cacheKey } from "../src/cache/index.js";
-import { ParsedTool } from "../src/models/parsed-tool.js";
+import { ParsedTool } from "@galaxy-tool-util/schema";
 
 const SUPPORTED_FORMAT_VERSION = 1;
 

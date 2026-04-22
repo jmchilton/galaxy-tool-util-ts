@@ -1,7 +1,8 @@
 /**
  * Shared tool fixtures and cache seeding for CLI workflow tests.
  */
-import { cacheKey, ParsedTool } from "@galaxy-tool-util/core";
+import { cacheKey } from "@galaxy-tool-util/core";
+import { ParsedTool } from "@galaxy-tool-util/schema";
 import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import * as S from "effect/Schema";
 

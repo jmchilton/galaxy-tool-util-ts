@@ -1,4 +1,4 @@
-import type { ToolInfoService } from "@galaxy-tool-util/core";
+import type { ParsedTool } from "./schema/parsed-tool.js";
 import type { ToolParameterModel } from "./schema/bundle-types.js";
 import {
   ConversionValidationFailure,
@@ -13,11 +13,19 @@ import {
 export type { ToolStateDiagnostic };
 
 /**
- * High-level bridge: given a {@link ToolInfoService}, validate tool_state
- * for a single workflow step without exposing Effect internals to callers.
+ * Minimal lookup surface required by {@link ToolStateValidator}. Decouples
+ * schema from core — `ToolInfoService` satisfies it structurally.
+ */
+export interface ToolInfoLookup {
+  getToolInfo(toolId: string, toolVersion?: string | null): Promise<ParsedTool | null>;
+}
+
+/**
+ * High-level bridge: given a tool-info lookup, validate tool_state for a
+ * single workflow step without exposing Effect internals to callers.
  */
 export class ToolStateValidator {
-  constructor(private readonly toolInfo: ToolInfoService) {}
+  constructor(private readonly toolInfo: ToolInfoLookup) {}
 
   async validateNativeStep(
     toolId: string,

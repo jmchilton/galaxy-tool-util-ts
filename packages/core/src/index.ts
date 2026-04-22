@@ -6,8 +6,6 @@
  * `@galaxy-tool-util/core/node`.
  */
 
-/** Effect Schema for parsed tool metadata (id, version, name, inputs, outputs, etc.). */
-export { ParsedTool, HelpContent, XrefDict, Citation } from "./models/parsed-tool.js";
 export {
   /** Parse a full ToolShed tool ID into ToolCoordinates (toolshedUrl, trsToolId, version). */
   parseToolshedToolId,
@@ -33,6 +31,9 @@ export type {
 export { IndexedDBCacheStorage } from "./cache/index.js";
 /** Fetch parsed tool metadata from a ToolShed instance via TRS API. */
 export { fetchFromToolShed, fetchFromGalaxy, ToolFetchError } from "./client/index.js";
+/** Query TRS for the set of versions published for a tool. */
+export { getTRSToolVersions, getLatestTRSToolVersion } from "./client/index.js";
+export type { TRSToolVersion } from "./client/index.js";
 /** High-level service: fetch tools from multiple sources with automatic caching. */
 export { ToolInfoService } from "./tool-info.js";
 export type { ToolInfoOptions, ToolSource } from "./tool-info.js";

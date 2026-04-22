@@ -48,6 +48,7 @@
     "@types/node": "^25.5.0"
   },
   "dependencies": {
+    "@galaxy-tool-util/schema": "workspace:*",
     "effect": "^3.21.0",
     "yaml": "^2.8.3"
   }

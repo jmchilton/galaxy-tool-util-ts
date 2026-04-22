@@ -1,0 +1,49 @@
+{
+  "name": "@galaxy-tool-util/search",
+  "version": "0.1.0",
+  "description": "Tool discovery — Tool Shed search client, result normalization, and ranking",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/index.js",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
+    "directory": "packages/search"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ test/",
+    "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "lint:pkg": "publint",
+    "check:types": "attw --pack . --profile esm-only",
+    "check:browser": "node scripts/verify-browser-entry.mjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.5.0"
+  },
+  "dependencies": {
+    "@galaxy-tool-util/core": "workspace:*",
+    "@galaxy-tool-util/schema": "workspace:*"
+  }
+}

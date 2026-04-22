@@ -38,6 +38,16 @@ export interface WalkNativeOptions {
   checkUnknownKeys?: boolean;
   /** Copy undeclared keys from input state to output (default: false). */
   preserveUnknownKeys?: boolean;
+  /**
+   * Switch repeat handling to `_initialize_repeat_state` semantics (default: false).
+   * When true:
+   *   - inputConnections are ignored for instance count,
+   *   - instance count is padded to `repeat.min` (never shrinks existing state),
+   *   - the repeat key is always written to output, even when empty (`[]`).
+   * Used by expand-defaults, which must surface every declared repeat as a
+   * container the user can populate.
+   */
+  repeatMinPad?: boolean;
 }
 
 /**
@@ -62,6 +72,7 @@ export function walkNativeState(
   const prefix = options?.prefix;
   const checkUnknownKeys = options?.checkUnknownKeys ?? false;
   const preserveUnknownKeys = options?.preserveUnknownKeys ?? false;
+  const repeatMinPad = options?.repeatMinPad ?? false;
   const result: Record<string, unknown> = {};
   const visitedKeys = new Set<string>();
 
@@ -87,7 +98,7 @@ export function walkNativeState(
         [conditional.test_parameter, ...branchParams],
         stateDict,
         leafCallback,
-        { prefix: statePath, checkUnknownKeys, preserveUnknownKeys },
+        { prefix: statePath, checkUnknownKeys, preserveUnknownKeys, repeatMinPad },
       );
 
       if (Object.keys(innerResult).length > 0) {
@@ -103,8 +114,13 @@ export function walkNativeState(
       const stateArray = Array.isArray(repeatState)
         ? (repeatState as Record<string, unknown>[])
         : [];
-      const connectionInstances = repeatInputsToArray(statePath, inputConnections);
-      const instanceCount = Math.max(stateArray.length, connectionInstances.length);
+      let instanceCount: number;
+      if (repeatMinPad) {
+        instanceCount = Math.max(stateArray.length, repeat.min ?? 0);
+      } else {
+        const connectionInstances = repeatInputsToArray(statePath, inputConnections);
+        instanceCount = Math.max(stateArray.length, connectionInstances.length);
+      }
 
       const instances: Record<string, unknown>[] = [];
       for (let i = 0; i < instanceCount; i++) {
@@ -115,13 +131,15 @@ export function walkNativeState(
           repeat.parameters,
           instanceState,
           leafCallback,
-          { prefix: instancePrefix, checkUnknownKeys, preserveUnknownKeys },
+          { prefix: instancePrefix, checkUnknownKeys, preserveUnknownKeys, repeatMinPad },
         );
         instances.push(instanceResult);
       }
 
-      // Preserve explicit empty arrays (valid state); omit only when key is absent
-      if (name in state || instances.length > 0) {
+      // Preserve explicit empty arrays (valid state); omit only when key is absent.
+      // In repeatMinPad mode (expand-defaults), always write the key — mirrors
+      // Python's _initialize_repeat_state which creates tool_state[name] = [].
+      if (repeatMinPad || name in state || instances.length > 0) {
         result[name] = instances;
       }
     } else if (parameterType === "gx_section") {
@@ -136,7 +154,7 @@ export function walkNativeState(
         section.parameters,
         stateDict,
         leafCallback,
-        { prefix: statePath, checkUnknownKeys, preserveUnknownKeys },
+        { prefix: statePath, checkUnknownKeys, preserveUnknownKeys, repeatMinPad },
       );
 
       if (Object.keys(innerResult).length > 0) {

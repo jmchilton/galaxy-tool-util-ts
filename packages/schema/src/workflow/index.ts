@@ -71,6 +71,15 @@ export {
 
 export { injectConnectionsIntoState, stripConnectedValues } from "./state-merge.js";
 
+export { expandToolStateDefaults } from "./fill-defaults.js";
+export { buildMinimalToolState } from "./minimal-tool-state.js";
+export {
+  buildNativeStep,
+  buildFormat2Step,
+  buildStep,
+  type StepSkeletonInputs,
+} from "./step-skeleton.js";
+
 export { scanForReplacements, type ReplacementClassification } from "./replacement-scan.js";
 
 export {

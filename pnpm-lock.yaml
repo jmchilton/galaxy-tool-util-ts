@@ -102,6 +102,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@galaxy-tool-util/schema':
+        specifier: workspace:*
+        version: link:../schema
       effect:
         specifier: ^3.21.0
         version: 3.21.0
@@ -277,6 +280,27 @@ importers:
         specifier: ^7.13.0
         version: 7.13.0(typescript@6.0.2)
 
+  packages/integration-tests:
+    devDependencies:
+      '@galaxy-tool-util/core':
+        specifier: workspace:*
+        version: link:../core
+      '@galaxy-tool-util/schema':
+        specifier: workspace:*
+        version: link:../schema
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
+      effect:
+        specifier: ^3.21.0
+        version: 3.21.0
+      vitest:
+        specifier: ^4.1.4
+        version: 4.1.4(@types/node@25.5.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(yaml@2.8.3))
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
+
   packages/schema:
     dependencies:
       ajv:
@@ -291,10 +315,19 @@ importers:
       yaml:
         specifier: ^2.8.3
         version: 2.8.3
-    devDependencies:
+
+  packages/search:
+    dependencies:
       '@galaxy-tool-util/core':
         specifier: workspace:*
         version: link:../core
+      '@galaxy-tool-util/schema':
+        specifier: workspace:*
+        version: link:../schema
+    devDependencies:
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
 
   packages/tool-cache-proxy:
     dependencies:

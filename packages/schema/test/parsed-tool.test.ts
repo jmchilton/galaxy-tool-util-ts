@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as S from "effect/Schema";
-import { ParsedTool } from "../src/models/parsed-tool.js";
-import fastqcFixture from "./fixtures/fastqc-parsed-tool.json" with { type: "json" };
+import { ParsedTool } from "../src/schema/parsed-tool.js";
+import fastqcFixture from "../../core/test/fixtures/fastqc-parsed-tool.json" with { type: "json" };
 
 describe("ParsedTool", () => {
   it("decodes a real ToolShed fastqc response", () => {

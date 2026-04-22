@@ -1,0 +1,24 @@
+{
+  "name": "@galaxy-tool-util/integration-tests",
+  "version": "0.0.0",
+  "description": "Cross-layer integration tests exercising schema + core together. Private; not published.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint test/",
+    "format": "prettier --check 'test/**/*.ts'",
+    "format-fix": "prettier --write 'test/**/*.ts'"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@galaxy-tool-util/core": "workspace:*",
+    "@galaxy-tool-util/schema": "workspace:*",
+    "@types/node": "^25.5.0",
+    "effect": "^3.21.0",
+    "vitest": "^4.1.4",
+    "yaml": "^2.8.3"
+  }
+}
