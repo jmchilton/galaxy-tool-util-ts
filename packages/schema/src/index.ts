@@ -36,6 +36,9 @@ export {
   type ContainerParameterModel,
   /** Base fields shared by all leaf Galaxy parameter types. */
   type BaseGalaxyParameterModel,
+  type IntegerParameterModel,
+  type FloatParameterModel,
+  type TextParameterModel,
   type SelectParameterModel,
   type GenomeBuildParameterModel,
   type DrillDownParameterModel,

@@ -8,9 +8,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ToolInfoService } from "@galaxy-tool-util/core";
 import { makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
-import { ToolStateValidator } from "../src/tool-state-validator.js";
-import type { ParsedTool } from "../src/schema/parsed-tool.js";
-import type { IntegerParameterModel } from "../src/schema/bundle-types.js";
+import {
+  ToolStateValidator,
+  type ParsedTool,
+  type IntegerParameterModel,
+  type ToolParameterModel,
+} from "@galaxy-tool-util/schema";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,7 +41,7 @@ function intParam(name: string, optional = false): IntegerParameterModel {
   };
 }
 
-function makeParsedTool(inputs: unknown[] = []): ParsedTool {
+function makeParsedTool(inputs: ToolParameterModel[] = []): ParsedTool {
   return {
     id: "test_tool",
     version: "1.0",

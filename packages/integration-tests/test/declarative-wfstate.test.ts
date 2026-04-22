@@ -17,8 +17,6 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { cacheKey } from "@galaxy-tool-util/core";
 import { getCacheDir, makeNodeToolCache } from "@galaxy-tool-util/core/node";
-import type { ParsedTool } from "../src/schema/parsed-tool.js";
-
 import {
   cleanWorkflow,
   createFieldModel,
@@ -28,12 +26,13 @@ import {
   scanForReplacements,
   scanToolState,
   normalizedFormat2,
+  type ParsedTool,
   type NormalizedFormat2Workflow,
   type NormalizedFormat2Step,
   type ToolParameterBundleModel,
   type ToolInputsResolver,
   type ToolParameterModel,
-} from "../src/index.js";
+} from "@galaxy-tool-util/schema";
 
 import { loadExpectations, runAssertions } from "./declarative-test-utils.js";
 

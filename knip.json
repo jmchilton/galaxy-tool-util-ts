@@ -43,6 +43,11 @@
         "vscode"
       ]
     },
+    "packages/integration-tests": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["test/**/*.ts"],
+      "ignore": ["test/declarative-test-utils.ts"]
+    },
     "packages/gxwf-e2e": {
       "entry": ["scripts/*.mjs", "tests/**/*.spec.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts"]
