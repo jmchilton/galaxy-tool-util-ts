@@ -14,7 +14,8 @@
       "@galaxy-tool-util/tool-cache-proxy",
       "@galaxy-tool-util/gxwf-web",
       "@galaxy-tool-util/gxwf-client",
-      "@galaxy-tool-util/gxwf-report-shell"
+      "@galaxy-tool-util/gxwf-report-shell",
+      "@galaxy-tool-util/workflow-graph"
     ]
   ],
   "access": "public",

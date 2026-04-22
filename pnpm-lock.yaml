@@ -315,6 +315,8 @@ importers:
         specifier: ^25.5.0
         version: 25.5.0
 
+  packages/workflow-graph: {}
+
 packages:
 
   '@andrewbranch/untar.js@1.0.3':

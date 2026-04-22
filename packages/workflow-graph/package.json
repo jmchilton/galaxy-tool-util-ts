@@ -1,0 +1,44 @@
+{
+  "name": "@galaxy-tool-util/workflow-graph",
+  "version": "0.1.0",
+  "description": "Pure collection-type algebra and datatype subtyping primitives extracted from Galaxy's workflow editor",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
+    "directory": "packages/workflow-graph"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ test/",
+    "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
+  },
+  "keywords": [
+    "galaxy",
+    "workflow",
+    "collection-type",
+    "datatypes"
+  ],
+  "license": "MIT"
+}
