@@ -1,5 +1,0 @@
----
-"@galaxy-tool-util/schema": minor
----
-
-Add `buildMinimalToolState(tool)` and step-skeleton builders (`buildNativeStep`, `buildFormat2Step`, `buildStep`) for inserting a freshly authored tool step into a workflow. `buildMinimalToolState` today always returns `{}` — the existing decoders/validators already handle absent keys via default conditional branches and parameter defaults — and is the designated extension point if that ever changes. Step-skeleton builders seed `tool_state` / `state` via `buildMinimalToolState` rather than hardcoding `{}`, so a single patch shifts the semantics without a codebase sweep. Native skeletons emit the object form of `tool_state` (not the double-encoded JSON string form) — matches what the VS Code clean pipeline expects. Skeletons are tested against both the raw Effect schema and the higher-level `validateNativeStepState` / `validateFormat2StepState` — any diagnostics emitted reference only the data / data_collection inputs the user is expected to wire after insertion.

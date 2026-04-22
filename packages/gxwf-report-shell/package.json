@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/gxwf-report-shell",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "Pre-built Vue 3 Galaxy workflow report components for CDN delivery",
   "type": "module",
   "exports": {
