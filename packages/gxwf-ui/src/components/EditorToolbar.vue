@@ -208,8 +208,8 @@ const problemsTitle = computed(() => {
 .editor-inner-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
+  gap: var(--gx-sp-2);
+  padding: var(--gx-sp-1) 0;
   flex-wrap: wrap;
 }
 
@@ -218,7 +218,7 @@ const problemsTitle = computed(() => {
   height: 1.25rem;
   background: var(--p-content-border-color, #dee2e6);
   align-self: stretch;
-  margin: 0 0.25rem;
+  margin: 0 var(--gx-sp-1);
 }
 
 .spacer {
@@ -233,7 +233,7 @@ const problemsTitle = computed(() => {
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--p-border-radius, 6px);
-  padding: 0.25rem 0.5rem;
+  padding: var(--gx-sp-1) var(--gx-sp-2);
   cursor: pointer;
   color: var(--p-text-color-secondary, #6c757d);
   font: inherit;

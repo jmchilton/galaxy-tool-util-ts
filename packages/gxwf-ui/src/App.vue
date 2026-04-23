@@ -91,10 +91,10 @@ body {
 
 .app-header {
   height: 52px;
-  padding: 0 1.5rem;
+  padding: 0 var(--gx-sp-6);
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: var(--gx-sp-8);
   background: var(--gx-navy, #2c3143);
   border-bottom: 1px solid var(--gx-gold, #d0bd2a);
   z-index: 100;
@@ -116,22 +116,22 @@ body {
 
 .header-nav {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--gx-sp-1);
 }
 
 .header-right {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--gx-sp-2);
 }
 
 .nav-link {
   text-decoration: none;
   color: rgba(255, 255, 255, 0.65);
-  font-size: 0.875rem;
+  font-size: var(--gx-fs-sm);
   font-weight: 500;
-  padding: 0.3rem 0.75rem;
+  padding: 0.3rem var(--gx-sp-3);
   border-radius: 4px;
   transition:
     color 0.15s ease,
@@ -165,8 +165,8 @@ body {
   border: none;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.65);
-  font-size: 1rem;
-  padding: 0.3rem 0.5rem;
+  font-size: var(--gx-fs-base);
+  padding: 0.3rem var(--gx-sp-2);
   border-radius: 4px;
   transition:
     color 0.15s ease,
@@ -182,6 +182,6 @@ body {
 
 .app-main {
   flex: 1;
-  padding: 1.5rem;
+  padding: var(--gx-sp-6);
 }
 </style>

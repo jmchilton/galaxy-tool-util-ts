@@ -69,7 +69,7 @@ const emit = defineEmits<{
 .editor-shell {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--gx-sp-2);
   flex: 1;
   min-height: 0;
 }
@@ -78,10 +78,10 @@ const emit = defineEmits<{
   flex: 1;
   min-height: 400px;
   width: 100%;
-  font-family: monospace;
-  font-size: 0.875rem;
+  font-family: var(--gx-mono);
+  font-size: var(--gx-fs-sm);
   line-height: 1.5;
-  padding: 0.75rem;
+  padding: var(--gx-sp-3);
   box-sizing: border-box;
   resize: vertical;
   border: 1px solid var(--p-content-border-color, #dee2e6);
@@ -102,14 +102,14 @@ const emit = defineEmits<{
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--gx-sp-1);
   font-size: 0.8rem;
 }
 
 .diagnostic {
   display: flex;
-  gap: 0.5rem;
-  padding: 0.2rem 0.5rem;
+  gap: var(--gx-sp-2);
+  padding: 0.2rem var(--gx-sp-2);
   border-radius: 3px;
 }
 
