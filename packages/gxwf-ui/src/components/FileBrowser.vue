@@ -1,12 +1,25 @@
 <template>
-  <!-- Tree's built-in :loading prop handles the spinner; no extra v-if needed. -->
-  <Tree
-    :value="treeNodes"
-    :loading="loading"
-    selectionMode="single"
-    @node-select="onNodeSelect"
-    @node-expand="onNodeExpand"
-  />
+  <div class="file-browser">
+    <Tree
+      :value="treeNodes"
+      :loading="loading"
+      :filter="true"
+      filterMode="lenient"
+      filterPlaceholder="Filter files…"
+      selectionMode="single"
+      class="file-browser-tree"
+      @node-select="onNodeSelect"
+      @node-expand="onNodeExpand"
+    >
+      <template #empty>
+        <p v-if="loading" class="browser-empty">Loading…</p>
+        <p v-else-if="treeNodes.length === 0" class="browser-empty">
+          <i class="pi pi-folder-open" /> No files in this workspace.
+        </p>
+        <p v-else class="browser-empty">No files match the filter.</p>
+      </template>
+    </Tree>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -29,9 +42,6 @@ const emit = defineEmits<{
 
 const { fetchPath } = useContents();
 
-// Build a tree node. Directories whose children haven't been fetched yet
-// (content === null) get `leaf: false` with no children — PrimeVue shows an
-// expand toggle and fires `@node-expand` when the user clicks it.
 function contentsToNode(item: ContentsModel): TreeNode {
   const isDir = item.type === "directory";
   const hasChildren = isDir && Array.isArray(item.content);
@@ -62,7 +72,6 @@ watch(
 );
 
 function onNodeSelect(node: TreeNode) {
-  // Only emit for files, not directories.
   if (node.leaf && typeof node.key === "string") {
     emit("select", node.key);
   }
@@ -84,3 +93,28 @@ async function onNodeExpand(node: TreeNode) {
   }
 }
 </script>
+
+<style scoped>
+.file-browser {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.file-browser-tree {
+  flex: 1;
+  min-height: 0;
+}
+
+.browser-empty {
+  margin: var(--gx-sp-3) 0;
+  padding: 0 var(--gx-sp-2);
+  color: var(--p-text-color-secondary, #6c757d);
+  font-size: var(--gx-fs-sm);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: var(--gx-sp-2);
+}
+</style>

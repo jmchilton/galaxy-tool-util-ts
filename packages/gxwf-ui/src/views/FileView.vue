@@ -2,13 +2,31 @@
   <div class="file-view">
     <div class="browser-panel">
       <h1>Files</h1>
-      <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
-      <FileBrowser :root="root" :loading="loading" @select="onFileSelect" />
+      <FileBrowser
+        :root="root"
+        :loading="loading"
+        data-description="file browser"
+        @select="onFileSelect"
+      />
     </div>
 
     <div v-if="selectedPath" class="editor-panel">
       <div class="editor-toolbar">
-        <span class="editor-path">{{ selectedPath }}</span>
+        <nav
+          class="editor-breadcrumb"
+          :title="selectedPath"
+          data-description="file breadcrumb"
+          aria-label="File path"
+        >
+          <template v-for="(seg, i) in breadcrumb" :key="i">
+            <span v-if="seg === null" class="crumb ellipsis" aria-hidden="true">…</span>
+            <span v-else class="crumb" :class="{ 'crumb-file': i === breadcrumb.length - 1 }">{{
+              seg
+            }}</span>
+            <span v-if="i < breadcrumb.length - 1" class="crumb-sep" aria-hidden="true">/</span>
+          </template>
+          <span v-if="dirty" class="dirty-indicator" aria-label="Unsaved changes">•</span>
+        </nav>
         <Button
           v-if="checkpoint"
           label="Undo"
@@ -34,11 +52,9 @@
         v-if="monacoEnabled && !monacoFailed && editor"
         :editor="editor"
         :model="model"
-        :dirty="dirty"
         :saving="saving"
         :on-save="() => void onSave()"
       />
-      <Message v-if="editorError" severity="error" :closable="false">{{ editorError }}</Message>
       <Message v-if="saveSuccess" severity="success" :closable="false">Saved.</Message>
       <ProgressSpinner v-if="loadingFile" style="width: 2rem; height: 2rem" />
       <!-- diagnostics prop intentionally omitted: wired in Phase 5 when operation
@@ -76,6 +92,7 @@
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useToast } from "primevue/usetoast";
 import Message from "primevue/message";
 import Button from "primevue/button";
 import ProgressSpinner from "primevue/progressspinner";
@@ -95,6 +112,8 @@ const MonacoEditor = monacoEnabled
   ? defineAsyncComponent(() => import("../components/MonacoEditor.vue"))
   : null;
 
+const toast = useToast();
+
 const {
   root,
   loading,
@@ -113,11 +132,16 @@ const editorContent = ref("");
 const loadingFile = ref(false);
 const saving = ref(false);
 const restoring = ref(false);
-const editorError = ref<string | null>(null);
 const saveSuccess = ref(false);
 // Single-level undo: checkpoint stores the state before the most recent save.
 // Saving again overwrites checkpoint so undo always targets the last save point.
 const checkpoint = ref<CheckpointModel | null>(null);
+
+// Surface browser-load errors as a transient toast rather than an inline banner
+// so the file tree layout doesn't shift.
+watch(error, (msg) => {
+  if (msg) toast.add({ severity: "error", summary: "Files", detail: msg, life: 6000 });
+});
 
 // Build-time opt-in (see packages/gxwf-ui/.env.local.example). When unset,
 // the Monaco bundle is dead-code-eliminated (see defineAsyncComponent above)
@@ -138,6 +162,16 @@ const dirty = computed(() => {
   const fm = fileModel.value;
   if (!fm || fm.type !== "file") return false;
   return editorContent.value !== (typeof fm.content === "string" ? fm.content : "");
+});
+
+// Middle-ellipsis: show every segment up to MAX_CRUMBS, otherwise keep the
+// first + last two and drop the middle. Full path remains in the title attr.
+const MAX_CRUMBS = 5;
+const breadcrumb = computed<(string | null)[]>(() => {
+  if (!selectedPath.value) return [];
+  const segs = selectedPath.value.split("/").filter(Boolean);
+  if (segs.length <= MAX_CRUMBS) return segs;
+  return [segs[0], null, segs[segs.length - 2], segs[segs.length - 1]];
 });
 
 function onMonacoError(err: Error) {
@@ -177,7 +211,6 @@ async function onFileSelect(path: string) {
   selectedPath.value = path;
   fileModel.value = null;
   editorContent.value = "";
-  editorError.value = null;
   saveSuccess.value = false;
   checkpoint.value = null;
   loadingFile.value = true;
@@ -188,7 +221,12 @@ async function onFileSelect(path: string) {
       editorContent.value = typeof model.content === "string" ? model.content : "";
     }
   } catch {
-    editorError.value = `Failed to load file: ${path}`;
+    toast.add({
+      severity: "error",
+      summary: "Load failed",
+      detail: `Failed to load file: ${path}`,
+      life: 6000,
+    });
   } finally {
     loadingFile.value = false;
   }
@@ -196,7 +234,6 @@ async function onFileSelect(path: string) {
 
 async function onSave() {
   if (!selectedPath.value || !fileModel.value) return;
-  editorError.value = null;
   saveSuccess.value = false;
   saving.value = true;
   try {
@@ -211,7 +248,12 @@ async function onSave() {
     void fetchWorkflows();
     saveSuccess.value = true;
   } catch (err) {
-    editorError.value = err instanceof Error ? err.message : "Save failed";
+    toast.add({
+      severity: "error",
+      summary: "Save failed",
+      detail: err instanceof Error ? err.message : "Save failed",
+      life: 8000,
+    });
   } finally {
     saving.value = false;
   }
@@ -219,7 +261,6 @@ async function onSave() {
 
 async function onRestore() {
   if (!selectedPath.value || !checkpoint.value) return;
-  editorError.value = null;
   saveSuccess.value = false;
   restoring.value = true;
   try {
@@ -233,8 +274,14 @@ async function onRestore() {
     checkpoint.value = null;
     clearOpCache(selectedPath.value);
     void fetchWorkflows();
+    toast.add({ severity: "success", summary: "Restored", life: 3000 });
   } catch (err) {
-    editorError.value = err instanceof Error ? err.message : "Restore failed";
+    toast.add({
+      severity: "error",
+      summary: "Restore failed",
+      detail: err instanceof Error ? err.message : "Restore failed",
+      life: 8000,
+    });
   } finally {
     restoring.value = false;
   }
@@ -280,13 +327,13 @@ watch(selectedPath, (next) => {
 
 <style scoped>
 h1 {
-  margin: 0 0 1rem;
-  font-size: 1.5rem;
+  margin: 0 0 var(--gx-sp-4);
+  font-size: var(--gx-fs-xl);
 }
 
 .file-view {
   display: flex;
-  gap: 1.5rem;
+  gap: var(--gx-sp-6);
   height: 100%;
   min-height: 0;
 }
@@ -295,13 +342,16 @@ h1 {
   width: 280px;
   flex-shrink: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .editor-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--gx-sp-3);
   min-width: 0;
 }
 
@@ -317,15 +367,47 @@ h1 {
 .editor-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--gx-sp-3);
 }
 
-.editor-path {
+.editor-breadcrumb {
   flex: 1;
-  font-family: monospace;
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: var(--gx-sp-1);
+  font-family: var(--gx-mono);
+  font-size: var(--gx-fs-sm);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.crumb {
+  color: var(--p-text-color-secondary, #6c757d);
+}
+
+.crumb.crumb-file {
+  color: var(--p-text-color, inherit);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+}
+
+.crumb.ellipsis {
+  color: var(--p-text-color-secondary, #6c757d);
+  opacity: 0.7;
+}
+
+.crumb-sep {
+  color: var(--p-text-color-secondary, #6c757d);
+  opacity: 0.5;
+}
+
+.dirty-indicator {
+  color: var(--gx-gold, #d0bd2a);
+  font-size: var(--gx-fs-lg);
+  line-height: 1;
+  margin-left: var(--gx-sp-2);
 }
 </style>

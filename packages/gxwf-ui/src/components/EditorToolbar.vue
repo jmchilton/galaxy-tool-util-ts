@@ -18,7 +18,6 @@ import { showCommandPalette } from "../editor/commandPalette";
 const props = defineProps<{
   editor: monaco.editor.IStandaloneCodeEditor | null;
   model: monaco.editor.ITextModel | null;
-  dirty: boolean;
   saving: boolean;
   onSave: () => void;
 }>();
@@ -120,12 +119,12 @@ const problemsTitle = computed(() => {
 <template>
   <div class="editor-inner-toolbar" data-description="editor toolbar">
     <Button
-      :label="dirty ? 'Save •' : 'Save'"
+      label="Save"
       icon="pi pi-save"
       size="small"
       :loading="saving"
       :disabled="!editor"
-      title="Save (⌘S)"
+      v-tooltip.bottom="'Save (⌘S)'"
       data-description="editor toolbar save"
       @click="runSave"
     />
@@ -136,7 +135,7 @@ const problemsTitle = computed(() => {
       text
       :disabled="!canUndo"
       aria-label="Undo"
-      title="Undo"
+      v-tooltip.bottom="'Undo (⌘Z)'"
       data-description="editor toolbar undo"
       @click="runUndo"
     />
@@ -147,7 +146,7 @@ const problemsTitle = computed(() => {
       text
       :disabled="!canRedo"
       aria-label="Redo"
-      title="Redo"
+      v-tooltip.bottom="'Redo (⌘⇧Z)'"
       data-description="editor toolbar redo"
       @click="runRedo"
     />
@@ -159,7 +158,7 @@ const problemsTitle = computed(() => {
       severity="secondary"
       text
       aria-label="Format Document"
-      title="Format Document"
+      v-tooltip.bottom="'Format Document (⌥⇧F)'"
       data-description="editor toolbar format"
       @click="runFormat"
     />
@@ -170,7 +169,7 @@ const problemsTitle = computed(() => {
       text
       :disabled="!editor"
       aria-label="Find"
-      title="Find (⌘F)"
+      v-tooltip.bottom="'Find (⌘F)'"
       data-description="editor toolbar find"
       @click="runFind"
     />
@@ -181,7 +180,7 @@ const problemsTitle = computed(() => {
       text
       :disabled="!editor"
       aria-label="Command Palette"
-      title="Command Palette (⌘⇧P)"
+      v-tooltip.bottom="'Command Palette (⌘⇧P)'"
       data-description="editor toolbar palette"
       @click="runPalette"
     />
