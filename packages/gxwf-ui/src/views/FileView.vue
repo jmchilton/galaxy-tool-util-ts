@@ -5,6 +5,7 @@
       <FileBrowser
         :root="root"
         :loading="loading"
+        v-model:expanded-keys="expandedKeys"
         data-description="file browser"
         @select="onFileSelect"
       />
@@ -18,11 +19,17 @@
           data-description="file breadcrumb"
           aria-label="File path"
         >
-          <template v-for="(seg, i) in breadcrumb" :key="i">
-            <span v-if="seg === null" class="crumb ellipsis" aria-hidden="true">…</span>
-            <span v-else class="crumb" :class="{ 'crumb-file': i === breadcrumb.length - 1 }">{{
-              seg
-            }}</span>
+          <template v-for="(crumb, i) in breadcrumb" :key="i">
+            <span v-if="crumb === null" class="crumb ellipsis" aria-hidden="true">…</span>
+            <button
+              v-else-if="i < breadcrumb.length - 1"
+              type="button"
+              class="crumb crumb-dir"
+              @click="expandToPath(crumb.path)"
+            >
+              {{ crumb.label }}
+            </button>
+            <span v-else class="crumb crumb-file">{{ crumb.label }}</span>
             <span v-if="i < breadcrumb.length - 1" class="crumb-sep" aria-hidden="true">/</span>
           </template>
           <span v-if="dirty" class="dirty-indicator" aria-label="Unsaved changes">•</span>
@@ -167,12 +174,32 @@ const dirty = computed(() => {
 // Middle-ellipsis: show every segment up to MAX_CRUMBS, otherwise keep the
 // first + last two and drop the middle. Full path remains in the title attr.
 const MAX_CRUMBS = 5;
-const breadcrumb = computed<(string | null)[]>(() => {
+type Crumb = { label: string; path: string };
+const breadcrumb = computed<(Crumb | null)[]>(() => {
   if (!selectedPath.value) return [];
   const segs = selectedPath.value.split("/").filter(Boolean);
-  if (segs.length <= MAX_CRUMBS) return segs;
-  return [segs[0], null, segs[segs.length - 2], segs[segs.length - 1]];
+  const withPaths: Crumb[] = segs.map((label, i) => ({
+    label,
+    path: segs.slice(0, i + 1).join("/"),
+  }));
+  if (withPaths.length <= MAX_CRUMBS) return withPaths;
+  return [withPaths[0], null, withPaths[withPaths.length - 2], withPaths[withPaths.length - 1]];
 });
+
+// Tree expansion state (shared with FileBrowser via v-model:expanded-keys).
+// Clicking a breadcrumb segment flips every ancestor prefix to true so the
+// tree reveals that directory. Cascading fetches happen via FileBrowser's
+// existing @node-expand handler.
+const expandedKeys = ref<Record<string, boolean>>({});
+
+function expandToPath(path: string) {
+  const segs = path.split("/").filter(Boolean);
+  const next = { ...expandedKeys.value };
+  for (let i = 0; i < segs.length; i++) {
+    next[segs.slice(0, i + 1).join("/")] = true;
+  }
+  expandedKeys.value = next;
+}
 
 function onMonacoError(err: Error) {
   monacoFailed.value = true;
@@ -384,6 +411,20 @@ h1 {
 
 .crumb {
   color: var(--p-text-color-secondary, #6c757d);
+  font: inherit;
+}
+
+button.crumb {
+  background: none;
+  border: none;
+  padding: 0 var(--gx-sp-1);
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+button.crumb:hover {
+  color: var(--p-text-color, inherit);
+  background: var(--p-content-hover-background, rgba(0, 0, 0, 0.04));
 }
 
 .crumb.crumb-file {

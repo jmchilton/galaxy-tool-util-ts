@@ -128,9 +128,9 @@ function onRowClick(event: DataTableRowClickEvent) {
 }
 
 .empty-icon {
-  font-size: 2rem;
+  font-size: var(--gx-fs-2xl);
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--gx-sp-2);
   opacity: 0.5;
 }
 

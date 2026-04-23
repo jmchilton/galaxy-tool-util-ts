@@ -52,7 +52,7 @@ function handleSelect(workflow: WorkflowEntry) {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--gx-sp-4);
-  margin-bottom: 1rem;
+  margin-bottom: var(--gx-sp-4);
 }
 
 .view-header h1 {

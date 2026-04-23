@@ -1,13 +1,4 @@
 <script setup lang="ts">
-// EditorToolbar — Monaco editor chrome for FileView. Buttons drive the live
-// editor instance (undo/redo/format/find/palette) + surface LSP problems via
-// a Badge. Save delegates to the parent's existing save handler so the
-// toolbar button and ⌘S (Phase 6.2) share one code path.
-//
-// Disabled states are polled on model.onDidChangeContent (cheap; fires once
-// per edit) rather than via separate events — monaco exposes no dedicated
-// undo-stack-changed event.
-
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type * as monaco from "monaco-editor";
 import Button from "primevue/button";

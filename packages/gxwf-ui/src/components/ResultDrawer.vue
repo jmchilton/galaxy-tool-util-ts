@@ -53,7 +53,6 @@ const icon = computed(() => META[props.op].icon);
   border: 1px solid var(--p-content-border-color, rgba(255, 255, 255, 0.1));
   border-radius: 4px;
   background: var(--p-surface-0, transparent);
-  transition: opacity var(--gx-dur-base) var(--gx-ease);
 }
 
 .drawer-header {

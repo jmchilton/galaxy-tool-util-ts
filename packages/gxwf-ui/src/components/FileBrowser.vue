@@ -7,9 +7,11 @@
       filterMode="lenient"
       filterPlaceholder="Filter files…"
       selectionMode="single"
+      :expandedKeys="props.expandedKeys"
       class="file-browser-tree"
       @node-select="onNodeSelect"
       @node-expand="onNodeExpand"
+      @update:expandedKeys="(keys: Record<string, boolean>) => emit('update:expandedKeys', keys)"
     >
       <template #empty>
         <p v-if="loading" class="browser-empty">Loading…</p>
@@ -34,10 +36,12 @@ type ContentsModel = components["schemas"]["ContentsModel-Output"];
 const props = defineProps<{
   root: ContentsModel | null;
   loading: boolean;
+  expandedKeys?: Record<string, boolean>;
 }>();
 
 const emit = defineEmits<{
   select: [path: string];
+  "update:expandedKeys": [keys: Record<string, boolean>];
 }>();
 
 const { fetchPath } = useContents();
