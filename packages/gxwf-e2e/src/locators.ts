@@ -5,14 +5,24 @@
  * Keep in sync with usages in packages/gxwf-ui/src.
  */
 
+import type { Page } from "@playwright/test";
+
 export const OperationTab = {
-  validate: "validate tab",
-  lint: "lint tab",
-  clean: "clean tab",
-  roundtrip: "roundtrip tab",
-  export: "export tab",
-  convert: "convert tab",
+  validate: "validate panel",
+  lint: "lint panel",
+  clean: "clean panel",
+  roundtrip: "roundtrip panel",
+  export: "export panel",
+  convert: "convert panel",
 } as const;
+
+export const ToolStripButton = {
+  clean: "tool strip clean",
+  lint: "tool strip lint",
+  export: "tool strip export",
+} as const;
+
+const PRIMARY_OPS = new Set<keyof typeof OperationTab>(["clean", "lint", "export"]);
 
 export const RunButton = {
   validate: "run validate operation",
@@ -45,6 +55,23 @@ export const WorkflowList = {
 
 export function byDescription(value: string): string {
   return `[data-description="${value}"]`;
+}
+
+/**
+ * Open an operation's result drawer. Clean/Lint/Export are primary tool-strip
+ * buttons; Validate/Roundtrip/Convert live behind the ⋯ advanced-operations menu.
+ */
+export async function openOperationTab(page: Page, op: keyof typeof OperationTab): Promise<void> {
+  if (PRIMARY_OPS.has(op)) {
+    await page.locator(byDescription(`tool strip ${op}`)).click();
+  } else {
+    await page.locator(byDescription("advanced operations menu")).click();
+    await page
+      .locator(byDescription("advanced operations menu popup"))
+      .getByRole("menuitem", { name: new RegExp(`^${op}$`, "i") })
+      .click();
+  }
+  await page.locator(byDescription(OperationTab[op])).waitFor({ state: "visible" });
 }
 
 export const Monaco = {
