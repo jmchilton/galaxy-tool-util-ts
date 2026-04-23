@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { startHarness, type TestHarness } from "../src/harness.js";
-import { byDescription, RunButton, ResultPanel } from "../src/locators.js";
+import { byDescription, openOperationTab, RunButton, ResultPanel } from "../src/locators.js";
 
 const WF = "iwc/parallel-accession-download.ga";
 
@@ -24,7 +24,7 @@ test.describe.serial("roundtrip workflow", () => {
   test("report rendered, file unchanged (read-only)", async ({ page }) => {
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(WF)}`);
 
-    await page.locator(byDescription("roundtrip tab")).click();
+    await openOperationTab(page, "roundtrip");
     await page.locator(byDescription(RunButton.roundtrip)).click();
 
     const panel = page.locator(byDescription(ResultPanel.roundtrip));

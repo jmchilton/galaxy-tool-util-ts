@@ -2,7 +2,13 @@ import { test, expect } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { startHarness, type TestHarness } from "../src/harness.js";
-import { byDescription, RunButton, DryRunToggle, ResultPanel } from "../src/locators.js";
+import {
+  byDescription,
+  openOperationTab,
+  RunButton,
+  DryRunToggle,
+  ResultPanel,
+} from "../src/locators.js";
 
 const DIRTY = "iwc/stale-keys.ga";
 
@@ -24,7 +30,7 @@ test.describe.serial("clean workflow", () => {
   test("dry-run: report rendered, file unchanged", async ({ page }) => {
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(DIRTY)}`);
 
-    await page.locator(byDescription("clean tab")).click();
+    await openOperationTab(page, "clean");
 
     await page.locator(byDescription(DryRunToggle.clean)).click();
 
@@ -42,7 +48,7 @@ test.describe.serial("clean workflow", () => {
   test("write: file on disk is cleaned", async ({ page }) => {
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(DIRTY)}`);
 
-    await page.locator(byDescription("clean tab")).click();
+    await openOperationTab(page, "clean");
 
     // Ensure dry-run is unchecked (default false; no-op if state persists from nav).
     const dryRun = page.locator(`${byDescription(DryRunToggle.clean)} input[type="checkbox"]`);
