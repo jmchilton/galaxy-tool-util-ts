@@ -1,5 +1,26 @@
 # @galaxy-tool-util/schema
 
+## 1.0.0
+
+### Minor Changes
+
+- [#63](https://github.com/jmchilton/galaxy-tool-util-ts/pull/63) [`afcd804`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/afcd804e03dacffd03821c3f75e2cae4a0340400) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `expandToolStateDefaults(toolInputs, currentState)` — port of Galaxy's `fill_static_defaults`. Fills scalar defaults for absent keys, recurses into conditionals (honoring user's active `test_value`), pads repeats to `min`, creates+fills absent sections. Does not validate; does not pre-seed data / data_collection (non-optional) / baseurl / color / directory_uri / group_tag / rules / data_column inputs. Walker gains a `repeatMinPad` option to support the expand-defaults repeat semantics.
+
+- [#66](https://github.com/jmchilton/galaxy-tool-util-ts/pull/66) [`7b835d2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7b835d298c4863ac0573e9091f4b1b8c72c34fef) Thanks [@jmchilton](https://github.com/jmchilton)! - Port `workflow_to_mermaid` from gxformat2 and expose as `gxwf mermaid`.
+  - `@galaxy-tool-util/schema`: new `workflowToMermaid(workflow, { comments? })` that renders a Mermaid flowchart string from any Format2 / native workflow input. Shapes inputs by type, strips the main toolshed prefix from tool IDs, deduplicates edges, and optionally renders frame comments as `subgraph` blocks.
+  - `@galaxy-tool-util/cli`: new `gxwf mermaid <file> [output] [--comments]` command. Writes raw `.mmd` by default; `.md` output path wraps the diagram in a fenced `mermaid` code block; stdout if no output path.
+  - Behavioral coverage driven by the declarative YAML suite synced from gxformat2 (`mermaid.yml` via `make sync-workflow-expectations`). Adds `value_matches` assertion mode to the shared declarative test harness.
+
+- [#63](https://github.com/jmchilton/galaxy-tool-util-ts/pull/63) [`9cca5f2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/9cca5f288e3504f3c03c9c3e5b04414379050941) Thanks [@jmchilton](https://github.com/jmchilton)! - `ParsedTool` Effect Schema (plus `HelpContent`, `XrefDict`, `Citation`) now lives in `@galaxy-tool-util/schema` — it was moved from `@galaxy-tool-util/core`. This aligns package ownership: `schema` owns data models (parameter types, `ParsedTool`, workflow formats); `core` owns IO (`ToolInfoService`, `ToolCache`, HTTP clients).
+
+  `ParsedTool.inputs` is now typed as `readonly ToolParameterModel[]` instead of `readonly unknown[]`. Runtime decode behavior is unchanged (the underlying Effect Schema is a permissive object-guard; trusted-peer payloads are still accepted) — downstream consumers get compile-time typing without having to cast.
+
+  `ToolStateValidator` now accepts any `ToolInfoLookup` (`{ getToolInfo(toolId, toolVersion?) }`) instead of a concrete `ToolInfoService`. The `ToolInfoService` class in `@galaxy-tool-util/core` satisfies this interface structurally; no caller change required. This inverts the latent dependency — schema no longer needs a `@galaxy-tool-util/core` type import.
+
+  Additional leaf parameter-model types are now exported from the public index: `IntegerParameterModel`, `FloatParameterModel`, `TextParameterModel`.
+
+- [#63](https://github.com/jmchilton/galaxy-tool-util-ts/pull/63) [`9cca5f2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/9cca5f288e3504f3c03c9c3e5b04414379050941) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `buildMinimalToolState(tool)` and step-skeleton builders (`buildNativeStep`, `buildFormat2Step`, `buildStep`) for inserting a freshly authored tool step into a workflow. `buildMinimalToolState` today always returns `{}` — the existing decoders/validators already handle absent keys via default conditional branches and parameter defaults — and is the designated extension point if that ever changes. Step-skeleton builders seed `tool_state` / `state` via `buildMinimalToolState` rather than hardcoding `{}`, so a single patch shifts the semantics without a codebase sweep. Native skeletons emit the object form of `tool_state` (not the double-encoded JSON string form) — matches what the VS Code clean pipeline expects. Skeletons are tested against both the raw Effect schema and the higher-level `validateNativeStepState` / `validateFormat2StepState` — any diagnostics emitted reference only the data / data_collection inputs the user is expected to wire after insertion.
+
 ## 0.4.0
 
 ### Minor Changes
