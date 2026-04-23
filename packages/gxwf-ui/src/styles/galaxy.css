@@ -38,4 +38,34 @@
 
   /* Monospace font stack */
   --gx-mono: "Monaco", "Menlo", "Consolas", "Courier New", monospace;
+
+  /* Spacing scale — use in place of ad-hoc rem values in scoped styles */
+  --gx-sp-1: 0.25rem;
+  --gx-sp-2: 0.5rem;
+  --gx-sp-3: 0.75rem;
+  --gx-sp-4: 1rem;
+  --gx-sp-5: 1.25rem;
+  --gx-sp-6: 1.5rem;
+  --gx-sp-8: 2rem;
+  --gx-sp-12: 3rem;
+
+  /* Type scale */
+  --gx-fs-xs: 0.75rem;
+  --gx-fs-sm: 0.85rem;
+  --gx-fs-base: 1rem;
+  --gx-fs-lg: 1.25rem;
+  --gx-fs-xl: 1.5rem;
+  --gx-fs-2xl: 2rem;
+
+  /* Motion — gated by prefers-reduced-motion in consuming styles */
+  --gx-dur-fast: 120ms;
+  --gx-dur-base: 180ms;
+  --gx-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --gx-dur-fast: 0ms;
+    --gx-dur-base: 0ms;
+  }
 }
