@@ -47,35 +47,23 @@ This configuration is already in place for all currently published packages.
 
 New packages require a one-time manual stub publish to create the package page on npm before trusted publishing can be configured. Trusted publishing cannot be set up on a package that doesn't exist yet.
 
-### Step 1 — Temporarily set version to `0.0.0`
-
-Edit the new package's `package.json`:
-
-```json
-"version": "0.0.0"
-```
-
-### Step 2 — Build and publish the stub
+### Step 1 — Build and publish the stub
 
 Ensure you're logged in to npm locally (`npm login`), then from the repo root:
 
 ```bash
-pnpm build
+pnpm --filter @galaxy-tool-util/<new-package> build
 cd packages/<new-package>
 pnpm publish --no-git-checks --no-provenance --tag stub
 ```
 
-Use `--no-provenance` because OIDC tokens aren't available locally. Use `--tag stub` so `0.0.0` doesn't become the `latest` tag.
+Use `--no-provenance` because OIDC tokens aren't available locally. Use `--tag stub` so the stub version doesn't become the `latest` tag — linked-mode versioning will bump the package up to the group's unified version on the next automated release, so `latest` is never the stub.
 
 If npm prompts for 2FA, open the browser URL it provides to complete authentication.
 
 Publish packages in dependency order (if package B depends on package A via `workspace:*`, publish A first).
 
-### Step 3 — Restore the version
-
-Revert `package.json` back to the intended version (e.g. `0.1.0`). Do not commit the `0.0.0` change.
-
-### Step 4 — Configure trusted publishing on npmjs.com
+### Step 2 — Configure trusted publishing on npmjs.com
 
 Go to `https://www.npmjs.com/package/@galaxy-tool-util/<new-package>` → Settings → Trusted Publishers and add:
 
@@ -84,10 +72,10 @@ Go to `https://www.npmjs.com/package/@galaxy-tool-util/<new-package>` → Settin
 - **Workflow**: `release.yml`
 - **Environment**: `npm-publish` (matches `environment: npm-publish` in `.github/workflows/release.yml`)
 
-### Step 5 — Add to the linked group
+### Step 3 — Add to the linked group
 
 Add the new package name to the `linked` array in `.changeset/config.json` (unless it should version independently).
 
-### Step 6 — Include in the changeset release
+### Step 4 — Include in the changeset release
 
 Ensure a `.changeset/*.md` file references the new package so it appears in the next Version Packages PR.
