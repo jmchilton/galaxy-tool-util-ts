@@ -9,7 +9,7 @@
 // undo-stack-changed event.
 
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import * as monaco from "monaco-editor";
+import type * as monaco from "monaco-editor";
 import Button from "primevue/button";
 import Badge from "primevue/badge";
 import { useEditorMarkers } from "../composables/useEditorMarkers";
