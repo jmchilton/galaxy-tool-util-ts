@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-glossary build-glossary check-sync-all
+.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-parsed-tools sync-glossary build-glossary check-sync-all
 
 all: check test
 
@@ -132,6 +132,23 @@ sync-wfstate-expectations:
 sync-wfstate-templates:
 	node scripts/sync-fixtures.mjs --sync --group wfstate-templates
 
+sync-connection-workflows:
+	node scripts/sync-fixtures.mjs --sync --group connection-workflows
+
+# Serialize ParsedTool JSON for every tool_id referenced in synced connection
+# workflow fixtures. Requires a Galaxy venv with the tool-parsing deps.
+#   GALAXY_ROOT=~/projects/worktrees/galaxy/branch/wf_tool_state make sync-parsed-tools
+CONN_WF_DST = packages/core/test/fixtures/connection_workflows
+PARSED_TOOLS_DST = $(CONN_WF_DST)/parsed_tools
+
+sync-parsed-tools: sync-connection-workflows
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@test -x "$(GALAXY_PYTHON)" || (echo "ERROR: $(GALAXY_PYTHON) not executable. Set GALAXY_PYTHON to a Galaxy venv python." && exit 1)
+	PYTHONPATH="$(GALAXY_ROOT)/lib" "$(GALAXY_PYTHON)" scripts/sync-parsed-tools.py \
+		--fixtures $(CONN_WF_DST) --out $(PARSED_TOOLS_DST) --galaxy-root $(GALAXY_ROOT)
+
 check-sync-workflow-fixtures:
 	node scripts/sync-fixtures.mjs --check --group workflow-fixtures
 
@@ -152,6 +169,9 @@ check-sync-wfstate-expectations:
 
 check-sync-wfstate-templates:
 	node scripts/sync-fixtures.mjs --check --group wfstate-templates
+
+check-sync-connection-workflows:
+	node scripts/sync-fixtures.mjs --check --group connection-workflows
 
 # Run all groups that have their src_root env var set; skip the rest.
 check-sync:
@@ -183,7 +203,7 @@ endif
 ifndef GXFORMAT2_ROOT
 	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
 endif
-	$(MAKE) sync-golden sync-param-spec sync-test-format-schema sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations sync-wfstate-templates sync-glossary
+	$(MAKE) sync-golden sync-param-spec sync-test-format-schema sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations sync-wfstate-templates sync-connection-workflows sync-parsed-tools sync-glossary
 	$(MAKE) generate-schemas build-glossary
 	$(MAKE) verify-golden
 
