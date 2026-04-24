@@ -348,6 +348,14 @@ export async function operateLint(
 
   const lintErrors = report.structural.error_count + (report.bestPractices?.error_count ?? 0);
   const lintWarnings = report.structural.warn_count + (report.bestPractices?.warn_count ?? 0);
+  const lintErrorMessages = [
+    ...report.structural.errors.map((m) => m.message),
+    ...(report.bestPractices?.errors.map((m) => m.message) ?? []),
+  ];
+  const lintWarningMessages = [
+    ...report.structural.warnings.map((m) => m.message),
+    ...(report.bestPractices?.warnings.map((m) => m.message) ?? []),
+  ];
 
   // Always compute structure_errors from Effect Schema decode (matches CLI JSON mode)
   const structureErrors = decodeStructureErrors(data, format);
@@ -364,6 +372,8 @@ export async function operateLint(
   return buildSingleLintReport(absPath, lintErrors, lintWarnings, report.stateValidation ?? [], {
     structure_errors: structureErrors,
     encoding_errors: encodingErrors,
+    lint_error_messages: lintErrorMessages,
+    lint_warning_messages: lintWarningMessages,
   });
 }
 

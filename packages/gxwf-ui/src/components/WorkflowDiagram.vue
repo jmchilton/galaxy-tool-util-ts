@@ -75,18 +75,13 @@ watch(
 .diagram-svg {
   overflow: auto;
   padding: var(--gx-sp-3);
-  background: var(--p-surface-0, #fff);
-  border: 1px solid var(--p-surface-300, #dadadd);
+  background: var(--p-content-background, #fff);
+  border: 1px solid var(--p-content-border-color, #dadadd);
   border-radius: 4px;
 }
 
 .diagram-svg :deep(svg) {
   max-width: 100%;
   height: auto;
-}
-
-:global(.dark) .diagram-svg {
-  background: var(--p-surface-900, #1a1f2e);
-  border-color: var(--p-surface-700, #3a3f52);
 }
 </style>

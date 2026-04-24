@@ -103,6 +103,8 @@ export interface SingleLintReport {
   workflow: string;
   lint_errors: number;
   lint_warnings: number;
+  lint_error_messages: string[];
+  lint_warning_messages: string[];
   results: ValidationStepResult[];
   structure_errors: string[];
   encoding_errors: string[];
@@ -455,6 +457,8 @@ export function buildSingleLintReport(
   opts?: {
     structure_errors?: string[];
     encoding_errors?: string[];
+    lint_error_messages?: string[];
+    lint_warning_messages?: string[];
   },
 ): SingleLintReport {
   const summary = validationSummary(results);
@@ -462,6 +466,8 @@ export function buildSingleLintReport(
     workflow,
     lint_errors,
     lint_warnings,
+    lint_error_messages: opts?.lint_error_messages ?? [],
+    lint_warning_messages: opts?.lint_warning_messages ?? [],
     results,
     structure_errors: opts?.structure_errors ?? [],
     encoding_errors: opts?.encoding_errors ?? [],

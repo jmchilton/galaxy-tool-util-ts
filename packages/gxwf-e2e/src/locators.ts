@@ -33,10 +33,10 @@ export const RunButton = {
   convert: "run convert operation",
 } as const;
 
-export const DryRunToggle = {
-  clean: "clean dry-run toggle",
-  export: "export dry-run toggle",
-  convert: "convert dry-run toggle",
+export const ApplyButton = {
+  clean: "apply clean operation",
+  export: "apply export operation",
+  convert: "apply convert operation",
 } as const;
 
 export const ResultPanel = {

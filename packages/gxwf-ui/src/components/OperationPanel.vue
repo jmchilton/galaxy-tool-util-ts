@@ -6,8 +6,9 @@
       </p>
       <div class="panel-toolbar">
         <Button
-          label="Run"
-          icon="pi pi-play"
+          label="Re-run"
+          icon="pi pi-refresh"
+          text
           size="small"
           :loading="lintLoading"
           data-description="run lint operation"
@@ -37,26 +38,28 @@
           {{ lintError }}
         </Message>
       </div>
-      <RawJsonView v-if="lintResult && showRaw.lint" :data="lintResult" />
-      <LintReport v-else-if="lintResult" :report="lintResult" />
-      <p v-else-if="!lintLoading" class="no-results">No results yet. Click Run.</p>
+      <div :class="{ 'result-area': true, stale: lintLoading && lintResult }">
+        <RawJsonView v-if="lintResult && showRaw.lint" :data="lintResult" />
+        <LintReport v-else-if="lintResult" :report="lintResult" />
+        <p v-else-if="!lintLoading" class="no-results">No results yet.</p>
+      </div>
     </div>
 
     <div v-else-if="op === 'export'" class="panel-content" data-description="export result panel">
-      <p class="help">Write a format2 sibling of this workflow (leaves the original in place).</p>
+      <p class="help">
+        Preview of the format2 sibling that would be written alongside the original. Click
+        <strong>Write sibling</strong> to save it to disk.
+      </p>
       <div class="panel-toolbar">
         <Button
-          label="Run"
-          icon="pi pi-play"
+          label="Write sibling"
+          icon="pi pi-save"
           size="small"
           :loading="exportLoading"
-          data-description="run export operation"
-          @click="() => void handleExport()"
+          :disabled="!exportResult || exportLoading"
+          data-description="apply export operation"
+          @click="() => void handleExportApply()"
         />
-        <label class="opt-label" data-description="export dry-run toggle">
-          <Checkbox v-model="exportOpts.dry_run" :binary="true" size="small" />
-          Dry run
-        </label>
         <ToggleButton
           v-if="exportResult"
           v-model="showRaw.export"
@@ -70,9 +73,11 @@
           {{ exportError }}
         </Message>
       </div>
-      <RawJsonView v-if="exportResult && showRaw.export" :data="exportResult" />
-      <ExportReport v-else-if="exportResult" :result="exportResult" />
-      <p v-else-if="!exportLoading" class="no-results">No results yet. Click Run.</p>
+      <div :class="{ 'result-area': true, stale: exportLoading && exportResult }">
+        <RawJsonView v-if="exportResult && showRaw.export" :data="exportResult" />
+        <ExportReport v-else-if="exportResult" :result="exportResult" />
+        <p v-else-if="!exportLoading" class="no-results">Loading preview…</p>
+      </div>
     </div>
 
     <div
@@ -83,8 +88,9 @@
       <p class="help">Schema validation — structural and semantic correctness of the file.</p>
       <div class="panel-toolbar">
         <Button
-          label="Run"
-          icon="pi pi-play"
+          label="Re-run"
+          icon="pi pi-refresh"
+          text
           size="small"
           :loading="validateLoading"
           data-description="run validate operation"
@@ -109,7 +115,7 @@
         </label>
         <label
           class="opt-label"
-          v-tooltip.top="'Run Clean before validating to normalize the document.'"
+          v-tooltip.top="'Run Clean (in-memory) before validating to normalize the document.'"
         >
           <Checkbox v-model="validateOpts.clean_first" :binary="true" size="small" />
           Clean first
@@ -127,28 +133,28 @@
           {{ validateError }}
         </Message>
       </div>
-      <RawJsonView v-if="validateResult && showRaw.validate" :data="validateResult" />
-      <ValidationReport v-else-if="validateResult" :report="validateResult" />
-      <p v-else-if="!validateLoading" class="no-results">No results yet. Click Run.</p>
+      <div :class="{ 'result-area': true, stale: validateLoading && validateResult }">
+        <RawJsonView v-if="validateResult && showRaw.validate" :data="validateResult" />
+        <ValidationReport v-else-if="validateResult" :report="validateResult" />
+        <p v-else-if="!validateLoading" class="no-results">No results yet.</p>
+      </div>
     </div>
 
     <div v-else-if="op === 'clean'" class="panel-content" data-description="clean result panel">
       <p class="help">
-        Strip UI-only state (positions, stale tool_state) and rewrite the file in place.
+        Preview of what Clean would strip (UI-only state, stale tool_state). Click
+        <strong>Apply</strong> to rewrite the file in place.
       </p>
       <div class="panel-toolbar">
         <Button
-          label="Run"
-          icon="pi pi-play"
+          label="Apply"
+          icon="pi pi-save"
           size="small"
           :loading="cleanLoading"
-          data-description="run clean operation"
-          @click="() => void handleClean()"
+          :disabled="!cleanResult || cleanLoading"
+          data-description="apply clean operation"
+          @click="() => void handleCleanApply()"
         />
-        <label class="opt-label" data-description="clean dry-run toggle">
-          <Checkbox v-model="cleanOpts.dry_run" :binary="true" size="small" />
-          Dry run
-        </label>
         <ToggleButton
           v-if="cleanResult"
           v-model="showRaw.clean"
@@ -162,9 +168,11 @@
           {{ cleanError }}
         </Message>
       </div>
-      <RawJsonView v-if="cleanResult && showRaw.clean" :data="cleanResult" />
-      <CleanReport v-else-if="cleanResult" :report="cleanResult" />
-      <p v-else-if="!cleanLoading" class="no-results">No results yet. Click Run.</p>
+      <div :class="{ 'result-area': true, stale: cleanLoading && cleanResult }">
+        <RawJsonView v-if="cleanResult && showRaw.clean" :data="cleanResult" />
+        <CleanReport v-else-if="cleanResult" :report="cleanResult" />
+        <p v-else-if="!cleanLoading" class="no-results">Loading preview…</p>
+      </div>
     </div>
 
     <div
@@ -177,8 +185,9 @@
       </p>
       <div class="panel-toolbar">
         <Button
-          label="Run"
-          icon="pi pi-play"
+          :label="roundtripResult ? 'Re-run' : 'Run'"
+          :icon="roundtripResult ? 'pi pi-refresh' : 'pi pi-play'"
+          :text="!!roundtripResult"
           size="small"
           :loading="roundtripLoading"
           data-description="run roundtrip operation"
@@ -209,30 +218,32 @@
           {{ roundtripError }}
         </Message>
       </div>
-      <RawJsonView v-if="roundtripResult && showRaw.roundtrip" :data="roundtripResult" />
-      <RoundtripReport v-else-if="roundtripResult" :report="roundtripResult" />
-      <p v-else-if="!roundtripLoading" class="no-results">No results yet. Click Run.</p>
+      <div :class="{ 'result-area': true, stale: roundtripLoading && roundtripResult }">
+        <RawJsonView v-if="roundtripResult && showRaw.roundtrip" :data="roundtripResult" />
+        <RoundtripReport v-else-if="roundtripResult" :report="roundtripResult" />
+        <p v-else-if="!roundtripLoading" class="no-results">No results yet. Click Run.</p>
+      </div>
     </div>
 
     <div v-else-if="op === 'convert'" class="panel-content" data-description="convert result panel">
       <p class="help destructive">
         <i class="pi pi-exclamation-triangle" />
-        Convert to format2 and <strong>delete the original</strong>. Use Dry run to preview.
+        Preview of the format2 conversion. Clicking
+        <strong>Convert &amp; delete original</strong> writes the new file and
+        <strong>deletes</strong> the source at <code>{{ workflowPath }}</code
+        >.
       </p>
       <div class="panel-toolbar">
         <Button
-          label="Run"
-          icon="pi pi-play"
+          label="Convert & delete original"
+          icon="pi pi-exclamation-triangle"
           severity="danger"
           size="small"
           :loading="convertLoading"
-          data-description="run convert operation"
-          @click="() => void handleConvert()"
+          :disabled="!convertResult || convertLoading"
+          data-description="apply convert operation"
+          @click="() => void handleConvertApply()"
         />
-        <label class="opt-label" data-description="convert dry-run toggle">
-          <Checkbox v-model="convertOpts.dry_run" :binary="true" size="small" />
-          Dry run
-        </label>
         <ToggleButton
           v-if="convertResult"
           v-model="showRaw.convert"
@@ -246,20 +257,23 @@
           {{ convertError }}
         </Message>
       </div>
-      <RawJsonView v-if="convertResult && showRaw.convert" :data="convertResult" />
-      <ExportReport v-else-if="convertResult" :result="convertResult" />
-      <p v-else-if="!convertLoading" class="no-results">No results yet. Click Run.</p>
+      <div :class="{ 'result-area': true, stale: convertLoading && convertResult }">
+        <RawJsonView v-if="convertResult && showRaw.convert" :data="convertResult" />
+        <ExportReport v-else-if="convertResult" :result="convertResult" />
+        <p v-else-if="!convertLoading" class="no-results">Loading preview…</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, onMounted, watch } from "vue";
 import Button from "primevue/button";
 import Checkbox from "primevue/checkbox";
 import Select from "primevue/select";
 import ToggleButton from "primevue/togglebutton";
 import Message from "primevue/message";
+import { useToast } from "primevue/usetoast";
 import {
   ValidationReport,
   LintReport,
@@ -287,9 +301,6 @@ const props = defineProps<{
   op: OperationName;
 }>();
 
-// workflowPath is captured at setup time. This is safe because WorkflowView is
-// destroyed and recreated on route changes — OperationPanel is never reused for
-// a different path within the same component instance lifetime.
 const {
   validateResult,
   lintResult,
@@ -319,6 +330,7 @@ const {
 
 const { refreshWorkflows } = useWorkflows();
 const router = useRouter();
+const toast = useToast();
 
 const modeOptions = [
   { label: "Meta model", value: "effect" },
@@ -337,16 +349,11 @@ const lintOpts = reactive<LintOpts>({
   strict_encoding: false,
 });
 
-const cleanOpts = reactive<CleanOpts>({ dry_run: false });
-
 const roundtripOpts = reactive<RoundtripOpts>({
   strict_structure: false,
   strict_encoding: false,
   strict_state: false,
 });
-
-const exportOpts = reactive<ExportOpts>({ dry_run: false });
-const convertOpts = reactive<ConvertOpts>({ dry_run: false });
 
 const showRaw = reactive({
   validate: false,
@@ -357,31 +364,102 @@ const showRaw = reactive({
   convert: false,
 });
 
-async function handleClean() {
-  await runClean(cleanOpts);
-  if (!cleanOpts.dry_run && !cleanError.value) {
+// Debounce option-change reruns so toggling multiple checkboxes doesn't fire a flurry.
+const RERUN_DEBOUNCE_MS = 250;
+function debounced(fn: () => void): () => void {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  return () => {
+    if (t) clearTimeout(t);
+    t = setTimeout(fn, RERUN_DEBOUNCE_MS);
+  };
+}
+
+function autoRunForCurrentOp() {
+  switch (props.op) {
+    case "validate":
+      if (!validateResult.value) void runValidate(validateOpts);
+      break;
+    case "lint":
+      if (!lintResult.value) void runLint(lintOpts);
+      break;
+    case "clean":
+      if (!cleanResult.value) void runClean({ dry_run: true });
+      break;
+    case "export":
+      if (!exportResult.value) void runExport({ dry_run: true });
+      break;
+    case "convert":
+      if (!convertResult.value) void runConvert({ dry_run: true });
+      break;
+    // roundtrip: no auto-run — expensive, keep it explicit.
+  }
+}
+
+onMounted(autoRunForCurrentOp);
+watch(() => props.op, autoRunForCurrentOp);
+
+// Reactive recompute on option change. Always-on for validate/lint (cheap reads);
+// refresh-only (if a prior result exists) for roundtrip.
+watch(
+  validateOpts,
+  debounced(() => {
+    if (props.op === "validate") void runValidate(validateOpts);
+  }),
+);
+watch(
+  lintOpts,
+  debounced(() => {
+    if (props.op === "lint") void runLint(lintOpts);
+  }),
+);
+watch(
+  roundtripOpts,
+  debounced(() => {
+    if (props.op === "roundtrip" && roundtripResult.value) void runRoundtrip(roundtripOpts);
+  }),
+);
+
+async function handleCleanApply() {
+  await runClean({ dry_run: false });
+  if (!cleanError.value) {
     invalidateStaleOps(props.workflowPath, "clean");
     await refreshWorkflows();
+    toast.add({
+      severity: "success",
+      summary: "Clean applied",
+      detail: `Rewrote ${props.workflowPath}`,
+      life: 3000,
+    });
   }
 }
 
-async function handleExport() {
-  await runExport(exportOpts);
-  if (!exportOpts.dry_run && !exportError.value) {
+async function handleExportApply() {
+  await runExport({ dry_run: false });
+  if (!exportError.value) {
     await refreshWorkflows();
+    toast.add({
+      severity: "success",
+      summary: "Sibling written",
+      detail: exportResult.value?.output_path ?? "Wrote format2 sibling",
+      life: 3000,
+    });
   }
 }
 
-async function handleConvert() {
-  if (!convertOpts.dry_run) {
-    const confirmed = window.confirm(
-      `Convert will delete the original file at ${props.workflowPath} after writing the converted output. Continue?`,
-    );
-    if (!confirmed) return;
-  }
-  await runConvert(convertOpts);
-  if (!convertOpts.dry_run && !convertError.value) {
+async function handleConvertApply() {
+  const confirmed = window.confirm(
+    `Convert will delete the original file at ${props.workflowPath} after writing the converted output. Continue?`,
+  );
+  if (!confirmed) return;
+  await runConvert({ dry_run: false });
+  if (!convertError.value) {
     await refreshWorkflows();
+    toast.add({
+      severity: "success",
+      summary: "Converted",
+      detail: `Replaced ${props.workflowPath}`,
+      life: 3000,
+    });
     void router.push("/");
   }
 }
@@ -410,6 +488,12 @@ async function handleConvert() {
   display: flex;
   align-items: center;
   gap: var(--gx-sp-2);
+  flex-wrap: wrap;
+}
+
+.help code {
+  font-family: var(--gx-font-mono, monospace);
+  font-size: 0.9em;
 }
 
 .panel-toolbar {
@@ -430,6 +514,15 @@ async function handleConvert() {
   font-size: var(--gx-fs-sm);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.result-area {
+  transition: opacity 120ms ease;
+}
+
+.result-area.stale {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .no-results {

@@ -722,6 +722,16 @@ export interface components {
        */
       lint_warnings: number;
       /**
+       * Lint Error Messages
+       * @default []
+       */
+      lint_error_messages: string[];
+      /**
+       * Lint Warning Messages
+       * @default []
+       */
+      lint_warning_messages: string[];
+      /**
        * Results
        * @default []
        */

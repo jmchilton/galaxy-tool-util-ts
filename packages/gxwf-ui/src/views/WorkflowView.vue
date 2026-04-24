@@ -147,7 +147,7 @@ function closeDrawer() {
 
 @media (min-width: 1280px) {
   .workflow-view.has-drawer {
-    grid-template-columns: minmax(0, 1fr) 420px;
+    grid-template-columns: minmax(0, 1fr) 480px;
     grid-template-areas:
       "header  header"
       "diagram drawer"
@@ -156,6 +156,18 @@ function closeDrawer() {
 
   .workflow-view.has-drawer .drawer-region {
     max-height: calc(100vh - 8rem);
+  }
+}
+
+@media (min-width: 1600px) {
+  .workflow-view.has-drawer {
+    grid-template-columns: minmax(0, 1fr) 560px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .workflow-view.has-drawer {
+    grid-template-columns: minmax(0, 1fr) 640px;
   }
 }
 

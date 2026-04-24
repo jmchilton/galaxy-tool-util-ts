@@ -61,3 +61,22 @@ git add .changeset/   # commit the .changeset/*.md alongside your code
 ## Docs
 
 Docsify site with TypeDoc API docs. `pnpm docs:dev` to serve locally, `pnpm docs:build` to generate.
+
+## Dev Server (gxwf-web + gxwf-ui)
+
+To bring the backend + UI up against a workflows directory (e.g. IWC) for manual debugging:
+
+```bash
+# 1. Build once so dist/ matches source (REQUIRED — see note below).
+pnpm build
+
+# 2. Backend on :8000, pointed at a workflows dir.
+node packages/gxwf-web/dist/bin/gxwf-web.js <workflows-dir> --port 8000
+
+# 3. UI dev server on :5173 in another shell — proxies /workflows and /api to :8000.
+cd packages/gxwf-ui && pnpm dev
+```
+
+Open http://localhost:5173/. `GXWF_BACKEND_URL` overrides the proxy target (default `http://localhost:8000`).
+
+**Stale-dist gotcha.** The backend bin runs from `packages/gxwf-web/dist/`, not from source. After editing backend code (router, handlers, schema), `pnpm build` and restart the server before retesting — otherwise the running server is still the old compiled version and you'll chase ghosts (e.g. 404s on routes that exist in source). If you hit an unexpected 4xx/5xx from gxwf-web, first check whether dist is stale via `git status packages/gxwf-web/dist packages/*/dist` or `grep` the relevant code in `dist/` to confirm the change is present.
