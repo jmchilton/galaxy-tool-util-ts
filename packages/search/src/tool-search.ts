@@ -146,7 +146,7 @@ export class ToolSearchService {
   }
 }
 
-function normalizeHit(hit: ToolSearchHit, source: ToolSource): NormalizedToolHit {
+export function normalizeHit(hit: ToolSearchHit, source: ToolSource): NormalizedToolHit {
   const { id, name, description, repo_name, repo_owner_username, version, changeset_revision } =
     hit.tool;
   const trsToolId = `${repo_owner_username}~${repo_name}~${id}`;

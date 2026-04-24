@@ -457,3 +457,70 @@ gxwf validate-tests-tree ./workflows/ --json
 |---|---|
 | `--json` | Output structured JSON report |
 | `--auto-workflow` | Pair each tests file with a sibling workflow by filename convention (`foo.gxwf-tests.yml` ↔ `foo.gxwf.yml` / `foo.ga`) and cross-check inputs/outputs |
+
+### Tool Shed discovery commands
+
+Instance-agnostic discovery against [`toolshed.g2.bx.psu.edu`](https://toolshed.g2.bx.psu.edu).
+Designed to feed `galaxy-tool-cache add` so a workflow author can go from a query string
+to a cached `ParsedTool` in three commands. All commands accept both the TRS form
+(`owner~repo~tool_id`) and the pretty form (`owner/repo/tool_id`) where a `<tool-id>`
+argument is taken.
+
+Common exit-code convention: `0` = at least one hit, `2` = empty result, `3` = HTTP / fetch error.
+
+### `tool-search <query>`
+
+Search the Tool Shed for tools matching a free-text query.
+
+```bash
+gxwf tool-search fastqc
+gxwf tool-search "quality control" --json --max-results 10
+```
+
+| Option | Description |
+|---|---|
+| `--page-size <n>` | Server-side page size (default `20`) |
+| `--max-results <n>` | Hard cap on hits returned (default `50`) |
+| `--json` | Emit `{ query, hits: [NormalizedToolHit, ...] }` |
+| `--cache-dir <dir>` | Reserved for future `--enrich` support |
+
+### `tool-versions <tool-id>`
+
+List TRS-published versions of a Tool Shed tool, oldest first (newest last).
+
+```bash
+gxwf tool-versions devteam/fastqc/fastqc
+gxwf tool-versions devteam~fastqc~fastqc --latest
+gxwf tool-versions devteam/fastqc/fastqc --json
+```
+
+| Option | Description |
+|---|---|
+| `--latest` | Print only the newest version |
+| `--json` | Emit `{ trsToolId, versions: [...] }` |
+
+Note: TRS dedupes by version string, so if multiple changesets publish the same version
+you'll only see it once. Use `tool-revisions` to see the full set of changesets.
+
+### `tool-revisions <tool-id>`
+
+Resolve a tool to the changeset revisions that publish it, ordered oldest→newest by
+`get_ordered_installable_revisions`. Needed when emitting a workflow that pins
+`(name, owner, changeset_revision)` for reproducible reinstall.
+
+```bash
+gxwf tool-revisions devteam/fastqc/fastqc --json
+gxwf tool-revisions devteam/fastqc/fastqc --tool-version 0.74+galaxy0 --latest
+```
+
+| Option | Description |
+|---|---|
+| `--tool-version <v>` | Restrict to revisions that publish this exact tool version |
+| `--latest` | Print only the newest matching revision |
+| `--json` | Emit `{ trsToolId, version?, revisions: [{ changesetRevision, toolVersion }] }` |
+
+The flag is `--tool-version` rather than `--version` because commander's program-level
+`--version` flag intercepts.
+
+Caveat: tool version strings are not monotonic — two changesets can legally publish the
+same `version` with different content. When pinning, prefer the newest matching revision.

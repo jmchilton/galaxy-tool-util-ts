@@ -12,6 +12,9 @@ import { runValidateWorkflow } from "../commands/validate-workflow.js";
 import { runValidateTests } from "../commands/validate-tests.js";
 import { runValidateTestsTree } from "../commands/validate-tests-tree.js";
 import { runValidateTree } from "../commands/validate-tree.js";
+import { runToolSearch } from "../commands/tool-search.js";
+import { runToolVersions } from "../commands/tool-versions.js";
+import { runToolRevisions } from "../commands/tool-revisions.js";
 import { addStrictOptions } from "../commands/strict-options.js";
 
 export function buildGxwfProgram(): Command {
@@ -219,6 +222,37 @@ export function buildGxwfProgram(): Command {
       "Pair each tests file with a sibling workflow by filename convention (foo.gxwf-tests.yml ↔ foo.gxwf.yml/foo.ga) and cross-check inputs/outputs",
     )
     .action(runValidateTestsTree);
+
+  program
+    .command("tool-search")
+    .description("Search the Galaxy Tool Shed for tools matching a query")
+    .argument("<query>", "Search text (e.g. 'fastqc')")
+    .option("--page-size <n>", "Server-side page size", "20")
+    .option("--max-results <n>", "Hard cap on hits returned", "50")
+    .option("--json", "Emit machine-readable JSON envelope")
+    .option("--cache-dir <dir>", "Tool cache directory (reserved for future --enrich support)")
+    .action(runToolSearch);
+
+  program
+    .command("tool-versions")
+    .description("List TRS-published versions of a Tool Shed tool (newest last)")
+    .argument("<tool-id>", "TRS id (owner~repo~tool_id) or pretty form (owner/repo/tool_id)")
+    .option("--json", "Emit machine-readable JSON envelope")
+    .option("--latest", "Print only the latest version")
+    .action(runToolVersions);
+
+  program
+    .command("tool-revisions")
+    .description(
+      "List changeset revisions that publish a Tool Shed tool (ordered oldest→newest). " +
+        "Use for reproducible (name, owner, changeset_revision) workflow pins. " +
+        "Caveat: version strings are not monotonic — the same version can appear in multiple changesets.",
+    )
+    .argument("<tool-id>", "TRS id (owner~repo~tool_id) or pretty form (owner/repo/tool_id)")
+    .option("--tool-version <v>", "Restrict to revisions that publish this exact tool version")
+    .option("--latest", "Print only the newest matching revision")
+    .option("--json", "Emit machine-readable JSON envelope")
+    .action(runToolRevisions);
 
   return program;
 }

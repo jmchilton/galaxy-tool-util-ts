@@ -95,14 +95,14 @@ describe("getTRSToolVersions", () => {
 });
 
 describe("getLatestTRSToolVersion", () => {
-  it("returns the first entry's id", async () => {
+  it("returns the last entry's id (Tool Shed returns oldest-first)", async () => {
     const fixture = loadFixture("fastqc.json") as Array<{ id: string }>;
     const latest = await getLatestTRSToolVersion(
       TOOLSHED,
       "devteam~fastqc~fastqc",
       mockFetchOk(fixture),
     );
-    expect(latest).toBe(fixture[0].id);
+    expect(latest).toBe(fixture[fixture.length - 1].id);
   });
 
   it("returns null when there are no versions", async () => {

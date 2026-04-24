@@ -14,11 +14,17 @@ export {
   iterateToolSearchPages,
   getTRSToolVersions,
   getLatestTRSToolVersion,
+  getToolRevisions,
   ToolFetchError,
 } from "./client/index.js";
-export type { SearchToolsOptions, TRSToolVersion } from "./client/index.js";
+export type {
+  SearchToolsOptions,
+  TRSToolVersion,
+  ToolRevisionsOptions,
+  ToolRevisionMatch,
+} from "./client/index.js";
 
-export { ToolSearchService } from "./tool-search.js";
+export { ToolSearchService, normalizeHit } from "./tool-search.js";
 export type {
   NormalizedToolHit,
   ToolSearchServiceOptions,

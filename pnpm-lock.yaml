@@ -78,6 +78,9 @@ importers:
       '@galaxy-tool-util/schema':
         specifier: workspace:*
         version: link:../schema
+      '@galaxy-tool-util/search':
+        specifier: workspace:*
+        version: link:../search
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
