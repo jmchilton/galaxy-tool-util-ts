@@ -1,5 +1,16 @@
 # @galaxy-tool-util/gxwf-ui
 
+## 0.2.3
+
+### Patch Changes
+
+- [#68](https://github.com/jmchilton/galaxy-tool-util-ts/pull/68) [`de7fb91`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/de7fb9117717184cb9e42ac566ff7bf51f43e916) Thanks [@jmchilton](https://github.com/jmchilton)! - Set `activeEditor`, `resourceLangId`, and `editorIsOpen` context keys on Monaco mount so extension commands gated on those `when` clauses (Galaxy Workflows: Clean / Convert / Export / Insert Tool Step…) appear in the command palette.
+
+- Updated dependencies [[`3b97a0f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3b97a0f41c2358aa663df4e6490488e89c9ba9e5)]:
+  - @galaxy-tool-util/schema@1.1.0
+  - @galaxy-tool-util/gxwf-report-shell@1.1.0
+  - @galaxy-tool-util/gxwf-client@1.1.0
+
 ## 0.2.2
 
 ### Patch Changes
