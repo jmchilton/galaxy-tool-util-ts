@@ -52,7 +52,7 @@ function coerceTRSVersion(value: unknown, index: number): TRSToolVersion {
 /**
  * Fetch the list of TRS tool versions for a given `trsToolId`
  * (`<owner>~<repo>~<toolId>` form). Returns the raw server order —
- * Tool Shed typically returns newest first.
+ * Tool Shed returns oldest first (the last entry is the newest).
  */
 export async function getTRSToolVersions(
   toolshedUrl: string,
@@ -103,8 +103,8 @@ export async function getTRSToolVersions(
 
 /**
  * Fetch the latest TRS tool version id. Returns `null` if the tool has no
- * published versions. Tool Shed returns versions newest-first; we take the
- * first entry.
+ * published versions. Tool Shed returns versions oldest-first; the latest
+ * is the last entry.
  */
 export async function getLatestTRSToolVersion(
   toolshedUrl: string,
@@ -112,5 +112,5 @@ export async function getLatestTRSToolVersion(
   fetcher: typeof fetch = globalThis.fetch,
 ): Promise<string | null> {
   const versions = await getTRSToolVersions(toolshedUrl, trsToolId, fetcher);
-  return versions.length > 0 ? versions[0].id : null;
+  return versions.length > 0 ? versions[versions.length - 1].id : null;
 }

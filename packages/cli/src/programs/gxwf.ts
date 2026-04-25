@@ -12,6 +12,10 @@ import { runValidateWorkflow } from "../commands/validate-workflow.js";
 import { runValidateTests } from "../commands/validate-tests.js";
 import { runValidateTestsTree } from "../commands/validate-tests-tree.js";
 import { runValidateTree } from "../commands/validate-tree.js";
+import { runToolSearch } from "../commands/tool-search.js";
+import { runToolVersions } from "../commands/tool-versions.js";
+import { runToolRevisions } from "../commands/tool-revisions.js";
+import { runRepoSearch } from "../commands/repo-search.js";
 import { addStrictOptions } from "../commands/strict-options.js";
 
 export function buildGxwfProgram(): Command {
@@ -219,6 +223,61 @@ export function buildGxwfProgram(): Command {
       "Pair each tests file with a sibling workflow by filename convention (foo.gxwf-tests.yml ↔ foo.gxwf.yml/foo.ga) and cross-check inputs/outputs",
     )
     .action(runValidateTestsTree);
+
+  program
+    .command("tool-search")
+    .description("Search the Galaxy Tool Shed for tools matching a query")
+    .argument("<query>", "Search text (e.g. 'fastqc')")
+    .option("--page-size <n>", "Server-side page size", "20")
+    .option("--max-results <n>", "Hard cap on hits returned", "50")
+    .option("--page <n>", "Starting page (1-indexed)", "1")
+    .option("--owner <user>", "Filter hits to a single repo owner (client-side)")
+    .option("--match-name", "Drop hits where the query is not a token in the tool name")
+    .option("--json", "Emit machine-readable JSON envelope")
+    .option(
+      "--enrich",
+      "Resolve each hit's ParsedTool and attach it as `parsedTool` (one fetch per hit; off by default)",
+    )
+    .option(
+      "--cache-dir <dir>",
+      "Tool cache directory (used by --enrich; shared with galaxy-tool-cache)",
+    )
+    .action(runToolSearch);
+
+  program
+    .command("tool-versions")
+    .description("List TRS-published versions of a Tool Shed tool (newest last)")
+    .argument("<tool-id>", "TRS id (owner~repo~tool_id) or pretty form (owner/repo/tool_id)")
+    .option("--json", "Emit machine-readable JSON envelope")
+    .option("--latest", "Print only the latest version")
+    .action(runToolVersions);
+
+  program
+    .command("tool-revisions")
+    .description(
+      "List changeset revisions that publish a Tool Shed tool (ordered oldest→newest). " +
+        "Use for reproducible (name, owner, changeset_revision) workflow pins. " +
+        "Caveat: version strings are not monotonic — the same version can appear in multiple changesets.",
+    )
+    .argument("<tool-id>", "TRS id (owner~repo~tool_id) or pretty form (owner/repo/tool_id)")
+    .option("--tool-version <v>", "Restrict to revisions that publish this exact tool version")
+    .option("--latest", "Print only the newest matching revision")
+    .option("--json", "Emit machine-readable JSON envelope")
+    .action(runToolRevisions);
+
+  program
+    .command("repo-search")
+    .description(
+      "Search the Galaxy Tool Shed for repositories. Ranking is popularity-boosted; supports server-side --owner / --category filters via reserved keywords.",
+    )
+    .argument("<query>", "Search text (e.g. 'fastqc')")
+    .option("--page-size <n>", "Server-side page size", "20")
+    .option("--max-results <n>", "Hard cap on hits returned", "50")
+    .option("--page <n>", "Starting page (1-indexed)", "1")
+    .option("--owner <user>", "Restrict to a single owner (server-side `owner:` keyword)")
+    .option("--category <name>", "Restrict to a category (server-side `category:` keyword)")
+    .option("--json", "Emit machine-readable JSON envelope")
+    .action(runRepoSearch);
 
   return program;
 }

@@ -8,17 +8,29 @@
 
 export type { ToolSearchHit, SearchResults } from "./models/toolshed-search.js";
 export { normalizeToolSearchResults } from "./models/toolshed-search.js";
+export type { RepositorySearchHit } from "./models/toolshed-repo-search.js";
+export { normalizeRepoSearchResults } from "./models/toolshed-repo-search.js";
 
 export {
   searchTools,
   iterateToolSearchPages,
+  searchRepositories,
+  iterateRepoSearchPages,
+  buildRepoQuery,
   getTRSToolVersions,
   getLatestTRSToolVersion,
+  getToolRevisions,
   ToolFetchError,
 } from "./client/index.js";
-export type { SearchToolsOptions, TRSToolVersion } from "./client/index.js";
+export type {
+  SearchToolsOptions,
+  SearchRepositoriesOptions,
+  TRSToolVersion,
+  ToolRevisionsOptions,
+  ToolRevisionMatch,
+} from "./client/index.js";
 
-export { ToolSearchService } from "./tool-search.js";
+export { ToolSearchService, normalizeHit } from "./tool-search.js";
 export type {
   NormalizedToolHit,
   ToolSearchServiceOptions,
