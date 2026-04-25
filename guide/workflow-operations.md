@@ -354,6 +354,28 @@ galaxy-tool-cache populate-workflow my-workflow.ga
 galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
 ```
 
+### Tool Shed Discovery
+
+When you don't already have a tool id in hand, `gxwf` exposes JSON-first
+discovery against [`toolshed.g2.bx.psu.edu`](https://toolshed.g2.bx.psu.edu)
+that feeds straight into `galaxy-tool-cache add`. See [CLI reference →
+Tool Shed discovery commands](../packages/cli#tool-shed-discovery-commands)
+for full option tables.
+
+```bash
+# 1. Find candidate tools by free-text query
+gxwf tool-search fastqc --json
+
+# 2. Resolve the picked tool to an installable version
+gxwf tool-versions devteam/fastqc/fastqc --latest
+
+# 3. Cache the ParsedTool for validation / lint / convert --stateful
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+
+# 4. (Optional) Resolve to a specific changeset for reproducible workflow pinning
+gxwf tool-revisions devteam/fastqc/fastqc --tool-version 0.74+galaxy0 --latest --json
+```
+
 ### Schema Export
 
 Export the structural workflow JSON Schema for use with external validators:
