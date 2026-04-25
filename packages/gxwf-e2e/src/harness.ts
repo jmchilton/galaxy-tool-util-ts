@@ -36,6 +36,15 @@ export async function startHarness(
           "specs need the workspace path to read/write fixtures.",
       );
     }
+    // Re-seed the workspace so each describe block starts from a pristine tree
+    // (mutating specs like convert delete fixture files). In-process mode gets
+    // this for free via cloneWorkspace; external mode shares one directory.
+    const externalSeed = process.env.GXWF_E2E_EXTERNAL_SEED ?? options.seed ?? SEED_DIR;
+    if (fs.existsSync(externalSeed)) {
+      fs.rmSync(externalWorkspace, { recursive: true, force: true });
+      fs.mkdirSync(externalWorkspace, { recursive: true });
+      fs.cpSync(externalSeed, externalWorkspace, { recursive: true });
+    }
     return {
       baseUrl: externalUrl.replace(/\/+$/, ""),
       workspaceDir: externalWorkspace,
