@@ -157,6 +157,21 @@ gxwf validate my-workflow.ga --mode json-schema
 | `--json` | Output structured JSON report |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
+### `validate-tests <file>`
+
+Validate a workflow-test file (`*-tests.yml`, `*.gxwf-tests.yml`) against the Galaxy Tests schema. Optionally cross-checks job inputs and output assertions against a paired workflow.
+
+```bash
+gxwf validate-tests my-workflow-tests.yml
+gxwf validate-tests my-workflow-tests.yml --workflow my-workflow.gxwf.yml
+gxwf validate-tests my-workflow-tests.yml --json
+```
+
+| Option | Description |
+|---|---|
+| `--workflow <path>` | Cross-check job inputs + output assertions against a workflow (`.ga` / `.gxwf.yml`) |
+| `--json` | Output structured JSON report |
+
 ### `clean <file>`
 
 Strip stale bookkeeping keys and decode legacy JSON-encoded `tool_state` strings.
@@ -179,6 +194,7 @@ gxwf clean my-workflow.ga --diff
 | `--format <fmt>` | Force format (auto-detected by default) |
 | `--json` | Output structured JSON report |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
+| `--skip-uuid` | Skip stripping `uuid` fields (errors are always stripped) |
 
 ### `lint <file>`
 
@@ -275,6 +291,28 @@ Source must be a native (`.ga`) file — format2 inputs are rejected.
 Exit codes: 0 = clean, 1 = benign diffs only, 2 = real diffs or conversion errors.
 Filter flags affect only the text report — exit codes are unchanged.
 
+### `mermaid <file> [output]`
+
+Render a Galaxy workflow as a [Mermaid](https://mermaid.js.org) flowchart diagram. The `output` positional path infers the format by extension: `.mmd` writes raw Mermaid, `.md` writes a fenced code block. With no `output`, raw Mermaid is written to stdout.
+
+```bash
+# Print raw Mermaid to stdout
+gxwf mermaid my-workflow.ga
+
+# Write raw Mermaid file
+gxwf mermaid my-workflow.ga diagram.mmd
+
+# Write Markdown with fenced code block
+gxwf mermaid my-workflow.ga diagram.md
+
+# Render frame comments as subgraphs
+gxwf mermaid my-workflow.gxwf.yml --comments
+```
+
+| Option | Description |
+|---|---|
+| `--comments` | Render frame comments as Mermaid subgraphs |
+
 ### Tree (batch) commands
 
 Tree commands take a directory instead of a file, discover all workflows recursively, process each, and report aggregate results. They mirror the Python `gxwf-*-tree` commands.
@@ -350,6 +388,7 @@ Exit code 1 if any workflows had stale keys (useful for CI).
 | `--json` | Output structured JSON report |
 | `--report-markdown [file]` | Write Markdown report to file (or stdout if omitted) |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
+| `--skip-uuid` | Skip stripping `uuid` fields (errors are always stripped) |
 
 ### `convert-tree <dir>`
 
@@ -403,3 +442,18 @@ gxwf roundtrip-tree ./workflows/ --json
 
 Exit codes: 0 = all files clean, 1 = benign diffs only, 2 = any file has real diffs or conversion errors.
 Filter flags affect only the text report — exit codes are unchanged.
+
+### `validate-tests-tree <dir>`
+
+Batch validate workflow-test files (`*-tests.yml` / `*.gxwf-tests.yml`) under a directory.
+
+```bash
+gxwf validate-tests-tree ./workflows/
+gxwf validate-tests-tree ./workflows/ --auto-workflow
+gxwf validate-tests-tree ./workflows/ --json
+```
+
+| Option | Description |
+|---|---|
+| `--json` | Output structured JSON report |
+| `--auto-workflow` | Pair each tests file with a sibling workflow by filename convention (`foo.gxwf-tests.yml` ↔ `foo.gxwf.yml` / `foo.ga`) and cross-check inputs/outputs |
