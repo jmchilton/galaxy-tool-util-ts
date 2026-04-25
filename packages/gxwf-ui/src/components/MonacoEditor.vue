@@ -21,6 +21,7 @@ import { loadGalaxyWorkflowsExtension } from "../editor/extensionSource";
 import { resolveLanguageId } from "../editor/languageId";
 import { upsertMemoryFile } from "../editor/fileSystem";
 import { registerGxwfSaveHandler, type SaveHandlerRegistration } from "../editor/saveCommand";
+import { getService, IContextKeyService } from "@codingame/monaco-vscode-api/services";
 
 const props = withDefaults(
   defineProps<{
@@ -51,6 +52,13 @@ const ready = ref(false);
 const exposeForTests = import.meta.env.DEV || import.meta.env.VITE_GXWF_EXPOSE_MONACO === "1";
 let contentSub: monaco.IDisposable | null = null;
 let saveCmdReg: SaveHandlerRegistration | null = null;
+// Workbench context keys read by extension `when` clauses (e.g. `activeEditor`,
+// `resourceLangId`). The workbench editor service normally sets these — we
+// drive a standalone editor, so set them ourselves on mount and clear on
+// unmount. Without this, extension command-palette entries gated on these
+// keys (Galaxy Workflows: Clean, Convert, Export, Insert Tool Step…) are
+// invisible even though the commands are registered.
+let contextKeyDisposers: (() => void)[] = [];
 // Guards the update-from-prop vs. update-from-user race: avoid re-emitting
 // `update:content` for changes we just applied from the prop.
 let applyingProp = false;
@@ -72,6 +80,19 @@ onMounted(async () => {
       readOnly: props.readonly,
       minimap: { enabled: false },
     });
+
+    const ctxKeyService = await getService(IContextKeyService);
+    const activeEditorKey = ctxKeyService.createKey<string>("activeEditor", languageId);
+    const resourceLangIdKey = ctxKeyService.createKey<string>("resourceLangId", languageId);
+    const editorIsOpenKey = ctxKeyService.createKey<boolean>("editorIsOpen", true);
+    activeEditorKey.set(languageId);
+    resourceLangIdKey.set(languageId);
+    editorIsOpenKey.set(true);
+    contextKeyDisposers.push(
+      () => activeEditorKey.reset(),
+      () => resourceLangIdKey.reset(),
+      () => editorIsOpenKey.reset(),
+    );
 
     contentSub = m.onDidChangeContent(() => {
       if (applyingProp) return;
@@ -129,6 +150,8 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  for (const d of contextKeyDisposers) d();
+  contextKeyDisposers = [];
   saveCmdReg?.dispose();
   saveCmdReg = null;
   contentSub?.dispose();
