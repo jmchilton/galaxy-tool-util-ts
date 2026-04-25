@@ -22,6 +22,29 @@ export function cloneWorkspace(seed: string = SEED_DIR): string {
 export async function startHarness(
   options: { seed?: string; uiDir?: string } = {},
 ): Promise<TestHarness> {
+  // When GXWF_E2E_EXTERNAL_URL is set, skip launching the in-process Node server
+  // and target an externally-managed server (e.g. the Python gxwf-web) that the
+  // caller has already pointed at a workspace. The workspace path must also be
+  // provided via GXWF_E2E_EXTERNAL_WORKSPACE so specs that read/write fixtures
+  // directly can find the same tree the server is serving.
+  const externalUrl = process.env.GXWF_E2E_EXTERNAL_URL;
+  if (externalUrl) {
+    const externalWorkspace = process.env.GXWF_E2E_EXTERNAL_WORKSPACE;
+    if (!externalWorkspace) {
+      throw new Error(
+        "GXWF_E2E_EXTERNAL_URL is set but GXWF_E2E_EXTERNAL_WORKSPACE is not — " +
+          "specs need the workspace path to read/write fixtures.",
+      );
+    }
+    return {
+      baseUrl: externalUrl.replace(/\/+$/, ""),
+      workspaceDir: externalWorkspace,
+      async stop() {
+        // external server lifecycle is managed by the caller
+      },
+    };
+  }
+
   const workspaceDir = cloneWorkspace(options.seed);
   const uiDir = options.uiDir ?? UI_DIST;
   if (!fs.existsSync(uiDir)) {
