@@ -481,8 +481,40 @@ gxwf tool-search "quality control" --json --max-results 10
 |---|---|
 | `--page-size <n>` | Server-side page size (default `20`) |
 | `--max-results <n>` | Hard cap on hits returned (default `50`) |
+| `--page <n>` | Starting page (1-indexed; default `1`) |
+| `--owner <user>` | Restrict to one repo owner (client-side; tool-search has no server `owner:` keyword) |
+| `--match-name` | Drop hits where the query is not a token in the tool name |
 | `--json` | Emit `{ query, hits: [NormalizedToolHit, ...] }` |
-| `--cache-dir <dir>` | Reserved for future `--enrich` support |
+| `--enrich` | Resolve each hit's `ParsedTool` (one fetch per hit) and attach it as `parsedTool` on each JSON hit. Off by default. Best for skills that pick the top 1–3 results; wasteful for broad/paged exploration. |
+| `--cache-dir <dir>` | Tool cache directory used by `--enrich`. Defaults to the same location as `galaxy-tool-cache`. |
+
+The Tool Shed wraps queries with `*term*` server-side, so noisy queries can match
+description/help text. Combine `--match-name` with `--owner` to tighten ranking
+when triaging by hand. For repository-level discovery (where `owner:` and
+`category:` reserved keywords *are* honored server-side), see `repo-search`.
+
+### `repo-search <query>`
+
+Search the Tool Shed for **repositories** rather than individual tools. Different
+endpoint (`/api/repositories?q=`), different ranking (popularity-boosted by
+`times_downloaded`), and supports server-side `owner:` / `category:` reserved
+keywords. Better for "find me a *package* about X"; tool-search remains better
+for "find me a specific tool by exact name."
+
+```bash
+gxwf repo-search fastqc
+gxwf repo-search fastqc --owner devteam --json
+gxwf repo-search alignment --category "sequence analysis"
+```
+
+| Option | Description |
+|---|---|
+| `--page-size <n>` | Server-side page size (default `20`) |
+| `--max-results <n>` | Hard cap on hits returned (default `50`) |
+| `--page <n>` | Starting page (1-indexed; default `1`) |
+| `--owner <user>` | Restrict via the server-side `owner:` keyword |
+| `--category <name>` | Restrict via the server-side `category:` keyword (whitespace is auto-quoted) |
+| `--json` | Emit `{ query, filters, hits: [NormalizedRepoHit, ...] }` |
 
 ### `tool-versions <tool-id>`
 

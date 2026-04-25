@@ -45,10 +45,7 @@ async function fetchJson(
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (err) {
-    throw new ToolFetchError(
-      `Tool Shed request to ${url} failed: ${(err as Error).message}`,
-      url,
-    );
+    throw new ToolFetchError(`Tool Shed request to ${url} failed: ${(err as Error).message}`, url);
   }
   if (allow404 && response.status === 404) return null;
   if (!response.ok) {

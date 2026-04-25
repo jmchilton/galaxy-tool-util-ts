@@ -19,7 +19,11 @@ function buildFastqcResponder(): (url: string) => Response {
   const metadata = loadJSON("toolshed-revisions/fastqc-metadata.json");
   const ordered = loadJSON("toolshed-revisions/fastqc-ordered.json");
   return (url: string) => {
-    if (url.includes("/api/repositories?") && url.includes("owner=devteam") && url.includes("name=fastqc")) {
+    if (
+      url.includes("/api/repositories?") &&
+      url.includes("owner=devteam") &&
+      url.includes("name=fastqc")
+    ) {
       return new Response(JSON.stringify(repo), { status: 200 });
     }
     if (url.includes("get_ordered_installable_revisions")) {
@@ -106,8 +110,7 @@ describe("getToolRevisions", () => {
   });
 
   it("returns [] when the repo listing is empty", async () => {
-    const fetcher: typeof fetch = async () =>
-      new Response(JSON.stringify([]), { status: 200 });
+    const fetcher: typeof fetch = async () => new Response(JSON.stringify([]), { status: 200 });
     const matches = await getToolRevisions(TOOLSHED, {
       owner: "ghost",
       repo: "nope",
@@ -123,7 +126,8 @@ describe("getToolRevisions", () => {
     const ordered = loadJSON("toolshed-revisions/fastqc-ordered.json");
     const fetcher: typeof fetch = async (input) => {
       const url = typeof input === "string" ? input : (input as Request).url;
-      if (url.includes("/api/repositories?")) return new Response(JSON.stringify(repo), { status: 200 });
+      if (url.includes("/api/repositories?"))
+        return new Response(JSON.stringify(repo), { status: 200 });
       if (url.includes("get_ordered_installable_revisions"))
         return new Response(JSON.stringify(ordered), { status: 200 });
       return new Response(JSON.stringify(metadata), { status: 200 });

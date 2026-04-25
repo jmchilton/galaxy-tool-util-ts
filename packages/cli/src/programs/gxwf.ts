@@ -15,6 +15,7 @@ import { runValidateTree } from "../commands/validate-tree.js";
 import { runToolSearch } from "../commands/tool-search.js";
 import { runToolVersions } from "../commands/tool-versions.js";
 import { runToolRevisions } from "../commands/tool-revisions.js";
+import { runRepoSearch } from "../commands/repo-search.js";
 import { addStrictOptions } from "../commands/strict-options.js";
 
 export function buildGxwfProgram(): Command {
@@ -229,8 +230,18 @@ export function buildGxwfProgram(): Command {
     .argument("<query>", "Search text (e.g. 'fastqc')")
     .option("--page-size <n>", "Server-side page size", "20")
     .option("--max-results <n>", "Hard cap on hits returned", "50")
+    .option("--page <n>", "Starting page (1-indexed)", "1")
+    .option("--owner <user>", "Filter hits to a single repo owner (client-side)")
+    .option("--match-name", "Drop hits where the query is not a token in the tool name")
     .option("--json", "Emit machine-readable JSON envelope")
-    .option("--cache-dir <dir>", "Tool cache directory (reserved for future --enrich support)")
+    .option(
+      "--enrich",
+      "Resolve each hit's ParsedTool and attach it as `parsedTool` (one fetch per hit; off by default)",
+    )
+    .option(
+      "--cache-dir <dir>",
+      "Tool cache directory (used by --enrich; shared with galaxy-tool-cache)",
+    )
     .action(runToolSearch);
 
   program
@@ -253,6 +264,20 @@ export function buildGxwfProgram(): Command {
     .option("--latest", "Print only the newest matching revision")
     .option("--json", "Emit machine-readable JSON envelope")
     .action(runToolRevisions);
+
+  program
+    .command("repo-search")
+    .description(
+      "Search the Galaxy Tool Shed for repositories. Ranking is popularity-boosted; supports server-side --owner / --category filters via reserved keywords.",
+    )
+    .argument("<query>", "Search text (e.g. 'fastqc')")
+    .option("--page-size <n>", "Server-side page size", "20")
+    .option("--max-results <n>", "Hard cap on hits returned", "50")
+    .option("--page <n>", "Starting page (1-indexed)", "1")
+    .option("--owner <user>", "Restrict to a single owner (server-side `owner:` keyword)")
+    .option("--category <name>", "Restrict to a category (server-side `category:` keyword)")
+    .option("--json", "Emit machine-readable JSON envelope")
+    .action(runRepoSearch);
 
   return program;
 }

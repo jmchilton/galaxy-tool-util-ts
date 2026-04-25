@@ -55,6 +55,21 @@ const FIXTURES = [
     url: `${TOOLSHED}/api/repositories/get_ordered_installable_revisions?owner=devteam&name=fastqc`,
     out: "packages/search/test/fixtures/toolshed-revisions/fastqc-ordered.json",
   },
+  {
+    name: "repo-search-fastqc-page1",
+    url: `${TOOLSHED}/api/repositories?q=fastqc&page=1&page_size=3`,
+    out: "packages/search/test/fixtures/toolshed-repo-search/fastqc-page1.json",
+  },
+  {
+    name: "repo-search-fastqc-owner-devteam",
+    url: `${TOOLSHED}/api/repositories?q=${encodeURIComponent("fastqc owner:devteam")}&page=1&page_size=3`,
+    out: "packages/search/test/fixtures/toolshed-repo-search/fastqc-owner-devteam.json",
+  },
+  {
+    name: "repo-search-empty",
+    url: `${TOOLSHED}/api/repositories?q=zzzzzzz_no_such_repo_query_xyz&page=1&page_size=10`,
+    out: "packages/search/test/fixtures/toolshed-repo-search/empty.json",
+  },
 ];
 
 const argv = process.argv.slice(2);
