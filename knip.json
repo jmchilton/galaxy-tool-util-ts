@@ -40,7 +40,8 @@
         "@galaxy-tool-util/gxwf-report-shell",
         "@codingame/monaco-vscode-editor-api",
         "reflect-metadata",
-        "vscode"
+        "vscode",
+        "mermaid"
       ]
     },
     "packages/integration-tests": {
