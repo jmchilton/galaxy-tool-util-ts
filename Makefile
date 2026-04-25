@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test test-e2e check fix format-fix sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-glossary build-glossary check-sync-all
+.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-glossary build-glossary check-sync-all
 
 all: check test
 
@@ -24,6 +24,12 @@ check: lint format typecheck verify-test-format-schema
 
 fix: format-fix
 	pnpm -r lint -- --fix
+
+# Regenerate docs/skills/gxwf-cli.skill.md from the commander program definitions.
+# Builds @galaxy-tool-util/cli first since the generator imports from dist/.
+gen-skill:
+	pnpm --filter @galaxy-tool-util/cli build
+	node packages/cli/scripts/generate-cli-skill.mjs
 
 # Sync golden cache fixtures from Galaxy repo.
 # Set GALAXY_ROOT to your Galaxy checkout, e.g.:
