@@ -2016,6 +2016,22 @@
             "title": "Lint Warnings",
             "default": 0
           },
+          "lint_error_messages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lint Error Messages",
+            "default": []
+          },
+          "lint_warning_messages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lint Warning Messages",
+            "default": []
+          },
           "results": {
             "items": {
               "$ref": "#/components/schemas/ValidationStepResult"

@@ -20,7 +20,34 @@
       />
     </div>
 
-    <DataTable :value="report.results" size="small" class="results-table">
+    <Message
+      v-if="lintErrorMessages.length"
+      severity="error"
+      :closable="false"
+      data-description="lint errors"
+    >
+      <ul class="message-list">
+        <li v-for="(m, i) in lintErrorMessages" :key="'le' + i">{{ m }}</li>
+      </ul>
+    </Message>
+
+    <Message
+      v-if="lintWarningMessages.length"
+      severity="warn"
+      :closable="false"
+      data-description="lint warnings"
+    >
+      <ul class="message-list">
+        <li v-for="(m, i) in lintWarningMessages" :key="'lw' + i">{{ m }}</li>
+      </ul>
+    </Message>
+
+    <DataTable
+      v-if="report.results.length"
+      :value="report.results"
+      size="small"
+      class="results-table"
+    >
       <Column field="step" header="Step" />
       <Column header="Tool">
         <template #body="{ data }: { data: ValidationStepResult }">
@@ -58,6 +85,8 @@ const props = defineProps<{
 
 const structureErrors = computed(() => props.report.structure_errors ?? []);
 const encodingErrors = computed(() => props.report.encoding_errors ?? []);
+const lintErrorMessages = computed(() => props.report.lint_error_messages ?? []);
+const lintWarningMessages = computed(() => props.report.lint_warning_messages ?? []);
 
 function statusSeverity(status: ValidationStepResult["status"]) {
   if (status === "ok") return "success";
@@ -83,8 +112,13 @@ function statusSeverity(status: ValidationStepResult["status"]) {
   margin-top: 0.5rem;
 }
 
-.error-list {
+.error-list,
+.message-list {
   margin: 0;
   padding-left: 1.25rem;
+}
+
+.message-list li + li {
+  margin-top: 0.25rem;
 }
 </style>

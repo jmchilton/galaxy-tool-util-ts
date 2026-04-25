@@ -21,6 +21,12 @@ export default async function globalSetup(): Promise<void> {
     process.env.GXWF_E2E_MONACO = "1";
   }
 
+  // When targeting an externally-managed server (e.g. the Python gxwf-web),
+  // the caller owns the UI dist build and the lifecycle — skip both here.
+  if (process.env.GXWF_E2E_EXTERNAL_URL) {
+    return;
+  }
+
   if (process.env.GXWF_E2E_SKIP_UI_BUILD === "1" && fs.existsSync(UI_DIST)) {
     return;
   }

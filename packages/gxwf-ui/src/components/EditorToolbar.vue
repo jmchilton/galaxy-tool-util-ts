@@ -1,15 +1,6 @@
 <script setup lang="ts">
-// EditorToolbar — Monaco editor chrome for FileView. Buttons drive the live
-// editor instance (undo/redo/format/find/palette) + surface LSP problems via
-// a Badge. Save delegates to the parent's existing save handler so the
-// toolbar button and ⌘S (Phase 6.2) share one code path.
-//
-// Disabled states are polled on model.onDidChangeContent (cheap; fires once
-// per edit) rather than via separate events — monaco exposes no dedicated
-// undo-stack-changed event.
-
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import * as monaco from "monaco-editor";
+import type * as monaco from "monaco-editor";
 import Button from "primevue/button";
 import Badge from "primevue/badge";
 import { useEditorMarkers } from "../composables/useEditorMarkers";
@@ -18,7 +9,6 @@ import { showCommandPalette } from "../editor/commandPalette";
 const props = defineProps<{
   editor: monaco.editor.IStandaloneCodeEditor | null;
   model: monaco.editor.ITextModel | null;
-  dirty: boolean;
   saving: boolean;
   onSave: () => void;
 }>();
@@ -120,12 +110,12 @@ const problemsTitle = computed(() => {
 <template>
   <div class="editor-inner-toolbar" data-description="editor toolbar">
     <Button
-      :label="dirty ? 'Save •' : 'Save'"
+      label="Save"
       icon="pi pi-save"
       size="small"
       :loading="saving"
       :disabled="!editor"
-      title="Save (⌘S)"
+      v-tooltip.bottom="'Save (⌘S)'"
       data-description="editor toolbar save"
       @click="runSave"
     />
@@ -136,7 +126,7 @@ const problemsTitle = computed(() => {
       text
       :disabled="!canUndo"
       aria-label="Undo"
-      title="Undo"
+      v-tooltip.bottom="'Undo (⌘Z)'"
       data-description="editor toolbar undo"
       @click="runUndo"
     />
@@ -147,7 +137,7 @@ const problemsTitle = computed(() => {
       text
       :disabled="!canRedo"
       aria-label="Redo"
-      title="Redo"
+      v-tooltip.bottom="'Redo (⌘⇧Z)'"
       data-description="editor toolbar redo"
       @click="runRedo"
     />
@@ -159,7 +149,7 @@ const problemsTitle = computed(() => {
       severity="secondary"
       text
       aria-label="Format Document"
-      title="Format Document"
+      v-tooltip.bottom="'Format Document (⌥⇧F)'"
       data-description="editor toolbar format"
       @click="runFormat"
     />
@@ -170,7 +160,7 @@ const problemsTitle = computed(() => {
       text
       :disabled="!editor"
       aria-label="Find"
-      title="Find (⌘F)"
+      v-tooltip.bottom="'Find (⌘F)'"
       data-description="editor toolbar find"
       @click="runFind"
     />
@@ -181,7 +171,7 @@ const problemsTitle = computed(() => {
       text
       :disabled="!editor"
       aria-label="Command Palette"
-      title="Command Palette (⌘⇧P)"
+      v-tooltip.bottom="'Command Palette (⌘⇧P)'"
       data-description="editor toolbar palette"
       @click="runPalette"
     />
@@ -209,8 +199,8 @@ const problemsTitle = computed(() => {
 .editor-inner-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
+  gap: var(--gx-sp-2);
+  padding: var(--gx-sp-1) 0;
   flex-wrap: wrap;
 }
 
@@ -219,7 +209,7 @@ const problemsTitle = computed(() => {
   height: 1.25rem;
   background: var(--p-content-border-color, #dee2e6);
   align-self: stretch;
-  margin: 0 0.25rem;
+  margin: 0 var(--gx-sp-1);
 }
 
 .spacer {
@@ -234,7 +224,7 @@ const problemsTitle = computed(() => {
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--p-border-radius, 6px);
-  padding: 0.25rem 0.5rem;
+  padding: var(--gx-sp-1) var(--gx-sp-2);
   cursor: pointer;
   color: var(--p-text-color-secondary, #6c757d);
   font: inherit;

@@ -100,6 +100,14 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
   if (opts.json || opts.reportHtml) {
     const lintErrors = report.structural.error_count + (report.bestPractices?.error_count ?? 0);
     const lintWarnings = report.structural.warn_count + (report.bestPractices?.warn_count ?? 0);
+    const lintErrorMessages = [
+      ...report.structural.errors.map((m) => m.message),
+      ...(report.bestPractices?.errors.map((m) => m.message) ?? []),
+    ];
+    const lintWarningMessages = [
+      ...report.structural.warnings.map((m) => m.message),
+      ...(report.bestPractices?.warnings.map((m) => m.message) ?? []),
+    ];
 
     // Effect Schema decode for structure_errors
     const structureErrors = decodeStructureErrors(data, format);
@@ -118,7 +126,12 @@ export async function runLint(filePath: string, opts: LintOptions): Promise<void
       lintErrors,
       lintWarnings,
       report.stateValidation ?? [],
-      { structure_errors: structureErrors, encoding_errors: encodingErrors },
+      {
+        structure_errors: structureErrors,
+        encoding_errors: encodingErrors,
+        lint_error_messages: lintErrorMessages,
+        lint_warning_messages: lintWarningMessages,
+      },
     );
     if (opts.json) {
       console.log(JSON.stringify(singleReport, null, 2));

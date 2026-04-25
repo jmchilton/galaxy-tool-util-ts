@@ -30,9 +30,14 @@ if (manifest.name !== "galaxy-workflows") {
   );
   process.exit(1);
 }
-if (!manifest.scripts?.["build:watch"]) {
+const watchScript = manifest.scripts?.["build:watch"]
+  ? "build:watch"
+  : manifest.scripts?.["watch"]
+    ? "watch"
+    : null;
+if (!watchScript) {
   console.error(
-    `[dev-with-ext] ${abs}/package.json has no build:watch script. Check EXT_COMMIT.md pin.`,
+    `[dev-with-ext] ${abs}/package.json has no build:watch or watch script. Check EXT_COMMIT.md pin.`,
   );
   process.exit(1);
 }
@@ -43,7 +48,7 @@ const args = [
   "ext,ui",
   "-c",
   "blue,green",
-  `pnpm -C "${abs}" run build:watch`,
+  `pnpm -C "${abs}" run ${watchScript}`,
   `VITE_GXWF_EXT_SOURCE=folder:${abs} pnpm dev`,
 ];
 const child = spawn("pnpm", ["exec", ...args], {

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { startHarness, type TestHarness } from "../src/harness.js";
-import { byDescription, RunButton, DryRunToggle, ResultPanel } from "../src/locators.js";
+import { byDescription, openOperationTab, ApplyButton, ResultPanel } from "../src/locators.js";
 
 const DIRTY = "iwc/stale-keys.ga";
 
@@ -21,16 +21,12 @@ test.describe.serial("clean workflow", () => {
     await harness?.stop();
   });
 
-  test("dry-run: report rendered, file unchanged", async ({ page }) => {
+  test("auto dry-run preview: report rendered, file unchanged", async ({ page }) => {
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(DIRTY)}`);
 
-    await page.locator(byDescription("clean tab")).click();
+    await openOperationTab(page, "clean");
 
-    await page.locator(byDescription(DryRunToggle.clean)).click();
-
-    await page.locator(byDescription(RunButton.clean)).click();
-
-    // Report panel shows content (not the "No results yet" placeholder).
+    // Panel auto-fires a dry-run preview on open; wait for the placeholder to disappear.
     const panel = page.locator(byDescription(ResultPanel.clean));
     await expect(panel.locator(".no-results")).toHaveCount(0, { timeout: 10_000 });
 
@@ -39,20 +35,17 @@ test.describe.serial("clean workflow", () => {
     expect(after).toBe(originalContent);
   });
 
-  test("write: file on disk is cleaned", async ({ page }) => {
+  test("apply: file on disk is cleaned", async ({ page }) => {
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(DIRTY)}`);
 
-    await page.locator(byDescription("clean tab")).click();
+    await openOperationTab(page, "clean");
 
-    // Ensure dry-run is unchecked (default false; no-op if state persists from nav).
-    const dryRun = page.locator(`${byDescription(DryRunToggle.clean)} input[type="checkbox"]`);
-    if (await dryRun.isChecked()) {
-      await page.locator(byDescription(DryRunToggle.clean)).click();
-    }
-
-    await page.locator(byDescription(RunButton.clean)).click();
-
+    // Wait for the auto-preview to populate, then the Apply button becomes enabled.
     const panel = page.locator(byDescription(ResultPanel.clean));
+    await expect(panel.locator(".no-results")).toHaveCount(0, { timeout: 10_000 });
+
+    await page.locator(byDescription(ApplyButton.clean)).click();
+
     await expect(panel.locator(".no-results")).toHaveCount(0, { timeout: 10_000 });
 
     // File has been rewritten.

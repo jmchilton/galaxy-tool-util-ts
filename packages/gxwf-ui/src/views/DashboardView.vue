@@ -3,14 +3,21 @@
     <div class="view-header">
       <div>
         <h1>Workflows</h1>
-        <p v-if="directory" class="directory-path">{{ directory }}</p>
+        <p v-if="directory" class="directory-path" :title="directory">
+          <i class="pi pi-folder" /> {{ directory }}
+        </p>
       </div>
-      <Button label="Refresh" icon="pi pi-refresh" :loading="loading" @click="refreshWorkflows" />
+      <Button
+        label="Refresh"
+        icon="pi pi-refresh"
+        text
+        :loading="loading"
+        @click="refreshWorkflows"
+        v-tooltip.left="'Re-scan the workflows directory'"
+      />
     </div>
     <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
-    <div class="list-frame">
-      <WorkflowList :workflows="workflows" :loading="loading" @select="handleSelect" />
-    </div>
+    <WorkflowList :workflows="workflows" :loading="loading" @select="handleSelect" />
   </div>
 </template>
 
@@ -44,24 +51,32 @@ function handleSelect(workflow: WorkflowEntry) {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  gap: var(--gx-sp-4);
+  margin-bottom: var(--gx-sp-4);
 }
 
 .view-header h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.5rem;
-}
-
-.list-frame {
-  border: 1px solid var(--gx-gold, #d0bd2a);
-  border-radius: 6px;
-  overflow: hidden;
+  margin: 0 0 var(--gx-sp-1);
+  font-size: var(--gx-fs-xl);
+  font-weight: 600;
 }
 
 .directory-path {
   margin: 0;
-  font-size: 0.875rem;
-  font-family: monospace;
+  font-size: var(--gx-fs-sm);
+  font-family: var(--gx-mono);
   color: var(--p-text-color-secondary, #6c757d);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 60ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directory-path .pi {
+  font-size: 0.8rem;
+  opacity: 0.7;
 }
 </style>

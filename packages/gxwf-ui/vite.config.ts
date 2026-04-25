@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 // When VITE_GXWF_EXT_SOURCE points at a folder on disk (dev), Vite must be
@@ -16,7 +16,7 @@ export default defineConfig({
       "/api": process.env.GXWF_BACKEND_URL ?? "http://localhost:8000",
     },
     fs: {
-      allow: [".", ...(extFolder ? [extFolder] : [])],
+      allow: [searchForWorkspaceRoot(process.cwd()), ...(extFolder ? [extFolder] : [])],
     },
   },
   // Extension-host iframe branches on workerOptions.type === 'module' and uses
