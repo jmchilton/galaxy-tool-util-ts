@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as YAML from "yaml";
 import { startHarness, type TestHarness } from "../src/harness.js";
-import { byDescription, RunButton, ResultPanel } from "../src/locators.js";
+import { byDescription, openOperationTab, ApplyButton, ResultPanel } from "../src/locators.js";
 
 const NATIVE = "iwc/average-bigwig-between-replicates.ga";
 const FORMAT2 = "synthetic/simple-format2.gxwf.yml";
@@ -25,13 +25,14 @@ test.describe.serial("export .ga -> format2", () => {
     expect(fs.existsSync(dst)).toBe(false);
 
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(NATIVE)}`);
-    await page.locator(byDescription("export tab")).click();
-    await page.locator(byDescription(RunButton.export)).click();
+    await openOperationTab(page, "export");
 
     const panel = page.locator(byDescription(ResultPanel.export));
     await expect(panel.locator(".no-results")).toHaveCount(0, { timeout: 30_000 });
 
-    // Wait for disk write to settle after UI signals done.
+    await page.locator(byDescription(ApplyButton.export)).click();
+
+    // Wait for disk write to settle after Apply.
     await expect.poll(() => fs.existsSync(dst), { timeout: 10_000 }).toBe(true);
     expect(fs.readFileSync(src, "utf8")).toBe(originalContent);
 
@@ -58,11 +59,12 @@ test.describe.serial("export format2 -> .ga", () => {
     expect(fs.existsSync(dst)).toBe(false);
 
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(FORMAT2)}`);
-    await page.locator(byDescription("export tab")).click();
-    await page.locator(byDescription(RunButton.export)).click();
+    await openOperationTab(page, "export");
 
     const panel = page.locator(byDescription(ResultPanel.export));
     await expect(panel.locator(".no-results")).toHaveCount(0, { timeout: 30_000 });
+
+    await page.locator(byDescription(ApplyButton.export)).click();
 
     await expect.poll(() => fs.existsSync(dst), { timeout: 10_000 }).toBe(true);
     expect(fs.readFileSync(src, "utf8")).toBe(originalContent);

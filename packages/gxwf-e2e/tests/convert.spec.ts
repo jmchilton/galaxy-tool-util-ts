@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as YAML from "yaml";
 import { startHarness, type TestHarness } from "../src/harness.js";
-import { byDescription, openOperationTab, RunButton } from "../src/locators.js";
+import { byDescription, openOperationTab, ApplyButton, ResultPanel } from "../src/locators.js";
 
 const NATIVE = "iwc/average-bigwig-between-replicates.ga";
 const FORMAT2 = "synthetic/simple-format2.gxwf.yml";
@@ -31,7 +31,11 @@ test.describe.serial("convert .ga -> format2", () => {
 
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(NATIVE)}`);
     await openOperationTab(page, "convert");
-    await page.locator(byDescription(RunButton.convert)).click();
+
+    const panel = page.locator(byDescription(ResultPanel.convert));
+    await expect(panel.locator(".no-results")).toHaveCount(0, { timeout: 30_000 });
+
+    await page.locator(byDescription(ApplyButton.convert)).click();
 
     // After convert, UI routes back to "/" — wait for disk state to settle
     // rather than a specific panel visibility.
@@ -60,7 +64,11 @@ test.describe.serial("convert format2 -> .ga", () => {
 
     await page.goto(`${harness.baseUrl}/workflow/${encodeURIComponent(FORMAT2)}`);
     await openOperationTab(page, "convert");
-    await page.locator(byDescription(RunButton.convert)).click();
+
+    const panel = page.locator(byDescription(ResultPanel.convert));
+    await expect(panel.locator(".no-results")).toHaveCount(0, { timeout: 30_000 });
+
+    await page.locator(byDescription(ApplyButton.convert)).click();
 
     await expect.poll(() => fs.existsSync(dst), { timeout: 30_000 }).toBe(true);
     await expect.poll(() => fs.existsSync(src), { timeout: 10_000 }).toBe(false);
