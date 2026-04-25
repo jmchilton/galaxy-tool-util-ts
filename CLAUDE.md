@@ -74,9 +74,16 @@ pnpm build
 node packages/gxwf-web/dist/bin/gxwf-web.js <workflows-dir> --port 8000
 
 # 3. UI dev server on :5173 in another shell — proxies /workflows and /api to :8000.
-cd packages/gxwf-ui && pnpm dev
+#    Default to the Monaco-enabled flow so extension commands (Clean/Convert/Export/
+#    Insert Tool Step…) are available; bare `pnpm dev` builds without Monaco.
+cd packages/gxwf-ui && \
+  VITE_GXWF_MONACO=1 \
+  GXWF_EXT_PATH=~/projects/worktrees/galaxy-workflows-vscode/branch/wf_tool_state \
+  pnpm dev:with-ext
 ```
 
 Open http://localhost:5173/. `GXWF_BACKEND_URL` overrides the proxy target (default `http://localhost:8000`).
+
+**Default to Monaco when starting a dev server.** When the user asks for "the dev server" or "dev instance," start the UI via `pnpm dev:with-ext` with `VITE_GXWF_MONACO=1` and `GXWF_EXT_PATH` pointing at the galaxy-workflows-vscode worktree above (`~/projects/worktrees/galaxy-workflows-vscode/branch/wf_tool_state`). Without `VITE_GXWF_MONACO=1` the editor falls back to a plain textarea and the extension never loads. `dev:with-ext` runs the extension's watch script in parallel; refresh the browser tab after extension rebuilds (HMR doesn't reload the extension-host worker). The pinned commit is in `packages/gxwf-ui/EXT_COMMIT.md` — bump it together with the worktree if a fix lands upstream.
 
 **Stale-dist gotcha.** The backend bin runs from `packages/gxwf-web/dist/`, not from source. After editing backend code (router, handlers, schema), `pnpm build` and restart the server before retesting — otherwise the running server is still the old compiled version and you'll chase ghosts (e.g. 404s on routes that exist in source). If you hit an unexpected 4xx/5xx from gxwf-web, first check whether dist is stale via `git status packages/gxwf-web/dist packages/*/dist` or `grep` the relevant code in `dist/` to confirm the change is present.

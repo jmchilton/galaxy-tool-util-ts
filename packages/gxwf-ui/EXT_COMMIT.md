@@ -8,7 +8,7 @@ artifact derived from it (`.vsix` fixture, `EXTENSION_COMMIT` in CI, etc.).
 ```
 EXTENSION_REPO=https://github.com/davelopez/galaxy-workflows-vscode
 EXTENSION_BRANCH=wf_tool_state
-EXTENSION_COMMIT=f04ac4298345478a2dfedb091a963447cdcec951
+EXTENSION_COMMIT=4ea938ac9045aaf373272e173fcf42116f294ad9
 ```
 
 ## When to bump
