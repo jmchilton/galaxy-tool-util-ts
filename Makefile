@@ -25,7 +25,7 @@ check: lint format typecheck verify-test-format-schema
 fix: format-fix
 	pnpm -r lint -- --fix
 
-# Regenerate docs/skills/gxwf-cli.skill.md from the commander program definitions.
+# Regenerate docs/skills/gxwf-cli/SKILL.md from the commander program definitions.
 # Builds @galaxy-tool-util/cli first since the generator imports from dist/.
 gen-skill:
 	pnpm --filter @galaxy-tool-util/cli build

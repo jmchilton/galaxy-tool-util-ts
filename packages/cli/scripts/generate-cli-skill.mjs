@@ -1,5 +1,5 @@
 /**
- * Generate docs/skills/gxwf-cli.skill.md from commander programs.
+ * Generate docs/skills/gxwf-cli/SKILL.md from commander programs.
  *
  * Walks the configured Command instances for `gxwf` and `galaxy-tool-cache`
  * and emits a single distributable skill markdown file. Re-run after CLI churn.
@@ -16,7 +16,7 @@ import { buildGalaxyToolCacheProgram } from "../dist/programs/galaxy-tool-cache.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "../../..");
-const outFile = join(repoRoot, "docs/skills/gxwf-cli.skill.md");
+const outFile = join(repoRoot, "docs/skills/gxwf-cli/SKILL.md");
 
 const FRONTMATTER = `---
 name: gxwf-cli

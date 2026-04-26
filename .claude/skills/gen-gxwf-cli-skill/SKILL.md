@@ -1,13 +1,13 @@
 ---
 name: gen-gxwf-cli-skill
-description: Regenerate the single-page gxwf / galaxy-tool-cache CLI skill at docs/skills/gxwf-cli.skill.md. Use after CLI churn — runs `make gen-skill` (commander introspection) then enriches the generated scaffold with worked examples and exit-code prose lifted from docs/packages/cli.md.
+description: Regenerate the single-page gxwf / galaxy-tool-cache CLI skill at docs/skills/gxwf-cli/SKILL.md. Use after CLI churn — runs `make gen-skill` (commander introspection) then enriches the generated scaffold with worked examples and exit-code prose lifted from docs/packages/cli.md.
 argument-hint: "[--check]"
 user-invocable: true
 ---
 
 # Generate gxwf-cli skill
 
-Regenerates `docs/skills/gxwf-cli.skill.md` — a single-file, distributable skill
+Regenerates `docs/skills/gxwf-cli/SKILL.md` — a single-file, distributable skill
 covering the surface of both `gxwf` and `galaxy-tool-cache`.
 
 ## Why this skill exists
@@ -27,7 +27,7 @@ files you already maintain.
 ## Steps
 
 1. Run `make gen-skill`. This builds `@galaxy-tool-util/cli` (the generator
-   imports from `dist/`) and writes a fresh `docs/skills/gxwf-cli.skill.md`.
+   imports from `dist/`) and writes a fresh `docs/skills/gxwf-cli/SKILL.md`.
    Treat its frontmatter, command/option tables, and argument lists as
    authoritative — never hand-edit them. If they look wrong, fix the source
    in `packages/cli/src/programs/` and re-run.
@@ -68,7 +68,7 @@ files you already maintain.
   the output — re-run `make gen-skill` and fix the source.
 - Never invent options, flags, or examples not present in
   `packages/cli/src/programs/` or `docs/packages/cli.md`.
-- The skill output lives at `docs/skills/gxwf-cli.skill.md`. Do not move it.
+- The skill output lives at `docs/skills/gxwf-cli/SKILL.md`. Do not move it.
 
 ## Files involved
 
@@ -77,4 +77,4 @@ files you already maintain.
   program definition
 - `packages/cli/scripts/generate-cli-skill.mjs` — introspection generator
 - `docs/packages/cli.md` — prose source (examples, exit codes, narrative)
-- `docs/skills/gxwf-cli.skill.md` — generated output
+- `docs/skills/gxwf-cli/SKILL.md` — generated output
