@@ -264,6 +264,69 @@ Batch validate workflow-test files (*-tests.yml / *.gxwf-tests.yml) under a dire
 | `--json` | Output structured JSON report |
 | `--auto-workflow` | Pair each tests file with a sibling workflow by filename convention (foo.gxwf-tests.yml ↔ foo.gxwf.yml/foo.ga) and cross-check inputs/outputs |
 
+### `tool-search <query>`
+
+Search the Galaxy Tool Shed for tools matching a query
+
+**Arguments:**
+
+- `<query>` — Search text (e.g. 'fastqc')
+
+| Option | Description |
+|---|---|
+| `--page-size <n>` | Server-side page size (default: `20`) |
+| `--max-results <n>` | Hard cap on hits returned (default: `50`) |
+| `--page <n>` | Starting page (1-indexed) (default: `1`) |
+| `--owner <user>` | Filter hits to a single repo owner (client-side) |
+| `--match-name` | Drop hits where the query is not a token in the tool name |
+| `--json` | Emit machine-readable JSON envelope |
+| `--enrich` | Resolve each hit's ParsedTool and attach it as `parsedTool` (one fetch per hit; off by default) |
+| `--cache-dir <dir>` | Tool cache directory (used by --enrich; shared with galaxy-tool-cache) |
+
+### `tool-versions <tool-id>`
+
+List TRS-published versions of a Tool Shed tool (newest last)
+
+**Arguments:**
+
+- `<tool-id>` — TRS id (owner~repo~tool_id) or pretty form (owner/repo/tool_id)
+
+| Option | Description |
+|---|---|
+| `--json` | Emit machine-readable JSON envelope |
+| `--latest` | Print only the latest version |
+
+### `tool-revisions <tool-id>`
+
+List changeset revisions that publish a Tool Shed tool (ordered oldest→newest). Use for reproducible (name, owner, changeset_revision) workflow pins. Caveat: version strings are not monotonic — the same version can appear in multiple changesets.
+
+**Arguments:**
+
+- `<tool-id>` — TRS id (owner~repo~tool_id) or pretty form (owner/repo/tool_id)
+
+| Option | Description |
+|---|---|
+| `--tool-version <v>` | Restrict to revisions that publish this exact tool version |
+| `--latest` | Print only the newest matching revision |
+| `--json` | Emit machine-readable JSON envelope |
+
+### `repo-search <query>`
+
+Search the Galaxy Tool Shed for repositories. Ranking is popularity-boosted; supports server-side --owner / --category filters via reserved keywords.
+
+**Arguments:**
+
+- `<query>` — Search text (e.g. 'fastqc')
+
+| Option | Description |
+|---|---|
+| `--page-size <n>` | Server-side page size (default: `20`) |
+| `--max-results <n>` | Hard cap on hits returned (default: `50`) |
+| `--page <n>` | Starting page (1-indexed) (default: `1`) |
+| `--owner <user>` | Restrict to a single owner (server-side `owner:` keyword) |
+| `--category <name>` | Restrict to a category (server-side `category:` keyword) |
+| `--json` | Emit machine-readable JSON envelope |
+
 ## `galaxy-tool-cache`
 
 Cache and inspect Galaxy tool metadata
