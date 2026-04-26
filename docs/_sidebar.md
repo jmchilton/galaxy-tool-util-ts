@@ -7,6 +7,7 @@
   - [Search](packages/search.md)
   - [CLI](packages/cli.md)
   - [Tool Cache Proxy](packages/tool-cache-proxy.md)
+  - [Workflow Graph](packages/workflow-graph.md)
 - **Guides**
   - [Workflow Operations](guide/workflow-operations.md)
   - [Workflow Validation](guide/workflow-validation.md)

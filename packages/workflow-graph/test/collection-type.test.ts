@@ -7,160 +7,140 @@ import {
   isValidCollectionTypeStr,
 } from "../src/collection-type.js";
 
-describe("CollectionTypeDescription.canMatch", () => {
+const ct = (collectionType: string) => new CollectionTypeDescription(collectionType);
+
+describe("CollectionTypeDescription.accepts", () => {
   it("matches equal simple collection types", () => {
-    const list = new CollectionTypeDescription("list");
-    expect(list.canMatch(new CollectionTypeDescription("list"))).toBe(true);
+    expect(ct("list").accepts(ct("list"))).toBe(true);
+    expect(ct("paired").accepts(ct("paired"))).toBe(true);
+    expect(ct("list:paired").accepts(ct("list:paired"))).toBe(true);
   });
 
   it("does not match differing simple types", () => {
-    expect(
-      new CollectionTypeDescription("list").canMatch(new CollectionTypeDescription("paired")),
-    ).toBe(false);
-  });
-
-  it("matches equal compound types", () => {
-    expect(
-      new CollectionTypeDescription("list:paired").canMatch(
-        new CollectionTypeDescription("list:paired"),
-      ),
-    ).toBe(true);
+    expect(ct("list").accepts(ct("paired"))).toBe(false);
+    expect(ct("paired").accepts(ct("list"))).toBe(false);
   });
 
   it("returns false vs NULL sentinel", () => {
-    expect(new CollectionTypeDescription("list").canMatch(NULL_COLLECTION_TYPE_DESCRIPTION)).toBe(
-      false,
-    );
+    expect(ct("list").accepts(NULL_COLLECTION_TYPE_DESCRIPTION)).toBe(false);
   });
 
   it("returns true vs ANY sentinel", () => {
-    expect(new CollectionTypeDescription("list").canMatch(ANY_COLLECTION_TYPE_DESCRIPTION)).toBe(
-      true,
-    );
+    expect(ct("list").accepts(ANY_COLLECTION_TYPE_DESCRIPTION)).toBe(true);
   });
 
   describe("paired_or_unpaired", () => {
-    it("accepts a paired collection as paired_or_unpaired", () => {
-      expect(
-        new CollectionTypeDescription("paired_or_unpaired").canMatch(
-          new CollectionTypeDescription("paired"),
-        ),
-      ).toBe(true);
+    it("paired_or_unpaired requirement is satisfied by paired (not vice versa)", () => {
+      expect(ct("paired_or_unpaired").accepts(ct("paired"))).toBe(true);
+      expect(ct("paired").accepts(ct("paired_or_unpaired"))).toBe(false);
+      expect(ct("list:paired_or_unpaired").accepts(ct("list:paired"))).toBe(true);
+      expect(ct("list:paired").accepts(ct("list:paired_or_unpaired"))).toBe(false);
     });
 
     it("accepts a list at list:paired_or_unpaired", () => {
-      expect(
-        new CollectionTypeDescription("list:paired_or_unpaired").canMatch(
-          new CollectionTypeDescription("list"),
-        ),
-      ).toBe(true);
-    });
-
-    it("accepts a list:paired at list:paired_or_unpaired", () => {
-      expect(
-        new CollectionTypeDescription("list:paired_or_unpaired").canMatch(
-          new CollectionTypeDescription("list:paired"),
-        ),
-      ).toBe(true);
+      expect(ct("list:paired_or_unpaired").accepts(ct("list"))).toBe(true);
     });
 
     it("does not accept list:list at list:paired_or_unpaired", () => {
-      expect(
-        new CollectionTypeDescription("list:paired_or_unpaired").canMatch(
-          new CollectionTypeDescription("list:list"),
-        ),
-      ).toBe(false);
+      expect(ct("list:paired_or_unpaired").accepts(ct("list:list"))).toBe(false);
     });
   });
 
-  describe("sample_sheet normalization", () => {
-    it("sample_sheet matches list (normalized)", () => {
-      expect(
-        new CollectionTypeDescription("list").canMatch(
-          new CollectionTypeDescription("sample_sheet"),
-        ),
-      ).toBe(true);
+  describe("sample_sheet asymmetry", () => {
+    it("list requirement is satisfied by sample_sheet (not vice versa)", () => {
+      expect(ct("list").accepts(ct("sample_sheet"))).toBe(true);
+      expect(ct("sample_sheet").accepts(ct("list"))).toBe(false);
+      expect(ct("list:paired").accepts(ct("sample_sheet:paired"))).toBe(true);
+      expect(ct("sample_sheet:paired").accepts(ct("list:paired"))).toBe(false);
     });
 
-    it("sample_sheet:paired matches list:paired (normalized)", () => {
-      expect(
-        new CollectionTypeDescription("list:paired").canMatch(
-          new CollectionTypeDescription("sample_sheet:paired"),
-        ),
-      ).toBe(true);
+    it("sample_sheet:paired_or_unpaired accepts list:paired_or_unpaired output but not vice versa", () => {
+      expect(ct("list:paired_or_unpaired").accepts(ct("sample_sheet:paired_or_unpaired"))).toBe(
+        true,
+      );
+      expect(ct("sample_sheet:paired_or_unpaired").accepts(ct("list:paired_or_unpaired"))).toBe(
+        false,
+      );
     });
+  });
+});
 
-    it("sample_sheet:paired_or_unpaired matches list:paired_or_unpaired", () => {
-      expect(
-        new CollectionTypeDescription("list:paired_or_unpaired").canMatch(
-          new CollectionTypeDescription("sample_sheet:paired_or_unpaired"),
-        ),
-      ).toBe(true);
-    });
+describe("CollectionTypeDescription.compatible (symmetric)", () => {
+  it("is symmetric for sample_sheet/list subtype pair", () => {
+    expect(ct("list").compatible(ct("sample_sheet"))).toBe(true);
+    expect(ct("sample_sheet").compatible(ct("list"))).toBe(true);
+    expect(ct("list:paired").compatible(ct("sample_sheet:paired"))).toBe(true);
+    expect(ct("sample_sheet:paired").compatible(ct("list:paired"))).toBe(true);
+  });
+
+  it("is symmetric for paired/paired_or_unpaired subtype pair", () => {
+    expect(ct("paired").compatible(ct("paired_or_unpaired"))).toBe(true);
+    expect(ct("paired_or_unpaired").compatible(ct("paired"))).toBe(true);
+    expect(ct("list:paired").compatible(ct("list:paired_or_unpaired"))).toBe(true);
+    expect(ct("list:paired_or_unpaired").compatible(ct("list:paired"))).toBe(true);
+  });
+
+  it("same type is compatible with itself", () => {
+    expect(ct("list").compatible(ct("list"))).toBe(true);
+    expect(ct("paired").compatible(ct("paired"))).toBe(true);
+  });
+
+  it("disjoint types are not compatible (either order)", () => {
+    expect(ct("paired").compatible(ct("list"))).toBe(false);
+    expect(ct("list").compatible(ct("paired"))).toBe(false);
+    expect(ct("list:paired").compatible(ct("list:list"))).toBe(false);
+    expect(ct("list:list").compatible(ct("list:paired"))).toBe(false);
   });
 });
 
 describe("CollectionTypeDescription.canMapOver", () => {
   it("list can map over paired_or_unpaired (subcollection)", () => {
-    expect(
-      new CollectionTypeDescription("list").canMapOver(
-        new CollectionTypeDescription("paired_or_unpaired"),
-      ),
-    ).toBe(true);
+    expect(ct("list").canMapOver(ct("paired_or_unpaired"))).toBe(true);
   });
 
   it("list:paired can map over paired", () => {
-    expect(
-      new CollectionTypeDescription("list:paired").canMapOver(
-        new CollectionTypeDescription("paired"),
-      ),
-    ).toBe(true);
+    expect(ct("list:paired").canMapOver(ct("paired"))).toBe(true);
   });
 
   it("list cannot map over itself", () => {
-    expect(
-      new CollectionTypeDescription("list").canMapOver(new CollectionTypeDescription("list")),
-    ).toBe(false);
+    expect(ct("list").canMapOver(ct("list"))).toBe(false);
   });
 
   it("list:paired can map over paired_or_unpaired (universal suffix)", () => {
-    expect(
-      new CollectionTypeDescription("list:paired").canMapOver(
-        new CollectionTypeDescription("paired_or_unpaired"),
-      ),
-    ).toBe(true);
+    expect(ct("list:paired").canMapOver(ct("paired_or_unpaired"))).toBe(true);
   });
 
   it("list:list:paired can map over list:paired_or_unpaired via compound suffix", () => {
-    expect(
-      new CollectionTypeDescription("list:list:paired").canMapOver(
-        new CollectionTypeDescription("list:paired_or_unpaired"),
-      ),
-    ).toBe(true);
+    expect(ct("list:list:paired").canMapOver(ct("list:paired_or_unpaired"))).toBe(true);
   });
 
   it("refuses to map over ANY sentinel", () => {
-    expect(new CollectionTypeDescription("list").canMapOver(ANY_COLLECTION_TYPE_DESCRIPTION)).toBe(
-      false,
-    );
+    expect(ct("list").canMapOver(ANY_COLLECTION_TYPE_DESCRIPTION)).toBe(false);
+  });
+
+  it("plain list output cannot map over a sample_sheet input (asymmetry)", () => {
+    expect(ct("list:list").canMapOver(ct("sample_sheet"))).toBe(false);
+    expect(ct("list:paired").canMapOver(ct("sample_sheet:paired"))).toBe(false);
+  });
+
+  it("sample_sheet:list output can map over a sample_sheet input", () => {
+    expect(ct("sample_sheet:list").canMapOver(ct("sample_sheet"))).toBe(true);
   });
 });
 
 describe("CollectionTypeDescription.append", () => {
   it("appends a normal collection type", () => {
-    const appended = new CollectionTypeDescription("list").append(
-      new CollectionTypeDescription("paired"),
-    );
+    const appended = ct("list").append(ct("paired"));
     expect(appended.collectionType).toBe("list:paired");
   });
 
   it("appending NULL yields this", () => {
-    const list = new CollectionTypeDescription("list");
+    const list = ct("list");
     expect(list.append(NULL_COLLECTION_TYPE_DESCRIPTION)).toBe(list);
   });
 
   it("appending ANY yields ANY", () => {
-    expect(new CollectionTypeDescription("list").append(ANY_COLLECTION_TYPE_DESCRIPTION)).toBe(
+    expect(ct("list").append(ANY_COLLECTION_TYPE_DESCRIPTION)).toBe(
       ANY_COLLECTION_TYPE_DESCRIPTION,
     );
   });
@@ -168,63 +148,56 @@ describe("CollectionTypeDescription.append", () => {
 
 describe("CollectionTypeDescription.effectiveMapOver", () => {
   it("strips matching suffix", () => {
-    const effective = new CollectionTypeDescription("list:paired").effectiveMapOver(
-      new CollectionTypeDescription("paired"),
-    );
+    const effective = ct("list:paired").effectiveMapOver(ct("paired"));
     expect(effective.collectionType).toBe("list");
   });
 
   it("returns NULL when not mappable", () => {
-    const effective = new CollectionTypeDescription("list").effectiveMapOver(
-      new CollectionTypeDescription("paired"),
-    );
+    const effective = ct("list").effectiveMapOver(ct("paired"));
     expect(effective).toBe(NULL_COLLECTION_TYPE_DESCRIPTION);
   });
 
   it("list over paired_or_unpaired keeps the list rank", () => {
-    const effective = new CollectionTypeDescription("list").effectiveMapOver(
-      new CollectionTypeDescription("paired_or_unpaired"),
-    );
+    const effective = ct("list").effectiveMapOver(ct("paired_or_unpaired"));
     expect(effective.collectionType).toBe("list");
   });
 
   it("list:paired over paired_or_unpaired strips one rank", () => {
-    const effective = new CollectionTypeDescription("list:paired").effectiveMapOver(
-      new CollectionTypeDescription("paired_or_unpaired"),
-    );
+    const effective = ct("list:paired").effectiveMapOver(ct("paired_or_unpaired"));
     expect(effective.collectionType).toBe("list");
   });
 
   it("list:list over list:paired_or_unpaired produces list", () => {
-    const effective = new CollectionTypeDescription("list:list").effectiveMapOver(
-      new CollectionTypeDescription("list:paired_or_unpaired"),
-    );
+    const effective = ct("list:list").effectiveMapOver(ct("list:paired_or_unpaired"));
     expect(effective.collectionType).toBe("list");
   });
 });
 
 describe("sentinels", () => {
-  it("NULL does not match anything, including itself", () => {
-    expect(NULL_COLLECTION_TYPE_DESCRIPTION.canMatch(NULL_COLLECTION_TYPE_DESCRIPTION)).toBe(false);
-    expect(NULL_COLLECTION_TYPE_DESCRIPTION.canMatch(new CollectionTypeDescription("list"))).toBe(
+  it("NULL accepts nothing, including itself", () => {
+    expect(NULL_COLLECTION_TYPE_DESCRIPTION.accepts(NULL_COLLECTION_TYPE_DESCRIPTION)).toBe(false);
+    expect(NULL_COLLECTION_TYPE_DESCRIPTION.accepts(ct("list"))).toBe(false);
+  });
+
+  it("ANY accepts any non-NULL", () => {
+    expect(ANY_COLLECTION_TYPE_DESCRIPTION.accepts(ct("list"))).toBe(true);
+    expect(ANY_COLLECTION_TYPE_DESCRIPTION.accepts(NULL_COLLECTION_TYPE_DESCRIPTION)).toBe(false);
+  });
+
+  it("NULL is compatible with nothing", () => {
+    expect(NULL_COLLECTION_TYPE_DESCRIPTION.compatible(ct("list"))).toBe(false);
+    expect(NULL_COLLECTION_TYPE_DESCRIPTION.compatible(ANY_COLLECTION_TYPE_DESCRIPTION)).toBe(
       false,
     );
   });
 
-  it("ANY matches any non-NULL", () => {
-    expect(ANY_COLLECTION_TYPE_DESCRIPTION.canMatch(new CollectionTypeDescription("list"))).toBe(
-      true,
-    );
-    expect(ANY_COLLECTION_TYPE_DESCRIPTION.canMatch(NULL_COLLECTION_TYPE_DESCRIPTION)).toBe(false);
-  });
-
   it("NULL.append(other) returns other", () => {
-    const list = new CollectionTypeDescription("list");
+    const list = ct("list");
     expect(NULL_COLLECTION_TYPE_DESCRIPTION.append(list)).toBe(list);
   });
 
   it("ANY.append always returns ANY", () => {
-    expect(ANY_COLLECTION_TYPE_DESCRIPTION.append(new CollectionTypeDescription("list"))).toBe(
+    expect(ANY_COLLECTION_TYPE_DESCRIPTION.append(ct("list"))).toBe(
       ANY_COLLECTION_TYPE_DESCRIPTION,
     );
   });
