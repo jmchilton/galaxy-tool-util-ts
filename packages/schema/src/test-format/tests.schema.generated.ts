@@ -7,7 +7,7 @@ export const testsSchema = {
       properties: {
         class: {
           const: "Collection",
-          title: "class_",
+          title: "Class",
           type: "string",
         },
         collection_type: {
@@ -20,7 +20,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "collection_type",
+          title: "Collection Type",
         },
         elements: {
           anyOf: [
@@ -55,7 +55,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "elements",
+          title: "Elements",
         },
         identifier: {
           anyOf: [
@@ -67,7 +67,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "identifier",
+          title: "Identifier",
         },
         name: {
           anyOf: [
@@ -79,7 +79,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "name",
+          title: "Name",
         },
         rows: {
           anyOf: [
@@ -95,7 +95,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "rows",
+          title: "Rows",
         },
       },
       required: ["class"],
@@ -115,7 +115,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "collection_type",
+          title: "Collection Type",
         },
       },
       title: "CollectionAttributes",
@@ -126,14 +126,14 @@ export const testsSchema = {
       properties: {
         class: {
           const: "File",
-          title: "class_",
+          title: "Class",
           type: "string",
         },
         composite_data: {
           items: {
             type: "string",
           },
-          title: "composite_data",
+          title: "Composite Data",
           type: "array",
         },
         contents: {
@@ -146,7 +146,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "contents",
+          title: "Contents",
         },
         dbkey: {
           anyOf: [
@@ -158,7 +158,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "dbkey",
+          title: "Dbkey",
         },
         decompress: {
           anyOf: [
@@ -170,7 +170,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "decompress",
+          title: "Decompress",
         },
         deferred: {
           anyOf: [
@@ -182,7 +182,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "deferred",
+          title: "Deferred",
         },
         filetype: {
           anyOf: [
@@ -194,7 +194,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "filetype",
+          title: "File Type",
         },
         hashes: {
           anyOf: [
@@ -209,7 +209,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "hashes",
+          title: "Hashes",
         },
         identifier: {
           anyOf: [
@@ -221,7 +221,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "identifier",
+          title: "Identifier",
         },
         info: {
           anyOf: [
@@ -233,7 +233,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "info",
+          title: "Info",
         },
         location: {
           anyOf: [
@@ -245,7 +245,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "location",
+          title: "Location",
         },
         name: {
           anyOf: [
@@ -257,7 +257,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "name",
+          title: "Name",
         },
         path: {
           anyOf: [
@@ -269,7 +269,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "path",
+          title: "Path",
         },
         space_to_tab: {
           anyOf: [
@@ -281,7 +281,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "space_to_tab",
+          title: "Space To Tab",
         },
         tags: {
           anyOf: [
@@ -296,7 +296,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "tags",
+          title: "Tags",
         },
         to_posix_lines: {
           anyOf: [
@@ -308,7 +308,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "to_posix_lines",
+          title: "To POSIX Lines",
         },
       },
       required: ["class", "composite_data"],
@@ -321,7 +321,7 @@ export const testsSchema = {
       properties: {
         class: {
           const: "File",
-          title: "class_",
+          title: "Class",
           type: "string",
         },
         composite_data: {
@@ -337,10 +337,10 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "composite_data",
+          title: "Composite Data",
         },
         contents: {
-          title: "contents",
+          title: "Contents",
           type: "string",
         },
         dbkey: {
@@ -353,7 +353,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "dbkey",
+          title: "Dbkey",
         },
         decompress: {
           anyOf: [
@@ -365,7 +365,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "decompress",
+          title: "Decompress",
         },
         deferred: {
           anyOf: [
@@ -377,7 +377,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "deferred",
+          title: "Deferred",
         },
         filetype: {
           anyOf: [
@@ -389,7 +389,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "filetype",
+          title: "File Type",
         },
         hashes: {
           anyOf: [
@@ -404,7 +404,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "hashes",
+          title: "Hashes",
         },
         identifier: {
           anyOf: [
@@ -416,7 +416,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "identifier",
+          title: "Identifier",
         },
         info: {
           anyOf: [
@@ -428,7 +428,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "info",
+          title: "Info",
         },
         location: {
           anyOf: [
@@ -440,7 +440,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "location",
+          title: "Location",
         },
         name: {
           anyOf: [
@@ -452,7 +452,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "name",
+          title: "Name",
         },
         path: {
           anyOf: [
@@ -464,7 +464,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "path",
+          title: "Path",
         },
         space_to_tab: {
           anyOf: [
@@ -476,7 +476,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "space_to_tab",
+          title: "Space To Tab",
         },
         tags: {
           anyOf: [
@@ -491,7 +491,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "tags",
+          title: "Tags",
         },
         to_posix_lines: {
           anyOf: [
@@ -503,7 +503,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "to_posix_lines",
+          title: "To POSIX Lines",
         },
       },
       required: ["class", "contents"],
@@ -517,7 +517,7 @@ export const testsSchema = {
       properties: {
         class: {
           const: "Directory",
-          title: "class_",
+          title: "Class",
           type: "string",
         },
         filetype: {
@@ -530,7 +530,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "filetype",
+          title: "File Type",
         },
         location: {
           anyOf: [
@@ -542,7 +542,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "location",
+          title: "Location",
         },
         name: {
           anyOf: [
@@ -554,7 +554,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "name",
+          title: "Name",
         },
         path: {
           anyOf: [
@@ -566,7 +566,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "path",
+          title: "Path",
         },
       },
       required: ["class"],
@@ -578,11 +578,11 @@ export const testsSchema = {
       properties: {
         hash_function: {
           enum: ["MD5", "SHA-1", "SHA-256", "SHA-512"],
-          title: "hash_function",
+          title: "Hash Function",
           type: "string",
         },
         hash_value: {
-          title: "hash_value",
+          title: "Hash Value",
           type: "string",
         },
       },
@@ -590,12 +590,95 @@ export const testsSchema = {
       title: "HashEntry",
       type: "object",
     },
+    Job: {
+      additionalProperties: {
+        anyOf: [
+          {
+            oneOf: [
+              {
+                $ref: "#/$defs/LocationFile",
+              },
+              {
+                $ref: "#/$defs/PathFile",
+              },
+              {
+                $ref: "#/$defs/ContentsFile",
+              },
+              {
+                $ref: "#/$defs/CompositeDataFile",
+              },
+            ],
+          },
+          {
+            $ref: "#/$defs/Collection",
+          },
+          {
+            $ref: "#/$defs/Directory",
+          },
+          {
+            type: "string",
+          },
+          {
+            type: "integer",
+          },
+          {
+            type: "number",
+          },
+          {
+            type: "boolean",
+          },
+          {
+            items: {
+              anyOf: [
+                {
+                  oneOf: [
+                    {
+                      $ref: "#/$defs/LocationFile",
+                    },
+                    {
+                      $ref: "#/$defs/PathFile",
+                    },
+                    {
+                      $ref: "#/$defs/ContentsFile",
+                    },
+                    {
+                      $ref: "#/$defs/CompositeDataFile",
+                    },
+                  ],
+                },
+                {
+                  type: "string",
+                },
+                {
+                  type: "integer",
+                },
+                {
+                  type: "number",
+                },
+                {
+                  type: "boolean",
+                },
+                {
+                  type: "null",
+                },
+              ],
+            },
+            type: "array",
+          },
+          {
+            type: "null",
+          },
+        ],
+      },
+      title: "Job",
+      type: "object",
+    },
     LocationFile: {
       additionalProperties: false,
       properties: {
         class: {
           const: "File",
-          title: "class_",
+          title: "Class",
           type: "string",
         },
         composite_data: {
@@ -611,7 +694,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "composite_data",
+          title: "Composite Data",
         },
         contents: {
           anyOf: [
@@ -623,7 +706,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "contents",
+          title: "Contents",
         },
         dbkey: {
           anyOf: [
@@ -635,7 +718,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "dbkey",
+          title: "Dbkey",
         },
         decompress: {
           anyOf: [
@@ -647,7 +730,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "decompress",
+          title: "Decompress",
         },
         deferred: {
           anyOf: [
@@ -659,7 +742,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "deferred",
+          title: "Deferred",
         },
         filetype: {
           anyOf: [
@@ -671,7 +754,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "filetype",
+          title: "File Type",
         },
         hashes: {
           anyOf: [
@@ -686,7 +769,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "hashes",
+          title: "Hashes",
         },
         identifier: {
           anyOf: [
@@ -698,7 +781,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "identifier",
+          title: "Identifier",
         },
         info: {
           anyOf: [
@@ -710,10 +793,10 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "info",
+          title: "Info",
         },
         location: {
-          title: "location",
+          title: "Location",
           type: "string",
         },
         name: {
@@ -726,7 +809,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "name",
+          title: "Name",
         },
         path: {
           anyOf: [
@@ -738,7 +821,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "path",
+          title: "Path",
         },
         space_to_tab: {
           anyOf: [
@@ -750,7 +833,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "space_to_tab",
+          title: "Space To Tab",
         },
         tags: {
           anyOf: [
@@ -765,7 +848,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "tags",
+          title: "Tags",
         },
         to_posix_lines: {
           anyOf: [
@@ -777,7 +860,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "to_posix_lines",
+          title: "To POSIX Lines",
         },
       },
       required: ["class", "location"],
@@ -794,7 +877,7 @@ export const testsSchema = {
       properties: {
         class: {
           const: "File",
-          title: "class_",
+          title: "Class",
           type: "string",
         },
         composite_data: {
@@ -810,7 +893,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "composite_data",
+          title: "Composite Data",
         },
         contents: {
           anyOf: [
@@ -822,7 +905,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "contents",
+          title: "Contents",
         },
         dbkey: {
           anyOf: [
@@ -834,7 +917,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "dbkey",
+          title: "Dbkey",
         },
         decompress: {
           anyOf: [
@@ -846,7 +929,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "decompress",
+          title: "Decompress",
         },
         deferred: {
           anyOf: [
@@ -858,7 +941,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "deferred",
+          title: "Deferred",
         },
         filetype: {
           anyOf: [
@@ -870,7 +953,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "filetype",
+          title: "File Type",
         },
         hashes: {
           anyOf: [
@@ -885,7 +968,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "hashes",
+          title: "Hashes",
         },
         identifier: {
           anyOf: [
@@ -897,7 +980,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "identifier",
+          title: "Identifier",
         },
         info: {
           anyOf: [
@@ -909,7 +992,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "info",
+          title: "Info",
         },
         location: {
           anyOf: [
@@ -921,7 +1004,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "location",
+          title: "Location",
         },
         name: {
           anyOf: [
@@ -933,10 +1016,10 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "name",
+          title: "Name",
         },
         path: {
-          title: "path",
+          title: "Path",
           type: "string",
         },
         space_to_tab: {
@@ -949,7 +1032,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "space_to_tab",
+          title: "Space To Tab",
         },
         tags: {
           anyOf: [
@@ -964,7 +1047,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "tags",
+          title: "Tags",
         },
         to_posix_lines: {
           anyOf: [
@@ -976,342 +1059,34 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "to_posix_lines",
+          title: "To POSIX Lines",
         },
       },
       required: ["class", "path"],
       title: "PathFile",
       type: "object",
     },
-    RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___:
-      {
-        items: {
+    TestCollectionCollectionElementAssertions: {
+      additionalProperties: false,
+      properties: {
+        class: {
           anyOf: [
             {
-              discriminator: {
-                mapping: {
-                  attribute_is: "#/$defs/attribute_is_model",
-                  attribute_matches: "#/$defs/attribute_matches_model",
-                  element_text: "#/$defs/element_text_model",
-                  element_text_is: "#/$defs/element_text_is_model",
-                  element_text_matches: "#/$defs/element_text_matches_model",
-                  has_archive_member: "#/$defs/has_archive_member_model",
-                  has_element_with_path: "#/$defs/has_element_with_path_model",
-                  has_h5_attribute: "#/$defs/has_h5_attribute_model",
-                  has_h5_keys: "#/$defs/has_h5_keys_model",
-                  has_image_center_of_mass: "#/$defs/has_image_center_of_mass_model",
-                  has_image_channels: "#/$defs/has_image_channels_model",
-                  has_image_depth: "#/$defs/has_image_depth_model",
-                  has_image_frames: "#/$defs/has_image_frames_model",
-                  has_image_height: "#/$defs/has_image_height_model",
-                  has_image_mean_intensity: "#/$defs/has_image_mean_intensity_model",
-                  has_image_mean_object_size: "#/$defs/has_image_mean_object_size_model",
-                  has_image_n_labels: "#/$defs/has_image_n_labels_model",
-                  has_image_width: "#/$defs/has_image_width_model",
-                  has_json_property_with_text: "#/$defs/has_json_property_with_text_model",
-                  has_json_property_with_value: "#/$defs/has_json_property_with_value_model",
-                  has_line: "#/$defs/has_line_model",
-                  has_line_matching: "#/$defs/has_line_matching_model",
-                  has_n_columns: "#/$defs/has_n_columns_model",
-                  has_n_elements_with_path: "#/$defs/has_n_elements_with_path_model",
-                  has_n_lines: "#/$defs/has_n_lines_model",
-                  has_size: "#/$defs/has_size_model",
-                  has_text: "#/$defs/has_text_model",
-                  has_text_matching: "#/$defs/has_text_matching_model",
-                  is_valid_xml: "#/$defs/is_valid_xml_model",
-                  not_has_text: "#/$defs/not_has_text_model",
-                  xml_element: "#/$defs/xml_element_model",
-                },
-                propertyName: "that",
-              },
-              oneOf: [
-                {
-                  $ref: "#/$defs/has_line_model",
-                },
-                {
-                  $ref: "#/$defs/has_line_matching_model",
-                },
-                {
-                  $ref: "#/$defs/has_n_lines_model",
-                },
-                {
-                  $ref: "#/$defs/has_text_model",
-                },
-                {
-                  $ref: "#/$defs/has_text_matching_model",
-                },
-                {
-                  $ref: "#/$defs/not_has_text_model",
-                },
-                {
-                  $ref: "#/$defs/has_n_columns_model",
-                },
-                {
-                  $ref: "#/$defs/attribute_is_model",
-                },
-                {
-                  $ref: "#/$defs/attribute_matches_model",
-                },
-                {
-                  $ref: "#/$defs/element_text_model",
-                },
-                {
-                  $ref: "#/$defs/element_text_is_model",
-                },
-                {
-                  $ref: "#/$defs/element_text_matches_model",
-                },
-                {
-                  $ref: "#/$defs/has_element_with_path_model",
-                },
-                {
-                  $ref: "#/$defs/has_n_elements_with_path_model",
-                },
-                {
-                  $ref: "#/$defs/is_valid_xml_model",
-                },
-                {
-                  $ref: "#/$defs/xml_element_model",
-                },
-                {
-                  $ref: "#/$defs/has_json_property_with_text_model",
-                },
-                {
-                  $ref: "#/$defs/has_json_property_with_value_model",
-                },
-                {
-                  $ref: "#/$defs/has_h5_attribute_model",
-                },
-                {
-                  $ref: "#/$defs/has_h5_keys_model",
-                },
-                {
-                  $ref: "#/$defs/has_archive_member_model",
-                },
-                {
-                  $ref: "#/$defs/has_size_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_center_of_mass_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_channels_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_depth_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_frames_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_height_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_mean_intensity_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_mean_object_size_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_n_labels_model",
-                },
-                {
-                  $ref: "#/$defs/has_image_width_model",
-                },
-              ],
-            },
-            {
-              $ref: "#/$defs/has_line_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_line_matching_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_n_lines_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_text_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_text_matching_model_nested",
-            },
-            {
-              $ref: "#/$defs/not_has_text_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_n_columns_model_nested",
-            },
-            {
-              $ref: "#/$defs/attribute_is_model_nested",
-            },
-            {
-              $ref: "#/$defs/attribute_matches_model_nested",
-            },
-            {
-              $ref: "#/$defs/element_text_model_nested",
-            },
-            {
-              $ref: "#/$defs/element_text_is_model_nested",
-            },
-            {
-              $ref: "#/$defs/element_text_matches_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_element_with_path_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_n_elements_with_path_model_nested",
-            },
-            {
-              $ref: "#/$defs/is_valid_xml_model_nested",
-            },
-            {
-              $ref: "#/$defs/xml_element_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_json_property_with_text_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_json_property_with_value_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_h5_attribute_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_h5_keys_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_archive_member_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_size_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_center_of_mass_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_channels_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_depth_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_frames_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_height_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_mean_intensity_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_mean_object_size_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_n_labels_model_nested",
-            },
-            {
-              $ref: "#/$defs/has_image_width_model_nested",
-            },
-          ],
-        },
-        title:
-          "RootModel[List[Union[Annotated[Union[has_line_model, has_line_matching_model, has_n_lines_model, has_text_model, has_text_matching_model, not_has_text_model, has_n_columns_model, attribute_is_model, attribute_matches_model, element_text_model, element_text_is_model, element_text_matches_model, has_element_with_path_model, has_n_elements_with_path_model, is_valid_xml_model, xml_element_model, has_json_property_with_text_model, has_json_property_with_value_model, has_h5_attribute_model, has_h5_keys_model, has_archive_member_model, has_size_model, has_image_center_of_mass_model, has_image_channels_model, has_image_depth_model, has_image_frames_model, has_image_height_model, has_image_mean_intensity_model, has_image_mean_object_size_model, has_image_n_labels_model, has_image_width_model], FieldInfo(annotation=NoneType, required=True, discriminator='that')], has_line_model_nested, has_line_matching_model_nested, has_n_lines_model_nested, has_text_model_nested, has_text_matching_model_nested, not_has_text_model_nested, has_n_columns_model_nested, attribute_is_model_nested, attribute_matches_model_nested, element_text_model_nested, element_text_is_model_nested, element_text_matches_model_nested, has_element_with_path_model_nested, has_n_elements_with_path_model_nested, is_valid_xml_model_nested, xml_element_model_nested, has_json_property_with_text_model_nested, has_json_property_with_value_model_nested, has_h5_attribute_model_nested, has_h5_keys_model_nested, has_archive_member_model_nested, has_size_model_nested, has_image_center_of_mass_model_nested, has_image_channels_model_nested, has_image_depth_model_nested, has_image_frames_model_nested, has_image_height_model_nested, has_image_mean_intensity_model_nested, has_image_mean_object_size_model_nested, has_image_n_labels_model_nested, has_image_width_model_nested]]]",
-        type: "array",
-      },
-    RootModel_dict_str__Union_Annotated_Union_Annotated_LocationFile__Tag___Annotated_PathFile__Tag___Annotated_ContentsFile__Tag___Annotated_CompositeDataFile__Tag____Discriminator___Collection__Directory__str__int__float__bool__NoneType__list_Union_Annotated_Union_Annotated_LocationFile__Tag___Annotated_PathFile__Tag___Annotated_ContentsFile__Tag___Annotated_CompositeDataFile__Tag____Discriminator___str__int__float__bool__NoneType_____:
-      {
-        additionalProperties: {
-          anyOf: [
-            {
-              oneOf: [
-                {
-                  $ref: "#/$defs/LocationFile",
-                },
-                {
-                  $ref: "#/$defs/PathFile",
-                },
-                {
-                  $ref: "#/$defs/ContentsFile",
-                },
-                {
-                  $ref: "#/$defs/CompositeDataFile",
-                },
-              ],
-            },
-            {
-              $ref: "#/$defs/Collection",
-            },
-            {
-              $ref: "#/$defs/Directory",
-            },
-            {
+              const: "Collection",
               type: "string",
-            },
-            {
-              type: "integer",
-            },
-            {
-              type: "number",
-            },
-            {
-              type: "boolean",
-            },
-            {
-              items: {
-                anyOf: [
-                  {
-                    oneOf: [
-                      {
-                        $ref: "#/$defs/LocationFile",
-                      },
-                      {
-                        $ref: "#/$defs/PathFile",
-                      },
-                      {
-                        $ref: "#/$defs/ContentsFile",
-                      },
-                      {
-                        $ref: "#/$defs/CompositeDataFile",
-                      },
-                    ],
-                  },
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "integer",
-                  },
-                  {
-                    type: "number",
-                  },
-                  {
-                    type: "boolean",
-                  },
-                  {
-                    type: "null",
-                  },
-                ],
-              },
-              type: "array",
             },
             {
               type: "null",
             },
           ],
+          default: "Collection",
+          title: "Class",
         },
-        title:
-          "RootModel[dict[str, Union[Annotated[Union[Annotated[LocationFile, Tag], Annotated[PathFile, Tag], Annotated[ContentsFile, Tag], Annotated[CompositeDataFile, Tag]], Discriminator], Collection, Directory, str, int, float, bool, NoneType, list[Union[Annotated[Union[Annotated[LocationFile, Tag], Annotated[PathFile, Tag], Annotated[ContentsFile, Tag], Annotated[CompositeDataFile, Tag]], Discriminator], str, int, float, bool, NoneType]]]]]",
-        type: "object",
-      },
-    TestCollectionCollectionElementAssertions: {
-      additionalProperties: false,
-      properties: {
         element_tests: {
           anyOf: [
             {
               additionalProperties: {
-                anyOf: [
+                oneOf: [
                   {
                     $ref: "#/$defs/TestCollectionDatasetElementAssertions",
                   },
@@ -1327,13 +1102,13 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "element_tests",
+          title: "Element Tests",
         },
         elements: {
           anyOf: [
             {
               additionalProperties: {
-                anyOf: [
+                oneOf: [
                   {
                     $ref: "#/$defs/TestCollectionDatasetElementAssertions",
                   },
@@ -1349,7 +1124,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "elements",
+          title: "Elements",
         },
       },
       title: "TestCollectionCollectionElementAssertions",
@@ -1361,7 +1136,7 @@ export const testsSchema = {
         asserts: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               $ref: "#/$defs/assertion_dict",
@@ -1371,7 +1146,8 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "asserts",
+          description: "Assertions about the content of the output.",
+          title: "Asserts",
         },
         checksum: {
           anyOf: [
@@ -1383,7 +1159,22 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "checksum",
+          description:
+            "The target output's checksum should match the value specified here, in the form `hash_type$hash_value` (e.g. `sha1$8156d7ca0f46ed7abac98f82e36cfaddb2aca041`). Useful for large static files where uploading the whole file is inconvenient.",
+          title: "Checksum",
+        },
+        class: {
+          anyOf: [
+            {
+              const: "File",
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: "File",
+          title: "Class",
         },
         compare: {
           anyOf: [
@@ -1395,7 +1186,8 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "compare",
+          description: "Comparison mode used when matching the output against the reference file.",
+          title: "Compare",
         },
         decompress: {
           anyOf: [
@@ -1407,7 +1199,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "decompress",
+          description:
+            "If true, decompress files before comparison. Applies to assertions expressed with `assert_contents` or `compare` set to anything but `sim_size`. Useful for testing compressed outputs that are non-deterministic despite having deterministic decompressed contents. By default, only files compressed with bz2, gzip and zip are automatically decompressed.",
+          title: "Decompress",
         },
         delta: {
           anyOf: [
@@ -1419,7 +1213,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "delta",
+          description:
+            "If `compare` is set to `sim_size`, the maximum allowed absolute size difference (in bytes) between the generated data set and the reference file in `test-data/`. Default is 10000 bytes. Can be combined with `delta_frac`.",
+          title: "Delta",
         },
         delta_frac: {
           anyOf: [
@@ -1431,7 +1227,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "delta_frac",
+          description:
+            "If `compare` is set to `sim_size`, the maximum allowed relative size difference between the generated data set and the reference file in `test-data/`. 0.1 means the generated file can differ by at most 10%. Default is not to check for relative size difference. Can be combined with `delta`.",
+          title: "Delta Frac",
         },
         file: {
           anyOf: [
@@ -1443,7 +1241,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "file",
+          description:
+            "Name of the output file stored in the target `test-data` directory that will be used to compare against the results of executing the tool via the functional test framework.",
+          title: "File",
         },
         ftype: {
           anyOf: [
@@ -1455,7 +1255,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "ftype",
+          description:
+            "If specified, this value is checked against the corresponding output's data type. If these do not match, the test will fail.",
+          title: "File Type",
         },
         lines_diff: {
           anyOf: [
@@ -1467,7 +1269,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "lines_diff",
+          description:
+            "Applies when `compare` is set to `diff`, `re_match`, or `contains`. For `diff`, the number of lines of difference to allow (a modified line counts as two: one added, one removed).",
+          title: "Lines Diff",
         },
         location: {
           anyOf: [
@@ -1481,7 +1285,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "location",
+          description:
+            "URL that points to a remote output file that will be downloaded and used for output comparison. Use only when the file cannot be included in the `test-data` folder. May be combined with `file` (downloads when missing on disk) or used alone (filename inferred from the URL). A `checksum` is also used to verify the download when provided.",
+          title: "Location",
         },
         metadata: {
           anyOf: [
@@ -1494,7 +1300,8 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "metadata",
+          description: "Mapping of metadata keys to expected values for this output.",
+          title: "Metadata",
         },
         path: {
           anyOf: [
@@ -1506,7 +1313,8 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "path",
+          description: "Filesystem path to a local output file used for comparison.",
+          title: "Path",
         },
         sort: {
           anyOf: [
@@ -1518,7 +1326,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "sort",
+          description:
+            "Applies only if `compare` is `diff`, `re_match` or `re_match_multiline`. Sorts the lines of the history data set before comparison; for `diff` and `re_match` the local file is also sorted. Useful for non-deterministic output.",
+          title: "Sort",
         },
       },
       title: "TestCollectionDatasetElementAssertions",
@@ -1537,7 +1347,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "attributes",
+          title: "Attributes",
         },
         class: {
           anyOf: [
@@ -1550,7 +1360,7 @@ export const testsSchema = {
             },
           ],
           default: "Collection",
-          title: "class_",
+          title: "Class",
         },
         collection_type: {
           anyOf: [
@@ -1562,7 +1372,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "collection_type",
+          title: "Collection Type",
         },
         element_count: {
           anyOf: [
@@ -1574,13 +1384,13 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "element_count",
+          title: "Element Count",
         },
         element_tests: {
           anyOf: [
             {
               additionalProperties: {
-                anyOf: [
+                oneOf: [
                   {
                     $ref: "#/$defs/TestCollectionDatasetElementAssertions",
                   },
@@ -1596,13 +1406,13 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "element_tests",
+          title: "Element Tests",
         },
         elements: {
           anyOf: [
             {
               additionalProperties: {
-                anyOf: [
+                oneOf: [
                   {
                     $ref: "#/$defs/TestCollectionDatasetElementAssertions",
                   },
@@ -1618,7 +1428,7 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "elements",
+          title: "Elements",
         },
       },
       title: "TestCollectionOutputAssertions",
@@ -1630,7 +1440,7 @@ export const testsSchema = {
         asserts: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               $ref: "#/$defs/assertion_dict",
@@ -1640,7 +1450,8 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "asserts",
+          description: "Assertions about the content of the output.",
+          title: "Asserts",
         },
         checksum: {
           anyOf: [
@@ -1652,7 +1463,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "checksum",
+          description:
+            "The target output's checksum should match the value specified here, in the form `hash_type$hash_value` (e.g. `sha1$8156d7ca0f46ed7abac98f82e36cfaddb2aca041`). Useful for large static files where uploading the whole file is inconvenient.",
+          title: "Checksum",
         },
         class: {
           anyOf: [
@@ -1665,7 +1478,7 @@ export const testsSchema = {
             },
           ],
           default: "File",
-          title: "class_",
+          title: "Class",
         },
         compare: {
           anyOf: [
@@ -1677,7 +1490,8 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "compare",
+          description: "Comparison mode used when matching the output against the reference file.",
+          title: "Compare",
         },
         decompress: {
           anyOf: [
@@ -1689,7 +1503,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "decompress",
+          description:
+            "If true, decompress files before comparison. Applies to assertions expressed with `assert_contents` or `compare` set to anything but `sim_size`. Useful for testing compressed outputs that are non-deterministic despite having deterministic decompressed contents. By default, only files compressed with bz2, gzip and zip are automatically decompressed.",
+          title: "Decompress",
         },
         delta: {
           anyOf: [
@@ -1701,7 +1517,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "delta",
+          description:
+            "If `compare` is set to `sim_size`, the maximum allowed absolute size difference (in bytes) between the generated data set and the reference file in `test-data/`. Default is 10000 bytes. Can be combined with `delta_frac`.",
+          title: "Delta",
         },
         delta_frac: {
           anyOf: [
@@ -1713,7 +1531,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "delta_frac",
+          description:
+            "If `compare` is set to `sim_size`, the maximum allowed relative size difference between the generated data set and the reference file in `test-data/`. 0.1 means the generated file can differ by at most 10%. Default is not to check for relative size difference. Can be combined with `delta`.",
+          title: "Delta Frac",
         },
         file: {
           anyOf: [
@@ -1725,7 +1545,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "file",
+          description:
+            "Name of the output file stored in the target `test-data` directory that will be used to compare against the results of executing the tool via the functional test framework.",
+          title: "File",
         },
         ftype: {
           anyOf: [
@@ -1737,7 +1559,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "ftype",
+          description:
+            "If specified, this value is checked against the corresponding output's data type. If these do not match, the test will fail.",
+          title: "File Type",
         },
         lines_diff: {
           anyOf: [
@@ -1749,7 +1573,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "lines_diff",
+          description:
+            "Applies when `compare` is set to `diff`, `re_match`, or `contains`. For `diff`, the number of lines of difference to allow (a modified line counts as two: one added, one removed).",
+          title: "Lines Diff",
         },
         location: {
           anyOf: [
@@ -1763,7 +1589,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "location",
+          description:
+            "URL that points to a remote output file that will be downloaded and used for output comparison. Use only when the file cannot be included in the `test-data` folder. May be combined with `file` (downloads when missing on disk) or used alone (filename inferred from the URL). A `checksum` is also used to verify the download when provided.",
+          title: "Location",
         },
         metadata: {
           anyOf: [
@@ -1776,7 +1604,8 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "metadata",
+          description: "Mapping of metadata keys to expected values for this output.",
+          title: "Metadata",
         },
         path: {
           anyOf: [
@@ -1788,7 +1617,8 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "path",
+          description: "Filesystem path to a local output file used for comparison.",
+          title: "Path",
         },
         sort: {
           anyOf: [
@@ -1800,7 +1630,9 @@ export const testsSchema = {
             },
           ],
           default: null,
-          title: "sort",
+          description:
+            "Applies only if `compare` is `diff`, `re_match` or `re_match_multiline`. Sorts the lines of the history data set before comparison; for `diff` and `re_match` the local file is also sorted. Useful for non-deterministic output.",
+          title: "Sort",
         },
       },
       title: "TestDataOutputAssertions",
@@ -1818,7 +1650,9 @@ export const testsSchema = {
               type: "null",
             },
           ],
-          title: "doc",
+          default: null,
+          description: "Describes the purpose of the test.",
+          title: "Doc",
         },
         expect_failure: {
           anyOf: [
@@ -1830,15 +1664,17 @@ export const testsSchema = {
             },
           ],
           default: false,
-          title: "expect_failure",
+          description: "If true, the workflow is expected to produce an error.",
+          title: "Expect Failure",
         },
         job: {
-          $ref: "#/$defs/RootModel_dict_str__Union_Annotated_Union_Annotated_LocationFile__Tag___Annotated_PathFile__Tag___Annotated_ContentsFile__Tag___Annotated_CompositeDataFile__Tag____Discriminator___Collection__Directory__str__int__float__bool__NoneType__list_Union_Annotated_Union_Annotated_LocationFile__Tag___Annotated_PathFile__Tag___Annotated_ContentsFile__Tag___Annotated_CompositeDataFile__Tag____Discriminator___str__int__float__bool__NoneType_____",
-          title: "job",
+          $ref: "#/$defs/Job",
+          description:
+            "Defines the job to execute. Can be a path to a file or an inline dictionary describing the job inputs.",
         },
         outputs: {
           additionalProperties: {
-            anyOf: [
+            oneOf: [
               {
                 $ref: "#/$defs/TestCollectionOutputAssertions",
               },
@@ -1846,24 +1682,30 @@ export const testsSchema = {
                 $ref: "#/$defs/TestDataOutputAssertions",
               },
               {
-                type: "boolean",
-              },
-              {
-                type: "integer",
-              },
-              {
-                type: "number",
-              },
-              {
-                type: "string",
+                anyOf: [
+                  {
+                    type: "boolean",
+                  },
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                  {
+                    type: "string",
+                  },
+                ],
               },
             ],
           },
-          title: "outputs",
+          description:
+            "Defines assertions about outputs (datasets, collections or parameters). Each key corresponds to a labeled output; values are dictionaries describing the expected output.",
+          title: "Outputs",
           type: "object",
         },
       },
-      required: ["doc", "job", "outputs"],
+      required: ["job", "outputs"],
       title: "TestJob",
       type: "object",
     },
@@ -1880,6 +1722,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Attribute Is",
         },
         attribute_matches: {
           anyOf: [
@@ -1891,6 +1734,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Attribute Matches",
         },
         element_text: {
           anyOf: [
@@ -1902,6 +1746,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Element Text",
         },
         element_text_is: {
           anyOf: [
@@ -1913,6 +1758,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Element Text Is",
         },
         element_text_matches: {
           anyOf: [
@@ -1924,6 +1770,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Element Text Matches",
         },
         has_archive_member: {
           anyOf: [
@@ -1935,6 +1782,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Archive Member",
         },
         has_element_with_path: {
           anyOf: [
@@ -1946,6 +1794,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Element With Path",
         },
         has_h5_attribute: {
           anyOf: [
@@ -1957,6 +1806,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has H5 Attribute",
         },
         has_h5_keys: {
           anyOf: [
@@ -1968,6 +1818,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has H5 Keys",
         },
         has_image_center_of_mass: {
           anyOf: [
@@ -1979,6 +1830,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image Center Of Mass",
         },
         has_image_channels: {
           anyOf: [
@@ -1990,6 +1842,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image Channels",
         },
         has_image_depth: {
           anyOf: [
@@ -2001,6 +1854,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image Depth",
         },
         has_image_frames: {
           anyOf: [
@@ -2012,6 +1866,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image Frames",
         },
         has_image_height: {
           anyOf: [
@@ -2023,6 +1878,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image Height",
         },
         has_image_mean_intensity: {
           anyOf: [
@@ -2034,6 +1890,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image Mean Intensity",
         },
         has_image_mean_object_size: {
           anyOf: [
@@ -2045,6 +1902,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image Mean Object Size",
         },
         has_image_n_labels: {
           anyOf: [
@@ -2056,6 +1914,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image N Labels",
         },
         has_image_width: {
           anyOf: [
@@ -2067,6 +1926,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Image Width",
         },
         has_json_property_with_text: {
           anyOf: [
@@ -2078,6 +1938,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Json Property With Text",
         },
         has_json_property_with_value: {
           anyOf: [
@@ -2089,6 +1950,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Json Property With Value",
         },
         has_line: {
           anyOf: [
@@ -2100,6 +1962,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Line",
         },
         has_line_matching: {
           anyOf: [
@@ -2111,6 +1974,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Line Matching",
         },
         has_n_columns: {
           anyOf: [
@@ -2122,6 +1986,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has N Columns",
         },
         has_n_elements_with_path: {
           anyOf: [
@@ -2133,6 +1998,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has N Elements With Path",
         },
         has_n_lines: {
           anyOf: [
@@ -2144,6 +2010,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has N Lines",
         },
         has_size: {
           anyOf: [
@@ -2155,6 +2022,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Size",
         },
         has_text: {
           anyOf: [
@@ -2166,6 +2034,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Text",
         },
         has_text_matching: {
           anyOf: [
@@ -2177,6 +2046,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Has Text Matching",
         },
         is_valid_xml: {
           anyOf: [
@@ -2188,6 +2058,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Is Valid Xml",
         },
         not_has_text: {
           anyOf: [
@@ -2199,6 +2070,7 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Not Has Text",
         },
         xml_element: {
           anyOf: [
@@ -2210,10 +2082,245 @@ export const testsSchema = {
             },
           ],
           default: null,
+          title: "Assert Xml Element",
         },
       },
       title: "assertion_dict",
       type: "object",
+    },
+    assertion_list: {
+      items: {
+        anyOf: [
+          {
+            discriminator: {
+              mapping: {
+                attribute_is: "#/$defs/attribute_is_model",
+                attribute_matches: "#/$defs/attribute_matches_model",
+                element_text: "#/$defs/element_text_model",
+                element_text_is: "#/$defs/element_text_is_model",
+                element_text_matches: "#/$defs/element_text_matches_model",
+                has_archive_member: "#/$defs/has_archive_member_model",
+                has_element_with_path: "#/$defs/has_element_with_path_model",
+                has_h5_attribute: "#/$defs/has_h5_attribute_model",
+                has_h5_keys: "#/$defs/has_h5_keys_model",
+                has_image_center_of_mass: "#/$defs/has_image_center_of_mass_model",
+                has_image_channels: "#/$defs/has_image_channels_model",
+                has_image_depth: "#/$defs/has_image_depth_model",
+                has_image_frames: "#/$defs/has_image_frames_model",
+                has_image_height: "#/$defs/has_image_height_model",
+                has_image_mean_intensity: "#/$defs/has_image_mean_intensity_model",
+                has_image_mean_object_size: "#/$defs/has_image_mean_object_size_model",
+                has_image_n_labels: "#/$defs/has_image_n_labels_model",
+                has_image_width: "#/$defs/has_image_width_model",
+                has_json_property_with_text: "#/$defs/has_json_property_with_text_model",
+                has_json_property_with_value: "#/$defs/has_json_property_with_value_model",
+                has_line: "#/$defs/has_line_model",
+                has_line_matching: "#/$defs/has_line_matching_model",
+                has_n_columns: "#/$defs/has_n_columns_model",
+                has_n_elements_with_path: "#/$defs/has_n_elements_with_path_model",
+                has_n_lines: "#/$defs/has_n_lines_model",
+                has_size: "#/$defs/has_size_model",
+                has_text: "#/$defs/has_text_model",
+                has_text_matching: "#/$defs/has_text_matching_model",
+                is_valid_xml: "#/$defs/is_valid_xml_model",
+                not_has_text: "#/$defs/not_has_text_model",
+                xml_element: "#/$defs/xml_element_model",
+              },
+              propertyName: "that",
+            },
+            oneOf: [
+              {
+                $ref: "#/$defs/has_line_model",
+              },
+              {
+                $ref: "#/$defs/has_line_matching_model",
+              },
+              {
+                $ref: "#/$defs/has_n_lines_model",
+              },
+              {
+                $ref: "#/$defs/has_text_model",
+              },
+              {
+                $ref: "#/$defs/has_text_matching_model",
+              },
+              {
+                $ref: "#/$defs/not_has_text_model",
+              },
+              {
+                $ref: "#/$defs/has_n_columns_model",
+              },
+              {
+                $ref: "#/$defs/attribute_is_model",
+              },
+              {
+                $ref: "#/$defs/attribute_matches_model",
+              },
+              {
+                $ref: "#/$defs/element_text_model",
+              },
+              {
+                $ref: "#/$defs/element_text_is_model",
+              },
+              {
+                $ref: "#/$defs/element_text_matches_model",
+              },
+              {
+                $ref: "#/$defs/has_element_with_path_model",
+              },
+              {
+                $ref: "#/$defs/has_n_elements_with_path_model",
+              },
+              {
+                $ref: "#/$defs/is_valid_xml_model",
+              },
+              {
+                $ref: "#/$defs/xml_element_model",
+              },
+              {
+                $ref: "#/$defs/has_json_property_with_text_model",
+              },
+              {
+                $ref: "#/$defs/has_json_property_with_value_model",
+              },
+              {
+                $ref: "#/$defs/has_h5_attribute_model",
+              },
+              {
+                $ref: "#/$defs/has_h5_keys_model",
+              },
+              {
+                $ref: "#/$defs/has_archive_member_model",
+              },
+              {
+                $ref: "#/$defs/has_size_model",
+              },
+              {
+                $ref: "#/$defs/has_image_center_of_mass_model",
+              },
+              {
+                $ref: "#/$defs/has_image_channels_model",
+              },
+              {
+                $ref: "#/$defs/has_image_depth_model",
+              },
+              {
+                $ref: "#/$defs/has_image_frames_model",
+              },
+              {
+                $ref: "#/$defs/has_image_height_model",
+              },
+              {
+                $ref: "#/$defs/has_image_mean_intensity_model",
+              },
+              {
+                $ref: "#/$defs/has_image_mean_object_size_model",
+              },
+              {
+                $ref: "#/$defs/has_image_n_labels_model",
+              },
+              {
+                $ref: "#/$defs/has_image_width_model",
+              },
+            ],
+          },
+          {
+            $ref: "#/$defs/has_line_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_line_matching_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_n_lines_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_text_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_text_matching_model_nested",
+          },
+          {
+            $ref: "#/$defs/not_has_text_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_n_columns_model_nested",
+          },
+          {
+            $ref: "#/$defs/attribute_is_model_nested",
+          },
+          {
+            $ref: "#/$defs/attribute_matches_model_nested",
+          },
+          {
+            $ref: "#/$defs/element_text_model_nested",
+          },
+          {
+            $ref: "#/$defs/element_text_is_model_nested",
+          },
+          {
+            $ref: "#/$defs/element_text_matches_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_element_with_path_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_n_elements_with_path_model_nested",
+          },
+          {
+            $ref: "#/$defs/is_valid_xml_model_nested",
+          },
+          {
+            $ref: "#/$defs/xml_element_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_json_property_with_text_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_json_property_with_value_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_h5_attribute_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_h5_keys_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_archive_member_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_size_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_center_of_mass_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_channels_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_depth_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_frames_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_height_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_mean_intensity_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_mean_object_size_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_n_labels_model_nested",
+          },
+          {
+            $ref: "#/$defs/has_image_width_model_nested",
+          },
+        ],
+      },
+      title: "assertion_list",
+      type: "array",
     },
     attribute_is_model: {
       additionalProperties: false,
@@ -2256,7 +2363,7 @@ export const testsSchema = {
         },
       },
       required: ["path", "attribute", "text"],
-      title: "attribute_is_model",
+      title: "Assert Attribute Is",
       type: "object",
     },
     attribute_is_model_nested: {
@@ -2265,10 +2372,11 @@ export const testsSchema = {
       properties: {
         attribute_is: {
           $ref: "#/$defs/base_attribute_is_model",
+          title: "Assert Attribute Is",
         },
       },
       required: ["attribute_is"],
-      title: "attribute_is_model_nested",
+      title: "Assert Attribute Is (Nested)",
       type: "object",
     },
     attribute_matches_model: {
@@ -2313,7 +2421,7 @@ export const testsSchema = {
         },
       },
       required: ["path", "attribute", "expression"],
-      title: "attribute_matches_model",
+      title: "Assert Attribute Matches",
       type: "object",
     },
     attribute_matches_model_nested: {
@@ -2322,10 +2430,11 @@ export const testsSchema = {
       properties: {
         attribute_matches: {
           $ref: "#/$defs/base_attribute_matches_model",
+          title: "Assert Attribute Matches",
         },
       },
       required: ["attribute_matches"],
-      title: "attribute_matches_model_nested",
+      title: "Assert Attribute Matches (Nested)",
       type: "object",
     },
     base_attribute_is_model: {
@@ -2475,24 +2584,26 @@ export const testsSchema = {
         asserts: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Asserts",
         },
         children: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Children",
         },
         negate: {
           anyOf: [
@@ -2538,24 +2649,26 @@ export const testsSchema = {
         asserts: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Asserts",
         },
         children: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Children",
         },
         delta: {
           anyOf: [
@@ -3192,7 +3305,14 @@ export const testsSchema = {
           anyOf: [
             {
               items: {
-                type: "integer",
+                anyOf: [
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                ],
               },
               type: "array",
             },
@@ -3223,7 +3343,14 @@ export const testsSchema = {
           anyOf: [
             {
               items: {
-                type: "integer",
+                anyOf: [
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                ],
               },
               type: "array",
             },
@@ -3331,7 +3458,14 @@ export const testsSchema = {
           anyOf: [
             {
               items: {
-                type: "integer",
+                anyOf: [
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                ],
               },
               type: "array",
             },
@@ -3362,7 +3496,14 @@ export const testsSchema = {
           anyOf: [
             {
               items: {
-                type: "integer",
+                anyOf: [
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                ],
               },
               type: "array",
             },
@@ -4325,13 +4466,14 @@ export const testsSchema = {
         asserts: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Asserts",
         },
         attribute: {
           anyOf: [
@@ -4349,13 +4491,14 @@ export const testsSchema = {
         children: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Children",
         },
         delta: {
           anyOf: [
@@ -4480,7 +4623,7 @@ export const testsSchema = {
         },
       },
       required: ["path", "text"],
-      title: "element_text_is_model",
+      title: "Assert Element Text Is",
       type: "object",
     },
     element_text_is_model_nested: {
@@ -4489,10 +4632,11 @@ export const testsSchema = {
       properties: {
         element_text_is: {
           $ref: "#/$defs/base_element_text_is_model",
+          title: "Assert Element Text Is",
         },
       },
       required: ["element_text_is"],
-      title: "element_text_is_model_nested",
+      title: "Assert Element Text Is (Nested)",
       type: "object",
     },
     element_text_matches_model: {
@@ -4531,7 +4675,7 @@ export const testsSchema = {
         },
       },
       required: ["path", "expression"],
-      title: "element_text_matches_model",
+      title: "Assert Element Text Matches",
       type: "object",
     },
     element_text_matches_model_nested: {
@@ -4540,10 +4684,11 @@ export const testsSchema = {
       properties: {
         element_text_matches: {
           $ref: "#/$defs/base_element_text_matches_model",
+          title: "Assert Element Text Matches",
         },
       },
       required: ["element_text_matches"],
-      title: "element_text_matches_model_nested",
+      title: "Assert Element Text Matches (Nested)",
       type: "object",
     },
     element_text_model: {
@@ -4554,24 +4699,26 @@ export const testsSchema = {
         asserts: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Asserts",
         },
         children: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Children",
         },
         negate: {
           anyOf: [
@@ -4599,7 +4746,7 @@ export const testsSchema = {
         },
       },
       required: ["path"],
-      title: "element_text_model",
+      title: "Assert Element Text",
       type: "object",
     },
     element_text_model_nested: {
@@ -4608,10 +4755,11 @@ export const testsSchema = {
       properties: {
         element_text: {
           $ref: "#/$defs/base_element_text_model",
+          title: "Assert Element Text",
         },
       },
       required: ["element_text"],
-      title: "element_text_model_nested",
+      title: "Assert Element Text (Nested)",
       type: "object",
     },
     has_archive_member_model: {
@@ -4636,24 +4784,26 @@ export const testsSchema = {
         asserts: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Asserts",
         },
         children: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Children",
         },
         delta: {
           anyOf: [
@@ -4744,7 +4894,7 @@ export const testsSchema = {
         },
       },
       required: ["path"],
-      title: "has_archive_member_model",
+      title: "Assert Has Archive Member",
       type: "object",
     },
     has_archive_member_model_nested: {
@@ -4753,10 +4903,11 @@ export const testsSchema = {
       properties: {
         has_archive_member: {
           $ref: "#/$defs/base_has_archive_member_model",
+          title: "Assert Has Archive Member",
         },
       },
       required: ["has_archive_member"],
-      title: "has_archive_member_model_nested",
+      title: "Assert Has Archive Member (Nested)",
       type: "object",
     },
     has_element_with_path_model: {
@@ -4790,7 +4941,7 @@ export const testsSchema = {
         },
       },
       required: ["path"],
-      title: "has_element_with_path_model",
+      title: "Assert Has Element With Path",
       type: "object",
     },
     has_element_with_path_model_nested: {
@@ -4799,10 +4950,11 @@ export const testsSchema = {
       properties: {
         has_element_with_path: {
           $ref: "#/$defs/base_has_element_with_path_model",
+          title: "Assert Has Element With Path",
         },
       },
       required: ["has_element_with_path"],
-      title: "has_element_with_path_model_nested",
+      title: "Assert Has Element With Path (Nested)",
       type: "object",
     },
     has_h5_attribute_model: {
@@ -4828,7 +4980,7 @@ export const testsSchema = {
         },
       },
       required: ["key", "value"],
-      title: "has_h5_attribute_model",
+      title: "Assert Has H5 Attribute",
       type: "object",
     },
     has_h5_attribute_model_nested: {
@@ -4837,10 +4989,11 @@ export const testsSchema = {
       properties: {
         has_h5_attribute: {
           $ref: "#/$defs/base_has_h5_attribute_model",
+          title: "Assert Has H5 Attribute",
         },
       },
       required: ["has_h5_attribute"],
-      title: "has_h5_attribute_model_nested",
+      title: "Assert Has H5 Attribute (Nested)",
       type: "object",
     },
     has_h5_keys_model: {
@@ -4860,7 +5013,7 @@ export const testsSchema = {
         },
       },
       required: ["keys"],
-      title: "has_h5_keys_model",
+      title: "Assert Has H5 Keys",
       type: "object",
     },
     has_h5_keys_model_nested: {
@@ -4869,10 +5022,11 @@ export const testsSchema = {
       properties: {
         has_h5_keys: {
           $ref: "#/$defs/base_has_h5_keys_model",
+          title: "Assert Has H5 Keys",
         },
       },
       required: ["has_h5_keys"],
-      title: "has_h5_keys_model_nested",
+      title: "Assert Has H5 Keys (Nested)",
       type: "object",
     },
     has_image_center_of_mass_model: {
@@ -4950,7 +5104,7 @@ export const testsSchema = {
         },
       },
       required: ["center_of_mass"],
-      title: "has_image_center_of_mass_model",
+      title: "Assert Has Image Center Of Mass",
       type: "object",
     },
     has_image_center_of_mass_model_nested: {
@@ -4959,10 +5113,11 @@ export const testsSchema = {
       properties: {
         has_image_center_of_mass: {
           $ref: "#/$defs/base_has_image_center_of_mass_model",
+          title: "Assert Has Image Center Of Mass",
         },
       },
       required: ["has_image_center_of_mass"],
-      title: "has_image_center_of_mass_model_nested",
+      title: "Assert Has Image Center Of Mass (Nested)",
       type: "object",
     },
     has_image_channels_model: {
@@ -5036,7 +5191,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_image_channels_model",
+      title: "Assert Has Image Channels",
       type: "object",
     },
     has_image_channels_model_nested: {
@@ -5045,10 +5200,11 @@ export const testsSchema = {
       properties: {
         has_image_channels: {
           $ref: "#/$defs/base_has_image_channels_model",
+          title: "Assert Has Image Channels",
         },
       },
       required: ["has_image_channels"],
-      title: "has_image_channels_model_nested",
+      title: "Assert Has Image Channels (Nested)",
       type: "object",
     },
     has_image_depth_model: {
@@ -5122,7 +5278,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_image_depth_model",
+      title: "Assert Has Image Depth",
       type: "object",
     },
     has_image_depth_model_nested: {
@@ -5131,10 +5287,11 @@ export const testsSchema = {
       properties: {
         has_image_depth: {
           $ref: "#/$defs/base_has_image_depth_model",
+          title: "Assert Has Image Depth",
         },
       },
       required: ["has_image_depth"],
-      title: "has_image_depth_model_nested",
+      title: "Assert Has Image Depth (Nested)",
       type: "object",
     },
     has_image_frames_model: {
@@ -5210,7 +5367,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_image_frames_model",
+      title: "Assert Has Image Frames",
       type: "object",
     },
     has_image_frames_model_nested: {
@@ -5219,10 +5376,11 @@ export const testsSchema = {
       properties: {
         has_image_frames: {
           $ref: "#/$defs/base_has_image_frames_model",
+          title: "Assert Has Image Frames",
         },
       },
       required: ["has_image_frames"],
-      title: "has_image_frames_model_nested",
+      title: "Assert Has Image Frames (Nested)",
       type: "object",
     },
     has_image_height_model: {
@@ -5296,7 +5454,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_image_height_model",
+      title: "Assert Has Image Height",
       type: "object",
     },
     has_image_height_model_nested: {
@@ -5305,10 +5463,11 @@ export const testsSchema = {
       properties: {
         has_image_height: {
           $ref: "#/$defs/base_has_image_height_model",
+          title: "Assert Has Image Height",
         },
       },
       required: ["has_image_height"],
-      title: "has_image_height_model_nested",
+      title: "Assert Has Image Height (Nested)",
       type: "object",
     },
     has_image_mean_intensity_model: {
@@ -5427,7 +5586,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_image_mean_intensity_model",
+      title: "Assert Has Image Mean Intensity",
       type: "object",
     },
     has_image_mean_intensity_model_nested: {
@@ -5436,10 +5595,11 @@ export const testsSchema = {
       properties: {
         has_image_mean_intensity: {
           $ref: "#/$defs/base_has_image_mean_intensity_model",
+          title: "Assert Has Image Mean Intensity",
         },
       },
       required: ["has_image_mean_intensity"],
-      title: "has_image_mean_intensity_model_nested",
+      title: "Assert Has Image Mean Intensity (Nested)",
       type: "object",
     },
     has_image_mean_object_size_model: {
@@ -5479,7 +5639,14 @@ export const testsSchema = {
           anyOf: [
             {
               items: {
-                type: "integer",
+                anyOf: [
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                ],
               },
               type: "array",
             },
@@ -5510,7 +5677,14 @@ export const testsSchema = {
           anyOf: [
             {
               items: {
-                type: "integer",
+                anyOf: [
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                ],
               },
               type: "array",
             },
@@ -5592,7 +5766,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_image_mean_object_size_model",
+      title: "Assert Has Image Mean Object Size",
       type: "object",
     },
     has_image_mean_object_size_model_nested: {
@@ -5601,10 +5775,11 @@ export const testsSchema = {
       properties: {
         has_image_mean_object_size: {
           $ref: "#/$defs/base_has_image_mean_object_size_model",
+          title: "Assert Has Image Mean Object Size",
         },
       },
       required: ["has_image_mean_object_size"],
-      title: "has_image_mean_object_size_model_nested",
+      title: "Assert Has Image Mean Object Size (Nested)",
       type: "object",
     },
     has_image_n_labels_model: {
@@ -5637,7 +5812,14 @@ export const testsSchema = {
           anyOf: [
             {
               items: {
-                type: "integer",
+                anyOf: [
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                ],
               },
               type: "array",
             },
@@ -5668,7 +5850,14 @@ export const testsSchema = {
           anyOf: [
             {
               items: {
-                type: "integer",
+                anyOf: [
+                  {
+                    type: "integer",
+                  },
+                  {
+                    type: "number",
+                  },
+                ],
               },
               type: "array",
             },
@@ -5754,7 +5943,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_image_n_labels_model",
+      title: "Assert Has Image N Labels",
       type: "object",
     },
     has_image_n_labels_model_nested: {
@@ -5763,10 +5952,11 @@ export const testsSchema = {
       properties: {
         has_image_n_labels: {
           $ref: "#/$defs/base_has_image_n_labels_model",
+          title: "Assert Has Image N Labels",
         },
       },
       required: ["has_image_n_labels"],
-      title: "has_image_n_labels_model_nested",
+      title: "Assert Has Image N Labels (Nested)",
       type: "object",
     },
     has_image_width_model: {
@@ -5840,7 +6030,7 @@ export const testsSchema = {
           title: "Width",
         },
       },
-      title: "has_image_width_model",
+      title: "Assert Has Image Width",
       type: "object",
     },
     has_image_width_model_nested: {
@@ -5849,10 +6039,11 @@ export const testsSchema = {
       properties: {
         has_image_width: {
           $ref: "#/$defs/base_has_image_width_model",
+          title: "Assert Has Image Width",
         },
       },
       required: ["has_image_width"],
-      title: "has_image_width_model_nested",
+      title: "Assert Has Image Width (Nested)",
       type: "object",
     },
     has_json_property_with_text_model: {
@@ -5878,7 +6069,7 @@ export const testsSchema = {
         },
       },
       required: ["property", "text"],
-      title: "has_json_property_with_text_model",
+      title: "Assert Has Json Property With Text",
       type: "object",
     },
     has_json_property_with_text_model_nested: {
@@ -5887,10 +6078,11 @@ export const testsSchema = {
       properties: {
         has_json_property_with_text: {
           $ref: "#/$defs/base_has_json_property_with_text_model",
+          title: "Assert Has Json Property With Text",
         },
       },
       required: ["has_json_property_with_text"],
-      title: "has_json_property_with_text_model_nested",
+      title: "Assert Has Json Property With Text (Nested)",
       type: "object",
     },
     has_json_property_with_value_model: {
@@ -5917,7 +6109,7 @@ export const testsSchema = {
         },
       },
       required: ["property", "value"],
-      title: "has_json_property_with_value_model",
+      title: "Assert Has Json Property With Value",
       type: "object",
     },
     has_json_property_with_value_model_nested: {
@@ -5926,16 +6118,17 @@ export const testsSchema = {
       properties: {
         has_json_property_with_value: {
           $ref: "#/$defs/base_has_json_property_with_value_model",
+          title: "Assert Has Json Property With Value",
         },
       },
       required: ["has_json_property_with_value"],
-      title: "has_json_property_with_value_model_nested",
+      title: "Assert Has Json Property With Value (Nested)",
       type: "object",
     },
     has_line_matching_model: {
       additionalProperties: false,
       description:
-        "Asserts the specified output contains a line matching the\nregular expression specified by the argument expression. If n is given\nthe assertion checks for exactly n occurences.",
+        "Asserts the specified output contains a line matching the\nregular expression specified by the argument expression. If n is given\nthe assertion checks for exactly n occurrences.",
       properties: {
         delta: {
           anyOf: [
@@ -6026,7 +6219,7 @@ export const testsSchema = {
         },
       },
       required: ["expression"],
-      title: "has_line_matching_model",
+      title: "Assert Has Line Matching",
       type: "object",
     },
     has_line_matching_model_nested: {
@@ -6035,10 +6228,11 @@ export const testsSchema = {
       properties: {
         has_line_matching: {
           $ref: "#/$defs/base_has_line_matching_model",
+          title: "Assert Has Line Matching",
         },
       },
       required: ["has_line_matching"],
-      title: "has_line_matching_model_nested",
+      title: "Assert Has Line Matching (Nested)",
       type: "object",
     },
     has_line_model: {
@@ -6135,7 +6329,7 @@ export const testsSchema = {
         },
       },
       required: ["line"],
-      title: "has_line_model",
+      title: "Assert Has Line",
       type: "object",
     },
     has_line_model_nested: {
@@ -6144,16 +6338,17 @@ export const testsSchema = {
       properties: {
         has_line: {
           $ref: "#/$defs/base_has_line_model",
+          title: "Assert Has Line",
         },
       },
       required: ["has_line"],
-      title: "has_line_model_nested",
+      title: "Assert Has Line (Nested)",
       type: "object",
     },
     has_n_columns_model: {
       additionalProperties: false,
       description:
-        'Asserts tabular output  contains the specified\nnumber (``n``) of columns.\n\nFor instance, ``<has_n_columns n="3"/>``. The assertion tests only the first line.\nNumber of columns can optionally also be specified with ``delta``. Alternatively the\nrange of expected occurences can be specified by ``min`` and/or ``max``.\n\nOptionally a column separator (``sep``, default is ``       ``) `and comment character(s)\ncan be specified (``comment``, default is empty string). The first non-comment\nline is used for determining the number of columns.',
+        'Asserts tabular output  contains the specified\nnumber (``n``) of columns.\n\nFor instance, ``<has_n_columns n="3"/>``. The assertion tests only the first line.\nNumber of columns can optionally also be specified with ``delta``. Alternatively the\nrange of expected occurrences can be specified by ``min`` and/or ``max``.\n\nOptionally a column separator (``sep``, default is ``       ``) `and comment character(s)\ncan be specified (``comment``, default is empty string). The first non-comment\nline is used for determining the number of columns.',
       properties: {
         comment: {
           default: "",
@@ -6251,7 +6446,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_n_columns_model",
+      title: "Assert Has N Columns",
       type: "object",
     },
     has_n_columns_model_nested: {
@@ -6260,16 +6455,17 @@ export const testsSchema = {
       properties: {
         has_n_columns: {
           $ref: "#/$defs/base_has_n_columns_model",
+          title: "Assert Has N Columns",
         },
       },
       required: ["has_n_columns"],
-      title: "has_n_columns_model_nested",
+      title: "Assert Has N Columns (Nested)",
       type: "object",
     },
     has_n_elements_with_path_model: {
       additionalProperties: false,
       description:
-        'Asserts the XML output contains the specified number (``n``, optionally with ``delta``) of elements (or\ntags) with the specified XPath-like ``path``.\n\nFor example:\n\n```xml\n<has_n_elements_with_path n="9" path="BlastOutput_iterations/Iteration/Iteration_hits/Hit/Hit_num" />\n```\n\nAlternatively to ``n`` and ``delta`` also the ``min`` and ``max`` attributes\ncan be used to specify the range of the expected number of occurences.\nWith ``negate`` the result of the assertion can be inverted.',
+        'Asserts the XML output contains the specified number (``n``, optionally with ``delta``) of elements (or\ntags) with the specified XPath-like ``path``.\n\nFor example:\n\n```xml\n<has_n_elements_with_path n="9" path="BlastOutput_iterations/Iteration/Iteration_hits/Hit/Hit_num" />\n```\n\nAlternatively to ``n`` and ``delta`` also the ``min`` and ``max`` attributes\ncan be used to specify the range of the expected number of occurrences.\nWith ``negate`` the result of the assertion can be inverted.',
       properties: {
         delta: {
           anyOf: [
@@ -6360,7 +6556,7 @@ export const testsSchema = {
         },
       },
       required: ["path"],
-      title: "has_n_elements_with_path_model",
+      title: "Assert Has N Elements With Path",
       type: "object",
     },
     has_n_elements_with_path_model_nested: {
@@ -6369,10 +6565,11 @@ export const testsSchema = {
       properties: {
         has_n_elements_with_path: {
           $ref: "#/$defs/base_has_n_elements_with_path_model",
+          title: "Assert Has N Elements With Path",
         },
       },
       required: ["has_n_elements_with_path"],
-      title: "has_n_elements_with_path_model_nested",
+      title: "Assert Has N Elements With Path (Nested)",
       type: "object",
     },
     has_n_lines_model: {
@@ -6463,7 +6660,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "has_n_lines_model",
+      title: "Assert Has N Lines",
       type: "object",
     },
     has_n_lines_model_nested: {
@@ -6472,10 +6669,11 @@ export const testsSchema = {
       properties: {
         has_n_lines: {
           $ref: "#/$defs/base_has_n_lines_model",
+          title: "Assert Has N Lines",
         },
       },
       required: ["has_n_lines"],
-      title: "has_n_lines_model_nested",
+      title: "Assert Has N Lines (Nested)",
       type: "object",
     },
     has_size_model: {
@@ -6583,7 +6781,7 @@ export const testsSchema = {
           title: "Value",
         },
       },
-      title: "has_size_model",
+      title: "Assert Has Size",
       type: "object",
     },
     has_size_model_nested: {
@@ -6592,16 +6790,17 @@ export const testsSchema = {
       properties: {
         has_size: {
           $ref: "#/$defs/base_has_size_model",
+          title: "Assert Has Size",
         },
       },
       required: ["has_size"],
-      title: "has_size_model_nested",
+      title: "Assert Has Size (Nested)",
       type: "object",
     },
     has_text_matching_model: {
       additionalProperties: false,
       description:
-        "Asserts the specified output contains text matching the\nregular expression specified by the argument expression.\nIf n is given the assertion checks for exacly n (nonoverlapping)\noccurences.",
+        "Asserts the specified output contains text matching the\nregular expression specified by the argument expression.\nIf n is given the assertion checks for exactly n (nonoverlapping)\noccurrences.",
       properties: {
         delta: {
           anyOf: [
@@ -6692,7 +6891,7 @@ export const testsSchema = {
         },
       },
       required: ["expression"],
-      title: "has_text_matching_model",
+      title: "Assert Has Text Matching",
       type: "object",
     },
     has_text_matching_model_nested: {
@@ -6701,10 +6900,11 @@ export const testsSchema = {
       properties: {
         has_text_matching: {
           $ref: "#/$defs/base_has_text_matching_model",
+          title: "Assert Has Text Matching",
         },
       },
       required: ["has_text_matching"],
-      title: "has_text_matching_model_nested",
+      title: "Assert Has Text Matching (Nested)",
       type: "object",
     },
     has_text_model: {
@@ -6801,7 +7001,7 @@ export const testsSchema = {
         },
       },
       required: ["text"],
-      title: "has_text_model",
+      title: "Assert Has Text",
       type: "object",
     },
     has_text_model_nested: {
@@ -6810,10 +7010,11 @@ export const testsSchema = {
       properties: {
         has_text: {
           $ref: "#/$defs/base_has_text_model",
+          title: "Assert Has Text",
         },
       },
       required: ["has_text"],
-      title: "has_text_model_nested",
+      title: "Assert Has Text (Nested)",
       type: "object",
     },
     is_valid_xml_model: {
@@ -6827,7 +7028,7 @@ export const testsSchema = {
           type: "string",
         },
       },
-      title: "is_valid_xml_model",
+      title: "Assert Is Valid Xml",
       type: "object",
     },
     is_valid_xml_model_nested: {
@@ -6836,10 +7037,11 @@ export const testsSchema = {
       properties: {
         is_valid_xml: {
           $ref: "#/$defs/base_is_valid_xml_model",
+          title: "Assert Is Valid Xml",
         },
       },
       required: ["is_valid_xml"],
-      title: "is_valid_xml_model_nested",
+      title: "Assert Is Valid Xml (Nested)",
       type: "object",
     },
     not_has_text_model: {
@@ -6860,7 +7062,7 @@ export const testsSchema = {
         },
       },
       required: ["text"],
-      title: "not_has_text_model",
+      title: "Assert Not Has Text",
       type: "object",
     },
     not_has_text_model_nested: {
@@ -6869,16 +7071,17 @@ export const testsSchema = {
       properties: {
         not_has_text: {
           $ref: "#/$defs/base_not_has_text_model",
+          title: "Assert Not Has Text",
         },
       },
       required: ["not_has_text"],
-      title: "not_has_text_model_nested",
+      title: "Assert Not Has Text (Nested)",
       type: "object",
     },
     xml_element_model: {
       additionalProperties: false,
       description:
-        'Assert if the XML file contains element(s) or tag(s) with the specified\n[XPath-like ``path``](https://lxml.de/xpathxslt.html).  If ``n`` and ``delta``\nor ``min`` and ``max`` are given also the number of occurences is checked.\n\n```xml\n<assert_contents>\n  <xml_element path="./elem"/>\n  <xml_element path="./elem/more[2]"/>\n  <xml_element path=".//more" n="3" delta="1"/>\n</assert_contents>\n```\n\nWith ``negate="true"`` the outcome of the assertions wrt the precence and number\nof ``path`` can be negated. If there are any sub assertions then check them against\n\n- the content of the attribute ``attribute``\n- the element\'s text if no attribute is given\n\n```xml\n<assert_contents>\n  <xml_element path="./elem/more[2]" attribute="name">\n    <has_text_matching expression="foo$"/>\n  </xml_element>\n</assert_contents>\n```\n\nSub-assertions are not subject to the ``negate`` attribute of ``xml_element``.\nIf ``all`` is ``true`` then the sub assertions are checked for all occurences.\n\nNote that all other XML assertions can be expressed by this assertion (Galaxy\nalso implements the other assertions by calling this one).',
+        'Assert if the XML file contains element(s) or tag(s) with the specified\n[XPath-like ``path``](https://lxml.de/xpathxslt.html).  If ``n`` and ``delta``\nor ``min`` and ``max`` are given also the number of occurrences is checked.\n\n```xml\n<assert_contents>\n  <xml_element path="./elem"/>\n  <xml_element path="./elem/more[2]"/>\n  <xml_element path=".//more" n="3" delta="1"/>\n</assert_contents>\n```\n\nWith ``negate="true"`` the outcome of the assertions wrt the presence and number\nof ``path`` can be negated. If there are any sub assertions then check them against\n\n- the content of the attribute ``attribute``\n- the element\'s text if no attribute is given\n\n```xml\n<assert_contents>\n  <xml_element path="./elem/more[2]" attribute="name">\n    <has_text_matching expression="foo$"/>\n  </xml_element>\n</assert_contents>\n```\n\nSub-assertions are not subject to the ``negate`` attribute of ``xml_element``.\nIf ``all`` is ``true`` then the sub assertions are checked for all occurrences.\n\nNote that all other XML assertions can be expressed by this assertion (Galaxy\nalso implements the other assertions by calling this one).',
       properties: {
         all: {
           anyOf: [
@@ -6897,13 +7100,14 @@ export const testsSchema = {
         asserts: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Asserts",
         },
         attribute: {
           anyOf: [
@@ -6921,13 +7125,14 @@ export const testsSchema = {
         children: {
           anyOf: [
             {
-              $ref: "#/$defs/RootModel_List_Union_Annotated_Union_has_line_model__has_line_matching_model__has_n_lines_model__has_text_model__has_text_matching_model__not_has_text_model__has_n_columns_model__attribute_is_model__attribute_matches_model__element_text_model__element_text_is_model__element_text_matches_model__has_element_with_path_model__has_n_elements_with_path_model__is_valid_xml_model__xml_element_model__has_json_property_with_text_model__has_json_property_with_value_model__has_h5_attribute_model__has_h5_keys_model__has_archive_member_model__has_size_model__has_image_center_of_mass_model__has_image_channels_model__has_image_depth_model__has_image_frames_model__has_image_height_model__has_image_mean_intensity_model__has_image_mean_object_size_model__has_image_n_labels_model__has_image_width_model___FieldInfo_annotation_NoneType__required_True__discriminator__that_____has_line_model_nested__has_line_matching_model_nested__has_n_lines_model_nested__has_text_model_nested__has_text_matching_model_nested__not_has_text_model_nested__has_n_columns_model_nested__attribute_is_model_nested__attribute_matches_model_nested__element_text_model_nested__element_text_is_model_nested__element_text_matches_model_nested__has_element_with_path_model_nested__has_n_elements_with_path_model_nested__is_valid_xml_model_nested__xml_element_model_nested__has_json_property_with_text_model_nested__has_json_property_with_value_model_nested__has_h5_attribute_model_nested__has_h5_keys_model_nested__has_archive_member_model_nested__has_size_model_nested__has_image_center_of_mass_model_nested__has_image_channels_model_nested__has_image_depth_model_nested__has_image_frames_model_nested__has_image_height_model_nested__has_image_mean_intensity_model_nested__has_image_mean_object_size_model_nested__has_image_n_labels_model_nested__has_image_width_model_nested___",
+              $ref: "#/$defs/assertion_list",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          title: "Children",
         },
         delta: {
           anyOf: [
@@ -7018,7 +7223,7 @@ export const testsSchema = {
         },
       },
       required: ["path"],
-      title: "xml_element_model",
+      title: "Assert Xml Element",
       type: "object",
     },
     xml_element_model_nested: {
@@ -7027,16 +7232,20 @@ export const testsSchema = {
       properties: {
         xml_element: {
           $ref: "#/$defs/base_xml_element_model",
+          title: "Assert Xml Element",
         },
       },
       required: ["xml_element"],
-      title: "xml_element_model_nested",
+      title: "Assert Xml Element (Nested)",
       type: "object",
     },
   },
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  description:
+    "Galaxy workflow tests file \u2014 a YAML list of test entries asserting the expected inputs and outputs of a workflow run.",
   items: {
     $ref: "#/$defs/TestJob",
   },
-  title: "RootModel[List[TestJob]]",
+  title: "GalaxyWorkflowTests",
   type: "array",
 } as const;
