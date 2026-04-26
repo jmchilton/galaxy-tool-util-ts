@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-parsed-tools sync-glossary build-glossary check-sync-all
+.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all
 
 all: check test
 
@@ -20,7 +20,7 @@ test:
 test-e2e:
 	pnpm --filter @galaxy-tool-util/gxwf-e2e test
 
-check: lint format typecheck verify-test-format-schema
+check: lint format typecheck verify-test-format-schema check-sync-parsed-tools
 
 fix: format-fix
 	pnpm -r lint -- --fix
@@ -172,6 +172,35 @@ check-sync-wfstate-templates:
 
 check-sync-connection-workflows:
 	node scripts/sync-fixtures.mjs --check --group connection-workflows
+
+# Verify parsed-tool JSON cache matches its recorded sha256 manifest. The cache
+# is generated (not rsync'd), so content drift is detected against the manifest
+# written by sync-parsed-tools. No GALAXY_ROOT needed — runs in CI.
+check-sync-parsed-tools:
+	@node -e '\
+		const fs = require("fs"); \
+		const crypto = require("crypto"); \
+		const path = require("path"); \
+		const dir = "$(PARSED_TOOLS_DST)"; \
+		const shaFile = path.join(dir, "parsed_tools.sha256"); \
+		if (!fs.existsSync(shaFile)) { console.error("FAIL: " + shaFile + " missing — run make sync-parsed-tools."); process.exit(1); } \
+		const expected = new Map(); \
+		for (const line of fs.readFileSync(shaFile, "utf-8").split("\n")) { \
+			const m = line.match(/^([0-9a-f]+)\s+(.+)$$/); \
+			if (m) expected.set(m[2], m[1]); \
+		} \
+		const onDisk = new Set(fs.readdirSync(dir).filter((f) => f.endsWith(".json"))); \
+		let ok = true; \
+		for (const [name, hash] of expected) { \
+			const p = path.join(dir, name); \
+			if (!fs.existsSync(p)) { console.error("FAIL MISSING  " + name); ok = false; continue; } \
+			const actual = crypto.createHash("sha256").update(fs.readFileSync(p)).digest("hex"); \
+			if (actual !== hash) { console.error("FAIL DIVERGED " + name + "\n  expected " + hash + "\n  actual   " + actual); ok = false; } \
+		} \
+		for (const name of onDisk) if (!expected.has(name)) { console.error("FAIL EXTRA    " + name + " (not in manifest)"); ok = false; } \
+		if (!ok) { console.error("Re-run make sync-parsed-tools."); process.exit(1); } \
+		console.log("parsed-tool cache: " + expected.size + " checksums OK."); \
+	'
 
 # Run all groups that have their src_root env var set; skip the rest.
 check-sync:
