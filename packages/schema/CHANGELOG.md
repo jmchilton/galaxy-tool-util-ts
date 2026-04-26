@@ -1,5 +1,19 @@
 # @galaxy-tool-util/schema
 
+## 1.1.0
+
+### Minor Changes
+
+- [#68](https://github.com/jmchilton/galaxy-tool-util-ts/pull/68) [`3b97a0f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3b97a0f41c2358aa663df4e6490488e89c9ba9e5) Thanks [@jmchilton](https://github.com/jmchilton)! - UI polish: auto-preview for clean/export/convert with explicit apply buttons (no more dry-run toggle). Lint report now surfaces error/warning messages alongside counts via new `lint_error_messages` / `lint_warning_messages` fields on `SingleLintReport`.
+
+### Patch Changes
+
+- [#75](https://github.com/jmchilton/galaxy-tool-util-ts/pull/75) [`11a6625`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/11a66254a6c1c2640954ab4fbc41c59b0add0617) Thanks [@jmchilton](https://github.com/jmchilton)! - Re-sync vendored `tests.schema.json` from Galaxy `wf_tool_state` branch.
+
+  Picks up upstream enrichment of `galaxy.tool_util_models.Tests`: new `Job`
+  def, named `assertion_list` ref replacing the auto-generated discriminator
+  blob, and added `title` fields on collection/file properties.
+
 ## 1.0.0
 
 ### Minor Changes

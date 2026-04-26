@@ -1,5 +1,67 @@
 # @galaxy-tool-util/search
 
+## 1.1.0
+
+### Minor Changes
+
+- [#72](https://github.com/jmchilton/galaxy-tool-util-ts/pull/72) [`54a9f93`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/54a9f939ee25195b804cb7b2ed1e598cad97b5ca) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `gxwf tool-revisions <tool-id>` for resolving a Tool Shed tool to the
+  changeset revisions that publish it — needed for emitting workflows pinned
+  on `(name, owner, changeset_revision)` for reproducible reinstall.
+  - Accepts both `owner~repo~tool_id` and `owner/repo/tool_id` forms.
+  - `--tool-version <v>` restricts to revisions that publish that exact tool
+    version.
+  - `--latest` prints only the newest matching revision (per
+    `get_ordered_installable_revisions` order).
+  - `--json` emits `{ trsToolId, version?, revisions: [{ changesetRevision,
+toolVersion }] }`. Exit codes: `0` on hits, `2` on empty, `3` on fetch
+    error.
+
+  Exports `getToolRevisions(toolshedUrl, { owner, repo, toolId, version? })`
+  from `@galaxy-tool-util/search` for non-CLI consumers. Implementation uses
+  the 3-call dance over `/api/repositories?owner=…&name=…`,
+  `/api/repositories/{id}/metadata?downloadable_only=true`, and
+  `get_ordered_installable_revisions` — no Tool Shed change required.
+
+- [#72](https://github.com/jmchilton/galaxy-tool-util-ts/pull/72) [`944d671`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/944d6719028566e0a3231bc76cb603ed9fd03346) Thanks [@jmchilton](https://github.com/jmchilton)! - Tool Shed discovery quality-of-life improvements.
+
+  `gxwf tool-search` gains client-side `--owner <user>` and `--match-name`
+  filters (the Tool Shed has no server-side `owner:` keyword on
+  `/api/tools`), plus a `--page <n>` flag to start paging beyond page 1.
+
+  `gxwf tool-search --enrich` resolves each hit's `ParsedTool` via the
+  shared tool-info cache and inlines it as `parsedTool` on each JSON hit,
+  so skills that pick the top 1–3 results can skip the follow-up
+  `galaxy-tool-cache add` round trip. Off by default; one fetch per hit.
+
+  New `gxwf repo-search <query>` command queries `/api/repositories?q=`
+  with server-side `owner:` / `category:` reserved keywords. Repository
+  search ranks by popularity (`times_downloaded`) and is better suited
+  for "find me a package about X" queries; tool-search remains the
+  right tool for exact tool-name lookups.
+
+  Exports `searchRepositories`, `iterateRepoSearchPages`, and
+  `buildRepoQuery` from `@galaxy-tool-util/search` for non-CLI consumers,
+  along with the `RepositorySearchHit` wire type and
+  `normalizeRepoSearchResults` validator.
+
+- [#67](https://github.com/jmchilton/galaxy-tool-util-ts/pull/67) [`25104d3`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/25104d395f17ed6e84cc7a214fb193349e5141f8) Thanks [@jmchilton](https://github.com/jmchilton)! - Add Tool Shed discovery commands to `gxwf`:
+  - `gxwf tool-search <query>` — search the Tool Shed (`toolshed.g2.bx.psu.edu`).
+    Prints a tabular listing by default; `--json` emits a `{ query, hits }`
+    envelope. Exit codes: `0` on hits, `2` on empty, `3` on fetch error.
+  - `gxwf tool-versions <tool-id>` — list TRS-published versions (newest last),
+    accepting both `owner~repo~tool_id` and `owner/repo/tool_id` forms.
+    `--latest` prints only the latest version. Same exit-code convention.
+
+  Exports `normalizeHit` from `@galaxy-tool-util/search` so single-source
+  callers can paginate with `iterateToolSearchPages` and normalize hits
+  without instantiating `ToolSearchService`.
+
+### Patch Changes
+
+- Updated dependencies [[`3b97a0f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3b97a0f41c2358aa663df4e6490488e89c9ba9e5), [`11a6625`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/11a66254a6c1c2640954ab4fbc41c59b0add0617)]:
+  - @galaxy-tool-util/schema@1.1.0
+  - @galaxy-tool-util/core@1.1.0
+
 ## 0.2.0
 
 ### Minor Changes

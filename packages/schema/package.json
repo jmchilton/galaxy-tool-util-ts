@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/schema",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Effect Schema parameter types and validators for Galaxy tools",
   "type": "module",
   "exports": {
