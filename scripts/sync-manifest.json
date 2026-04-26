@@ -112,6 +112,18 @@
       ]
     },
     {
+      "name": "connection-type-cases",
+      "label": "connection-type algebra truth table (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "test/unit/tool_util/workflow_state/",
+          "dst": "packages/workflow-graph/test/fixtures/",
+          "files": ["connection_type_cases.yml"]
+        }
+      ]
+    },
+    {
       "name": "wfstate-templates",
       "label": "workflow-state report templates (Galaxy)",
       "src_root": "galaxy_root",

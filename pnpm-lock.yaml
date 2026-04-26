@@ -358,7 +358,11 @@ importers:
         specifier: ^25.5.0
         version: 25.5.0
 
-  packages/workflow-graph: {}
+  packages/workflow-graph:
+    devDependencies:
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
 
 packages:
 

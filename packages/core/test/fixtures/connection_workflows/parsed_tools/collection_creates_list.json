@@ -1,0 +1,46 @@
+{
+  "id": "collection_creates_list",
+  "version": "0.1.0",
+  "name": "collection_creates_list",
+  "description": null,
+  "inputs": [
+    {
+      "name": "input1",
+      "parameter_type": "gx_data_collection",
+      "hidden": false,
+      "label": "Input",
+      "help": "Input collection...",
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data_collection",
+      "collection_type": "list",
+      "extensions": [
+        "data"
+      ],
+      "value": null
+    }
+  ],
+  "outputs": [
+    {
+      "name": "list_output",
+      "label": "Duplicate List",
+      "hidden": false,
+      "type": "collection",
+      "structure": {
+        "collection_type": "list",
+        "collection_type_source": null,
+        "collection_type_from_rules": null,
+        "structured_like": "input1",
+        "discover_datasets": []
+      }
+    }
+  ],
+  "citations": [],
+  "license": null,
+  "profile": "16.01",
+  "edam_operations": [],
+  "edam_topics": [],
+  "xrefs": [],
+  "help": null
+}

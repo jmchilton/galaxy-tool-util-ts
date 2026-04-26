@@ -1,0 +1,140 @@
+{
+  "id": "collection_mixed_param",
+  "version": "0.1.0",
+  "name": "collection_mixed_param",
+  "description": null,
+  "inputs": [
+    {
+      "name": "f1",
+      "parameter_type": "gx_data_collection",
+      "hidden": false,
+      "label": "collection param",
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data_collection",
+      "collection_type": "paired",
+      "extensions": [
+        "data"
+      ],
+      "value": null
+    },
+    {
+      "name": "f2",
+      "parameter_type": "gx_data",
+      "hidden": false,
+      "label": "data param",
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data",
+      "extensions": [
+        "data"
+      ],
+      "multiple": false,
+      "min": null,
+      "max": null
+    },
+    {
+      "name": "advanced",
+      "parameter_type": "gx_conditional",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "conditional",
+      "test_parameter": {
+        "name": "full",
+        "parameter_type": "gx_select",
+        "hidden": false,
+        "label": "Parameter Settings",
+        "help": null,
+        "argument": null,
+        "is_dynamic": false,
+        "optional": false,
+        "type": "select",
+        "options": [
+          {
+            "label": "Use defaults",
+            "value": "no",
+            "selected": false
+          },
+          {
+            "label": "Full parameter list",
+            "value": "yes",
+            "selected": false
+          }
+        ],
+        "multiple": false,
+        "validators": []
+      },
+      "whens": [
+        {
+          "discriminator": "yes",
+          "parameters": [
+            {
+              "name": "advanced_threshold",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "integer",
+              "value": 8,
+              "min": null,
+              "max": null,
+              "validators": []
+            }
+          ],
+          "is_default_when": false
+        },
+        {
+          "discriminator": "no",
+          "parameters": [],
+          "is_default_when": true
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out1",
+      "label": null,
+      "hidden": false,
+      "type": "data",
+      "format": "txt",
+      "format_source": null,
+      "metadata_source": null,
+      "discover_datasets": [
+        {
+          "discover_via": "pattern",
+          "format": null,
+          "visible": false,
+          "assign_primary_output": false,
+          "directory": null,
+          "recurse": false,
+          "match_relative_path": false,
+          "sort_key": "filename",
+          "sort_comp": "lexical",
+          "sort_reverse": false,
+          "pattern": "primary_DATASET_ID_(?P<designation>[^_]+)_(?P<visible>[^_]+)_(?P<ext>[^_]+)(_(?P<dbkey>[^_]+))?"
+        }
+      ],
+      "from_work_dir": null,
+      "precreate_directory": false
+    }
+  ],
+  "citations": [],
+  "license": null,
+  "profile": "16.01",
+  "edam_operations": [],
+  "edam_topics": [],
+  "xrefs": [],
+  "help": null
+}
