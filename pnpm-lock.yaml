@@ -72,6 +72,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@galaxy-tool-util/connection-validation':
+        specifier: workspace:*
+        version: link:../connection-validation
       '@galaxy-tool-util/core':
         specifier: workspace:*
         version: link:../core
@@ -103,6 +106,19 @@ importers:
       '@types/nunjucks':
         specifier: ^3.2.6
         version: 3.2.6
+
+  packages/connection-validation:
+    dependencies:
+      '@galaxy-tool-util/schema':
+        specifier: workspace:*
+        version: link:../schema
+      '@galaxy-tool-util/workflow-graph':
+        specifier: workspace:*
+        version: link:../workflow-graph
+    devDependencies:
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
 
   packages/core:
     dependencies:

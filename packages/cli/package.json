@@ -38,6 +38,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@galaxy-tool-util/connection-validation": "workspace:*",
     "@galaxy-tool-util/core": "workspace:*",
     "@galaxy-tool-util/schema": "workspace:*",
     "@galaxy-tool-util/search": "workspace:*",

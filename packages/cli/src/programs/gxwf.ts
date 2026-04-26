@@ -42,7 +42,11 @@ export function buildGxwfProgram(): Command {
         "Directory of pre-exported per-tool JSON Schemas (for offline json-schema mode)",
       )
       .option("--json", "Output structured JSON report")
-      .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)"),
+      .option("--report-html [file]", "Write HTML report to file (or stdout if omitted)")
+      .option(
+        "--connections",
+        "Validate connection-type compatibility (collection algebra, map-over)",
+      ),
   ).action(runValidateWorkflow);
 
   program
