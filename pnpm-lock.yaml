@@ -373,6 +373,9 @@ importers:
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
+      openapi-typescript:
+        specifier: ^7.13.0
+        version: 7.13.0(typescript@6.0.2)
 
   packages/workflow-graph:
     devDependencies:
