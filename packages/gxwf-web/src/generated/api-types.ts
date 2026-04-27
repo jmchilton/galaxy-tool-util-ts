@@ -276,6 +276,93 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/tool-cache": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List cached tools and aggregate stats */
+    get: operations["list_tool_cache_api_tool_cache_get"];
+    put?: never;
+    post?: never;
+    /** Clear all entries (or by tool-id prefix) */
+    delete: operations["clear_tool_cache_api_tool_cache_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tool-cache/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Aggregate cache stats */
+    get: operations["get_tool_cache_stats_api_tool_cache_stats_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tool-cache/refetch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Re-fetch a tool from its source (replacing the cached entry) */
+    post: operations["refetch_tool_cache_api_tool_cache_refetch_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tool-cache/add": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Populate the cache for a known tool id (diagnostic) */
+    post: operations["add_tool_cache_api_tool_cache_add_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tool-cache/{cacheKey}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the raw cached payload */
+    get: operations["read_tool_cache_api_tool_cache_key_get"];
+    put?: never;
+    post?: never;
+    /** Delete a single cache entry */
+    delete: operations["delete_tool_cache_api_tool_cache_key_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -920,6 +1007,96 @@ export interface components {
       /** Workflows */
       workflows: components["schemas"]["WorkflowEntry"][];
     };
+    /** CachedToolEntry */
+    CachedToolEntry: {
+      /** Cache Key */
+      cacheKey: string;
+      /** Tool Id */
+      toolId: string;
+      /** Tool Version */
+      toolVersion: string;
+      /** Source */
+      source: string;
+      /** Source Url */
+      sourceUrl: string;
+      /** Cached At */
+      cachedAt: string;
+      /** Size Bytes */
+      sizeBytes?: number;
+      /** Decodable */
+      decodable: boolean;
+      /** Toolshed Url */
+      toolshedUrl?: string;
+      /** Refetchable */
+      refetchable: boolean;
+    };
+    /** CacheStats */
+    CacheStats: {
+      /** Count */
+      count: number;
+      /** Total Bytes */
+      totalBytes?: number;
+      /** By Source */
+      bySource: {
+        [key: string]: number;
+      };
+      /** Oldest */
+      oldest?: string;
+      /** Newest */
+      newest?: string;
+    };
+    /** ToolCacheListResponse */
+    ToolCacheListResponse: {
+      entries: components["schemas"]["CachedToolEntry"][];
+      stats: components["schemas"]["CacheStats"];
+    };
+    /** ToolCacheRawResponse */
+    ToolCacheRawResponse: {
+      /** Contents */
+      contents: unknown;
+      /** Decodable */
+      decodable: boolean;
+    };
+    /** ToolCacheDeleteResponse */
+    ToolCacheDeleteResponse: {
+      /** Removed */
+      removed: boolean;
+    };
+    /** ToolCacheClearResponse */
+    ToolCacheClearResponse: {
+      /** Removed */
+      removed: number;
+    };
+    /** ToolCacheRefetchRequest */
+    ToolCacheRefetchRequest: {
+      /** Tool Id */
+      toolId: string;
+      /** Tool Version */
+      toolVersion?: string;
+    };
+    /** ToolCacheRefetchResponse */
+    ToolCacheRefetchResponse: {
+      /** Cache Key */
+      cacheKey: string;
+      /** Fetched */
+      fetched: boolean;
+      /** Already Cached */
+      alreadyCached: boolean;
+    };
+    /** ToolCacheAddRequest */
+    ToolCacheAddRequest: {
+      /** Tool Id */
+      toolId: string;
+      /** Tool Version */
+      toolVersion?: string;
+    };
+    /** ToolCacheAddResponse */
+    ToolCacheAddResponse: {
+      /** Cache Key */
+      cacheKey: string;
+      /** Already Cached */
+      alreadyCached: boolean;
+    };
   };
   responses: never;
   parameters: never;
@@ -1534,6 +1711,163 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_tool_cache_api_tool_cache_get: {
+    parameters: {
+      query?: {
+        /** @description Set to '1' to probe each entry for ParsedTool decode-ability. Adds N file reads. */
+        decode?: "1";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ToolCacheListResponse"];
+        };
+      };
+    };
+  };
+  clear_tool_cache_api_tool_cache_delete: {
+    parameters: {
+      query?: {
+        prefix?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ToolCacheClearResponse"];
+        };
+      };
+    };
+  };
+  get_tool_cache_stats_api_tool_cache_stats_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CacheStats"];
+        };
+      };
+    };
+  };
+  refetch_tool_cache_api_tool_cache_refetch_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ToolCacheRefetchRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ToolCacheRefetchResponse"];
+        };
+      };
+    };
+  };
+  add_tool_cache_api_tool_cache_add_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ToolCacheAddRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ToolCacheAddResponse"];
+        };
+      };
+    };
+  };
+  read_tool_cache_api_tool_cache_key_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        cacheKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ToolCacheRawResponse"];
+        };
+      };
+    };
+  };
+  delete_tool_cache_api_tool_cache_key_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        cacheKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ToolCacheDeleteResponse"];
         };
       };
     };

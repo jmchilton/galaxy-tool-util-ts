@@ -10,5 +10,6 @@ export default createRouter({
     { path: "/", component: DashboardView },
     { path: "/workflow/:path(.*)", component: () => import("../views/WorkflowView.vue") },
     { path: "/files/:path(.*)?", component: () => import("../views/FileView.vue") },
+    { path: "/cache", component: () => import("../views/ToolCacheView.vue") },
   ],
 });

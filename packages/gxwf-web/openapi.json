@@ -1016,6 +1016,170 @@
           }
         }
       }
+    },
+    "/api/tool-cache": {
+      "get": {
+        "tags": ["tool-cache"],
+        "summary": "List cached tools and aggregate stats",
+        "operationId": "list_tool_cache_api_tool_cache_get",
+        "parameters": [
+          {
+            "name": "decode",
+            "in": "query",
+            "required": false,
+            "description": "Set to '1' to probe each entry for ParsedTool decode-ability. Adds N file reads.",
+            "schema": { "type": "string", "enum": ["1"], "title": "Decode" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ToolCacheListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["tool-cache"],
+        "summary": "Clear all entries (or by tool-id prefix)",
+        "operationId": "clear_tool_cache_api_tool_cache_delete",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "title": "Prefix" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ToolCacheClearResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tool-cache/stats": {
+      "get": {
+        "tags": ["tool-cache"],
+        "summary": "Aggregate cache stats",
+        "operationId": "get_tool_cache_stats_api_tool_cache_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CacheStats" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tool-cache/refetch": {
+      "post": {
+        "tags": ["tool-cache"],
+        "summary": "Re-fetch a tool from its source (replacing the cached entry)",
+        "operationId": "refetch_tool_cache_api_tool_cache_refetch_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ToolCacheRefetchRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ToolCacheRefetchResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tool-cache/add": {
+      "post": {
+        "tags": ["tool-cache"],
+        "summary": "Populate the cache for a known tool id (diagnostic)",
+        "operationId": "add_tool_cache_api_tool_cache_add_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ToolCacheAddRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ToolCacheAddResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tool-cache/{cacheKey}": {
+      "get": {
+        "tags": ["tool-cache"],
+        "summary": "Get the raw cached payload",
+        "operationId": "read_tool_cache_api_tool_cache_key_get",
+        "parameters": [
+          {
+            "name": "cacheKey",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "title": "Cache Key" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ToolCacheRawResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["tool-cache"],
+        "summary": "Delete a single cache entry",
+        "operationId": "delete_tool_cache_api_tool_cache_key_delete",
+        "parameters": [
+          {
+            "name": "cacheKey",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "title": "Cache Key" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ToolCacheDeleteResponse" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2585,6 +2749,122 @@
         ],
         "title": "WorkflowIndex",
         "description": "Index of all workflows in the target directory."
+      },
+      "CachedToolEntry": {
+        "type": "object",
+        "title": "CachedToolEntry",
+        "required": [
+          "cacheKey",
+          "toolId",
+          "toolVersion",
+          "source",
+          "sourceUrl",
+          "cachedAt",
+          "decodable",
+          "refetchable"
+        ],
+        "properties": {
+          "cacheKey": { "type": "string", "title": "Cache Key" },
+          "toolId": { "type": "string", "title": "Tool Id" },
+          "toolVersion": { "type": "string", "title": "Tool Version" },
+          "source": { "type": "string", "title": "Source" },
+          "sourceUrl": { "type": "string", "title": "Source Url" },
+          "cachedAt": { "type": "string", "title": "Cached At" },
+          "sizeBytes": { "type": "integer", "title": "Size Bytes" },
+          "decodable": { "type": "boolean", "title": "Decodable" },
+          "toolshedUrl": { "type": "string", "title": "Toolshed Url" },
+          "refetchable": { "type": "boolean", "title": "Refetchable" }
+        }
+      },
+      "CacheStats": {
+        "type": "object",
+        "title": "CacheStats",
+        "required": ["count", "bySource"],
+        "properties": {
+          "count": { "type": "integer", "title": "Count" },
+          "totalBytes": { "type": "integer", "title": "Total Bytes" },
+          "bySource": {
+            "type": "object",
+            "additionalProperties": { "type": "integer" },
+            "title": "By Source"
+          },
+          "oldest": { "type": "string", "title": "Oldest" },
+          "newest": { "type": "string", "title": "Newest" }
+        }
+      },
+      "ToolCacheListResponse": {
+        "type": "object",
+        "title": "ToolCacheListResponse",
+        "required": ["entries", "stats"],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CachedToolEntry" }
+          },
+          "stats": { "$ref": "#/components/schemas/CacheStats" }
+        }
+      },
+      "ToolCacheRawResponse": {
+        "type": "object",
+        "title": "ToolCacheRawResponse",
+        "required": ["contents", "decodable"],
+        "properties": {
+          "contents": { "title": "Contents" },
+          "decodable": { "type": "boolean", "title": "Decodable" }
+        }
+      },
+      "ToolCacheDeleteResponse": {
+        "type": "object",
+        "title": "ToolCacheDeleteResponse",
+        "required": ["removed"],
+        "properties": {
+          "removed": { "type": "boolean", "title": "Removed" }
+        }
+      },
+      "ToolCacheClearResponse": {
+        "type": "object",
+        "title": "ToolCacheClearResponse",
+        "required": ["removed"],
+        "properties": {
+          "removed": { "type": "integer", "title": "Removed" }
+        }
+      },
+      "ToolCacheRefetchRequest": {
+        "type": "object",
+        "title": "ToolCacheRefetchRequest",
+        "required": ["toolId"],
+        "properties": {
+          "toolId": { "type": "string", "title": "Tool Id" },
+          "toolVersion": { "type": "string", "title": "Tool Version" }
+        }
+      },
+      "ToolCacheRefetchResponse": {
+        "type": "object",
+        "title": "ToolCacheRefetchResponse",
+        "required": ["cacheKey", "fetched", "alreadyCached"],
+        "properties": {
+          "cacheKey": { "type": "string", "title": "Cache Key" },
+          "fetched": { "type": "boolean", "title": "Fetched" },
+          "alreadyCached": { "type": "boolean", "title": "Already Cached" }
+        }
+      },
+      "ToolCacheAddRequest": {
+        "type": "object",
+        "title": "ToolCacheAddRequest",
+        "required": ["toolId"],
+        "properties": {
+          "toolId": { "type": "string", "title": "Tool Id" },
+          "toolVersion": { "type": "string", "title": "Tool Version" }
+        }
+      },
+      "ToolCacheAddResponse": {
+        "type": "object",
+        "title": "ToolCacheAddResponse",
+        "required": ["cacheKey", "alreadyCached"],
+        "properties": {
+          "cacheKey": { "type": "string", "title": "Cache Key" },
+          "alreadyCached": { "type": "boolean", "title": "Already Cached" }
+        }
       }
     }
   }
