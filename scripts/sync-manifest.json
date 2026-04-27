@@ -95,6 +95,35 @@
       ]
     },
     {
+      "name": "connection-workflows",
+      "label": "connection-validation workflow fixtures (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "test/unit/tool_util/workflow_state/connection_workflows/",
+          "dst": "packages/core/test/fixtures/connection_workflows/",
+          "patterns": ["*.gxwf.yml"]
+        },
+        {
+          "src": "test/unit/tool_util/workflow_state/connection_workflows/expected/",
+          "dst": "packages/core/test/fixtures/connection_workflows/expected/",
+          "patterns": ["*.yml"]
+        }
+      ]
+    },
+    {
+      "name": "connection-type-cases",
+      "label": "connection-type algebra truth table (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "test/unit/tool_util/workflow_state/",
+          "dst": "packages/workflow-graph/test/fixtures/",
+          "files": ["connection_type_cases.yml"]
+        }
+      ]
+    },
+    {
       "name": "wfstate-templates",
       "label": "workflow-state report templates (Galaxy)",
       "src_root": "galaxy_root",

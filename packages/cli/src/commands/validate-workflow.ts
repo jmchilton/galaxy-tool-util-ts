@@ -31,6 +31,8 @@ import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { writeReportHtml } from "./report-output.js";
+import { buildConnectionReport } from "./connection-validation.js";
+import type { ConnectionValidationReport } from "@galaxy-tool-util/schema";
 
 export type { WorkflowFormat } from "@galaxy-tool-util/schema";
 
@@ -44,6 +46,7 @@ export interface ValidateWorkflowOptions extends StrictOptions {
   toolSchemaDir?: string;
   json?: boolean;
   reportHtml?: string | boolean;
+  connections?: boolean;
 }
 
 function formatIssues(error: ParseResult.ParseError): string[] {
@@ -175,28 +178,40 @@ export async function runValidateWorkflow(
 
   const stateOk = !results.some((r) => r.status === "fail");
 
+  let connectionReport: ConnectionValidationReport | null = null;
+  if (opts.connections) {
+    connectionReport = await buildConnectionReport(data, cache);
+  }
+  const connectionsOk = connectionReport === null || connectionReport.valid;
+
   if (opts.json || opts.reportHtml) {
     const report = buildSingleValidationReport(filePath, results, {
       structure_errors: structureErrors,
       encoding_errors: encodingErrors,
     });
+    if (connectionReport !== null) {
+      report.connection_report = connectionReport;
+    }
     if (opts.json) {
       console.log(JSON.stringify(report, null, 2));
     }
     await writeReportHtml("validate", report, opts.reportHtml);
-    process.exitCode = structOk && stateOk ? 0 : 1;
+    process.exitCode = structOk && stateOk && connectionsOk ? 0 : 1;
     return;
   }
 
   if (results.length === 0) {
     console.log("No tool steps to validate state for.");
-    process.exitCode = structOk ? 0 : 1;
+    if (connectionReport !== null) printConnectionReport(connectionReport);
+    process.exitCode = structOk && connectionsOk ? 0 : 1;
     return;
   }
 
   const { validated, skipped } = renderStepResults(results);
 
   console.log(`\nTool state: ${validated} validated, ${skipped} skipped`);
+
+  if (connectionReport !== null) printConnectionReport(connectionReport);
 
   // --- strict state: promote skips to failures ---
   if (strict.strictState && results.some((r) => r.status !== "ok" && r.status !== "fail")) {
@@ -205,7 +220,27 @@ export async function runValidateWorkflow(
     return;
   }
 
-  process.exitCode = structOk && stateOk ? 0 : 1;
+  process.exitCode = structOk && stateOk && connectionsOk ? 0 : 1;
+}
+
+function printConnectionReport(report: ConnectionValidationReport): void {
+  const { ok = 0, invalid = 0, skip = 0 } = report.summary;
+  console.log(
+    `\nConnections: ${report.valid ? "OK" : "INVALID"} — ${ok} ok, ${invalid} invalid, ${skip} skip`,
+  );
+  if (!report.has_details) return;
+  for (const sr of report.step_results) {
+    if (sr.errors.length === 0 && sr.connections.every((c) => c.status === "ok")) continue;
+    const label = sr.tool_id ? `${sr.step} (${sr.tool_id})` : sr.step;
+    console.log(`  step ${label}${sr.map_over ? ` [map_over=${sr.map_over}]` : ""}`);
+    for (const e of sr.errors) console.log(`    error: ${e}`);
+    for (const cr of sr.connections) {
+      if (cr.status === "ok") continue;
+      const arrow = `${cr.source_step}/${cr.source_output} -> ${cr.target_input}`;
+      console.log(`    ${cr.status}: ${arrow}`);
+      for (const e of cr.errors) console.log(`      ${e}`);
+    }
+  }
 }
 
 // --- Native validation ---

@@ -1,5 +1,11 @@
 {
-  "entryPoints": ["packages/schema", "packages/core", "packages/cli", "packages/tool-cache-proxy"],
+  "entryPoints": [
+    "packages/schema",
+    "packages/core",
+    "packages/cli",
+    "packages/tool-cache-proxy",
+    "packages/workflow-graph"
+  ],
   "entryPointStrategy": "packages",
   "out": "docs/api/typedoc",
   "json": "docs/api/typedoc.json",

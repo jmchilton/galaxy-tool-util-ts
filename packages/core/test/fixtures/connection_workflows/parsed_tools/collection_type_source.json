@@ -1,0 +1,77 @@
+{
+  "id": "collection_type_source",
+  "version": "0.1.0",
+  "name": "collection_type_source",
+  "description": null,
+  "inputs": [
+    {
+      "name": "header",
+      "parameter_type": "gx_data",
+      "hidden": false,
+      "label": "Input Data",
+      "help": "Input data...",
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data",
+      "extensions": [
+        "data"
+      ],
+      "multiple": false,
+      "min": null,
+      "max": null
+    },
+    {
+      "name": "input_collect",
+      "parameter_type": "gx_data_collection",
+      "hidden": false,
+      "label": "Input Collect",
+      "help": "Input collection...",
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data_collection",
+      "collection_type": null,
+      "extensions": [
+        "data"
+      ],
+      "value": null
+    }
+  ],
+  "outputs": [
+    {
+      "name": "list_output",
+      "label": "Duplicate List",
+      "hidden": false,
+      "type": "collection",
+      "structure": {
+        "collection_type": null,
+        "collection_type_source": "input_collect",
+        "collection_type_from_rules": null,
+        "structured_like": null,
+        "discover_datasets": [
+          {
+            "discover_via": "pattern",
+            "format": null,
+            "visible": true,
+            "assign_primary_output": false,
+            "directory": "output",
+            "recurse": false,
+            "match_relative_path": false,
+            "sort_key": "filename",
+            "sort_comp": "lexical",
+            "sort_reverse": false,
+            "pattern": "(?P<name>.*)"
+          }
+        ]
+      }
+    }
+  ],
+  "citations": [],
+  "license": null,
+  "profile": "16.01",
+  "edam_operations": [],
+  "edam_topics": [],
+  "xrefs": [],
+  "help": null
+}

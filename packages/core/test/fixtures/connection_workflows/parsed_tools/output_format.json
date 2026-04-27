@@ -1,0 +1,196 @@
+{
+  "id": "output_format",
+  "version": "1.0.0",
+  "name": "output_format",
+  "description": null,
+  "inputs": [
+    {
+      "name": "input_data_1",
+      "parameter_type": "gx_data",
+      "hidden": false,
+      "label": "input_data_1",
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data",
+      "extensions": [
+        "data"
+      ],
+      "multiple": false,
+      "min": null,
+      "max": null
+    },
+    {
+      "name": "input_data_2",
+      "parameter_type": "gx_data",
+      "hidden": false,
+      "label": "input_data_2",
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "data",
+      "extensions": [
+        "data"
+      ],
+      "multiple": false,
+      "min": null,
+      "max": null
+    },
+    {
+      "name": "input_text",
+      "parameter_type": "gx_text",
+      "hidden": false,
+      "label": "input_text",
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": true,
+      "type": "text",
+      "area": false,
+      "value": "1",
+      "default_options": [],
+      "validators": []
+    }
+  ],
+  "outputs": [
+    {
+      "name": "direct_output",
+      "label": null,
+      "hidden": false,
+      "type": "data",
+      "format": "txt",
+      "format_source": null,
+      "metadata_source": null,
+      "discover_datasets": [
+        {
+          "discover_via": "pattern",
+          "format": null,
+          "visible": false,
+          "assign_primary_output": false,
+          "directory": null,
+          "recurse": false,
+          "match_relative_path": false,
+          "sort_key": "filename",
+          "sort_comp": "lexical",
+          "sort_reverse": false,
+          "pattern": "primary_DATASET_ID_(?P<designation>[^_]+)_(?P<visible>[^_]+)_(?P<ext>[^_]+)(_(?P<dbkey>[^_]+))?"
+        }
+      ],
+      "from_work_dir": "1",
+      "precreate_directory": false
+    },
+    {
+      "name": "input_based_output",
+      "label": null,
+      "hidden": false,
+      "type": "data",
+      "format": "input",
+      "format_source": null,
+      "metadata_source": null,
+      "discover_datasets": [
+        {
+          "discover_via": "pattern",
+          "format": null,
+          "visible": false,
+          "assign_primary_output": false,
+          "directory": null,
+          "recurse": false,
+          "match_relative_path": false,
+          "sort_key": "filename",
+          "sort_comp": "lexical",
+          "sort_reverse": false,
+          "pattern": "primary_DATASET_ID_(?P<designation>[^_]+)_(?P<visible>[^_]+)_(?P<ext>[^_]+)(_(?P<dbkey>[^_]+))?"
+        }
+      ],
+      "from_work_dir": "2",
+      "precreate_directory": false
+    },
+    {
+      "name": "format_source_1_output",
+      "label": null,
+      "hidden": false,
+      "type": "data",
+      "format": "data",
+      "format_source": "input_data_1",
+      "metadata_source": null,
+      "discover_datasets": [
+        {
+          "discover_via": "pattern",
+          "format": null,
+          "visible": false,
+          "assign_primary_output": false,
+          "directory": null,
+          "recurse": false,
+          "match_relative_path": false,
+          "sort_key": "filename",
+          "sort_comp": "lexical",
+          "sort_reverse": false,
+          "pattern": "primary_DATASET_ID_(?P<designation>[^_]+)_(?P<visible>[^_]+)_(?P<ext>[^_]+)(_(?P<dbkey>[^_]+))?"
+        }
+      ],
+      "from_work_dir": "3",
+      "precreate_directory": false
+    },
+    {
+      "name": "format_source_2_output",
+      "label": null,
+      "hidden": false,
+      "type": "data",
+      "format": "data",
+      "format_source": "input_data_2",
+      "metadata_source": null,
+      "discover_datasets": [
+        {
+          "discover_via": "pattern",
+          "format": null,
+          "visible": false,
+          "assign_primary_output": false,
+          "directory": null,
+          "recurse": false,
+          "match_relative_path": false,
+          "sort_key": "filename",
+          "sort_comp": "lexical",
+          "sort_reverse": false,
+          "pattern": "primary_DATASET_ID_(?P<designation>[^_]+)_(?P<visible>[^_]+)_(?P<ext>[^_]+)(_(?P<dbkey>[^_]+))?"
+        }
+      ],
+      "from_work_dir": "4",
+      "precreate_directory": false
+    },
+    {
+      "name": "change_format_output",
+      "label": null,
+      "hidden": false,
+      "type": "data",
+      "format": "txt",
+      "format_source": null,
+      "metadata_source": null,
+      "discover_datasets": [
+        {
+          "discover_via": "pattern",
+          "format": null,
+          "visible": false,
+          "assign_primary_output": false,
+          "directory": null,
+          "recurse": false,
+          "match_relative_path": false,
+          "sort_key": "filename",
+          "sort_comp": "lexical",
+          "sort_reverse": false,
+          "pattern": "primary_DATASET_ID_(?P<designation>[^_]+)_(?P<visible>[^_]+)_(?P<ext>[^_]+)(_(?P<dbkey>[^_]+))?"
+        }
+      ],
+      "from_work_dir": "5",
+      "precreate_directory": false
+    }
+  ],
+  "citations": [],
+  "license": null,
+  "profile": "16.01",
+  "edam_operations": [],
+  "edam_topics": [],
+  "xrefs": [],
+  "help": null
+}

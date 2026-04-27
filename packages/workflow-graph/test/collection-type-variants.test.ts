@@ -4,21 +4,21 @@ import {
   CollectionTypeDescription,
   NULL_COLLECTION_TYPE_DESCRIPTION,
 } from "../src/collection-type.js";
-import { canMatchAny, effectiveMapOverAny } from "../src/collection-type-variants.js";
+import { acceptsAny, effectiveMapOverAny } from "../src/collection-type-variants.js";
 
 const listOrListPaired = [
   new CollectionTypeDescription("list"),
   new CollectionTypeDescription("list:paired"),
 ];
 
-describe("canMatchAny", () => {
-  it("matches when the output matches any variant", () => {
-    expect(canMatchAny(new CollectionTypeDescription("list"), listOrListPaired)).toBe(true);
-    expect(canMatchAny(new CollectionTypeDescription("list:paired"), listOrListPaired)).toBe(true);
+describe("acceptsAny", () => {
+  it("matches when the output is accepted by any variant", () => {
+    expect(acceptsAny(new CollectionTypeDescription("list"), listOrListPaired)).toBe(true);
+    expect(acceptsAny(new CollectionTypeDescription("list:paired"), listOrListPaired)).toBe(true);
   });
 
-  it("does not match when no variant matches", () => {
-    expect(canMatchAny(new CollectionTypeDescription("paired"), listOrListPaired)).toBe(false);
+  it("does not match when no variant accepts", () => {
+    expect(acceptsAny(new CollectionTypeDescription("paired"), listOrListPaired)).toBe(false);
   });
 });
 
