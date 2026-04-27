@@ -73,6 +73,7 @@ export function validateConnectionGraph(
     const step = graph.steps[stepId];
     const stepResult: StepConnectionResult = {
       stepId,
+      label: step.label ?? null,
       toolId: step.toolId,
       toolVersion: step.toolVersion,
       stepType: step.stepType,
@@ -185,15 +186,24 @@ function _validateSingleConnection(
 
   const targetType = _inputToType(targetResolvedInput);
 
-  const ok = (mapping?: string | null): ConnectionValidationResult => ({
-    sourceStep,
-    sourceOutput,
-    targetStep,
-    targetInput,
-    status: "ok",
-    mapping: mapping ?? null,
-    errors: [],
-  });
+  const ok = (
+    mapping?: string | null,
+    extras?: { reduction?: boolean },
+  ): ConnectionValidationResult => {
+    const mappingValue = mapping ?? null;
+    const mapDepth = mappingValue ? mappingValue.split(":").length : 0;
+    return {
+      sourceStep,
+      sourceOutput,
+      targetStep,
+      targetInput,
+      status: "ok",
+      mapping: mappingValue,
+      mapDepth,
+      reduction: extras?.reduction ?? false,
+      errors: [],
+    };
+  };
 
   if (isNullDesc(sourceType)) {
     if (isNullDesc(targetType)) return ok();
@@ -215,9 +225,9 @@ function _validateSingleConnection(
         const innerList = new CollectionTypeDescription("list");
         if (sourceType.canMapOver(innerList)) {
           const remaining = sourceType.effectiveMapOver(innerList);
-          return ok(remaining.collectionType);
+          return ok(remaining.collectionType, { reduction: true });
         }
-        return ok();
+        return ok(null, { reduction: true });
       }
       // Non-list-like: fall through to can_match / map_over
     }

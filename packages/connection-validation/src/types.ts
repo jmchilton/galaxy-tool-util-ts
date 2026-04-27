@@ -47,6 +47,7 @@ export interface ResolvedOutput {
 
 export interface ResolvedStep {
   stepId: string;
+  label?: string | null;
   toolId?: string | null;
   toolVersion?: string | null;
   stepType: string;
@@ -72,11 +73,16 @@ export interface ConnectionValidationResult {
   targetInput: string;
   status: ConnectionStatus;
   mapping?: string | null;
+  /** Depth of map-over applied at this connection (0 = scalar passthrough, 1 = list, 2 = list:paired, …). */
+  mapDepth?: number;
+  /** True if this connection reduces a list-like source into a multi-data scalar input. */
+  reduction?: boolean;
   errors: string[];
 }
 
 export interface StepConnectionResult {
   stepId: string;
+  label?: string | null;
   toolId?: string | null;
   toolVersion?: string | null;
   stepType: string;

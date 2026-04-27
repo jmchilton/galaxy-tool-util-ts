@@ -137,6 +137,8 @@ export { cleanWorkflow, type CleanWorkflowOptions, type CleanWorkflowResult } fr
 
 export { workflowToMermaid, type MermaidOptions } from "./mermaid.js";
 
+export { edgeAnnotationKey, type EdgeAnnotation } from "./edge-annotation.js";
+
 export { cytoscapeElements } from "./cytoscape.js";
 export {
   elementsToList,

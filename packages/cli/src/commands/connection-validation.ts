@@ -16,41 +16,46 @@ import type { ConnectionValidationReport, ParsedTool } from "@galaxy-tool-util/s
 
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
-interface ToolRef {
-  toolId: string;
-  toolVersion: string | null;
-}
-
 export async function buildConnectionReport(
   data: Record<string, unknown>,
   cache: ToolCache,
 ): Promise<ConnectionValidationReport> {
-  const refs = _collectToolRefs(data);
+  const getToolInfo = await buildGetToolInfo(data, cache);
+  return validateConnectionsReport(data, getToolInfo);
+}
+
+export async function buildGetToolInfo(
+  data: Record<string, unknown>,
+  cache: ToolCache,
+): Promise<GetToolInfo> {
+  const refs = collectToolRefs(data);
   const lookup = new Map<string, ParsedTool>();
   for (const ref of refs) {
     const resolved = await loadCachedTool(cache, ref.toolId, ref.toolVersion);
     if (!isResolveError(resolved)) {
-      lookup.set(_lookupKey(ref.toolId, ref.toolVersion), resolved.tool);
+      lookup.set(lookupKey(ref.toolId, ref.toolVersion), resolved.tool);
     }
   }
-  const getToolInfo: GetToolInfo = {
+  return {
     getToolInfo: (id, version) => {
-      const versioned = lookup.get(_lookupKey(id, version ?? null));
+      const versioned = lookup.get(lookupKey(id, version ?? null));
       if (versioned) return versioned;
-      // Fallback to any cached version of the tool (graph builder passes
-      // tool_version when available, but nothing prevents callers from
-      // omitting it).
-      return lookup.get(_lookupKey(id, null)) ?? _firstByToolId(lookup, id);
+      // Graph builder usually passes tool_version, but callers may omit it.
+      return lookup.get(lookupKey(id, null)) ?? firstByToolId(lookup, id);
     },
   };
-  return validateConnectionsReport(data, getToolInfo);
 }
 
-function _lookupKey(toolId: string, toolVersion: string | null): string {
+export interface ToolRef {
+  toolId: string;
+  toolVersion: string | null;
+}
+
+function lookupKey(toolId: string, toolVersion: string | null): string {
   return `${toolId}@${toolVersion ?? ""}`;
 }
 
-function _firstByToolId(lookup: Map<string, ParsedTool>, toolId: string): ParsedTool | undefined {
+function firstByToolId(lookup: Map<string, ParsedTool>, toolId: string): ParsedTool | undefined {
   const prefix = `${toolId}@`;
   for (const [k, v] of lookup) {
     if (k.startsWith(prefix)) return v;
@@ -58,7 +63,7 @@ function _firstByToolId(lookup: Map<string, ParsedTool>, toolId: string): Parsed
   return undefined;
 }
 
-function _collectToolRefs(data: Record<string, unknown>): ToolRef[] {
+export function collectToolRefs(data: Record<string, unknown>): ToolRef[] {
   const out: ToolRef[] = [];
   const seen = new Set<string>();
   _walk(data, out, seen);

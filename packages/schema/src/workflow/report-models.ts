@@ -52,11 +52,20 @@ export interface ConnectionResult {
   target_input: string;
   status: "ok" | "invalid" | "skip";
   mapping: string | null;
+  /**
+   * Map-over depth applied at this connection (TS-only enrichment; not yet present in Galaxy/Python).
+   * 0 = scalar passthrough, 1 = list, 2 = list:paired, …
+   */
+  map_depth?: number;
+  /** True if this connection reduces a list-like source into a multi-data scalar input (TS-only). */
+  reduction?: boolean;
   errors: string[];
 }
 
 export interface ConnectionStepResult {
   step: string;
+  /** Step label when distinct from `step` (TS-only enrichment used by edge-annotation lookup). */
+  label?: string | null;
   tool_id: string | null;
   version: string | null;
   step_type: string;

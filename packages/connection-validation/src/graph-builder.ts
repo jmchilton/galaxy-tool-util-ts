@@ -71,21 +71,24 @@ function _resolveStep(
   step: NormalizedNativeStep,
   getToolInfo: GetToolInfo,
 ): ResolvedStep {
+  const label = step.label ?? null;
   const stepType = step.type ?? "tool";
+  let resolved: ResolvedStep;
   if (
     stepType === "data_input" ||
     stepType === "data_collection_input" ||
     stepType === "parameter_input"
   ) {
-    return _resolveInputStep(stepId, step, stepType);
+    resolved = _resolveInputStep(stepId, step, stepType);
+  } else if (stepType === "tool") {
+    resolved = _resolveToolStep(stepId, step, getToolInfo);
+  } else if (stepType === "subworkflow") {
+    resolved = _resolveSubworkflowStep(stepId, step, getToolInfo);
+  } else {
+    resolved = _emptyStep(stepId, null, stepType);
   }
-  if (stepType === "tool") {
-    return _resolveToolStep(stepId, step, getToolInfo);
-  }
-  if (stepType === "subworkflow") {
-    return _resolveSubworkflowStep(stepId, step, getToolInfo);
-  }
-  return _emptyStep(stepId, null, stepType);
+  resolved.label = label;
+  return resolved;
 }
 
 function _emptyStep(stepId: string, toolId: string | null, stepType: string): ResolvedStep {

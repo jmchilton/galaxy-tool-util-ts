@@ -312,6 +312,18 @@ gxwf mermaid my-workflow.gxwf.yml --comments
 | Option | Description |
 |---|---|
 | `--comments` | Render frame comments as Mermaid subgraphs |
+| `--annotate-connections` | Encode map-over depth + reductions on edges (runs the connection validator) |
+| `--cache-dir <dir>` | Tool cache directory (used by `--annotate-connections`) |
+
+With `--annotate-connections`, the emitter runs the connection validator and styles each edge by its map-over depth or reduction:
+
+| Annotation | Mermaid edge |
+|---|---|
+| `map_depth = 0`, no reduction | `A --> B` (default) |
+| `map_depth ≥ 1` | `A ==>\|"<mapping>"\| B` (thick green; width grows with depth) |
+| `reduction = true` | `A -. "reduce" .-> B` (dashed red) |
+
+A consolidated `linkStyle` block is emitted at the bottom of the diagram.
 
 ### `cytoscapejs <file> [output]`
 
@@ -337,6 +349,10 @@ gxwf cytoscapejs my-workflow.gxwf.yml out --html
 |---|---|
 | `--html` | Force HTML output |
 | `--json` | Force JSON output |
+| `--annotate-connections` | Encode map-over depth + reductions on edges (runs the connection validator) |
+| `--cache-dir <dir>` | Tool cache directory (used by `--annotate-connections`) |
+
+With `--annotate-connections`, each edge gains `data.map_depth`, `data.reduction`, `data.mapping` and the classes `mapover_<depth>` / `reduction`. The bundled HTML viewer renders mapped edges as thicker green lines and reductions as dashed red arrows, and surfaces the depth/reduction in edge tooltips.
 
 ### Tree (batch) commands
 

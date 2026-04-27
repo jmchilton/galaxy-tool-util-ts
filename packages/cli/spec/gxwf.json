@@ -268,6 +268,14 @@
         {
           "flags": "--comments",
           "description": "Render frame comments as Mermaid subgraphs"
+        },
+        {
+          "flags": "--annotate-connections",
+          "description": "Encode map-over depth and reductions on edges (runs the connection validator)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (used by --annotate-connections)"
         }
       ]
     },
@@ -293,6 +301,14 @@
         {
           "flags": "--json",
           "description": "Force JSON output regardless of file extension"
+        },
+        {
+          "flags": "--annotate-connections",
+          "description": "Encode map-over depth and reductions on edges (runs the connection validator)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (used by --annotate-connections)"
         }
       ]
     },

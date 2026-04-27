@@ -12,6 +12,8 @@ import type {
   CytoscapeNode,
   CytoscapePosition,
 } from "./cytoscape-models.js";
+import type { EdgeAnnotation } from "./edge-annotation.js";
+import { edgeAnnotationKey } from "./edge-annotation.js";
 import { ensureFormat2 } from "./normalized/ensure.js";
 import type {
   NormalizedFormat2Input,
@@ -22,8 +24,18 @@ import { resolveSourceReference } from "./normalized/labels.js";
 
 const MAIN_TS_PREFIX = "toolshed.g2.bx.psu.edu/repos/";
 
+export interface CytoscapeOptions {
+  /**
+   * Optional `EdgeAnnotation` map keyed by `edgeAnnotationKey(...)`. When
+   * present, edges gain `data.map_depth`, `data.reduction`, `data.mapping`
+   * and class hints (`mapover_<n>`, `reduction`).
+   */
+  edgeAnnotations?: Map<string, EdgeAnnotation>;
+}
+
 export function cytoscapeElements(
   workflow: unknown | NormalizedFormat2Workflow,
+  opts: CytoscapeOptions = {},
 ): CytoscapeElements {
   const wf =
     typeof workflow === "object" &&
@@ -48,7 +60,7 @@ export function cytoscapeElements(
 
   wf.steps.forEach((step, i) => {
     nodes.push(_stepNode(step, i + inputsOffset));
-    edges.push(..._stepEdges(step, knownLabels));
+    edges.push(..._stepEdges(step, knownLabels, opts.edgeAnnotations));
   });
 
   return { nodes, edges };
@@ -136,7 +148,11 @@ function _stepNode(step: NormalizedFormat2Step, orderIndex: number): CytoscapeNo
   };
 }
 
-function _stepEdges(step: NormalizedFormat2Step, knownLabels: Set<string>): CytoscapeEdge[] {
+function _stepEdges(
+  step: NormalizedFormat2Step,
+  knownLabels: Set<string>,
+  edgeAnnotations: Map<string, EdgeAnnotation> | undefined,
+): CytoscapeEdge[] {
   const stepId = step.label || step.id;
   const edges: CytoscapeEdge[] = [];
   for (const stepInput of step.in) {
@@ -147,7 +163,7 @@ function _stepEdges(step: NormalizedFormat2Step, knownLabels: Set<string>): Cyto
       const [sourceLabel, outputName] = resolveSourceReference(source, knownLabels);
       const output = outputName === "output" ? null : outputName;
       const edgeId = `${stepId}__${inputId}__from__${sourceLabel}`;
-      edges.push({
+      const edge: CytoscapeEdge = {
         group: "edges",
         data: {
           id: edgeId,
@@ -156,7 +172,20 @@ function _stepEdges(step: NormalizedFormat2Step, knownLabels: Set<string>): Cyto
           input: inputId,
           output,
         },
-      });
+      };
+      const annotation = edgeAnnotations?.get(
+        edgeAnnotationKey(sourceLabel, outputName, stepId, inputId),
+      );
+      if (annotation) {
+        edge.data.map_depth = annotation.mapDepth;
+        edge.data.reduction = annotation.reduction;
+        edge.data.mapping = annotation.mapping ?? null;
+        const classes: string[] = [];
+        if (annotation.mapDepth > 0) classes.push(`mapover_${annotation.mapDepth}`);
+        if (annotation.reduction) classes.push("reduction");
+        if (classes.length > 0) edge.classes = classes;
+      }
+      edges.push(edge);
     }
   }
   return edges;

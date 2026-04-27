@@ -10,6 +10,7 @@ import { cytoscapeElements, elementsToList } from "@galaxy-tool-util/schema";
 import type { CytoscapeElements } from "@galaxy-tool-util/schema";
 import { writeFile } from "node:fs/promises";
 
+import { resolveEdgeAnnotations } from "./annotate-connections.js";
 import { CYTOSCAPE_HTML_TEMPLATE } from "./cytoscapejs/_template-bundled.js";
 import { readWorkflowFile } from "./workflow-io.js";
 
@@ -17,6 +18,8 @@ export interface CytoscapeJsCommandOptions {
   output?: string;
   html?: boolean;
   json?: boolean;
+  annotateConnections?: boolean;
+  cacheDir?: string;
 }
 
 export function renderHtml(elements: CytoscapeElements): string {
@@ -40,7 +43,11 @@ export async function runCytoscapeJs(
   const data = await readWorkflowFile(filePath);
   if (!data) return;
 
-  const elements = cytoscapeElements(data);
+  const edgeAnnotations = opts.annotateConnections
+    ? await resolveEdgeAnnotations(data, { cacheDir: opts.cacheDir })
+    : undefined;
+
+  const elements = cytoscapeElements(data, { edgeAnnotations });
   const format = chooseFormat(opts);
 
   const content =

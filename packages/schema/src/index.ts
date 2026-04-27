@@ -174,6 +174,9 @@ export {
   type CleanWorkflowResult,
   workflowToMermaid,
   type MermaidOptions,
+  /** Edge annotation contract (map-over depth + reduction) consumed by mermaid/cytoscape emitters. */
+  type EdgeAnnotation,
+  edgeAnnotationKey,
   /** Build Cytoscape.js elements from a Galaxy workflow. */
   cytoscapeElements,
   /** Flatten cytoscape elements into the list-of-dicts format cytoscape.js consumes. */

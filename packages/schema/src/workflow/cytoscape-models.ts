@@ -25,6 +25,15 @@ export interface CytoscapeEdgeData {
   target: string;
   input: string;
   output: string | null;
+  /**
+   * Map-over depth applied at this connection, when annotated. Optional so the
+   * default emit shape stays byte-identical with the Python builder.
+   */
+  map_depth?: number;
+  /** True when the connection reduces a list-like source into a multi-data scalar input. */
+  reduction?: boolean;
+  /** Textual mapping (e.g. "list", "list:paired"); mirrors `ConnectionResult.mapping`. */
+  mapping?: string | null;
 }
 
 export interface CytoscapeNode {
@@ -37,6 +46,8 @@ export interface CytoscapeNode {
 export interface CytoscapeEdge {
   group: "edges";
   data: CytoscapeEdgeData;
+  /** Optional class hints (e.g. "mapover_2", "reduction") used by the HTML viewer's stylesheet. */
+  classes?: string[];
 }
 
 export interface CytoscapeElements {
