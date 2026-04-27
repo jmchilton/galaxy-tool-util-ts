@@ -217,7 +217,8 @@ describe("ToolCache", () => {
     await cache.saveTool("k1", sampleTool, "tool1", "1.0", "api");
     await cache.saveTool("k2", sampleTool, "tool2", "2.0", "api");
     expect(await cache.listCached()).toHaveLength(2);
-    await cache.clearCache();
+    const removed = await cache.clearCache();
+    expect(removed).toBe(2);
     expect(await cache.listCached()).toHaveLength(0);
   });
 
@@ -236,7 +237,8 @@ describe("ToolCache", () => {
       "1.0",
       "api",
     );
-    await cache.clearCache("toolshed.g2.bx.psu.edu/repos/devteam");
+    const removed = await cache.clearCache("toolshed.g2.bx.psu.edu/repos/devteam");
+    expect(removed).toBe(1);
     const remaining = await cache.listCached();
     expect(remaining).toHaveLength(1);
     expect(remaining[0].tool_id).toContain("multiqc");

@@ -113,6 +113,12 @@ export class ToolCache {
     return this.storage.load(key);
   }
 
+  /** Per-entry size/mtime if the storage backend supports it. */
+  async statCached(key: string): Promise<{ sizeBytes: number; mtime?: string } | null> {
+    if (typeof this.storage.stat !== "function") return null;
+    return this.storage.stat(key);
+  }
+
   /**
    * Remove a single cached entry by cache key. Returns true if anything was
    * removed (storage or index), false if neither held the key.
@@ -177,7 +183,8 @@ export class ToolCache {
     return stats;
   }
 
-  async clearCache(toolIdPrefix?: string): Promise<void> {
+  /** Clear cached entries. Returns the number of entries removed. */
+  async clearCache(toolIdPrefix?: string): Promise<number> {
     if (toolIdPrefix === undefined) {
       const keys = await this.storage.list();
       for (const key of keys) {
@@ -185,14 +192,15 @@ export class ToolCache {
       }
       await this.index.clear();
       this.memoryCache.clear();
-    } else {
-      const prefix = toolIdPrefix.replace(/\*$/, "");
-      const toRemove = (await this.index.listAll()).filter((e) => e.tool_id.startsWith(prefix));
-      for (const entry of toRemove) {
-        await this.storage.delete(entry.cache_key);
-        await this.index.remove(entry.cache_key);
-        this.memoryCache.delete(entry.cache_key);
-      }
+      return keys.length;
     }
+    const prefix = toolIdPrefix.replace(/\*$/, "");
+    const toRemove = (await this.index.listAll()).filter((e) => e.tool_id.startsWith(prefix));
+    for (const entry of toRemove) {
+      await this.storage.delete(entry.cache_key);
+      await this.index.remove(entry.cache_key);
+      this.memoryCache.delete(entry.cache_key);
+    }
+    return toRemove.length;
   }
 }

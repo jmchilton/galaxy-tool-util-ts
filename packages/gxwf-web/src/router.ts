@@ -10,7 +10,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import * as fs from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
-import type { ToolCache } from "@galaxy-tool-util/core";
+import type { ToolCache, ToolInfoService } from "@galaxy-tool-util/core";
 import {
   GalaxyWorkflowSchema,
   NativeGalaxyWorkflowSchema,
@@ -46,12 +46,24 @@ import {
   type ExportConvertOptions,
   type RoundtripOptions,
 } from "./workflows.js";
+import {
+  addToolCacheEntry,
+  clearToolCache,
+  deleteToolCacheEntry,
+  getToolCacheRaw,
+  getToolCacheStats,
+  listToolCache,
+  refetchToolCacheEntry,
+  type AddRequest,
+  type RefetchRequest,
+} from "./tool-cache.js";
 
 // ── State ────────────────────────────────────────────────────────────
 
 export interface AppState {
   directory: string;
   cache: ToolCache;
+  infoService: ToolInfoService;
   workflows: WorkflowIndex;
   cacheDir?: string;
   /** Absolute path to a built gxwf-ui dist directory to serve as the frontend. */
@@ -232,7 +244,14 @@ type Route =
   | { handler: "listWorkflows" }
   | { handler: "refreshWorkflows" }
   | { handler: "workflowOp"; filePath: string; op: WorkflowOp; query: URLSearchParams }
-  | { handler: "structuralSchema"; query: URLSearchParams };
+  | { handler: "structuralSchema"; query: URLSearchParams }
+  | { handler: "toolCacheList"; query: URLSearchParams }
+  | { handler: "toolCacheStats" }
+  | { handler: "toolCacheRead"; cacheKey: string }
+  | { handler: "toolCacheDelete"; cacheKey: string }
+  | { handler: "toolCacheClear"; query: URLSearchParams }
+  | { handler: "toolCacheRefetch" }
+  | { handler: "toolCacheAdd" };
 
 function matchRoute(method: string, url: string): Route | null {
   const [rawPath, queryStr] = url.split("?");
@@ -241,6 +260,31 @@ function matchRoute(method: string, url: string): Route | null {
   // Structural schema: GET /api/schemas/structural
   if (rawPath === "/api/schemas/structural" && method === "GET") {
     return { handler: "structuralSchema", query };
+  }
+
+  // Tool cache routes
+  if (rawPath === "/api/tool-cache" || rawPath.startsWith("/api/tool-cache/")) {
+    if (rawPath === "/api/tool-cache") {
+      if (method === "GET") return { handler: "toolCacheList", query };
+      if (method === "DELETE") return { handler: "toolCacheClear", query };
+      return null;
+    }
+    if (rawPath === "/api/tool-cache/stats" && method === "GET") {
+      return { handler: "toolCacheStats" };
+    }
+    if (rawPath === "/api/tool-cache/refetch" && method === "POST") {
+      return { handler: "toolCacheRefetch" };
+    }
+    if (rawPath === "/api/tool-cache/add" && method === "POST") {
+      return { handler: "toolCacheAdd" };
+    }
+    const keyMatch = rawPath.match(/^\/api\/tool-cache\/([^/]+)$/);
+    if (keyMatch) {
+      const key = decodeURIComponent(keyMatch[1]);
+      if (method === "GET") return { handler: "toolCacheRead", cacheKey: key };
+      if (method === "DELETE") return { handler: "toolCacheDelete", cacheKey: key };
+    }
+    return null;
   }
 
   // Workflow list/refresh (must match before the per-workflow op pattern)
@@ -427,6 +471,45 @@ export function createRequestHandler(state: AppState) {
             state.workflows = discoverWorkflows(directory);
           }
           json(res, 200, result);
+          break;
+        }
+
+        case "toolCacheList": {
+          const decode = route.query.get("decode") === "1";
+          json(res, 200, await listToolCache(state, { decode }));
+          break;
+        }
+
+        case "toolCacheStats": {
+          json(res, 200, await getToolCacheStats(state));
+          break;
+        }
+
+        case "toolCacheRead": {
+          json(res, 200, await getToolCacheRaw(state, route.cacheKey));
+          break;
+        }
+
+        case "toolCacheDelete": {
+          json(res, 200, await deleteToolCacheEntry(state, route.cacheKey));
+          break;
+        }
+
+        case "toolCacheClear": {
+          const prefix = route.query.get("prefix") ?? undefined;
+          json(res, 200, await clearToolCache(state, prefix));
+          break;
+        }
+
+        case "toolCacheRefetch": {
+          const body = await readJsonBody<RefetchRequest>(req);
+          json(res, 200, await refetchToolCacheEntry(state, body));
+          break;
+        }
+
+        case "toolCacheAdd": {
+          const body = await readJsonBody<AddRequest>(req);
+          json(res, 200, await addToolCacheEntry(state, body));
           break;
         }
 

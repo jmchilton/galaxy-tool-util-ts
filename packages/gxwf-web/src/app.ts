@@ -36,11 +36,11 @@ export function createApp(
     cacheDir: opts.cacheDir,
     sources: opts.sources,
   });
-  const cache = service.cache;
 
   const state: AppState = {
     directory,
-    cache,
+    cache: service.cache,
+    infoService: service,
     workflows: { directory, workflows: [] },
     cacheDir: opts.cacheDir,
     uiDir: opts.uiDir,
@@ -53,7 +53,7 @@ export function createApp(
   });
 
   const ready = (async () => {
-    await cache.index.load();
+    await service.cache.index.load();
     state.workflows = discoverWorkflows(directory);
   })();
 

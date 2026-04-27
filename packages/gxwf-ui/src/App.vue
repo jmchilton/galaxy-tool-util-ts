@@ -7,6 +7,7 @@
       <nav class="header-nav">
         <RouterLink to="/" class="nav-link">Workflows</RouterLink>
         <RouterLink to="/files" class="nav-link">Files</RouterLink>
+        <RouterLink to="/cache" class="nav-link">Tool Cache</RouterLink>
         <a
           href="https://iwc.galaxyproject.org/"
           target="_blank"

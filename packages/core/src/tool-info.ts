@@ -128,6 +128,42 @@ export class ToolInfoService {
     }
   }
 
+  /**
+   * Populate the cache for a known tool id. Idempotent by default — when the
+   * entry already exists, returns `{alreadyCached: true, fetched: false}` and
+   * skips the remote fetch. Pass `{force: true}` to evict the existing entry
+   * first and re-fetch unconditionally.
+   *
+   * Used by inspector / debug surfaces (gxwf-web `/api/tool-cache/{add,refetch}`).
+   */
+  async refetch(
+    toolId: string,
+    toolVersion?: string | null,
+    opts?: { force?: boolean },
+  ): Promise<{ cacheKey: string; fetched: boolean; alreadyCached: boolean }> {
+    const coords = this.cache.resolveToolCoordinates(toolId, toolVersion ?? null);
+    let resolvedVersion = coords.version;
+    let alreadyCached = false;
+    if (resolvedVersion !== null) {
+      alreadyCached = await this.cache.hasCached(toolId, resolvedVersion);
+    }
+    if (alreadyCached && !opts?.force) {
+      const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion!);
+      return { cacheKey: key, fetched: false, alreadyCached: true };
+    }
+    if (alreadyCached && opts?.force && resolvedVersion !== null) {
+      const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion);
+      await this.cache.removeCached(key);
+    }
+    const tool = await this.getToolInfo(toolId, toolVersion ?? null);
+    if (tool === null) {
+      throw new Error(`Failed to fetch tool: ${toolId}`);
+    }
+    resolvedVersion = tool.version ?? resolvedVersion ?? "unknown";
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion);
+    return { cacheKey: key, fetched: true, alreadyCached };
+  }
+
   async addTool(
     toolId: string,
     toolVersion: string,
