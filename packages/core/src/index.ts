@@ -26,6 +26,7 @@ export type {
   CacheIndexData,
   CacheStorage,
   ResolvedCoordinates,
+  CacheStats,
 } from "./cache/index.js";
 /** IndexedDB-backed cache storage for browser/Web Worker contexts. */
 export { IndexedDBCacheStorage } from "./cache/index.js";

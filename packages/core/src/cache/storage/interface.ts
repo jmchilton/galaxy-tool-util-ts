@@ -13,4 +13,6 @@ export interface CacheStorage {
   list(): Promise<string[]>;
   /** Optional bulk insert — single transaction for efficiency (e.g. pre-populating from bundle). */
   saveAll?(entries: ReadonlyArray<[string, unknown]>): Promise<void>;
+  /** Optional per-entry size/mtime metadata. Returns null if the key is missing. */
+  stat?(key: string): Promise<{ sizeBytes: number; mtime?: string } | null>;
 }

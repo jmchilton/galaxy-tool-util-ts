@@ -57,6 +57,14 @@ describe("IndexedDBCacheStorage (browser)", () => {
     await storage.delete("gone");
     expect(await storage.load("gone")).toBeNull();
   });
+
+  it("stat returns sizeBytes for stored values", async () => {
+    await storage.save("size1", { hello: "world" });
+    const s = await storage.stat("size1");
+    expect(s).not.toBeNull();
+    expect(s!.sizeBytes).toBeGreaterThan(0);
+    expect(await storage.stat("missing")).toBeNull();
+  });
 });
 
 describe("ToolCache with IndexedDBCacheStorage (browser)", () => {

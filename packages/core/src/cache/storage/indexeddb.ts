@@ -77,6 +77,18 @@ export class IndexedDBCacheStorage implements CacheStorage {
     });
   }
 
+  async stat(key: string): Promise<{ sizeBytes: number; mtime?: string } | null> {
+    const value = await this.load(key);
+    if (value === null) return null;
+    let sizeBytes: number;
+    if (value instanceof Blob) {
+      sizeBytes = value.size;
+    } else {
+      sizeBytes = JSON.stringify(value).length;
+    }
+    return { sizeBytes };
+  }
+
   /** Bulk insert using a single transaction — efficient for pre-populating from a bundled dataset. */
   async saveAll(entries: ReadonlyArray<[string, unknown]>): Promise<void> {
     const db = await this.getDb();

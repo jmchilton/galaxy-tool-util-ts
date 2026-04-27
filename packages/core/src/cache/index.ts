@@ -4,7 +4,7 @@ export { cacheKey } from "./cache-key.js";
 export { CacheIndex } from "./cache-index.js";
 export type { CacheIndexEntry, CacheIndexData } from "./cache-index.js";
 export { ToolCache } from "./tool-cache.js";
-export type { ResolvedCoordinates } from "./tool-cache.js";
+export type { ResolvedCoordinates, CacheStats } from "./tool-cache.js";
 export { DEFAULT_TOOLSHED_URL, TOOLSHED_URL_ENV_VAR } from "./tool-cache-defaults.js";
 export type { CacheStorage } from "./storage/interface.js";
 export { IndexedDBCacheStorage } from "./storage/indexeddb.js";
