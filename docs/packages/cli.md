@@ -313,6 +313,31 @@ gxwf mermaid my-workflow.gxwf.yml --comments
 |---|---|
 | `--comments` | Render frame comments as Mermaid subgraphs |
 
+### `cytoscapejs <file> [output]`
+
+Render a Galaxy workflow as [Cytoscape.js](https://js.cytoscape.org) elements — either JSON for programmatic use or a standalone HTML viewer with hover tooltips. Output format is inferred from extension (`.json` / `.html`) or forced via `--json` / `--html`. With no `output`, JSON is written to stdout.
+
+This is the TS port of gxformat2's `gxwf-viz`. The JSON shape (snake_case keys, edge id format) is byte-identical to the Python emitter; the HTML template is synced verbatim.
+
+```bash
+# Print JSON elements to stdout
+gxwf cytoscapejs my-workflow.ga
+
+# Write JSON
+gxwf cytoscapejs my-workflow.ga elements.json
+
+# Write standalone interactive HTML
+gxwf cytoscapejs my-workflow.ga viewer.html
+
+# Force HTML output regardless of extension
+gxwf cytoscapejs my-workflow.gxwf.yml out --html
+```
+
+| Option | Description |
+|---|---|
+| `--html` | Force HTML output |
+| `--json` | Force JSON output |
+
 ### Tree (batch) commands
 
 Tree commands take a directory instead of a file, discover all workflows recursively, process each, and report aggregate results. They mirror the Python `gxwf-*-tree` commands.

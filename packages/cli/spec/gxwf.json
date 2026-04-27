@@ -272,6 +272,31 @@
       ]
     },
     {
+      "name": "cytoscapejs",
+      "description": "Render a Galaxy workflow as Cytoscape.js elements (JSON or standalone HTML)",
+      "handler": "cytoscapeJs",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        },
+        {
+          "raw": "[output]",
+          "description": "Output path (.json or .html); stdout JSON if omitted"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--html",
+          "description": "Force HTML output regardless of file extension"
+        },
+        {
+          "flags": "--json",
+          "description": "Force JSON output regardless of file extension"
+        }
+      ]
+    },
+    {
       "name": "validate-tree",
       "description": "Batch validate all workflows under a directory",
       "handler": "validateTree",

@@ -137,6 +137,18 @@ export { cleanWorkflow, type CleanWorkflowOptions, type CleanWorkflowResult } fr
 
 export { workflowToMermaid, type MermaidOptions } from "./mermaid.js";
 
+export { cytoscapeElements } from "./cytoscape.js";
+export {
+  elementsToList,
+  type CytoscapeEdge,
+  type CytoscapeEdgeData,
+  type CytoscapeElements,
+  type CytoscapeListItem,
+  type CytoscapeNode,
+  type CytoscapeNodeData,
+  type CytoscapePosition,
+} from "./cytoscape-models.js";
+
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
 
 export {

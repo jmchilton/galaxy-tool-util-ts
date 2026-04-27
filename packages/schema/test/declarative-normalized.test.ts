@@ -32,6 +32,8 @@ import {
   validateNativeStrict,
 } from "../src/workflow/validators.js";
 import { workflowToMermaid } from "../src/workflow/mermaid.js";
+import { cytoscapeElements } from "../src/workflow/cytoscape.js";
+import { elementsToList } from "../src/workflow/cytoscape-models.js";
 
 // --- Directories ---
 
@@ -68,6 +70,9 @@ const OPERATIONS: Record<string, Operation> = {
   workflow_to_mermaid_lines: (raw: unknown) => workflowToMermaid(raw).split("\n"),
   workflow_to_mermaid_with_comments_lines: (raw: unknown) =>
     workflowToMermaid(raw, { comments: true }).split("\n"),
+  cytoscape_elements_to_list: (raw: unknown) => elementsToList(cytoscapeElements(raw)),
+  cytoscape_node_ids: (raw: unknown) => cytoscapeElements(raw).nodes.map((n) => n.data.id),
+  cytoscape_edge_ids: (raw: unknown) => cytoscapeElements(raw).edges.map((e) => e.data.id),
 };
 
 const UNSUPPORTED_OPERATIONS = new Set<string>([]);

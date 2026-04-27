@@ -174,6 +174,17 @@ export {
   type CleanWorkflowResult,
   workflowToMermaid,
   type MermaidOptions,
+  /** Build Cytoscape.js elements from a Galaxy workflow. */
+  cytoscapeElements,
+  /** Flatten cytoscape elements into the list-of-dicts format cytoscape.js consumes. */
+  elementsToList,
+  type CytoscapeEdge,
+  type CytoscapeEdgeData,
+  type CytoscapeElements,
+  type CytoscapeListItem,
+  type CytoscapeNode,
+  type CytoscapeNodeData,
+  type CytoscapePosition,
   /** Detect whether a workflow dict is native (.ga) or format2 (.gxwf.yml). */
   detectFormat,
   type WorkflowFormat,

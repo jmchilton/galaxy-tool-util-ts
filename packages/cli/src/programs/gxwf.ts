@@ -13,6 +13,7 @@ import { runRoundtrip } from "../commands/roundtrip.js";
 import { runRoundtripTree } from "../commands/roundtrip-tree.js";
 import { runLint } from "../commands/lint.js";
 import { runMermaid } from "../commands/mermaid.js";
+import { runCytoscapeJs } from "../commands/cytoscapejs.js";
 import { runLintTree } from "../commands/lint-tree.js";
 import { runValidateWorkflow } from "../commands/validate-workflow.js";
 import { runValidateTests } from "../commands/validate-tests.js";
@@ -34,6 +35,11 @@ const handlers: HandlerRegistry = {
   roundtrip: runRoundtrip,
   mermaid: (file: string, output: string | undefined, opts: { comments?: boolean }) =>
     runMermaid(file, { output, comments: opts.comments }),
+  cytoscapeJs: (
+    file: string,
+    output: string | undefined,
+    opts: { html?: boolean; json?: boolean },
+  ) => runCytoscapeJs(file, { output, html: opts.html, json: opts.json }),
   validateTree: runValidateTree,
   lintTree: runLintTree,
   cleanTree: runCleanTree,
