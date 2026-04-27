@@ -64,6 +64,22 @@ export {
 export { ParsedTool, HelpContent, XrefDict, Citation } from "./schema/parsed-tool.js";
 
 export {
+  /** GA4GH TRS Tool — see lib/tool_shed_client/schema/trs.py. */
+  Tool as TrsTool,
+  /** GA4GH TRS ToolVersion. */
+  ToolVersion as TrsToolVersion,
+  /** GA4GH TRS ToolClass. */
+  ToolClass as TrsToolClass,
+  Checksum as TrsChecksum,
+  ImageData as TrsImageData,
+  ImageType as TrsImageType,
+  DescriptorType as TrsDescriptorType,
+  FileType as TrsFileType,
+  /** Galaxy default ToolClass populated on every TRS Tool we emit. */
+  GALAXY_TOOL_CLASS,
+} from "./trs/index.js";
+
+export {
   type GalaxyWorkflow,
   /** Union schema accepting any Galaxy workflow format (format2 or native). */
   GalaxyWorkflowSchema,
