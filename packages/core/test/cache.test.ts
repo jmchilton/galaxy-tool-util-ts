@@ -253,6 +253,102 @@ describe("ToolCache", () => {
     expect(coords.version).toBeNull();
   });
 
+  it("removeCached deletes one entry by cache key", async () => {
+    await cache.saveTool("k1", sampleTool, "tool1", "1.0", "api");
+    await cache.saveTool("k2", sampleTool, "tool2", "2.0", "api");
+    expect(await cache.removeCached("k1")).toBe(true);
+    const remaining = await cache.listCached();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].cache_key).toBe("k2");
+    expect(await cache.loadCached("k1")).toBeNull();
+  });
+
+  it("removeCached returns false for unknown key", async () => {
+    expect(await cache.removeCached("nope")).toBe(false);
+  });
+
+  it("removeCached returns true for orphan-only entry (storage but no index)", async () => {
+    await writeFile(join(tmpDir, "orphan.json"), JSON.stringify(sampleTool));
+    expect(await cache.removeCached("orphan")).toBe(true);
+    expect(await cache.loadCachedRaw("orphan")).toBeNull();
+  });
+
+  it("removeCached returns true for index-only entry (index but no storage)", async () => {
+    await cache.index.add("ghost", "tool/id", "1.0", "api");
+    expect(await cache.removeCached("ghost")).toBe(true);
+    expect(await cache.index.has("ghost")).toBe(false);
+  });
+
+  it("loadCachedRaw returns undecoded payload that fails ParsedTool decode", async () => {
+    const malformed = { id: "x", legacy: true, version: 42 };
+    await writeFile(join(tmpDir, "stale.json"), JSON.stringify(malformed));
+    expect(await cache.loadCached("stale")).toBeNull();
+    const raw = (await cache.loadCachedRaw("stale")) as typeof malformed;
+    expect(raw).not.toBeNull();
+    expect(raw.id).toBe("x");
+    expect(raw.legacy).toBe(true);
+    expect(raw.version).toBe(42);
+  });
+
+  it("loadCachedRaw returns null for missing key", async () => {
+    expect(await cache.loadCachedRaw("missing")).toBeNull();
+  });
+
+  it("lazy-index backfill marks orphan entries", async () => {
+    const key = "orphan1";
+    await writeFile(join(tmpDir, `${key}.json`), JSON.stringify(sampleTool));
+    const loaded = await cache.loadCached(key);
+    expect(loaded).not.toBeNull();
+    const entry = (await cache.listCached()).find((e) => e.cache_key === key);
+    expect(entry).toBeDefined();
+    expect(entry!.source).toBe("orphan");
+    expect(entry!.tool_version).toBe("0.74+galaxy0");
+    expect(entry!.tool_id).toBe("fastqc");
+  });
+
+  it("getCacheStats aggregates counts, sources, totals, and timestamps", async () => {
+    await cache.saveTool("k1", sampleTool, "tool1", "1.0", "api");
+    await cache.saveTool("k2", sampleTool, "tool2", "2.0", "api");
+    await cache.saveTool("k3", sampleTool, "tool3", "3.0", "local");
+    const stats = await cache.getCacheStats();
+    expect(stats.count).toBe(3);
+    expect(stats.bySource).toEqual({ api: 2, local: 1 });
+    expect(stats.totalBytes).toBeGreaterThan(0);
+    expect(stats.oldest).toBeDefined();
+    expect(stats.newest).toBeDefined();
+    expect(stats.oldest! <= stats.newest!).toBe(true);
+  });
+
+  it("getCacheStats omits totalBytes when storage lacks stat()", async () => {
+    const data = new Map<string, unknown>();
+    const statlessStorage = {
+      load: async (k: string) => data.get(k) ?? null,
+      save: async (k: string, v: unknown) => {
+        data.set(k, v);
+      },
+      delete: async (k: string) => {
+        data.delete(k);
+      },
+      list: async () => [...data.keys()].filter((k) => k !== "__index__"),
+    };
+    const statlessCache = new ToolCache({ storage: statlessStorage });
+    await statlessCache.saveTool("k1", sampleTool, "tool1", "1.0", "api");
+    const stats = await statlessCache.getCacheStats();
+    expect(stats.count).toBe(1);
+    expect(stats.bySource).toEqual({ api: 1 });
+    expect(stats.totalBytes).toBeUndefined();
+  });
+
+  it("FilesystemCacheStorage.stat returns sizeBytes and mtime", async () => {
+    const storage = new FilesystemCacheStorage(tmpDir);
+    await storage.save("statkey", { hello: "world" });
+    const s = await storage.stat("statkey");
+    expect(s).not.toBeNull();
+    expect(s!.sizeBytes).toBeGreaterThan(0);
+    expect(typeof s!.mtime).toBe("string");
+    expect(await storage.stat("missing")).toBeNull();
+  });
+
   it("writes valid JSON to disk", async () => {
     const key = "diskcheck";
     await cache.saveTool(key, sampleTool, "tool/id", "1.0", "api");

@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, unlink, readdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink, readdir, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -51,6 +51,17 @@ export class FilesystemCacheStorage implements CacheStorage {
     return files
       .filter((f) => f.endsWith(".json") && f !== INDEX_FILENAME)
       .map((f) => f.slice(0, -5));
+  }
+
+  async stat(key: string): Promise<{ sizeBytes: number; mtime?: string } | null> {
+    const path = this.keyToPath(key);
+    if (!existsSync(path)) return null;
+    try {
+      const s = await stat(path);
+      return { sizeBytes: s.size, mtime: s.mtime.toISOString() };
+    } catch {
+      return null;
+    }
   }
 
   async saveAll(entries: ReadonlyArray<[string, unknown]>): Promise<void> {

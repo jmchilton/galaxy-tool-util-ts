@@ -16,6 +16,17 @@ function envToolshedUrl(): string | undefined {
   return undefined;
 }
 
+export interface CacheStats {
+  count: number;
+  /** Omitted if the storage backend does not implement `stat()`. */
+  totalBytes?: number;
+  bySource: Record<string, number>;
+  /** ISO 8601 timestamp of the oldest entry's `cached_at`. */
+  oldest?: string;
+  /** ISO 8601 timestamp of the newest entry's `cached_at`. */
+  newest?: string;
+}
+
 export interface ResolvedCoordinates {
   toolshedUrl: string;
   trsToolId: string;
@@ -77,8 +88,13 @@ export class ToolCache {
       if (data === null) return null;
       const parsedTool = S.decodeUnknownSync(ParsedTool)(data);
       if (!(await this.index.has(key))) {
-        const d = data as { id?: string; version?: string };
-        await this.index.add(key, d.id ?? "unknown", d.version ?? "unknown", "unknown");
+        const d = data as { id?: string };
+        await this.index.add(
+          key,
+          d.id ?? parsedTool.id ?? "unknown",
+          parsedTool.version ?? "unknown",
+          "orphan",
+        );
       }
       this.memoryCache.set(key, parsedTool);
       return parsedTool;
@@ -86,6 +102,29 @@ export class ToolCache {
       console.debug(`Failed to load cached tool ${key}: ${err}`);
       return null;
     }
+  }
+
+  /**
+   * Load the raw cached payload without ParsedTool decoding.
+   * Returns null only if the key is missing — surfaces stale or malformed entries
+   * the inspector needs to render explicitly.
+   */
+  async loadCachedRaw(key: string): Promise<unknown | null> {
+    return this.storage.load(key);
+  }
+
+  /**
+   * Remove a single cached entry by cache key. Returns true if anything was
+   * removed (storage or index), false if neither held the key.
+   */
+  async removeCached(key: string): Promise<boolean> {
+    const inIndex = await this.index.has(key);
+    const inStorage = inIndex ? false : (await this.storage.list()).includes(key);
+    const existed = inIndex || inStorage;
+    await this.storage.delete(key);
+    await this.index.remove(key);
+    this.memoryCache.delete(key);
+    return existed;
   }
 
   async saveTool(
@@ -112,6 +151,30 @@ export class ToolCache {
     }>
   > {
     return this.index.listAll();
+  }
+
+  async getCacheStats(): Promise<CacheStats> {
+    const entries = await this.index.listAll();
+    const bySource: Record<string, number> = {};
+    let oldest: string | undefined;
+    let newest: string | undefined;
+    for (const e of entries) {
+      bySource[e.source] = (bySource[e.source] ?? 0) + 1;
+      if (oldest === undefined || e.cached_at < oldest) oldest = e.cached_at;
+      if (newest === undefined || e.cached_at > newest) newest = e.cached_at;
+    }
+    const stats: CacheStats = { count: entries.length, bySource };
+    if (oldest !== undefined) stats.oldest = oldest;
+    if (newest !== undefined) stats.newest = newest;
+    if (typeof this.storage.stat === "function") {
+      let totalBytes = 0;
+      for (const e of entries) {
+        const s = await this.storage.stat(e.cache_key);
+        if (s !== null) totalBytes += s.sizeBytes;
+      }
+      stats.totalBytes = totalBytes;
+    }
+    return stats;
   }
 
   async clearCache(toolIdPrefix?: string): Promise<void> {
