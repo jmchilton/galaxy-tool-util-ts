@@ -275,4 +275,38 @@ describe("Proxy Server", () => {
     const { status } = await makeRequest(makeHandler(), "GET", "/unknown");
     expect(status).toBe(404);
   });
+
+  describe("static UI fallback", () => {
+    function makeHandlerWithUi(uiDir: string) {
+      const config: ServerConfig = {
+        ...defaultConfig(),
+        "galaxy.workflows.toolCache": { directory: tmpDir },
+      };
+      const ctx = createProxyContext(config, { uiDir });
+      return createRequestHandler(ctx);
+    }
+
+    it("serves index.html for non-API GETs when uiDir is set", async () => {
+      const ui = await mkdtemp(join(tmpdir(), "proxy-ui-"));
+      await (
+        await import("node:fs/promises")
+      ).writeFile(join(ui, "index.html"), "<!doctype html><title>spa</title>");
+      try {
+        const handler = makeHandlerWithUi(ui);
+        const root = await makeRequest(handler, "GET", "/");
+        expect(root.status).toBe(200);
+        expect(String(root.body)).toContain("spa");
+        // SPA fallback for unknown sub-paths
+        const sub = await makeRequest(handler, "GET", "/anything/here");
+        expect(sub.status).toBe(200);
+        expect(String(sub.body)).toContain("spa");
+        // API routes still resolve via the API namespace, not the SPA
+        const api = await makeRequest(handler, "GET", "/api/tools");
+        expect(api.status).toBe(200);
+        expect(api.body.total).toBe(0);
+      } finally {
+        await rm(ui, { recursive: true });
+      }
+    });
+  });
 });

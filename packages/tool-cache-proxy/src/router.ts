@@ -1,4 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
+import * as path from "node:path";
 import {
   HttpError,
   addTool,
@@ -28,10 +31,21 @@ import type { ServerConfig } from "./config.js";
 export interface ProxyContext {
   config: ServerConfig;
   service: ToolInfoService;
+  /** If set, GET requests outside the API namespace are served from this directory. */
+  uiDir?: string;
+}
+
+/** Optional inputs for building a {@link ProxyContext}. */
+export interface CreateProxyContextOptions {
+  /** Static-file directory for the bundled SPA. */
+  uiDir?: string;
 }
 
 /** Build a ProxyContext from config — initializes ToolInfoService with configured sources. */
-export function createProxyContext(config: ServerConfig): ProxyContext {
+export function createProxyContext(
+  config: ServerConfig,
+  options: CreateProxyContextOptions = {},
+): ProxyContext {
   const enabledSources = config["galaxy.workflows.toolSources"].filter((s) => s.enabled);
   const coreSources: CoreToolSource[] = enabledSources.map((s) => ({
     type: s.type,
@@ -41,7 +55,7 @@ export function createProxyContext(config: ServerConfig): ProxyContext {
     cacheDir: config["galaxy.workflows.toolCache"]?.directory,
     sources: coreSources,
   });
-  return { config, service };
+  return { config, service, uiDir: options.uiDir };
 }
 
 // ── Route table ──────────────────────────────────────────────────────────
@@ -176,6 +190,57 @@ async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
   });
 }
 
+const MIME_TYPES: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".mjs": "application/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".map": "application/json",
+};
+
+async function serveStatic(uiDir: string, urlPath: string, res: ServerResponse): Promise<void> {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(urlPath);
+  } catch {
+    json(res, 400, { detail: "Invalid URL encoding" });
+    return;
+  }
+  const relPath = decoded.replace(/^\/+/, "") || "index.html";
+  const base = path.resolve(uiDir);
+  const resolved = path.resolve(base, relPath);
+  if (resolved !== base && !resolved.startsWith(base + path.sep)) {
+    json(res, 403, { detail: "Forbidden" });
+    return;
+  }
+  const filePath =
+    fs.existsSync(resolved) && fs.statSync(resolved).isFile()
+      ? resolved
+      : path.join(base, "index.html");
+  if (!fs.existsSync(filePath)) {
+    json(res, 404, { detail: "Not found" });
+    return;
+  }
+  const ext = path.extname(filePath);
+  const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
+  const content = await fsPromises.readFile(filePath);
+  res.writeHead(200, {
+    "Content-Type": contentType,
+    "Content-Length": content.length,
+  });
+  res.end(content);
+}
+
 function originFromRequest(req: IncomingMessage): string {
   const host = (req.headers["x-forwarded-host"] ?? req.headers.host) as string | undefined;
   const proto =
@@ -202,6 +267,11 @@ export function createRequestHandler(ctx: ProxyContext) {
     const route = matchRoute(method, url);
 
     if (!route) {
+      if (ctx.uiDir && method === "GET") {
+        const [pathOnly] = url.split("?");
+        await serveStatic(ctx.uiDir, pathOnly, res);
+        return;
+      }
       json(res, 404, { detail: "Not found" });
       return;
     }
