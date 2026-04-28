@@ -7,9 +7,6 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import * as fs from "node:fs";
-import * as fsPromises from "node:fs/promises";
-import * as path from "node:path";
 import {
   dispatchCacheRoute,
   matchCacheRoute,
@@ -17,6 +14,12 @@ import {
   type ToolCache,
   type ToolInfoService,
 } from "@galaxy-tool-util/core";
+import {
+  readJsonBody,
+  serveStatic,
+  setCorsHeaders,
+  writeJson as json,
+} from "@galaxy-tool-util/core/node";
 import {
   GalaxyWorkflowSchema,
   NativeGalaxyWorkflowSchema,
@@ -69,39 +72,9 @@ export interface AppState {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function json(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body);
-  res.writeHead(status, {
-    "Content-Type": "application/json",
-    "Content-Length": Buffer.byteLength(payload),
-  });
-  res.end(payload);
-}
-
 function noContent(res: ServerResponse): void {
   res.writeHead(204);
   res.end();
-}
-
-function cors(res: ServerResponse): void {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, If-Unmodified-Since");
-}
-
-async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
-    req.on("end", () => {
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf-8")) as T);
-      } catch (e) {
-        reject(new HttpError(400, `Invalid JSON body: ${String(e)}`));
-      }
-    });
-    req.on("error", reject);
-  });
 }
 
 function parseHttpDate(s: string): Date | null {
@@ -149,64 +122,6 @@ export function buildMonacoCspHeader(extraConnectSrc: string[] = []): string {
     "font-src 'self' data:",
     "img-src 'self' data: blob:",
   ].join("; ");
-}
-
-// ── Static file serving ──────────────────────────────────────────────
-
-const MIME_TYPES: Record<string, string> = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "application/javascript",
-  ".css": "text/css",
-  ".json": "application/json",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".webp": "image/webp",
-  ".ico": "image/x-icon",
-  ".woff2": "font/woff2",
-  ".woff": "font/woff",
-  ".ttf": "font/ttf",
-  ".map": "application/json",
-};
-
-async function serveStatic(
-  uiDir: string,
-  urlPath: string,
-  res: ServerResponse,
-  cspHeader: string,
-): Promise<void> {
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(urlPath);
-  } catch {
-    json(res, 400, { detail: "Invalid URL encoding" });
-    return;
-  }
-
-  // Normalise to a relative path and guard against traversal
-  const relPath = decoded.replace(/^\/+/, "") || "index.html";
-  const base = path.resolve(uiDir);
-  const resolved = path.resolve(base, relPath);
-  if (resolved !== base && !resolved.startsWith(base + path.sep)) {
-    json(res, 403, { detail: "Forbidden" });
-    return;
-  }
-
-  // Serve the file if it exists, otherwise fall back to index.html (SPA routing)
-  const filePath =
-    fs.existsSync(resolved) && fs.statSync(resolved).isFile()
-      ? resolved
-      : path.join(base, "index.html");
-
-  const ext = path.extname(filePath);
-  const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
-  const content = await fsPromises.readFile(filePath);
-
-  res.writeHead(200, {
-    "Content-Type": contentType,
-    "Content-Length": content.length,
-    "Content-Security-Policy": cspHeader,
-  });
-  res.end(content);
 }
 
 // ── Route matching ───────────────────────────────────────────────────
@@ -342,7 +257,7 @@ export function createRequestHandler(state: AppState) {
   }
 
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    cors(res);
+    setCorsHeaders(res);
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);
@@ -370,7 +285,7 @@ export function createRequestHandler(state: AppState) {
           // /monaco/* ships the extension-host iframe and its workers; they need
           // a more permissive CSP than the Vue shell to boot.
           const staticCsp = urlPath.startsWith("/monaco/") ? monacoCspHeader : cspHeader;
-          await serveStatic(state.uiDir, urlPath, res, staticCsp);
+          await serveStatic(res, state.uiDir, urlPath, { csp: staticCsp });
           return;
         }
         json(res, 404, { detail: "Not found" });

@@ -18,3 +18,12 @@ export {
 export type { NodeToolCacheOptions, NodeToolInfoOptions } from "./cache/node.js";
 
 export { loadWorkflowToolConfig } from "./config-node.js";
+
+export {
+  writeJson,
+  setCorsHeaders,
+  readJsonBody,
+  serveStatic,
+  type CorsOptions,
+  type ServeStaticOptions,
+} from "./node-http.js";
