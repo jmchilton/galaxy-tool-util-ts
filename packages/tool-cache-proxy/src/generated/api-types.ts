@@ -204,7 +204,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/tool-cache/{cache_key}": {
+  "/api/tool-cache/{cacheKey}": {
     parameters: {
       query?: never;
       header?: never;
@@ -652,7 +652,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
-        cache_key: string;
+        cacheKey: string;
       };
       cookie?: never;
     };

@@ -179,12 +179,12 @@
         }
       }
     },
-    "/api/tool-cache/{cache_key}": {
+    "/api/tool-cache/{cacheKey}": {
       "delete": {
         "summary": "Delete a single cache entry",
         "operationId": "deleteCacheEntry",
         "parameters": [
-          { "name": "cache_key", "in": "path", "required": true, "schema": { "type": "string" } }
+          { "name": "cacheKey", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": {

@@ -40,9 +40,7 @@ import Tab from "primevue/tab";
 import TabPanels from "primevue/tabpanels";
 import TabPanel from "primevue/tabpanel";
 import { useToast } from "primevue/usetoast";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type Entry = components["schemas"]["CachedToolEntry"];
+import type { CachedToolEntry as Entry } from "../client.js";
 type TabId =
   | "parameter_model"
   | "parameter_request_schema"

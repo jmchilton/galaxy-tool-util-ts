@@ -1,16 +1,5 @@
 import { ref } from "vue";
-import { useApi } from "./useApi";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type CachedToolEntry = components["schemas"]["CachedToolEntry"];
-type CacheStats = components["schemas"]["CacheStats"];
-
-// Module-level singleton: cache state is shared across components that call
-// useToolCache(), acting as a lightweight global store (mirrors useWorkflows).
-const entries = ref<CachedToolEntry[]>([]);
-const stats = ref<CacheStats>({ count: 0, bySource: {} });
-const loading = ref(false);
-const error = ref<string | null>(null);
+import type { CacheClient, CachedToolEntry, CacheStats } from "../client.js";
 
 /** Pull a server-side error message out of a router-style `{detail: "..."}` body, with fallbacks. */
 function detailOf(err: unknown, fallback: string): string {
@@ -21,8 +10,11 @@ function detailOf(err: unknown, fallback: string): string {
   return fallback;
 }
 
-export function useToolCache() {
-  const client = useApi();
+export function useToolCache(client: CacheClient) {
+  const entries = ref<CachedToolEntry[]>([]);
+  const stats = ref<CacheStats>({ count: 0, bySource: {} });
+  const loading = ref(false);
+  const error = ref<string | null>(null);
 
   async function refresh(opts: { decode?: boolean } = {}) {
     loading.value = true;
