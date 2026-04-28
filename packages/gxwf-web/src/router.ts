@@ -10,7 +10,27 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import * as fs from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
-import type { ToolCache, ToolInfoService } from "@galaxy-tool-util/core";
+import {
+  addTool,
+  cacheStats,
+  clearCache,
+  deleteCacheEntry,
+  getParameterSchema,
+  getParsedTool,
+  getToolSource,
+  listCache,
+  refetchTool,
+  searchTools,
+  trsGetTool,
+  trsListTools,
+  trsListVersions,
+  type AddRequest as ToolAddRequest,
+  type HandlerCtx,
+  type ParameterSchemaKind,
+  type RefetchRequest as ToolRefetchRequest,
+  type ToolCache,
+  type ToolInfoService,
+} from "@galaxy-tool-util/core";
 import {
   GalaxyWorkflowSchema,
   NativeGalaxyWorkflowSchema,
@@ -46,17 +66,6 @@ import {
   type ExportConvertOptions,
   type RoundtripOptions,
 } from "./workflows.js";
-import {
-  addToolCacheEntry,
-  clearToolCache,
-  deleteToolCacheEntry,
-  getToolCacheRaw,
-  getToolCacheStats,
-  listToolCache,
-  refetchToolCacheEntry,
-  type AddRequest,
-  type RefetchRequest,
-} from "./tool-cache.js";
 
 // ── State ────────────────────────────────────────────────────────────
 
@@ -218,6 +227,12 @@ async function serveStatic(
 
 const CONTENTS_PREFIX = "/api/contents";
 
+const PARAMETER_SCHEMA_TAILS: Record<string, ParameterSchemaKind> = {
+  parameter_request_schema: "request",
+  parameter_landing_request_schema: "landing_request",
+  parameter_test_case_xml_schema: "test_case_xml",
+};
+
 type WorkflowOp = "validate" | "clean" | "lint" | "export" | "convert" | "roundtrip";
 const WORKFLOW_OPS = new Set<string>([
   "validate",
@@ -245,13 +260,26 @@ type Route =
   | { handler: "refreshWorkflows" }
   | { handler: "workflowOp"; filePath: string; op: WorkflowOp; query: URLSearchParams }
   | { handler: "structuralSchema"; query: URLSearchParams }
+  // Tool-cache admin (writes-by-cacheKey OK; raw read removed in Phase 3)
   | { handler: "toolCacheList"; query: URLSearchParams }
   | { handler: "toolCacheStats" }
-  | { handler: "toolCacheRead"; cacheKey: string }
   | { handler: "toolCacheDelete"; cacheKey: string }
   | { handler: "toolCacheClear"; query: URLSearchParams }
   | { handler: "toolCacheRefetch" }
-  | { handler: "toolCacheAdd" };
+  | { handler: "toolCacheAdd" }
+  // Read surface (TRS + parsed tool + parameter schemas)
+  | { handler: "searchTools"; query: URLSearchParams }
+  | { handler: "trsListTools" }
+  | { handler: "trsGetTool"; toolId: string }
+  | { handler: "trsListVersions"; toolId: string }
+  | { handler: "getParsedTool"; toolId: string; toolVersion: string }
+  | {
+      handler: "getParameterSchema";
+      toolId: string;
+      toolVersion: string;
+      kind: ParameterSchemaKind;
+    }
+  | { handler: "getToolSource"; toolId: string; toolVersion: string };
 
 function matchRoute(method: string, url: string): Route | null {
   const [rawPath, queryStr] = url.split("?");
@@ -262,7 +290,7 @@ function matchRoute(method: string, url: string): Route | null {
     return { handler: "structuralSchema", query };
   }
 
-  // Tool cache routes
+  // Tool cache admin routes (cacheKey-addressed)
   if (rawPath === "/api/tool-cache" || rawPath.startsWith("/api/tool-cache/")) {
     if (rawPath === "/api/tool-cache") {
       if (method === "GET") return { handler: "toolCacheList", query };
@@ -279,12 +307,40 @@ function matchRoute(method: string, url: string): Route | null {
       return { handler: "toolCacheAdd" };
     }
     const keyMatch = rawPath.match(/^\/api\/tool-cache\/([^/]+)$/);
-    if (keyMatch) {
-      const key = decodeURIComponent(keyMatch[1]);
-      if (method === "GET") return { handler: "toolCacheRead", cacheKey: key };
-      if (method === "DELETE") return { handler: "toolCacheDelete", cacheKey: key };
+    if (keyMatch && method === "DELETE") {
+      return { handler: "toolCacheDelete", cacheKey: decodeURIComponent(keyMatch[1]) };
     }
     return null;
+  }
+
+  // ── Read surface (mirrors Galaxy/ToolShed shapes) ─────────────────
+  if (rawPath === "/api/ga4gh/trs/v2/tools" && method === "GET") {
+    return { handler: "trsListTools" };
+  }
+  const trsVersionsMatch = rawPath.match(/^\/api\/ga4gh\/trs\/v2\/tools\/([^/]+)\/versions$/);
+  if (trsVersionsMatch && method === "GET") {
+    return { handler: "trsListVersions", toolId: decodeURIComponent(trsVersionsMatch[1]) };
+  }
+  const trsToolMatch = rawPath.match(/^\/api\/ga4gh\/trs\/v2\/tools\/([^/]+)$/);
+  if (trsToolMatch && method === "GET") {
+    return { handler: "trsGetTool", toolId: decodeURIComponent(trsToolMatch[1]) };
+  }
+  if (rawPath === "/api/tools" && method === "GET") {
+    return { handler: "searchTools", query };
+  }
+  const toolVersionMatch = rawPath.match(
+    /^\/api\/tools\/([^/]+)\/versions\/([^/]+)(?:\/([^/]+))?$/,
+  );
+  if (toolVersionMatch && method === "GET") {
+    const toolId = decodeURIComponent(toolVersionMatch[1]);
+    const toolVersion = decodeURIComponent(toolVersionMatch[2]);
+    const tail = toolVersionMatch[3];
+    if (tail === undefined) return { handler: "getParsedTool", toolId, toolVersion };
+    if (tail === "tool_source") return { handler: "getToolSource", toolId, toolVersion };
+    const schemaKind = PARAMETER_SCHEMA_TAILS[tail];
+    if (schemaKind !== undefined) {
+      return { handler: "getParameterSchema", toolId, toolVersion, kind: schemaKind };
+    }
   }
 
   // Workflow list/refresh (must match before the per-workflow op pattern)
@@ -365,6 +421,17 @@ export function createRequestHandler(state: AppState) {
     if (isWorkflowFile(relPath)) {
       state.workflows = discoverWorkflows(directory);
     }
+  }
+
+  function handlerCtx(req: IncomingMessage): HandlerCtx {
+    const host = (req.headers["x-forwarded-host"] ?? req.headers.host) as string | undefined;
+    const proto =
+      (req.headers["x-forwarded-proto"] as string | undefined) ??
+      ((req.socket as { encrypted?: boolean }).encrypted ? "https" : "http");
+    return {
+      service: state.infoService,
+      baseUrl: host ? `${proto}://${host}` : "",
+    };
   }
 
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -476,40 +543,81 @@ export function createRequestHandler(state: AppState) {
 
         case "toolCacheList": {
           const decode = route.query.get("decode") === "1";
-          json(res, 200, await listToolCache(state, { decode }));
+          json(res, 200, await listCache(handlerCtx(req), { decode }));
           break;
         }
 
         case "toolCacheStats": {
-          json(res, 200, await getToolCacheStats(state));
-          break;
-        }
-
-        case "toolCacheRead": {
-          json(res, 200, await getToolCacheRaw(state, route.cacheKey));
+          json(res, 200, await cacheStats(handlerCtx(req)));
           break;
         }
 
         case "toolCacheDelete": {
-          json(res, 200, await deleteToolCacheEntry(state, route.cacheKey));
+          json(res, 200, await deleteCacheEntry(handlerCtx(req), route.cacheKey));
           break;
         }
 
         case "toolCacheClear": {
           const prefix = route.query.get("prefix") ?? undefined;
-          json(res, 200, await clearToolCache(state, prefix));
+          json(res, 200, await clearCache(handlerCtx(req), prefix));
           break;
         }
 
         case "toolCacheRefetch": {
-          const body = await readJsonBody<RefetchRequest>(req);
-          json(res, 200, await refetchToolCacheEntry(state, body));
+          const body = await readJsonBody<ToolRefetchRequest>(req);
+          json(res, 200, await refetchTool(handlerCtx(req), body));
           break;
         }
 
         case "toolCacheAdd": {
-          const body = await readJsonBody<AddRequest>(req);
-          json(res, 200, await addToolCacheEntry(state, body));
+          const body = await readJsonBody<ToolAddRequest>(req);
+          json(res, 200, await addTool(handlerCtx(req), body));
+          break;
+        }
+
+        case "searchTools": {
+          const q = route.query.get("q") ?? undefined;
+          const pageStr = route.query.get("page");
+          const pageSizeStr = route.query.get("page_size");
+          const opts: { q?: string; page?: number; pageSize?: number } = {};
+          if (q !== undefined) opts.q = q;
+          if (pageStr !== null) opts.page = Number(pageStr);
+          if (pageSizeStr !== null) opts.pageSize = Number(pageSizeStr);
+          json(res, 200, await searchTools(handlerCtx(req), opts));
+          break;
+        }
+
+        case "trsListTools": {
+          json(res, 200, await trsListTools(handlerCtx(req)));
+          break;
+        }
+
+        case "trsGetTool": {
+          json(res, 200, await trsGetTool(handlerCtx(req), route.toolId));
+          break;
+        }
+
+        case "trsListVersions": {
+          json(res, 200, await trsListVersions(handlerCtx(req), route.toolId));
+          break;
+        }
+
+        case "getParsedTool": {
+          json(res, 200, await getParsedTool(handlerCtx(req), route.toolId, route.toolVersion));
+          break;
+        }
+
+        case "getParameterSchema": {
+          json(
+            res,
+            200,
+            await getParameterSchema(handlerCtx(req), route.toolId, route.toolVersion, route.kind),
+          );
+          break;
+        }
+
+        case "getToolSource": {
+          getToolSource(handlerCtx(req), route.toolId, route.toolVersion);
           break;
         }
 

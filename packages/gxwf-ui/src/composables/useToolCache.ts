@@ -42,11 +42,38 @@ export function useToolCache() {
     }
   }
 
-  async function loadRaw(cacheKey: string) {
-    const { data, error: err } = await client.GET("/api/tool-cache/{cacheKey}", {
-      params: { path: { cacheKey } },
+  async function loadParameterModel(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET("/api/tools/{tool_id}/versions/{tool_version}", {
+      params: { path: { tool_id: toolId, tool_version: toolVersion } },
     });
-    if (err) throw new Error(detailOf(err, "Failed to load raw entry"));
+    if (err) throw new Error(detailOf(err, "Failed to load parameter model"));
+    return data;
+  }
+
+  async function loadParameterRequestSchema(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET(
+      "/api/tools/{tool_id}/versions/{tool_version}/parameter_request_schema",
+      { params: { path: { tool_id: toolId, tool_version: toolVersion } } },
+    );
+    if (err) throw new Error(detailOf(err, "Failed to load request schema"));
+    return data;
+  }
+
+  async function loadParameterLandingRequestSchema(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET(
+      "/api/tools/{tool_id}/versions/{tool_version}/parameter_landing_request_schema",
+      { params: { path: { tool_id: toolId, tool_version: toolVersion } } },
+    );
+    if (err) throw new Error(detailOf(err, "Failed to load landing-request schema"));
+    return data;
+  }
+
+  async function loadParameterTestCaseXmlSchema(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET(
+      "/api/tools/{tool_id}/versions/{tool_version}/parameter_test_case_xml_schema",
+      { params: { path: { tool_id: toolId, tool_version: toolVersion } } },
+    );
+    if (err) throw new Error(detailOf(err, "Failed to load test-case-XML schema"));
     return data;
   }
 
@@ -105,5 +132,19 @@ export function useToolCache() {
     return data;
   }
 
-  return { entries, stats, loading, error, refresh, loadRaw, del, clear, refetch, add };
+  return {
+    entries,
+    stats,
+    loading,
+    error,
+    refresh,
+    loadParameterModel,
+    loadParameterRequestSchema,
+    loadParameterLandingRequestSchema,
+    loadParameterTestCaseXmlSchema,
+    del,
+    clear,
+    refetch,
+    add,
+  };
 }

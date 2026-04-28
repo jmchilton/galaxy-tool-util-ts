@@ -36,7 +36,7 @@
       @delete="confirmDelete"
     />
 
-    <ToolCacheRawDialog v-model="rawOpen" :entry="rawEntry" :load="loadRaw" />
+    <ToolCacheRawDialog v-model="rawOpen" :entry="rawEntry" :loaders="dialogLoaders" />
 
     <Dialog v-model:visible="addOpen" header="Add tool to cache" modal :style="{ width: '24rem' }">
       <div class="add-form">
@@ -105,8 +105,27 @@ import type { components } from "@galaxy-tool-util/gxwf-client";
 
 type Entry = components["schemas"]["CachedToolEntry"];
 
-const { entries, stats, loading, error, refresh, loadRaw, del, clear, refetch, add } =
-  useToolCache();
+const {
+  entries,
+  stats,
+  loading,
+  error,
+  refresh,
+  loadParameterModel,
+  loadParameterRequestSchema,
+  loadParameterLandingRequestSchema,
+  loadParameterTestCaseXmlSchema,
+  del,
+  clear,
+  refetch,
+  add,
+} = useToolCache();
+const dialogLoaders = {
+  parameter_model: loadParameterModel,
+  parameter_request_schema: loadParameterRequestSchema,
+  parameter_landing_request_schema: loadParameterLandingRequestSchema,
+  parameter_test_case_xml_schema: loadParameterTestCaseXmlSchema,
+};
 const toast = useToast();
 const confirm = useConfirm();
 
