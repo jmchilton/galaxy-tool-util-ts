@@ -10,7 +10,6 @@ import {
   cacheToTrsOne,
   listCache,
   cacheStats,
-  getCacheRaw,
   deleteCacheEntry,
   clearCache,
   searchTools,
@@ -136,13 +135,6 @@ describe("HTTP handlers (admin)", () => {
   it("cacheStats matches list-derived count", async () => {
     const s = await cacheStats(ctx);
     expect(s.count).toBe(1);
-  });
-
-  it("getCacheRaw returns contents and 404s missing keys", async () => {
-    const list = await listCache(ctx);
-    const raw = await getCacheRaw(ctx, list.entries[0].cacheKey);
-    expect(raw.decodable).toBe(true);
-    await expect(getCacheRaw(ctx, "nope")).rejects.toBeInstanceOf(HttpError);
   });
 
   it("deleteCacheEntry 404s missing key, succeeds for present", async () => {

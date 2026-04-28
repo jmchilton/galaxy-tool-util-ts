@@ -29,7 +29,6 @@ import type {
   DeleteResponse,
   ListResponse,
   ParameterSchemaKind,
-  RawResponse,
   RefetchRequest,
   RefetchResponse,
   SearchResults,
@@ -119,12 +118,6 @@ export async function listCache(ctx: HandlerCtx, opts: ListOptions = {}): Promis
 
 export async function cacheStats(ctx: HandlerCtx): Promise<CacheStats> {
   return ctx.service.cache.getCacheStats();
-}
-
-export async function getCacheRaw(ctx: HandlerCtx, cacheKey: string): Promise<RawResponse> {
-  const contents = await ctx.service.cache.loadCachedRaw(cacheKey);
-  if (contents === null) throw new HttpError(404, `No cached entry: ${cacheKey}`);
-  return { contents, decodable: tryDecode(contents) };
 }
 
 export async function deleteCacheEntry(ctx: HandlerCtx, cacheKey: string): Promise<DeleteResponse> {

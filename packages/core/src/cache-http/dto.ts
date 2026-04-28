@@ -30,11 +30,6 @@ export interface ListResponse {
   stats: CacheStats;
 }
 
-export interface RawResponse {
-  contents: unknown;
-  decodable: boolean;
-}
-
 export interface DeleteResponse {
   removed: boolean;
 }

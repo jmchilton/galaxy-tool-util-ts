@@ -2,7 +2,7 @@
  * HTTP request handler for the gxwf-web API.
  *
  * Routes /api/contents/* paths to the contents module.
- * Routes /workflows/* paths to workflow operations (Phase 2b).
+ * Routes /workflows/* paths to workflow operations.
  * Routes /api/schemas/structural to the structural JSON Schema export.
  */
 
@@ -260,7 +260,7 @@ type Route =
   | { handler: "refreshWorkflows" }
   | { handler: "workflowOp"; filePath: string; op: WorkflowOp; query: URLSearchParams }
   | { handler: "structuralSchema"; query: URLSearchParams }
-  // Tool-cache admin (writes-by-cacheKey OK; raw read removed in Phase 3)
+  // Tool-cache admin namespace (cacheKey is the addressing key for writes).
   | { handler: "toolCacheList"; query: URLSearchParams }
   | { handler: "toolCacheStats" }
   | { handler: "toolCacheDelete"; cacheKey: string }
