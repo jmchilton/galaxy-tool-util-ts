@@ -4,23 +4,9 @@ import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import {
   HttpError,
-  addTool,
-  cacheStats,
-  clearCache,
-  deleteCacheEntry,
-  getParameterSchema,
-  getParsedTool,
-  getToolSource,
-  listCache,
-  refetchTool,
-  searchTools,
-  trsGetTool,
-  trsListTools,
-  trsListVersions,
-  type AddRequest,
+  dispatchCacheRoute,
+  matchCacheRoute,
   type HandlerCtx,
-  type ParameterSchemaKind,
-  type RefetchRequest,
   type ToolInfoService,
   type ToolSource as CoreToolSource,
 } from "@galaxy-tool-util/core";
@@ -56,106 +42,6 @@ export function createProxyContext(
     sources: coreSources,
   });
   return { config, service, uiDir: options.uiDir };
-}
-
-// ── Route table ──────────────────────────────────────────────────────────
-
-type Route =
-  // Read surface
-  | { handler: "searchTools"; query: URLSearchParams }
-  | { handler: "trsListTools" }
-  | { handler: "trsGetTool"; toolId: string }
-  | { handler: "trsListVersions"; toolId: string }
-  | { handler: "getParsedTool"; toolId: string; toolVersion: string }
-  | {
-      handler: "getParameterSchema";
-      toolId: string;
-      toolVersion: string;
-      kind: ParameterSchemaKind;
-    }
-  | { handler: "getToolSource"; toolId: string; toolVersion: string }
-  // Admin namespace
-  | { handler: "listCache"; query: URLSearchParams }
-  | { handler: "cacheStats" }
-  | { handler: "deleteCacheEntry"; cacheKey: string }
-  | { handler: "clearCache"; query: URLSearchParams }
-  | { handler: "refetchTool" }
-  | { handler: "addTool" };
-
-const TRS_PREFIX = "/api/ga4gh/trs/v2/tools";
-
-const PARAMETER_SCHEMA_TAILS: Record<string, ParameterSchemaKind> = {
-  parameter_request_schema: "request",
-  parameter_landing_request_schema: "landing_request",
-  parameter_test_case_xml_schema: "test_case_xml",
-};
-
-function matchRoute(method: string, url: string): Route | null {
-  const [rawPath, queryStr] = url.split("?");
-  const query = new URLSearchParams(queryStr ?? "");
-
-  // ── Admin namespace ────────────────────────────────────────────────
-  if (rawPath === "/api/tool-cache" || rawPath.startsWith("/api/tool-cache/")) {
-    if (rawPath === "/api/tool-cache") {
-      if (method === "GET") return { handler: "listCache", query };
-      if (method === "DELETE") return { handler: "clearCache", query };
-      return null;
-    }
-    if (rawPath === "/api/tool-cache/stats" && method === "GET") {
-      return { handler: "cacheStats" };
-    }
-    if (rawPath === "/api/tool-cache/refetch" && method === "POST") {
-      return { handler: "refetchTool" };
-    }
-    if (rawPath === "/api/tool-cache/add" && method === "POST") {
-      return { handler: "addTool" };
-    }
-    const keyMatch = rawPath.match(/^\/api\/tool-cache\/([^/]+)$/);
-    if (keyMatch && method === "DELETE") {
-      return { handler: "deleteCacheEntry", cacheKey: decodeURIComponent(keyMatch[1]) };
-    }
-    return null;
-  }
-
-  // ── TRS namespace ──────────────────────────────────────────────────
-  if (rawPath === TRS_PREFIX || rawPath.startsWith(`${TRS_PREFIX}/`)) {
-    if (method !== "GET") return null;
-    if (rawPath === TRS_PREFIX) return { handler: "trsListTools" };
-    const versionsMatch = rawPath.match(/^\/api\/ga4gh\/trs\/v2\/tools\/([^/]+)\/versions$/);
-    if (versionsMatch) {
-      return { handler: "trsListVersions", toolId: decodeURIComponent(versionsMatch[1]) };
-    }
-    const toolMatch = rawPath.match(/^\/api\/ga4gh\/trs\/v2\/tools\/([^/]+)$/);
-    if (toolMatch) {
-      return { handler: "trsGetTool", toolId: decodeURIComponent(toolMatch[1]) };
-    }
-    return null;
-  }
-
-  // ── /api/tools (search + per-version reads) ────────────────────────
-  if (rawPath === "/api/tools" && method === "GET") {
-    return { handler: "searchTools", query };
-  }
-
-  // /api/tools/:tool_id/versions/:version[/<tail>]
-  const versionMatch = rawPath.match(/^\/api\/tools\/([^/]+)\/versions\/([^/]+)(?:\/([^/]+))?$/);
-  if (versionMatch && method === "GET") {
-    const toolId = decodeURIComponent(versionMatch[1]);
-    const toolVersion = decodeURIComponent(versionMatch[2]);
-    const tail = versionMatch[3];
-    if (tail === undefined) {
-      return { handler: "getParsedTool", toolId, toolVersion };
-    }
-    if (tail === "tool_source") {
-      return { handler: "getToolSource", toolId, toolVersion };
-    }
-    const kind = PARAMETER_SCHEMA_TAILS[tail];
-    if (kind !== undefined) {
-      return { handler: "getParameterSchema", toolId, toolVersion, kind };
-    }
-  }
-
-  return null;
 }
 
 // ── Adapter helpers ──────────────────────────────────────────────────────
@@ -264,83 +150,22 @@ export function createRequestHandler(ctx: ProxyContext) {
 
     const url = req.url ?? "/";
     const method = req.method ?? "GET";
-    const route = matchRoute(method, url);
+    const cacheRoute = matchCacheRoute(method, url);
+    const handlerCtx: HandlerCtx = { service: ctx.service, baseUrl: originFromRequest(req) };
 
-    if (!route) {
+    try {
+      if (cacheRoute) {
+        const result = await dispatchCacheRoute(cacheRoute, handlerCtx, () => readJsonBody(req));
+        json(res, 200, result);
+        return;
+      }
+
       if (ctx.uiDir && method === "GET") {
         const [pathOnly] = url.split("?");
         await serveStatic(ctx.uiDir, pathOnly, res);
         return;
       }
       json(res, 404, { detail: "Not found" });
-      return;
-    }
-
-    const handlerCtx: HandlerCtx = { service: ctx.service, baseUrl: originFromRequest(req) };
-
-    try {
-      switch (route.handler) {
-        case "searchTools": {
-          const q = route.query.get("q") ?? undefined;
-          const pageStr = route.query.get("page");
-          const pageSizeStr = route.query.get("page_size");
-          const opts: { q?: string; page?: number; pageSize?: number } = {};
-          if (q !== undefined) opts.q = q;
-          if (pageStr !== null) opts.page = Number(pageStr);
-          if (pageSizeStr !== null) opts.pageSize = Number(pageSizeStr);
-          json(res, 200, await searchTools(handlerCtx, opts));
-          break;
-        }
-        case "trsListTools":
-          json(res, 200, await trsListTools(handlerCtx));
-          break;
-        case "trsGetTool":
-          json(res, 200, await trsGetTool(handlerCtx, route.toolId));
-          break;
-        case "trsListVersions":
-          json(res, 200, await trsListVersions(handlerCtx, route.toolId));
-          break;
-        case "getParsedTool":
-          json(res, 200, await getParsedTool(handlerCtx, route.toolId, route.toolVersion));
-          break;
-        case "getParameterSchema":
-          json(
-            res,
-            200,
-            await getParameterSchema(handlerCtx, route.toolId, route.toolVersion, route.kind),
-          );
-          break;
-        case "getToolSource":
-          // Always throws HttpError(501) for now.
-          getToolSource(handlerCtx, route.toolId, route.toolVersion);
-          break;
-        case "listCache": {
-          const decode = route.query.get("decode") === "1";
-          json(res, 200, await listCache(handlerCtx, { decode }));
-          break;
-        }
-        case "cacheStats":
-          json(res, 200, await cacheStats(handlerCtx));
-          break;
-        case "deleteCacheEntry":
-          json(res, 200, await deleteCacheEntry(handlerCtx, route.cacheKey));
-          break;
-        case "clearCache": {
-          const prefix = route.query.get("prefix") ?? undefined;
-          json(res, 200, await clearCache(handlerCtx, prefix));
-          break;
-        }
-        case "refetchTool": {
-          const body = await readJsonBody<RefetchRequest>(req);
-          json(res, 200, await refetchTool(handlerCtx, body));
-          break;
-        }
-        case "addTool": {
-          const body = await readJsonBody<AddRequest>(req);
-          json(res, 200, await addTool(handlerCtx, body));
-          break;
-        }
-      }
     } catch (e) {
       if (e instanceof HttpError) {
         json(res, e.status, { detail: e.message });

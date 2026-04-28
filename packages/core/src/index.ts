@@ -50,6 +50,9 @@ export type { ConfigToolInfoOptions } from "./config.js";
 /** Framework-agnostic HTTP handlers + DTOs shared by gxwf-web and tool-cache-proxy. */
 export {
   HttpError,
+  matchCacheRoute,
+  dispatchCacheRoute,
+  type CacheRoute,
   cacheToTrs,
   cacheToTrsOne,
   entryToTrsVersion,
