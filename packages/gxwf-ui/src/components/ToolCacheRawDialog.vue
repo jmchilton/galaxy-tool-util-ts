@@ -77,10 +77,15 @@ async function copy() {
   margin: 0;
   padding: var(--gx-sp-3);
   background: var(--p-surface-100, #f3f4f6);
+  color: var(--p-text-color, inherit);
   border-radius: 4px;
   font-family: var(--gx-mono);
   font-size: var(--gx-fs-xs);
   white-space: pre;
+}
+
+:global(.dark) .raw-json {
+  background: var(--p-surface-800, #1f2937);
 }
 
 .loading-state,

@@ -1,6 +1,6 @@
 import { ref } from "vue";
 
-import { parseToolshedToolId, toolIdFromTrs } from "@galaxy-tool-util/core";
+import { parseToolshedToolId } from "@galaxy-tool-util/core";
 import type { components } from "@galaxy-tool-util/gxwf-client";
 
 import { useToolInfoService } from "./useToolInfoService";
@@ -47,7 +47,10 @@ export function useClientToolCache() {
           refetchable,
         };
         if (parsed !== null) {
-          out.toolshedUrl = `https://${toolIdFromTrs(parsed.toolshedUrl, parsed.trsToolId)}`;
+          const [owner, repo] = parsed.trsToolId.split("~");
+          if (owner && repo) {
+            out.toolshedUrl = `${parsed.toolshedUrl}/view/${owner}/${repo}`;
+          }
         }
         const stat = await cache.statCached(e.cache_key);
         if (stat !== null) out.sizeBytes = stat.sizeBytes;
