@@ -10,6 +10,7 @@ import {
   validateConnectionGraph,
   type EdgeAnnotation,
 } from "@galaxy-tool-util/connection-validation";
+import type { ToolCache } from "@galaxy-tool-util/core";
 import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 
 import { buildGetToolInfo } from "./connection-validation.js";
@@ -24,7 +25,13 @@ export async function resolveEdgeAnnotations(
 ): Promise<Map<string, EdgeAnnotation>> {
   const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
+  return resolveEdgeAnnotationsWithCache(data, cache);
+}
 
+export async function resolveEdgeAnnotationsWithCache(
+  data: Record<string, unknown>,
+  cache: ToolCache,
+): Promise<Map<string, EdgeAnnotation>> {
   const getToolInfo = await buildGetToolInfo(data, cache);
   const graph = buildWorkflowGraph(data, getToolInfo);
   const [report] = validateConnectionGraph(graph);

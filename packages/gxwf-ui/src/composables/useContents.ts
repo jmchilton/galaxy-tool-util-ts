@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { parse as parseYaml } from "yaml";
 import { useApi } from "./useApi";
 import type { components } from "@galaxy-tool-util/gxwf-client";
 
@@ -38,6 +39,15 @@ export function useContents() {
     });
     if (err) throw new Error(`Failed to load path: ${path}`);
     return data;
+  }
+
+  async function loadWorkflowContent(path: string): Promise<unknown> {
+    const model = await fetchPath(path);
+    if (!model || model.type !== "file" || typeof model.content !== "string") {
+      throw new Error(`No file content for ${path}`);
+    }
+    const raw = model.content;
+    return path.endsWith(".ga") ? (JSON.parse(raw) as unknown) : (parseYaml(raw) as unknown);
   }
 
   /**
@@ -100,6 +110,7 @@ export function useContents() {
     error,
     fetchRoot,
     fetchPath,
+    loadWorkflowContent,
     writeFile,
     createCheckpoint,
     restoreCheckpoint,

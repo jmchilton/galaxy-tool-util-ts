@@ -72,7 +72,9 @@ import {
   validateNativeStepsJsonSchema,
   validateFormat2StepsJsonSchema,
   decodeStructureErrorsJsonSchema,
+  resolveEdgeAnnotationsWithCache,
 } from "@galaxy-tool-util/cli";
+import type { EdgeAnnotation } from "@galaxy-tool-util/connection-validation";
 import { HttpError } from "./contents.js";
 import type { ConvertResult, ExportResult } from "./models.js";
 
@@ -645,6 +647,15 @@ export async function operateRoundtrip(
     before_content: before_content ?? null,
     after_content: after_content ?? null,
   };
+}
+
+/** Build edge annotations (map-over depth, reductions) for visualizers. */
+export async function operateEdgeAnnotations(
+  wf: WorkflowFile,
+  cache: ToolCache,
+): Promise<Record<string, EdgeAnnotation>> {
+  const annotations = await resolveEdgeAnnotationsWithCache(wf.data, cache);
+  return Object.fromEntries(annotations);
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────

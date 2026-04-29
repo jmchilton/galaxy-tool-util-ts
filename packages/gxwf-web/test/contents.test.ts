@@ -703,6 +703,22 @@ describe("checkpoints", () => {
 const VALID_GA = '{"a_galaxy_workflow": "true", "steps": {}}';
 const VALID_GXWF = "class: GalaxyWorkflow\nsteps: []\n";
 
+describe("healthz", () => {
+  it("GET /healthz returns ok with feature list", async () => {
+    const res = await fetch(`${srv.baseUrl}/healthz`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    const data = (await res.json()) as { status: string; features: string[] };
+    expect(data.status).toBe("ok");
+    expect(data.features).toContain("edge-annotations");
+  });
+
+  it("POST /healthz returns 404", async () => {
+    const res = await fetch(`${srv.baseUrl}/healthz`, { method: "POST" });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("workflow discovery", () => {
   it("GET /workflows returns empty list for empty directory", async () => {
     const res = await fetch(`${srv.baseUrl}/workflows`);

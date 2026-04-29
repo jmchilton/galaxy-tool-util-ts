@@ -1,27 +1,23 @@
 import { ref } from "vue";
-import { parse as parseYaml } from "yaml";
-import { workflowToMermaid } from "@galaxy-tool-util/schema";
+import { workflowToMermaid, type EdgeAnnotation } from "@galaxy-tool-util/schema";
 import { useContents } from "./useContents";
+
+export interface UseMermaidBuildOptions {
+  edgeAnnotations?: Map<string, EdgeAnnotation>;
+}
 
 export function useMermaid() {
   const diagram = ref<string | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
-  const { fetchPath } = useContents();
+  const { loadWorkflowContent } = useContents();
 
-  async function build(path: string): Promise<void> {
+  async function build(path: string, opts: UseMermaidBuildOptions = {}): Promise<void> {
     loading.value = true;
     error.value = null;
     try {
-      const model = await fetchPath(path);
-      if (!model || model.type !== "file" || typeof model.content !== "string") {
-        throw new Error(`No file content for ${path}`);
-      }
-      const raw = model.content;
-      const parsed = path.endsWith(".ga")
-        ? (JSON.parse(raw) as unknown)
-        : (parseYaml(raw) as unknown);
-      diagram.value = workflowToMermaid(parsed);
+      const parsed = await loadWorkflowContent(path);
+      diagram.value = workflowToMermaid(parsed, { edgeAnnotations: opts.edgeAnnotations });
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e);
       diagram.value = null;
