@@ -351,8 +351,29 @@ gxwf cytoscapejs my-workflow.gxwf.yml out --html
 | `--json` | Force JSON output |
 | `--annotate-connections` | Encode map-over depth + reductions on edges (runs the connection validator) |
 | `--cache-dir <dir>` | Tool cache directory (used by `--annotate-connections`) |
+| `--layout <name>` | Layout strategy (default `preset`). See below. |
 
 With `--annotate-connections`, each edge gains `data.map_depth`, `data.reduction`, `data.mapping` and the classes `mapover_<depth>` / `reduction`. The bundled HTML viewer renders mapped edges as thicker green lines and reductions as dashed red arrows, and surfaces the depth/reduction in edge tooltips.
+
+#### `--layout <name>`
+
+| Layout | Coordinates | Hint emitted |
+|---|---|---|
+| `preset` (default) | `step.position` (or `(10*i, 10*i)` fallback) | none |
+| `topological` | computed leveled layout (longest-path layering) | `layout: { name: "topological" }` |
+| `dagre` / `breadthfirst` / `grid` / `cose` / `random` | omitted (renderer's job) | `layout: { name: "<n>" }` |
+
+`preset` keeps today's behavior byte-for-byte (positions baked in, no `layout` hint). `topological` overwrites every node's `position` per [docs/architecture/cytoscape-layout.md](../architecture/cytoscape-layout.md) — useful when the workflow lacks editor positions (e.g. most `.gxwf.yml`, IWC). The other layouts are hint-only: positions are dropped and the runtime renderer (the bundled HTML viewer or `gxwf-ui`) computes them at view time.
+
+JSON shape gains a wrapper when `--layout` is non-default: `{ "elements": [...], "layout": { "name": "<n>" } }`. The default `preset` continues to write a bare list for Python parity.
+
+```bash
+# Computed leveled layout (no positions in the workflow file)
+gxwf cytoscapejs --layout topological iwc-flow.gxwf.yml viewer.html
+
+# Let cytoscape's dagre extension lay it out at view time
+gxwf cytoscapejs --layout dagre iwc-flow.gxwf.yml viewer.html
+```
 
 ### Tree (batch) commands
 

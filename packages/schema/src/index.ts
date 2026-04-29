@@ -179,15 +179,25 @@ export {
   edgeAnnotationKey,
   /** Build Cytoscape.js elements from a Galaxy workflow. */
   cytoscapeElements,
+  type CytoscapeOptions,
   /** Flatten cytoscape elements into the list-of-dicts format cytoscape.js consumes. */
   elementsToList,
   type CytoscapeEdge,
   type CytoscapeEdgeData,
   type CytoscapeElements,
+  type CytoscapeLayoutHint,
   type CytoscapeListItem,
   type CytoscapeNode,
   type CytoscapeNodeData,
   type CytoscapePosition,
+  /** Cross-language layout names + topological position computation. */
+  COL_STRIDE,
+  ROW_STRIDE,
+  LAYOUT_NAMES,
+  bakesCoordinates,
+  isLayoutName,
+  topologicalPositions,
+  type LayoutName,
   /** Detect whether a workflow dict is native (.ga) or format2 (.gxwf.yml). */
   detectFormat,
   type WorkflowFormat,

@@ -70,6 +70,11 @@ export { loadToolInputsForWorkflow } from "./commands/stateful-tool-inputs.js";
 export type { ToolLoadStatus, LoadedToolInputs } from "./commands/stateful-tool-inputs.js";
 /** Default subworkflow ref resolver (base64, TRS, HTTP, file paths). */
 export { createDefaultResolver } from "./commands/url-resolver.js";
+/** Build the edge-annotation lookup the visualizers consume. */
+export {
+  resolveEdgeAnnotations,
+  resolveEdgeAnnotationsWithCache,
+} from "./commands/annotate-connections.js";
 /** JSON-Schema-based (AJV) step validation and structural error decoding. */
 export {
   validateNativeStepsJsonSchema,

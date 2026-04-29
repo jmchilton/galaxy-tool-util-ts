@@ -5,18 +5,36 @@
 <head>
     <title>Galaxy Workflow</title>
     <script src="https://unpkg.com/cytoscape@3.33.2/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
     <script src="https://unpkg.com/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://unpkg.com/cytoscape-popper@2.0.0/cytoscape-popper.js"></script>
     <script src="https://unpkg.com/tippy.js@6.3.7/dist/tippy.umd.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6.3.7/dist/tippy.css" />
     <script>
 document.addEventListener("DOMContentLoaded", function() {
+    var requestedLayout = $layout;
+    var dagreReady = (typeof cytoscapeDagre !== 'undefined');
+    if (dagreReady && cytoscape.use) {
+        try { cytoscape.use(cytoscapeDagre); } catch (e) { /* already registered */ }
+    }
+    var layoutConfig = (function(name) {
+        if (name === 'dagre') {
+            return dagreReady
+                ? { name: 'dagre', rankDir: 'LR', nodeSep: 40, rankSep: 80 }
+                : { name: 'preset' };
+        }
+        if (name === 'breadthfirst') return { name: 'breadthfirst', directed: true, spacingFactor: 1.2 };
+        if (name === 'grid') return { name: 'grid' };
+        if (name === 'cose') return { name: 'cose' };
+        if (name === 'random') return { name: 'random' };
+        if (name === 'topological') return { name: 'preset' };
+        return { name: 'preset' };
+    })(requestedLayout);
     var cy = cytoscape({
         container: document.getElementById('cy'),
         elements: $elements,
-        layout: {
-            name: 'preset'
-        },
+        layout: layoutConfig,
         // so we can see the ids
         style: [
             {

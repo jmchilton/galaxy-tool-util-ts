@@ -52,6 +52,7 @@ const handlers: HandlerRegistry = {
       json?: boolean;
       annotateConnections?: boolean;
       cacheDir?: string;
+      layout?: string;
     },
   ) =>
     runCytoscapeJs(file, {
@@ -60,6 +61,7 @@ const handlers: HandlerRegistry = {
       json: opts.json,
       annotateConnections: opts.annotateConnections,
       cacheDir: opts.cacheDir,
+      layout: opts.layout,
     }),
   validateTree: runValidateTree,
   lintTree: runLintTree,

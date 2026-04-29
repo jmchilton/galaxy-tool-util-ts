@@ -139,17 +139,27 @@ export { workflowToMermaid, type MermaidOptions } from "./mermaid.js";
 
 export { edgeAnnotationKey, type EdgeAnnotation } from "./edge-annotation.js";
 
-export { cytoscapeElements } from "./cytoscape.js";
+export { cytoscapeElements, type CytoscapeOptions } from "./cytoscape.js";
 export {
   elementsToList,
   type CytoscapeEdge,
   type CytoscapeEdgeData,
   type CytoscapeElements,
+  type CytoscapeLayoutHint,
   type CytoscapeListItem,
   type CytoscapeNode,
   type CytoscapeNodeData,
   type CytoscapePosition,
 } from "./cytoscape-models.js";
+export {
+  COL_STRIDE,
+  ROW_STRIDE,
+  LAYOUT_NAMES,
+  bakesCoordinates,
+  isLayoutName,
+  topologicalPositions,
+  type LayoutName,
+} from "./cytoscape-layout.js";
 
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
 

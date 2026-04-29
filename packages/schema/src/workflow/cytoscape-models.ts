@@ -40,7 +40,12 @@ export interface CytoscapeNode {
   group: "nodes";
   data: CytoscapeNodeData;
   classes: string[];
-  position: CytoscapePosition;
+  /**
+   * Present for `preset` and `topological` layouts; omitted for hint-only
+   * layouts (`dagre`, `breadthfirst`, `grid`, `cose`, `random`) so the runtime
+   * renderer is responsible for placement.
+   */
+  position?: CytoscapePosition;
 }
 
 export interface CytoscapeEdge {
@@ -50,9 +55,19 @@ export interface CytoscapeEdge {
   classes?: string[];
 }
 
+export interface CytoscapeLayoutHint {
+  name: string;
+}
+
 export interface CytoscapeElements {
   nodes: CytoscapeNode[];
   edges: CytoscapeEdge[];
+  /**
+   * Present only when the builder was invoked with a non-`preset` layout.
+   * Carried out-of-band so `elementsToList` keeps Python parity for the flat
+   * list shape.
+   */
+  layout?: CytoscapeLayoutHint;
 }
 
 export type CytoscapeListItem = CytoscapeNode | CytoscapeEdge;

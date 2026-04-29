@@ -12,6 +12,8 @@ import type {
   CytoscapeNode,
   CytoscapePosition,
 } from "./cytoscape-models.js";
+import type { LayoutName } from "./cytoscape-layout.js";
+import { bakesCoordinates, topologicalPositions } from "./cytoscape-layout.js";
 import type { EdgeAnnotation } from "./edge-annotation.js";
 import { edgeAnnotationKey } from "./edge-annotation.js";
 import { ensureFormat2 } from "./normalized/ensure.js";
@@ -31,6 +33,14 @@ export interface CytoscapeOptions {
    * and class hints (`mapover_<n>`, `reduction`).
    */
   edgeAnnotations?: Map<string, EdgeAnnotation>;
+  /**
+   * Layout strategy. `preset` (default) keeps today's coordinate-from-NF2
+   * behavior with a `(10*i, 10*i)` fallback. `topological` overwrites
+   * coordinates per `cytoscape-layout.ts`. Hint-only layouts (`dagre`,
+   * `breadthfirst`, `grid`, `cose`, `random`) drop coordinates and emit a
+   * top-level `elements.layout = { name }` hint for the runtime renderer.
+   */
+  layout?: LayoutName;
 }
 
 export function cytoscapeElements(
@@ -46,6 +56,7 @@ export function cytoscapeElements(
       ? (workflow as NormalizedFormat2Workflow)
       : ensureFormat2(workflow);
 
+  const layout: LayoutName = opts.layout ?? "preset";
   const nodes: CytoscapeNode[] = [];
   const edges: CytoscapeEdge[] = [];
 
@@ -63,7 +74,27 @@ export function cytoscapeElements(
     edges.push(..._stepEdges(step, knownLabels, opts.edgeAnnotations));
   });
 
-  return { nodes, edges };
+  const elements: CytoscapeElements = { nodes, edges };
+
+  if (layout === "preset") {
+    return elements;
+  }
+
+  if (bakesCoordinates(layout)) {
+    // Currently only `topological` reaches here; computed off the
+    // already-built elements per docs/architecture/cytoscape-layout.md.
+    const positions = topologicalPositions(elements);
+    for (const node of nodes) {
+      const p = positions.get(node.data.id);
+      if (p) node.position = p;
+    }
+  } else {
+    // Hint-only layout: positions are the renderer's job.
+    for (const node of nodes) delete node.position;
+  }
+
+  elements.layout = { name: layout };
+  return elements;
 }
 
 function _fallbackPosition(orderIndex: number): CytoscapePosition {
