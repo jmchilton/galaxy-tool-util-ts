@@ -8,7 +8,10 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
 import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 
-import { resolveEdgeAnnotationsWithCache } from "../src/commands/annotate-connections.js";
+import {
+  resolveEdgeAnnotationsAndSpecsWithCache,
+  resolveEdgeAnnotationsWithCache,
+} from "../src/commands/annotate-connections.js";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 import { seedAllTools, DATA_TOOL_ID } from "./helpers/fixtures.js";
 
@@ -58,6 +61,30 @@ describe("resolveEdgeAnnotationsWithCache (lifted helper parity)", () => {
     expect(ann!.reduction).toBe(false);
     expect(ann!.sourceStep).toBe("in");
     expect(ann!.targetStep).toBe("t1");
+  });
+
+  it("resolveEdgeAnnotationsAndSpecsWithCache returns annotations + tool specs in parallel", async () => {
+    const cache = makeNodeToolCache({ cacheDir: ctx.tmpDir });
+    await cache.index.load();
+
+    const { annotations, specs } = await resolveEdgeAnnotationsAndSpecsWithCache(
+      chainWorkflow,
+      cache,
+    );
+
+    // Annotations match the original variant.
+    expect(annotations.get("in|output->t1|input_file")).toBeDefined();
+
+    // Specs include the seeded data tool, keyed by `${tool_id}@${tool_version}`.
+    const specKey = `${DATA_TOOL_ID}@1.0`;
+    const spec = specs.get(specKey);
+    expect(
+      spec,
+      `expected spec under ${specKey}, got: ${[...specs.keys()].join(",")}`,
+    ).toBeDefined();
+    expect(spec!.tool_id).toBe(DATA_TOOL_ID);
+    expect(spec!.tool_version).toBe("1.0");
+    expect(spec!.parsed.id).toBe("data_tool");
   });
 
   it("returns an empty map when no tool refs resolve", async () => {

@@ -45,7 +45,7 @@ import SelectButton from "primevue/selectbutton";
 import ToggleButton from "primevue/togglebutton";
 import { useMermaid } from "../composables/useMermaid";
 import { pickRuntimeLayout, useCytoscape } from "../composables/useCytoscape";
-import { useEdgeAnnotations } from "../composables/useEdgeAnnotations";
+import { useEdgeAnnotationsAuto } from "../composables/useEdgeAnnotationsAuto";
 import { cytoscapeStyle } from "../composables/cytoscapeStyle";
 import { useTheme } from "../composables/useTheme";
 import { elementsToList } from "@galaxy-tool-util/schema";
@@ -99,7 +99,7 @@ const {
   error: annotationsError,
   build: buildAnnotations,
   clear: clearAnnotations,
-} = useEdgeAnnotations();
+} = useEdgeAnnotationsAuto();
 
 const loading = ref(false);
 const rendering = ref(false);

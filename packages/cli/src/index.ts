@@ -74,7 +74,9 @@ export { createDefaultResolver } from "./commands/url-resolver.js";
 export {
   resolveEdgeAnnotations,
   resolveEdgeAnnotationsWithCache,
+  resolveEdgeAnnotationsAndSpecsWithCache,
 } from "./commands/annotate-connections.js";
+export type { ResolvedToolSpec } from "./commands/annotate-connections.js";
 /** JSON-Schema-based (AJV) step validation and structural error decoding. */
 export {
   validateNativeStepsJsonSchema,

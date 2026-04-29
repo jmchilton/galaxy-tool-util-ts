@@ -819,6 +819,24 @@ describe("workflow discovery", () => {
 // ── Workflow operation route tests ───────────────────────────────────
 
 describe("workflow operations", () => {
+  it("POST /workflows/{path}/edge-annotations returns hybrid envelope shape", async () => {
+    // Empty workflow → no tool refs to resolve, but the envelope shape must
+    // hold (annotations + tool_specs both present, both empty).
+    fs.writeFileSync(path.join(tmpDir, "wf.ga"), VALID_GA);
+    const res = await fetch(`${srv.baseUrl}/workflows/wf.ga/edge-annotations`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      annotations: Record<string, unknown>;
+      tool_specs: Record<string, unknown>;
+    };
+    expect(data.annotations).toBeDefined();
+    expect(data.tool_specs).toBeDefined();
+    expect(typeof data.annotations).toBe("object");
+    expect(typeof data.tool_specs).toBe("object");
+    expect(Object.keys(data.annotations)).toEqual([]);
+    expect(Object.keys(data.tool_specs)).toEqual([]);
+  });
+
   it("POST /workflows/{path}/validate returns 404 for unknown workflow", async () => {
     const res = await fetch(`${srv.baseUrl}/workflows/nonexistent.ga/validate`, {
       method: "POST",
