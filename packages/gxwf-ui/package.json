@@ -32,6 +32,8 @@
     "@codingame/monaco-vscode-textmate-service-override": "30.0.1",
     "@codingame/monaco-vscode-theme-service-override": "30.0.1",
     "@fontsource/atkinson-hyperlegible": "^5.2.8",
+    "@galaxy-tool-util/connection-validation": "workspace:*",
+    "@galaxy-tool-util/core": "workspace:*",
     "@galaxy-tool-util/gxwf-client": "workspace:*",
     "@galaxy-tool-util/gxwf-report-shell": "workspace:*",
     "@galaxy-tool-util/schema": "workspace:*",

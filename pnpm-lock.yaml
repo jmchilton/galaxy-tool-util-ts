@@ -228,6 +228,12 @@ importers:
       '@fontsource/atkinson-hyperlegible':
         specifier: ^5.2.8
         version: 5.2.8
+      '@galaxy-tool-util/connection-validation':
+        specifier: workspace:*
+        version: link:../connection-validation
+      '@galaxy-tool-util/core':
+        specifier: workspace:*
+        version: link:../core
       '@galaxy-tool-util/gxwf-client':
         specifier: workspace:*
         version: link:../gxwf-client
