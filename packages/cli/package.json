@@ -19,6 +19,7 @@
   },
   "files": [
     "dist",
+    "spec",
     "README.md",
     "LICENSE"
   ],
@@ -32,7 +33,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "node scripts/bundle-templates.mjs && tsc && node scripts/generate-cli-meta.mjs && tsc",
+    "build": "node scripts/bundle-templates.mjs && tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run",
     "test:watch": "vitest",

@@ -1,9 +1,11 @@
 /**
  * Walks a Commander program and produces a `CliProgramSpec`.
  *
- * NODE-ONLY: imports `commander`. Used at build time by
- * `scripts/generate-cli-meta.mjs`. Lives outside `src/meta/` so the
- * published `meta` subpath stays free of commander.
+ * NODE-ONLY: imports `commander`. Kept as the commander-derived oracle
+ * for the spec parity test, which asserts that `extractProgramFromSpec`
+ * (browser-safe, in `src/meta/`) produces identical output. Lives
+ * outside `src/meta/` so the published `meta` subpath stays free of
+ * commander.
  */
 import type { Command, Option, Argument } from "commander";
 import type {

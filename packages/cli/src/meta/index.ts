@@ -6,9 +6,14 @@
  * import this subpath without dragging in commander or any node-only
  * dependency.
  *
- * The data is generated from the same commander programs that define
- * the binaries, so it cannot drift. See `scripts/generate-cli-meta.mjs`.
+ * Source of truth lives in `spec/*.json`. This module imports those
+ * specs directly and derives the parsed `CliProgramSpec` view via the
+ * commander-free walker in `spec/extract-spec.ts`. No build-time
+ * codegen — the spec ships as data and is interpreted at module load.
  */
+import { extractProgramFromSpec } from "./extract-spec.js";
+import { gxwfSpec, galaxyToolCacheSpec } from "./specs.js";
+
 export type {
   CliProgramSpec,
   CliCommandSpec,
@@ -16,4 +21,11 @@ export type {
   CliPositionalArgSpec,
 } from "./types.js";
 
-export { gxwfCliMeta, galaxyToolCacheCliMeta } from "./_generated.js";
+export type { ProgramSpec, SpecCommand, SpecOption, SpecArg } from "./spec-types.js";
+
+/** Raw spec — same shape consumers can load from `spec/*.json` directly. */
+export { gxwfSpec, galaxyToolCacheSpec } from "./specs.js";
+
+/** Parsed `CliProgramSpec` view derived from the raw spec. */
+export const gxwfCliMeta = extractProgramFromSpec(gxwfSpec);
+export const galaxyToolCacheCliMeta = extractProgramFromSpec(galaxyToolCacheSpec);
