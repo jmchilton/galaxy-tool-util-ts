@@ -22,7 +22,7 @@ import type {
   NormalizedFormat2Step,
   NormalizedFormat2Workflow,
 } from "./normalized/format2.js";
-import { resolveSourceReference } from "./normalized/labels.js";
+import { isUnlabeledStep, resolveSourceReference } from "./normalized/labels.js";
 
 const MAIN_TS_PREFIX = "toolshed.g2.bx.psu.edu/repos/";
 
@@ -151,8 +151,9 @@ function _stepNode(step: NormalizedFormat2Step, orderIndex: number): CytoscapeNo
     strippedToolId = strippedToolId.slice(MAIN_TS_PREFIX.length);
   }
 
+  const displayId = step.id && !isUnlabeledStep(step.id) ? step.id : null;
   const label =
-    step.label || step.id || (strippedToolId ? `tool:${strippedToolId}` : String(orderIndex));
+    step.label || displayId || (strippedToolId ? `tool:${strippedToolId}` : String(orderIndex));
 
   let repoLink: string | null = null;
   const repo = step.tool_shed_repository;

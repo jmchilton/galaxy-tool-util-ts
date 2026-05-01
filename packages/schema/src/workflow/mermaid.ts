@@ -8,7 +8,7 @@ import type { EdgeAnnotation } from "./edge-annotation.js";
 import { edgeAnnotationKey } from "./edge-annotation.js";
 import { ensureFormat2 } from "./normalized/ensure.js";
 import type { NormalizedFormat2Workflow } from "./normalized/format2.js";
-import { resolveSourceReference } from "./normalized/labels.js";
+import { isUnlabeledStep, resolveSourceReference } from "./normalized/labels.js";
 
 type Shape = readonly [string, string];
 
@@ -125,7 +125,8 @@ export function workflowToMermaid(
       toolId = toolId.slice(MAIN_TS_PREFIX.length);
     }
 
-    const rawLabel = step.label || step.id || (toolId ? `tool:${toolId}` : String(i));
+    const displayId = step.id && !isUnlabeledStep(step.id) ? step.id : null;
+    const rawLabel = step.label || displayId || (toolId ? `tool:${toolId}` : String(i));
     const label = sanitizeLabel(rawLabel);
     // The TS normalizer does not infer step.type the way gxformat2 does, so
     // fall back to `run` shape: anything non-null implies a subworkflow.

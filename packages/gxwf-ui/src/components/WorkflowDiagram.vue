@@ -50,8 +50,10 @@ import { cytoscapeStyle } from "../composables/cytoscapeStyle";
 import { useTheme } from "../composables/useTheme";
 import { elementsToList } from "@galaxy-tool-util/schema";
 import type cytoscape from "cytoscape";
+import type { Instance as TippyInstance } from "tippy.js";
 type CytoscapeFactory = typeof cytoscape;
 type CytoscapeCore = cytoscape.Core;
+type CytoscapeElement = cytoscape.SingularElementArgument;
 
 type Renderer = "mermaid" | "cytoscape";
 const RENDERER_KEY = "gxwf-ui:diagram-renderer";
@@ -107,6 +109,7 @@ const error = ref<string | null>(null);
 const svg = ref<string | null>(null);
 const cytoCanvas = ref<HTMLDivElement | null>(null);
 let cy: CytoscapeCore | null = null;
+let activeTippies: TippyInstance[] = [];
 const { theme } = useTheme();
 
 watch([mermaidLoading, cytoLoading, annotationsLoading], ([m, c, a]) => {
@@ -135,19 +138,118 @@ let cytoLibPromise: Promise<CytoscapeFactory> | null = null;
 async function getCytoscape(): Promise<CytoscapeFactory> {
   if (!cytoLibPromise) {
     cytoLibPromise = (async () => {
-      const [cytoMod, dagreMod] = await Promise.all([
+      const [cytoMod, dagreMod, popperMod] = await Promise.all([
         import("cytoscape"),
         import("cytoscape-dagre"),
+        import("cytoscape-popper"),
       ]);
       const factory =
         (cytoMod as unknown as { default?: CytoscapeFactory }).default ??
         (cytoMod as unknown as CytoscapeFactory);
       const dagre = (dagreMod as unknown as { default?: unknown }).default ?? dagreMod;
-      (factory as unknown as { use: (ext: unknown) => void }).use(dagre);
+      const popper = (popperMod as unknown as { default?: unknown }).default ?? popperMod;
+      const useExt = (factory as unknown as { use: (ext: unknown) => void }).use;
+      useExt(dagre);
+      useExt(popper);
       return factory;
     })();
   }
   return cytoLibPromise;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildPopupContent(ele: CytoscapeElement): HTMLElement {
+  const container = document.createElement("div");
+  const parts: string[] = [];
+  if (ele.isNode()) {
+    const stepType = ele.data("step_type");
+    if (stepType) parts.push(`<p><i>Step Type:</i> ${escapeHtml(String(stepType))}</p>`);
+    const toolId = ele.data("tool_id");
+    if (toolId) parts.push(`<p><i>Tool ID:</i> ${escapeHtml(String(toolId))}</p>`);
+    const repoLink = ele.data("repo_link");
+    if (repoLink) {
+      const href = escapeHtml(String(repoLink));
+      parts.push(
+        `<p><a href="${href}" target="_blank" rel="noopener">Tool Shed Repository</a></p>`,
+      );
+    }
+    const doc = ele.data("doc");
+    if (doc) parts.push(`<p>${escapeHtml(String(doc))}</p>`);
+  } else {
+    const output = ele.data("output");
+    const input = ele.data("input");
+    if (output) {
+      parts.push(
+        `<p>Output <code>${escapeHtml(String(output))}</code> → input <code>${escapeHtml(String(input))}</code></p>`,
+      );
+    } else if (input) {
+      parts.push(`<p>Connected to input <code>${escapeHtml(String(input))}</code></p>`);
+    }
+    const mapDepth = ele.data("map_depth");
+    if (mapDepth) {
+      const mapping = ele.data("mapping");
+      const suffix = mapping ? ` (${escapeHtml(String(mapping))})` : "";
+      parts.push(`<p><i>Map depth:</i> ${escapeHtml(String(mapDepth))}${suffix}</p>`);
+    }
+    if (ele.data("reduction")) {
+      parts.push(`<p><i>Reduction:</i> list → multi-data</p>`);
+    }
+  }
+  container.innerHTML = parts.join("") || "<p><i>No details</i></p>";
+  return container;
+}
+
+function destroyTippies(): void {
+  for (const t of activeTippies) {
+    try {
+      t.destroy();
+    } catch {
+      // ignore
+    }
+  }
+  activeTippies = [];
+}
+
+async function attachPopups(core: CytoscapeCore): Promise<void> {
+  const tippyMod = await import("tippy.js");
+  await import("tippy.js/dist/tippy.css");
+  const tippy = (tippyMod as unknown as { default?: typeof tippyMod.default }).default ?? tippyMod;
+  const popperMethod = (ele: CytoscapeElement) =>
+    (ele as unknown as { popperRef: () => { getBoundingClientRect: () => DOMRect } }).popperRef();
+
+  core.on("tap", "node, edge", (event) => {
+    const ele = event.target as CytoscapeElement;
+    const ref = popperMethod(ele);
+    const dummy = document.createElement("div");
+    const instance = (tippy as unknown as typeof import("tippy.js").default)(dummy, {
+      getReferenceClientRect: ref.getBoundingClientRect.bind(ref),
+      content: buildPopupContent(ele),
+      allowHTML: true,
+      interactive: true,
+      placement: "bottom",
+      trigger: "manual",
+      appendTo: document.body,
+      onHidden: (inst) => {
+        inst.destroy();
+        activeTippies = activeTippies.filter((t) => t !== inst);
+      },
+    });
+    destroyTippies();
+    activeTippies.push(instance);
+    instance.show();
+  });
+
+  core.on("tap", (event) => {
+    if (event.target === core) destroyTippies();
+  });
 }
 
 async function ensureAnnotations(): Promise<
@@ -187,6 +289,7 @@ async function renderCytoscape() {
   rendering.value = true;
   try {
     const cytoscape = await getCytoscape();
+    destroyTippies();
     if (cy) {
       cy.destroy();
       cy = null;
@@ -201,6 +304,7 @@ async function renderCytoscape() {
           ? ({ name: "dagre", rankDir: "LR", nodeSep: 40, rankSep: 80 } as never)
           : ({ name: "preset" } as never),
     }) as CytoscapeCore;
+    await attachPopups(cy);
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -233,6 +337,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  destroyTippies();
   if (cy) {
     cy.destroy();
     cy = null;

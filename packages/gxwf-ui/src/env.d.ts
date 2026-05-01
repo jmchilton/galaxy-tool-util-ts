@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare module "cytoscape-popper";
+
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_GXWF_EXT_SOURCE?: string;
