@@ -64,7 +64,7 @@ vi.mock("@galaxy-tool-util/core", () => ({
     if (!m) return null;
     return {
       toolshedUrl: `https://${m[1]}`,
-      trsToolId: `repos/${m[2]}/${m[3]}/${m[4]}`,
+      trsToolId: `${m[2]}~${m[3]}~${m[4]}`,
       toolVersion: null,
     };
   },

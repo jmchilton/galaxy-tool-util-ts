@@ -243,9 +243,6 @@ importers:
       '@galaxy-tool-util/schema':
         specifier: workspace:*
         version: link:../schema
-      '@popperjs/core':
-        specifier: ^2.11.8
-        version: 2.11.8
       '@primevue/themes':
         specifier: ^4.3.0
         version: 4.5.4
@@ -258,9 +255,6 @@ importers:
       cytoscape-popper:
         specifier: ^2.0.0
         version: 2.0.0(cytoscape@3.33.2)
-      dagre:
-        specifier: ^0.8.5
-        version: 0.8.5
       mermaid:
         specifier: ^11.14.0
         version: 11.14.0
@@ -292,9 +286,6 @@ importers:
         specifier: ^2.8.3
         version: 2.8.3
     devDependencies:
-      '@types/cytoscape':
-        specifier: ^3.31.0
-        version: 3.31.0
       '@types/cytoscape-dagre':
         specifier: ^2.3.4
         version: 2.3.4
@@ -1311,10 +1302,6 @@ packages:
 
   '@types/cytoscape-dagre@2.3.4':
     resolution: {integrity: sha512-uOGXuPfPLFoKZaegjHl9oj4tqONNJuhUl180FiJgRZ35rVijBs6J4UP1Ah6mA6S46h+7pv4ICqpgfdC3EADZlw==}
-
-  '@types/cytoscape@3.31.0':
-    resolution: {integrity: sha512-EXHOHxqQjGxLDEh5cP4te6J0bi7LbCzmZkzsR6f703igUac8UGMdEohMyU3GHAayCTZrLQOMnaE/lqB2Ekh8Ww==}
-    deprecated: This is a stub types definition. cytoscape provides its own type definitions, so you do not need this installed.
 
   '@types/d3-array@3.2.2':
     resolution: {integrity: sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==}
@@ -4687,10 +4674,6 @@ snapshots:
       assertion-error: 2.0.1
 
   '@types/cytoscape-dagre@2.3.4':
-    dependencies:
-      cytoscape: 3.33.2
-
-  '@types/cytoscape@3.31.0':
     dependencies:
       cytoscape: 3.33.2
 

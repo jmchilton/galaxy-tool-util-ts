@@ -59,6 +59,21 @@ describe("ToolInfoService", () => {
     expect(result).toBeNull();
   });
 
+  it("does not fetch when sources are explicitly empty", async () => {
+    let fetchCount = 0;
+    const service = makeNodeToolInfoService({
+      cacheDir: tmpDir,
+      sources: [],
+      fetcher: async (...args) => {
+        fetchCount++;
+        return mockFetch({}, 500)(...args);
+      },
+    });
+    const result = await service.getToolInfo("cat1", "1.0.0");
+    expect(result).toBeNull();
+    expect(fetchCount).toBe(0);
+  });
+
   it("falls through to Galaxy on ToolShed failure", async () => {
     let lastUrl = "";
     const selectiveFetch: typeof fetch = async (url, init) => {

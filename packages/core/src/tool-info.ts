@@ -39,7 +39,7 @@ export class ToolInfoService {
     });
     this.fetcher = opts.fetcher ?? globalThis.fetch;
 
-    if (opts.sources && opts.sources.length > 0) {
+    if (opts.sources) {
       this.sources = opts.sources;
     } else {
       this.sources = [

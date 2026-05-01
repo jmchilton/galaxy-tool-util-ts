@@ -37,12 +37,10 @@
     "@galaxy-tool-util/gxwf-client": "workspace:*",
     "@galaxy-tool-util/gxwf-report-shell": "workspace:*",
     "@galaxy-tool-util/schema": "workspace:*",
-    "@popperjs/core": "^2.11.8",
     "@primevue/themes": "^4.3.0",
     "cytoscape": "^3.33.2",
     "cytoscape-dagre": "^2.5.0",
     "cytoscape-popper": "^2.0.0",
-    "dagre": "^0.8.5",
     "mermaid": "^11.14.0",
     "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@30.0.1",
     "primeicons": "^7.0.0",
@@ -55,7 +53,6 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
-    "@types/cytoscape": "^3.31.0",
     "@types/cytoscape-dagre": "^2.3.4",
     "@vitejs/plugin-vue": "^6.0.0",
     "fflate": "0.8.2",
