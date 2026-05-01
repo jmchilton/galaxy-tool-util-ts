@@ -1,0 +1,152 @@
+{
+  "name": "galaxy-tool-cache",
+  "description": "Cache and inspect Galaxy tool metadata",
+  "version": "1.0.0",
+  "commands": [
+    {
+      "name": "add",
+      "description": "Fetch a tool from ToolShed/Galaxy and cache it",
+      "handler": "add",
+      "args": [
+        {
+          "raw": "<tool_id>",
+          "description": "Tool ID (full toolshed path or TRS ID)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--version <ver>",
+          "description": "Tool version"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Cache directory"
+        },
+        {
+          "flags": "--galaxy-url <url>",
+          "description": "Galaxy instance URL for fallback"
+        }
+      ]
+    },
+    {
+      "name": "list",
+      "description": "List cached tools",
+      "handler": "list",
+      "options": [
+        {
+          "flags": "--json",
+          "description": "Output as JSON"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Cache directory"
+        }
+      ]
+    },
+    {
+      "name": "info",
+      "description": "Show metadata for a cached tool",
+      "handler": "info",
+      "args": [
+        {
+          "raw": "<tool_id>",
+          "description": "Tool ID"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--version <ver>",
+          "description": "Tool version"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Cache directory"
+        }
+      ]
+    },
+    {
+      "name": "clear",
+      "description": "Clear cached tools",
+      "handler": "clear",
+      "args": [
+        {
+          "raw": "[prefix]",
+          "description": "Only clear tools matching this prefix"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Cache directory"
+        }
+      ]
+    },
+    {
+      "name": "schema",
+      "description": "Export JSON Schema for a cached tool's parameters",
+      "handler": "schema",
+      "args": [
+        {
+          "raw": "<tool_id>",
+          "description": "Tool ID"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--version <ver>",
+          "description": "Tool version"
+        },
+        {
+          "flags": "--representation <rep>",
+          "description": "State representation (e.g., workflow_step)",
+          "default": "workflow_step"
+        },
+        {
+          "flags": "--output <file>",
+          "description": "Output file (default: stdout)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Cache directory"
+        }
+      ]
+    },
+    {
+      "name": "populate-workflow",
+      "description": "Scan a workflow and cache all referenced tools",
+      "handler": "populateWorkflow",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Cache directory"
+        },
+        {
+          "flags": "--galaxy-url <url>",
+          "description": "Galaxy instance URL for fallback"
+        }
+      ]
+    },
+    {
+      "name": "structural-schema",
+      "description": "Export the structural JSON Schema for Galaxy workflows",
+      "handler": "structuralSchema",
+      "options": [
+        {
+          "flags": "--format <fmt>",
+          "description": "Workflow format: format2 (default) or native",
+          "default": "format2"
+        },
+        {
+          "flags": "--output <file>",
+          "description": "Output file (default: stdout)"
+        }
+      ]
+    }
+  ]
+}

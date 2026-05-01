@@ -11,10 +11,15 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./meta": {
+      "types": "./dist/meta/index.d.ts",
+      "import": "./dist/meta/index.js"
     }
   },
   "files": [
     "dist",
+    "spec",
     "README.md",
     "LICENSE"
   ],

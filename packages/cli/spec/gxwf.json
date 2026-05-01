@@ -1,0 +1,652 @@
+{
+  "name": "gxwf",
+  "description": "Galaxy workflow operations — validate, clean, lint, convert (single-file and tree)",
+  "version": "1.0.0",
+  "optionGroups": {
+    "strict": [
+      {
+        "flags": "--strict",
+        "description": "Shorthand for --strict-structure --strict-encoding --strict-state"
+      },
+      {
+        "flags": "--strict-structure",
+        "description": "Reject unknown keys at envelope/step level"
+      },
+      {
+        "flags": "--strict-encoding",
+        "description": "Reject JSON-string tool_state and format2 field misuse"
+      },
+      {
+        "flags": "--strict-state",
+        "description": "Require every tool step to validate; no skips allowed"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "validate",
+      "description": "Validate Galaxy workflow files (structure + optional tool state)",
+      "handler": "validateWorkflow",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--format <fmt>",
+          "description": "Force format: native or format2 (auto-detected by default)"
+        },
+        {
+          "flags": "--no-tool-state",
+          "description": "Skip tool state validation"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory"
+        },
+        {
+          "flags": "--mode <mode>",
+          "description": "Validation backend: effect (default) or json-schema",
+          "default": "effect"
+        },
+        {
+          "flags": "--tool-schema-dir <dir>",
+          "description": "Directory of pre-exported per-tool JSON Schemas (for offline json-schema mode)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--report-html [file]",
+          "description": "Write HTML report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--connections",
+          "description": "Validate connection-type compatibility (collection algebra, map-over)"
+        }
+      ],
+      "optionGroups": ["strict"]
+    },
+    {
+      "name": "validate-tests",
+      "description": "Validate a workflow-test file (*-tests.yml, *.gxwf-tests.yml) against the Galaxy Tests schema",
+      "handler": "validateTests",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Tests file (*-tests.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--workflow <path>",
+          "description": "Cross-check job inputs + output assertions against a workflow (.ga / .gxwf.yml)"
+        }
+      ]
+    },
+    {
+      "name": "clean",
+      "description": "Strip stale keys and decode legacy tool_state encoding",
+      "handler": "clean",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--output <file>",
+          "description": "Write cleaned workflow to file (default: stdout)"
+        },
+        {
+          "flags": "--diff",
+          "description": "Show diff of changes instead of writing output"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force format: native or format2 (auto-detected by default)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--report-html [file]",
+          "description": "Write HTML report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--skip-uuid",
+          "description": "Skip stripping uuid fields (errors are always stripped)"
+        }
+      ]
+    },
+    {
+      "name": "lint",
+      "description": "Lint Galaxy workflow — structural checks, best practices, tool state validation",
+      "handler": "lint",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--skip-best-practices",
+          "description": "Skip annotation/creator/license/label checks"
+        },
+        {
+          "flags": "--skip-state-validation",
+          "description": "Skip tool state validation against cached tool definitions"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (for state validation)"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force format: native or format2 (auto-detected by default)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON result"
+        },
+        {
+          "flags": "--report-html [file]",
+          "description": "Write HTML report to file (or stdout if omitted)"
+        }
+      ],
+      "optionGroups": ["strict"]
+    },
+    {
+      "name": "convert",
+      "description": "Convert between native (.ga) and format2 (.gxwf.yml) formats",
+      "handler": "convert",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--to <format>",
+          "description": "Target format: native or format2 (infers opposite by default)"
+        },
+        {
+          "flags": "--output <file>",
+          "description": "Write result to file (default: stdout)"
+        },
+        {
+          "flags": "--compact",
+          "description": "Omit position info in format2 output"
+        },
+        {
+          "flags": "--json",
+          "description": "Force JSON output"
+        },
+        {
+          "flags": "--yaml",
+          "description": "Force YAML output"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force source format (auto-detected by default)"
+        },
+        {
+          "flags": "--stateful",
+          "description": "Use cached tool definitions for schema-aware state re-encoding"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (for --stateful)"
+        }
+      ],
+      "optionGroups": ["strict"]
+    },
+    {
+      "name": "roundtrip",
+      "description": "Roundtrip-validate a native workflow: native → format2 → native, diff tool_state",
+      "handler": "roundtrip",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Native workflow file (.ga)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force source format (must resolve to native)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--errors-only",
+          "description": "Suppress benign diffs and clean steps from output"
+        },
+        {
+          "flags": "--benign-only",
+          "description": "Show only steps with benign diffs (no errors, no failures)"
+        },
+        {
+          "flags": "--brief",
+          "description": "Omit per-diff list; show only the one-line summary"
+        }
+      ],
+      "optionGroups": ["strict"]
+    },
+    {
+      "name": "mermaid",
+      "description": "Render a Galaxy workflow as a Mermaid flowchart diagram",
+      "handler": "mermaid",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        },
+        {
+          "raw": "[output]",
+          "description": "Output path (.mmd for raw, .md for fenced code block); stdout if omitted"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--comments",
+          "description": "Render frame comments as Mermaid subgraphs"
+        }
+      ]
+    },
+    {
+      "name": "validate-tree",
+      "description": "Batch validate all workflows under a directory",
+      "handler": "validateTree",
+      "args": [
+        {
+          "raw": "<dir>",
+          "description": "Directory to scan for workflows"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--format <fmt>",
+          "description": "Force format: native or format2 (auto-detected by default)"
+        },
+        {
+          "flags": "--no-tool-state",
+          "description": "Skip tool state validation"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory"
+        },
+        {
+          "flags": "--mode <mode>",
+          "description": "Validation backend: effect (default) or json-schema",
+          "default": "effect"
+        },
+        {
+          "flags": "--tool-schema-dir <dir>",
+          "description": "Directory of pre-exported per-tool JSON Schemas (for offline json-schema mode)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--report-markdown [file]",
+          "description": "Write Markdown report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--report-html [file]",
+          "description": "Write HTML report to file (or stdout if omitted)"
+        }
+      ],
+      "optionGroups": ["strict"]
+    },
+    {
+      "name": "lint-tree",
+      "description": "Batch lint all workflows under a directory",
+      "handler": "lintTree",
+      "args": [
+        {
+          "raw": "<dir>",
+          "description": "Directory to scan for workflows"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--skip-best-practices",
+          "description": "Skip annotation/creator/license/label checks"
+        },
+        {
+          "flags": "--skip-state-validation",
+          "description": "Skip tool state validation against cached tool definitions"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (for state validation)"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force format: native or format2 (auto-detected by default)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--report-markdown [file]",
+          "description": "Write Markdown report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--report-html [file]",
+          "description": "Write HTML report to file (or stdout if omitted)"
+        }
+      ],
+      "optionGroups": ["strict"]
+    },
+    {
+      "name": "clean-tree",
+      "description": "Batch clean all workflows under a directory",
+      "handler": "cleanTree",
+      "args": [
+        {
+          "raw": "<dir>",
+          "description": "Directory to scan for workflows"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--output-dir <dir>",
+          "description": "Write cleaned workflows to directory (mirrors source tree)"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force format: native or format2 (auto-detected by default)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--report-markdown [file]",
+          "description": "Write Markdown report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--report-html [file]",
+          "description": "Write HTML report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--skip-uuid",
+          "description": "Skip stripping uuid fields (errors are always stripped)"
+        }
+      ]
+    },
+    {
+      "name": "convert-tree",
+      "description": "Batch convert all workflows under a directory",
+      "handler": "convertTree",
+      "args": [
+        {
+          "raw": "<dir>",
+          "description": "Directory to scan for workflows"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--to <format>",
+          "description": "Target format: native or format2 (infers opposite by default)"
+        },
+        {
+          "flags": "--output-dir <dir>",
+          "description": "Write converted workflows to directory (required)"
+        },
+        {
+          "flags": "--compact",
+          "description": "Omit position info in format2 output"
+        },
+        {
+          "flags": "--report-json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--json",
+          "description": "Force JSON output for converted files"
+        },
+        {
+          "flags": "--yaml",
+          "description": "Force YAML output"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force source format (auto-detected by default)"
+        },
+        {
+          "flags": "--stateful",
+          "description": "Use cached tool definitions for schema-aware state re-encoding"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (for --stateful)"
+        }
+      ],
+      "optionGroups": ["strict"]
+    },
+    {
+      "name": "roundtrip-tree",
+      "description": "Batch roundtrip-validate native workflows under a directory",
+      "handler": "roundtripTree",
+      "args": [
+        {
+          "raw": "<dir>",
+          "description": "Directory to scan for native workflows"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force source format (must resolve to native)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--errors-only",
+          "description": "List only files with errors or failures"
+        },
+        {
+          "flags": "--benign-only",
+          "description": "List only files with benign diffs (no errors, no failures)"
+        },
+        {
+          "flags": "--brief",
+          "description": "Omit per-file lines; print only the aggregate summary"
+        },
+        {
+          "flags": "--report-markdown [file]",
+          "description": "Write Markdown report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--report-html [file]",
+          "description": "Write HTML report to file (or stdout if omitted)"
+        }
+      ],
+      "optionGroups": ["strict"]
+    },
+    {
+      "name": "validate-tests-tree",
+      "description": "Batch validate workflow-test files (*-tests.yml / *.gxwf-tests.yml) under a directory",
+      "handler": "validateTestsTree",
+      "args": [
+        {
+          "raw": "<dir>",
+          "description": "Directory to scan for test files"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--auto-workflow",
+          "description": "Pair each tests file with a sibling workflow by filename convention (foo.gxwf-tests.yml ↔ foo.gxwf.yml/foo.ga) and cross-check inputs/outputs"
+        }
+      ]
+    },
+    {
+      "name": "tool-search",
+      "description": "Search the Galaxy Tool Shed for tools matching a query",
+      "handler": "toolSearch",
+      "args": [
+        {
+          "raw": "<query>",
+          "description": "Search text (e.g. 'fastqc')"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--page-size <n>",
+          "description": "Server-side page size",
+          "default": "20"
+        },
+        {
+          "flags": "--max-results <n>",
+          "description": "Hard cap on hits returned",
+          "default": "50"
+        },
+        {
+          "flags": "--page <n>",
+          "description": "Starting page (1-indexed)",
+          "default": "1"
+        },
+        {
+          "flags": "--owner <user>",
+          "description": "Filter hits to a single repo owner (client-side)"
+        },
+        {
+          "flags": "--match-name",
+          "description": "Drop hits where the query is not a token in the tool name"
+        },
+        {
+          "flags": "--json",
+          "description": "Emit machine-readable JSON envelope"
+        },
+        {
+          "flags": "--enrich",
+          "description": "Resolve each hit's ParsedTool and attach it as `parsedTool` (one fetch per hit; off by default)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (used by --enrich; shared with galaxy-tool-cache)"
+        }
+      ]
+    },
+    {
+      "name": "tool-versions",
+      "description": "List TRS-published versions of a Tool Shed tool (newest last)",
+      "handler": "toolVersions",
+      "args": [
+        {
+          "raw": "<tool-id>",
+          "description": "TRS id (owner~repo~tool_id) or pretty form (owner/repo/tool_id)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--json",
+          "description": "Emit machine-readable JSON envelope"
+        },
+        {
+          "flags": "--latest",
+          "description": "Print only the latest version"
+        }
+      ]
+    },
+    {
+      "name": "tool-revisions",
+      "description": "List changeset revisions that publish a Tool Shed tool (ordered oldest→newest). Use for reproducible (name, owner, changeset_revision) workflow pins. Caveat: version strings are not monotonic — the same version can appear in multiple changesets.",
+      "handler": "toolRevisions",
+      "args": [
+        {
+          "raw": "<tool-id>",
+          "description": "TRS id (owner~repo~tool_id) or pretty form (owner/repo/tool_id)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--tool-version <v>",
+          "description": "Restrict to revisions that publish this exact tool version"
+        },
+        {
+          "flags": "--latest",
+          "description": "Print only the newest matching revision"
+        },
+        {
+          "flags": "--json",
+          "description": "Emit machine-readable JSON envelope"
+        }
+      ]
+    },
+    {
+      "name": "repo-search",
+      "description": "Search the Galaxy Tool Shed for repositories. Ranking is popularity-boosted; supports server-side --owner / --category filters via reserved keywords.",
+      "handler": "repoSearch",
+      "args": [
+        {
+          "raw": "<query>",
+          "description": "Search text (e.g. 'fastqc')"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--page-size <n>",
+          "description": "Server-side page size",
+          "default": "20"
+        },
+        {
+          "flags": "--max-results <n>",
+          "description": "Hard cap on hits returned",
+          "default": "50"
+        },
+        {
+          "flags": "--page <n>",
+          "description": "Starting page (1-indexed)",
+          "default": "1"
+        },
+        {
+          "flags": "--owner <user>",
+          "description": "Restrict to a single owner (server-side `owner:` keyword)"
+        },
+        {
+          "flags": "--category <name>",
+          "description": "Restrict to a category (server-side `category:` keyword)"
+        },
+        {
+          "flags": "--json",
+          "description": "Emit machine-readable JSON envelope"
+        }
+      ]
+    }
+  ]
+}
