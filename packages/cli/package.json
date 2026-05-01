@@ -11,6 +11,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./meta": {
+      "types": "./dist/meta/index.d.ts",
+      "import": "./dist/meta/index.js"
     }
   },
   "files": [
@@ -28,7 +32,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "node scripts/bundle-templates.mjs && tsc",
+    "build": "node scripts/bundle-templates.mjs && tsc && node scripts/generate-cli-meta.mjs && tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run",
     "test:watch": "vitest",
