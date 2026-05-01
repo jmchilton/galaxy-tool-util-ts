@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-connection-type-cases check-sync-connection-type-cases sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all
+.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-workflow-fixtures sync-workflow-expectations sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-connection-type-cases check-sync-connection-type-cases sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all push-toolshed-search-fixtures
 
 all: check test
 
@@ -300,3 +300,28 @@ verify-golden:
 		} \
 		if (ok) { console.log("All golden checksums verified."); } else { process.exit(1); } \
 	'
+
+# Push Tool Shed search/repo-search/revisions fixtures from this package
+# into the Python Galaxy worktree. The Python `gxwf` CLI (lib/galaxy/tool_util/
+# workflow_state/scripts/workflow_tool_search.py et al.) consumes the same
+# JSON shapes; this target keeps the two test suites in lockstep.
+#
+# Usage:
+#   GALAXY_ROOT=~/projects/worktrees/galaxy/branch/wf_tool_state make push-toolshed-search-fixtures
+TOOLSHED_SEARCH_SRC = packages/search/test/fixtures
+TOOLSHED_SEARCH_DST_REL = test/unit/tool_util/workflow_state/fixtures/toolshed_search
+
+push-toolshed-search-fixtures:
+ifndef GALAXY_ROOT
+	$(error GALAXY_ROOT is not set. Point it at your Galaxy checkout.)
+endif
+	@test -d "$(GALAXY_ROOT)" || (echo "ERROR: $(GALAXY_ROOT) not found" && exit 1)
+	@echo "Pushing Tool Shed search fixtures into $(GALAXY_ROOT)/$(TOOLSHED_SEARCH_DST_REL)..."
+	@mkdir -p "$(GALAXY_ROOT)/$(TOOLSHED_SEARCH_DST_REL)"
+	rsync -av --delete \
+		--include='toolshed-search/' --include='toolshed-search/*.json' \
+		--include='toolshed-repo-search/' --include='toolshed-repo-search/*.json' \
+		--include='toolshed-revisions/' --include='toolshed-revisions/*.json' \
+		--exclude='*' \
+		"$(TOOLSHED_SEARCH_SRC)/" \
+		"$(GALAXY_ROOT)/$(TOOLSHED_SEARCH_DST_REL)/"
