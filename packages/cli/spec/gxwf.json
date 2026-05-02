@@ -268,6 +268,47 @@
         {
           "flags": "--comments",
           "description": "Render frame comments as Mermaid subgraphs"
+        },
+        {
+          "flags": "--annotate-connections",
+          "description": "Encode map-over depth and reductions on edges (runs the connection validator)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (used by --annotate-connections)"
+        }
+      ]
+    },
+    {
+      "name": "cytoscapejs",
+      "description": "Render a Galaxy workflow as Cytoscape.js elements (JSON or standalone HTML)",
+      "handler": "cytoscapeJs",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        },
+        {
+          "raw": "[output]",
+          "description": "Output path (.json or .html); stdout JSON if omitted"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--html",
+          "description": "Force HTML output regardless of file extension"
+        },
+        {
+          "flags": "--json",
+          "description": "Force JSON output regardless of file extension"
+        },
+        {
+          "flags": "--annotate-connections",
+          "description": "Encode map-over depth and reductions on edges (runs the connection validator)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (used by --annotate-connections)"
         }
       ]
     },

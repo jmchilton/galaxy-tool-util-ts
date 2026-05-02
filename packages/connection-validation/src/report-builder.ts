@@ -40,21 +40,26 @@ export function toConnectionValidationReport(
   resolvedOutputTypes: StepOutputTypeMap,
 ): ConnectionValidationReport {
   const stepResults: ConnectionStepResult[] = result.stepResults.map((sr) => {
-    const connections: ConnectionResult[] = sr.connections.map((cr) => ({
-      source_step: cr.sourceStep,
-      source_output: cr.sourceOutput,
-      target_step: cr.targetStep,
-      target_input: cr.targetInput,
-      status: cr.status,
-      mapping: cr.mapping ?? null,
-      errors: cr.errors,
-    }));
+    const connections: ConnectionResult[] = sr.connections.map((cr) => {
+      const out: ConnectionResult = {
+        source_step: cr.sourceStep,
+        source_output: cr.sourceOutput,
+        target_step: cr.targetStep,
+        target_input: cr.targetInput,
+        status: cr.status,
+        mapping: cr.mapping ?? null,
+        errors: cr.errors,
+      };
+      if (cr.mapDepth !== undefined) out.map_depth = cr.mapDepth;
+      if (cr.reduction !== undefined) out.reduction = cr.reduction;
+      return out;
+    });
     const stepOutputs = resolvedOutputTypes[sr.stepId] ?? {};
     const resolved_outputs: ResolvedOutputType[] = Object.entries(stepOutputs).map(([name, t]) => ({
       name,
       collection_type: _sentinelToCollectionType(t),
     }));
-    return {
+    const stepResult: ConnectionStepResult = {
       step: sr.stepId,
       tool_id: sr.toolId ?? null,
       version: sr.toolVersion ?? null,
@@ -64,6 +69,8 @@ export function toConnectionValidationReport(
       resolved_outputs,
       errors: sr.errors,
     };
+    if (sr.label !== undefined && sr.label !== null) stepResult.label = sr.label;
+    return stepResult;
   });
 
   const has_details = stepResults.some((sr) => sr.connections.length > 0 || sr.errors.length > 0);

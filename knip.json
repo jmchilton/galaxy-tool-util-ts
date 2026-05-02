@@ -34,14 +34,12 @@
       "project": ["src/**/*.ts"]
     },
     "packages/gxwf-ui": {
-      "entry": ["index.html"],
+      "entry": ["index.html", "src/**/*.vue"],
       "project": ["src/**/*.ts"],
       "ignoreDependencies": [
-        "@galaxy-tool-util/gxwf-report-shell",
         "@codingame/monaco-vscode-editor-api",
         "reflect-metadata",
-        "vscode",
-        "mermaid"
+        "vscode"
       ]
     },
     "packages/integration-tests": {

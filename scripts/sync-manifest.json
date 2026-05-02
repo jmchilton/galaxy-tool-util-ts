@@ -42,6 +42,18 @@
       ]
     },
     {
+      "name": "cytoscape-template",
+      "label": "cytoscape HTML template (gxformat2)",
+      "src_root": "gxformat2_root",
+      "entries": [
+        {
+          "src": "gxformat2/cytoscape/",
+          "dst": "packages/cli/src/commands/cytoscapejs/",
+          "files": ["cytoscape.html"]
+        }
+      ]
+    },
+    {
       "name": "workflow-expectations",
       "label": "workflow expectations (gxformat2)",
       "src_root": "gxformat2_root",

@@ -72,7 +72,10 @@ import {
   validateNativeStepsJsonSchema,
   validateFormat2StepsJsonSchema,
   decodeStructureErrorsJsonSchema,
+  resolveEdgeAnnotationsAndSpecsWithCache,
+  type ResolvedToolSpec,
 } from "@galaxy-tool-util/cli";
+import type { EdgeAnnotation } from "@galaxy-tool-util/connection-validation";
 import { HttpError } from "./contents.js";
 import type { ConvertResult, ExportResult } from "./models.js";
 
@@ -644,6 +647,28 @@ export async function operateRoundtrip(
     result: validationResult,
     before_content: before_content ?? null,
     after_content: after_content ?? null,
+  };
+}
+
+export interface EdgeAnnotationsResponse {
+  annotations: Record<string, EdgeAnnotation>;
+  /**
+   * Tools the validator consumed, keyed by `${toolId}@${toolVersion}`. Co-resident
+   * browsers can write these into IndexedDB to warm `useToolInfoService` for the
+   * next workflow load — avoids a second cold-start fanout to ToolShed.
+   */
+  tool_specs: Record<string, ResolvedToolSpec>;
+}
+
+/** Build edge annotations (map-over depth, reductions) for visualizers. */
+export async function operateEdgeAnnotations(
+  wf: WorkflowFile,
+  cache: ToolCache,
+): Promise<EdgeAnnotationsResponse> {
+  const { annotations, specs } = await resolveEdgeAnnotationsAndSpecsWithCache(wf.data, cache);
+  return {
+    annotations: Object.fromEntries(annotations),
+    tool_specs: Object.fromEntries(specs),
   };
 }
 

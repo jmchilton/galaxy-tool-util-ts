@@ -4,9 +4,11 @@
  * Port of gxformat2/mermaid/_builder.py.
  */
 
+import type { EdgeAnnotation } from "./edge-annotation.js";
+import { edgeAnnotationKey } from "./edge-annotation.js";
 import { ensureFormat2 } from "./normalized/ensure.js";
 import type { NormalizedFormat2Workflow } from "./normalized/format2.js";
-import { resolveSourceReference } from "./normalized/labels.js";
+import { isUnlabeledStep, resolveSourceReference } from "./normalized/labels.js";
 
 type Shape = readonly [string, string];
 
@@ -32,6 +34,11 @@ const MAIN_TS_PREFIX = "toolshed.g2.bx.psu.edu/repos/";
 
 export interface MermaidOptions {
   comments?: boolean;
+  /**
+   * Optional map of `EdgeAnnotation` keyed by `edgeAnnotationKey(...)`. When
+   * provided, edges with map-over depth or reductions are styled distinctly.
+   */
+  edgeAnnotations?: Map<string, EdgeAnnotation>;
 }
 
 function sanitizeLabel(label: string): string {
@@ -118,7 +125,8 @@ export function workflowToMermaid(
       toolId = toolId.slice(MAIN_TS_PREFIX.length);
     }
 
-    const rawLabel = step.label || step.id || (toolId ? `tool:${toolId}` : String(i));
+    const displayId = step.id && !isUnlabeledStep(step.id) ? step.id : null;
+    const rawLabel = step.label || displayId || (toolId ? `tool:${toolId}` : String(i));
     const label = sanitizeLabel(rawLabel);
     // The TS normalizer does not infer step.type the way gxformat2 does, so
     // fall back to `run` shape: anything non-null implies a subworkflow.
@@ -158,22 +166,62 @@ export function workflowToMermaid(
   const knownLabels = new Set<string>([...inputIds.keys(), ...stepIds.keys()]);
 
   const seenEdges = new Set<string>();
+  const linkStyles: string[] = [];
+  let edgeIndex = 0;
   wf.steps.forEach((step, i) => {
     const nodeId = `step_${i}`;
+    const targetLabel = step.label || step.id;
     for (const stepInput of step.in) {
       if (stepInput.source == null) continue;
+      const inputId = stepInput.id || "";
       const sources = Array.isArray(stepInput.source) ? stepInput.source : [stepInput.source];
       for (const source of sources) {
-        const [sourceLabel] = resolveSourceReference(source, knownLabels);
+        const [sourceLabel, outputName] = resolveSourceReference(source, knownLabels);
         const sourceId = inputIds.get(sourceLabel) ?? stepIds.get(sourceLabel);
         if (!sourceId) continue;
         const edgeKey = `${sourceId}->${nodeId}`;
         if (seenEdges.has(edgeKey)) continue;
         seenEdges.add(edgeKey);
-        lines.push(`    ${sourceId} --> ${nodeId}`);
+
+        const annotation = opts.edgeAnnotations?.get(
+          edgeAnnotationKey(sourceLabel, outputName, targetLabel, inputId),
+        );
+        const { line, linkStyle } = _renderEdge(sourceId, nodeId, annotation, edgeIndex);
+        lines.push(`    ${line}`);
+        if (linkStyle) linkStyles.push(linkStyle);
+        edgeIndex++;
       }
     }
   });
 
+  for (const ls of linkStyles) {
+    lines.push(`    ${ls}`);
+  }
+
   return lines.join("\n");
+}
+
+function _renderEdge(
+  sourceId: string,
+  targetId: string,
+  annotation: EdgeAnnotation | undefined,
+  edgeIndex: number,
+): { line: string; linkStyle: string | null } {
+  if (!annotation || (annotation.mapDepth === 0 && !annotation.reduction)) {
+    return { line: `${sourceId} --> ${targetId}`, linkStyle: null };
+  }
+  if (annotation.reduction) {
+    const label = annotation.mapping ? sanitizeLabel(`reduce ${annotation.mapping}`) : "reduce";
+    return {
+      line: `${sourceId} -. "${label}" .-> ${targetId}`,
+      linkStyle: `linkStyle ${edgeIndex} stroke:#a55,stroke-dasharray:6 4`,
+    };
+  }
+  const labelText = annotation.mapping ?? "map";
+  const label = sanitizeLabel(labelText);
+  const width = 2 + annotation.mapDepth;
+  return {
+    line: `${sourceId} ==>|"${label}"| ${targetId}`,
+    linkStyle: `linkStyle ${edgeIndex} stroke:#5a8,stroke-width:${width}px`,
+  };
 }

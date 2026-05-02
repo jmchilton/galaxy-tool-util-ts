@@ -312,6 +312,68 @@ gxwf mermaid my-workflow.gxwf.yml --comments
 | Option | Description |
 |---|---|
 | `--comments` | Render frame comments as Mermaid subgraphs |
+| `--annotate-connections` | Encode map-over depth + reductions on edges (runs the connection validator) |
+| `--cache-dir <dir>` | Tool cache directory (used by `--annotate-connections`) |
+
+With `--annotate-connections`, the emitter runs the connection validator and styles each edge by its map-over depth or reduction:
+
+| Annotation | Mermaid edge |
+|---|---|
+| `map_depth = 0`, no reduction | `A --> B` (default) |
+| `map_depth ≥ 1` | `A ==>\|"<mapping>"\| B` (thick green; width grows with depth) |
+| `reduction = true` | `A -. "reduce" .-> B` (dashed red) |
+
+A consolidated `linkStyle` block is emitted at the bottom of the diagram.
+
+### `cytoscapejs <file> [output]`
+
+Render a Galaxy workflow as [Cytoscape.js](https://js.cytoscape.org) elements — either JSON for programmatic use or a standalone HTML viewer with hover tooltips. Output format is inferred from extension (`.json` / `.html`) or forced via `--json` / `--html`. With no `output`, JSON is written to stdout.
+
+This is the TS port of gxformat2's `gxwf-viz`. The JSON shape (snake_case keys, edge id format) is byte-identical to the Python emitter; the HTML template is synced verbatim.
+
+```bash
+# Print JSON elements to stdout
+gxwf cytoscapejs my-workflow.ga
+
+# Write JSON
+gxwf cytoscapejs my-workflow.ga elements.json
+
+# Write standalone interactive HTML
+gxwf cytoscapejs my-workflow.ga viewer.html
+
+# Force HTML output regardless of extension
+gxwf cytoscapejs my-workflow.gxwf.yml out --html
+```
+
+| Option | Description |
+|---|---|
+| `--html` | Force HTML output |
+| `--json` | Force JSON output |
+| `--annotate-connections` | Encode map-over depth + reductions on edges (runs the connection validator) |
+| `--cache-dir <dir>` | Tool cache directory (used by `--annotate-connections`) |
+| `--layout <name>` | Layout strategy (default `preset`). See below. |
+
+With `--annotate-connections`, each edge gains `data.map_depth`, `data.reduction`, `data.mapping` and the classes `mapover_<depth>` / `reduction`. The bundled HTML viewer renders mapped edges as thicker green lines and reductions as dashed red arrows, and surfaces the depth/reduction in edge tooltips.
+
+#### `--layout <name>`
+
+| Layout | Coordinates | Hint emitted |
+|---|---|---|
+| `preset` (default) | `step.position` (or `(10*i, 10*i)` fallback) | none |
+| `topological` | computed leveled layout (longest-path layering) | `layout: { name: "topological" }` |
+| `dagre` / `breadthfirst` / `grid` / `cose` / `random` | omitted (renderer's job) | `layout: { name: "<n>" }` |
+
+`preset` keeps today's behavior byte-for-byte (positions baked in, no `layout` hint). `topological` overwrites every node's `position` per [docs/architecture/cytoscape-layout.md](../architecture/cytoscape-layout.md) — useful when the workflow lacks editor positions (e.g. most `.gxwf.yml`, IWC). The other layouts are hint-only: positions are dropped and the runtime renderer (the bundled HTML viewer or `gxwf-ui`) computes them at view time.
+
+JSON shape gains a wrapper when `--layout` is non-default: `{ "elements": [...], "layout": { "name": "<n>" } }`. The default `preset` continues to write a bare list for Python parity.
+
+```bash
+# Computed leveled layout (no positions in the workflow file)
+gxwf cytoscapejs --layout topological iwc-flow.gxwf.yml viewer.html
+
+# Let cytoscape's dagre extension lay it out at view time
+gxwf cytoscapejs --layout dagre iwc-flow.gxwf.yml viewer.html
+```
 
 ### Tree (batch) commands
 

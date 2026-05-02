@@ -42,6 +42,7 @@
   "license": "MIT",
   "dependencies": {
     "@galaxy-tool-util/cli": "workspace:*",
+    "@galaxy-tool-util/connection-validation": "workspace:*",
     "@galaxy-tool-util/core": "workspace:*",
     "@galaxy-tool-util/schema": "workspace:*",
     "effect": "^3.21.0",

@@ -4,17 +4,24 @@
 import { workflowToMermaid } from "@galaxy-tool-util/schema";
 import { writeFile } from "node:fs/promises";
 import { readWorkflowFile } from "./workflow-io.js";
+import { resolveEdgeAnnotations } from "./annotate-connections.js";
 
 export interface MermaidCommandOptions {
   output?: string;
   comments?: boolean;
+  annotateConnections?: boolean;
+  cacheDir?: string;
 }
 
 export async function runMermaid(filePath: string, opts: MermaidCommandOptions): Promise<void> {
   const data = await readWorkflowFile(filePath);
   if (!data) return;
 
-  const diagram = workflowToMermaid(data, { comments: opts.comments });
+  const edgeAnnotations = opts.annotateConnections
+    ? await resolveEdgeAnnotations(data, { cacheDir: opts.cacheDir })
+    : undefined;
+
+  const diagram = workflowToMermaid(data, { comments: opts.comments, edgeAnnotations });
 
   if (!opts.output) {
     process.stdout.write(diagram + "\n");

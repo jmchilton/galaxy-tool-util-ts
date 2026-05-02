@@ -40,6 +40,7 @@ import {
   operateExport,
   operateConvert,
   operateRoundtrip,
+  operateEdgeAnnotations,
   type ValidateOptions,
   type LintOptions,
   type CleanOptions,
@@ -218,7 +219,14 @@ async function serveStatic(
 
 const CONTENTS_PREFIX = "/api/contents";
 
-type WorkflowOp = "validate" | "clean" | "lint" | "export" | "convert" | "roundtrip";
+type WorkflowOp =
+  | "validate"
+  | "clean"
+  | "lint"
+  | "export"
+  | "convert"
+  | "roundtrip"
+  | "edge-annotations";
 const WORKFLOW_OPS = new Set<string>([
   "validate",
   "clean",
@@ -226,10 +234,12 @@ const WORKFLOW_OPS = new Set<string>([
   "export",
   "convert",
   "roundtrip",
+  "edge-annotations",
 ]);
 const MUTATING_OPS = new Set<string>(["clean", "export", "convert"]);
 
 type Route =
+  | { handler: "healthz" }
   | { handler: "readRoot"; query: URLSearchParams }
   | { handler: "createRootUntitled"; query: URLSearchParams }
   | { handler: "readPath"; filePath: string; query: URLSearchParams }
@@ -256,6 +266,10 @@ type Route =
 function matchRoute(method: string, url: string): Route | null {
   const [rawPath, queryStr] = url.split("?");
   const query = new URLSearchParams(queryStr ?? "");
+
+  if (rawPath === "/healthz" && method === "GET") {
+    return { handler: "healthz" };
+  }
 
   // Structural schema: GET /api/schemas/structural
   if (rawPath === "/api/schemas/structural" && method === "GET") {
@@ -395,6 +409,14 @@ export function createRequestHandler(state: AppState) {
 
     try {
       switch (route.handler) {
+        case "healthz": {
+          json(res, 200, {
+            status: "ok",
+            features: ["edge-annotations"],
+          });
+          break;
+        }
+
         case "listWorkflows": {
           json(res, 200, state.workflows);
           break;
@@ -464,6 +486,10 @@ export function createRequestHandler(state: AppState) {
                 include_content: route.query.get("include_content") === "true",
               };
               result = await operateRoundtrip(wf, state.cache, ropts);
+              break;
+            }
+            case "edge-annotations": {
+              result = await operateEdgeAnnotations(wf, state.cache);
               break;
             }
           }
