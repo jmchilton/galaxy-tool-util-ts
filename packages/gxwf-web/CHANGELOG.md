@@ -1,5 +1,63 @@
 # @galaxy-tool-util/gxwf-web
 
+## 1.2.0
+
+### Minor Changes
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`da95cb0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/da95cb08da77ada269ca690339cdba04d1de1343) Thanks [@jmchilton](https://github.com/jmchilton)! - Auto-dispatch + hybrid endpoint for workflow edge annotations.
+
+  `gxwf-ui` `WorkflowDiagram` now drives annotations through the new
+  `useEdgeAnnotationsAuto` composable: probes `GET /healthz` for the
+  `edge-annotations` feature on the first build, caches the decision in
+  `sessionStorage` (`gxwf-ui:annotations-mode`), and falls back to the
+  client-side composable on probe failure or post-decision server failure
+  (network / 5xx / CORS). `VITE_GXWF_EDGE_ANNOTATIONS_MODE=server|client`
+  pins the transport for static deploys that know the answer up front.
+
+  `gxwf-web` `POST /workflows/{path}/edge-annotations` now returns
+  `{ annotations, tool_specs }`; `tool_specs` is keyed by
+  `${tool_id}@${tool_version}` and carries the `ParsedTool` specs the
+  validator consumed. Co-resident browsers write these into the IndexedDB
+  cache via `useToolInfoService.addTool`, so the next workflow load —
+  whether server-routed or client-side — hits a warm cache and avoids a
+  second cold-start fanout to ToolShed. Older `gxwf-web` builds that return
+  the bare `Record<edgeKey, EdgeAnnotation>` are still consumed correctly;
+  the UI detects the envelope shape and ignores legacy responses.
+
+  `@galaxy-tool-util/cli` exports `resolveEdgeAnnotationsAndSpecsWithCache`
+  - `ResolvedToolSpec` to support the hybrid response. `gxwf-web`'s
+    existing `operateEdgeAnnotations` now uses it; the original
+    `resolveEdgeAnnotationsWithCache` is unchanged.
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`673948b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/673948b7629bbe8a698b3eb1b49c44177415eeab) Thanks [@jmchilton](https://github.com/jmchilton)! - `gxwf-web` adds two new endpoints:
+  - `POST /workflows/{path}/edge-annotations` — server-side edge annotation
+    resolution (map-over depth + reductions) backed by the workspace tool
+    cache. Powers the gxwf-ui map/reduce overlay without the browser doing
+    ToolShed fetches.
+  - `GET /healthz` — liveness probe returning `{ status, features }`. The
+    `features` array advertises capabilities (`edge-annotations`) for clients
+    that want to detect the server before falling back to a client-side path.
+
+  To support the route, `@galaxy-tool-util/cli` exposes
+  `resolveEdgeAnnotationsWithCache(data, cache)` so the gxwf-web handler can
+  share the CLI's annotate-connections pipeline against an externally-owned
+  `ToolCache`.
+
+- [#81](https://github.com/jmchilton/galaxy-tool-util-ts/pull/81) [`86af88e`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/86af88e0162bbff6d1941f6556e2edd0070a0321) Thanks [@jmchilton](https://github.com/jmchilton)! - Tool Cache debugging panel.
+  - `ToolCache.statCached(key)` — per-entry size/mtime (passthrough to `CacheStorage.stat`).
+  - `ToolInfoService.refetch(toolId, version?, {force?})` — idempotent populate (short-circuits on cache hit) / forced re-fetch. Returns `{cacheKey, fetched, alreadyCached}`. Backs the new web routes and any future inspector surfaces.
+  - `gxwf-web`: new `/api/tool-cache` routes — list (with `?decode=1` opt-in decode probe), stats, raw read, single + prefix delete, refetch, add. `AppState` now carries the full `ToolInfoService` (not just its cache) so refetch/add can drive the existing source-fallback logic.
+  - `gxwf-client` regenerated to expose the new schemas.
+  - `gxwf-ui`: new "Tool Cache" navbar tab with stats strip, filterable table (search / source dropdown / undecodable-only), per-row view-raw / refetch / open-toolshed / delete, and overflow menu (Add tool…, Clear by prefix…, Clear all). Decode-probe flags malformed payloads.
+
+### Patch Changes
+
+- Updated dependencies [[`0826f95`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0826f95e1c05005860c0e45a9794d8bad068d51d), [`6fec560`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/6fec560edbc19b1ba4d535bd64610efcc3d904b0), [`8261f8d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8261f8d95040ad76a053ce3bf5048de53c41dda9), [`0124600`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0124600f0cd42210f20989c6626ece034d13dfe5), [`016385b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/016385bb0e40a9cbe1f6c55d9d18829917914df0), [`da95cb0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/da95cb08da77ada269ca690339cdba04d1de1343), [`8cfbe32`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8cfbe327f69ce09578ac49c3eff39282ba66c7fc), [`cc00008`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/cc00008fc42d637fc8a76eeb41eab038a7b0408a), [`673948b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/673948b7629bbe8a698b3eb1b49c44177415eeab), [`505fefa`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/505fefaead84dcf632695de678ce35d728cd58fa), [`60e314a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/60e314aba242fb327716a62619b292cafb4d4dd8), [`86af88e`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/86af88e0162bbff6d1941f6556e2edd0070a0321)]:
+  - @galaxy-tool-util/core@1.2.0
+  - @galaxy-tool-util/schema@1.2.0
+  - @galaxy-tool-util/cli@1.2.0
+  - @galaxy-tool-util/connection-validation@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes
