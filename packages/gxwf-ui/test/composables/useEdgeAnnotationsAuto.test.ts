@@ -45,6 +45,17 @@ function resetServerClient() {
   clientState.clear.mockReset();
 }
 
+function stubSessionStorage() {
+  const backing = new Map<string, string>();
+  const storage = {
+    getItem: vi.fn((key: string) => backing.get(key) ?? null),
+    setItem: vi.fn((key: string, value: string) => backing.set(key, value)),
+    removeItem: vi.fn((key: string) => backing.delete(key)),
+  };
+  vi.stubGlobal("sessionStorage", storage);
+  return storage;
+}
+
 beforeEach(() => {
   resetServerClient();
   _resetEdgeAnnotationsAutoSession();
@@ -203,7 +214,8 @@ describe("useEdgeAnnotationsAuto", () => {
   });
 
   it("uses cached sessionStorage decision without re-probing", async () => {
-    sessionStorage.setItem("gxwf-ui:annotations-mode", "client");
+    const storage = stubSessionStorage();
+    storage.setItem("gxwf-ui:annotations-mode", "client");
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
 
