@@ -1,5 +1,144 @@
 # @galaxy-tool-util/cli
 
+## 1.2.0
+
+### Minor Changes
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`8261f8d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8261f8d95040ad76a053ce3bf5048de53c41dda9) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `--layout <name>` to `gxwf cytoscapejs` (and the underlying
+  `cytoscapeElements({ layout })` builder option).
+
+  `preset` (default) keeps today's coordinate-from-NF2 emission byte-for-byte,
+  including the Python `(10*i, 10*i)` fallback. `topological` overwrites every
+  node's `position` using a small longest-path layering algorithm — pinned in
+  `docs/architecture/cytoscape-layout.md` so the gxformat2 port can land
+  byte-equal coordinates. Hint-only layouts (`dagre`, `breadthfirst`, `grid`,
+  `cose`, `random`) drop `data.position` and emit a top-level
+  `layout: { name: "<n>" }` hint that the bundled HTML viewer (now ships
+  `cytoscape-dagre`) and `gxwf-ui` honor at view time.
+
+  JSON output gains a `{ elements, layout }` wrapper when `--layout` is
+  non-default. The default `preset` flow continues to write a bare list for
+  Python parity.
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`0124600`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0124600f0cd42210f20989c6626ece034d13dfe5) Thanks [@jmchilton](https://github.com/jmchilton)! - Port gxformat2's `gxwf-viz` to TS as `gxwf cytoscapejs`.
+  - `@galaxy-tool-util/schema` exports `cytoscapeElements()` + `elementsToList()` plus
+    output-only TS interfaces (`CytoscapeNode`, `CytoscapeEdge`, `CytoscapeElements`, …).
+    Snake_case field names + edge-id format are preserved byte-for-byte with the
+    Python emitter so the JSON is interchangeable.
+  - `gxwf cytoscapejs <file> [output]` (`--html` / `--json`) renders a workflow as
+    Cytoscape.js JSON or a standalone HTML viewer. Defaults to stdout JSON when no
+    output path is given (diverges from Python's "write `.html` next to input").
+  - The HTML template is synced verbatim from gxformat2 via the new
+    `cytoscape-template` group in `scripts/sync-manifest.json` and bundled into
+    the CLI dist as a string constant.
+  - 13 declarative parity cases (synced `cytoscape.yml`) run against the TS
+    builder via the existing harness — no sidecar JSON goldens.
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`da95cb0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/da95cb08da77ada269ca690339cdba04d1de1343) Thanks [@jmchilton](https://github.com/jmchilton)! - Auto-dispatch + hybrid endpoint for workflow edge annotations.
+
+  `gxwf-ui` `WorkflowDiagram` now drives annotations through the new
+  `useEdgeAnnotationsAuto` composable: probes `GET /healthz` for the
+  `edge-annotations` feature on the first build, caches the decision in
+  `sessionStorage` (`gxwf-ui:annotations-mode`), and falls back to the
+  client-side composable on probe failure or post-decision server failure
+  (network / 5xx / CORS). `VITE_GXWF_EDGE_ANNOTATIONS_MODE=server|client`
+  pins the transport for static deploys that know the answer up front.
+
+  `gxwf-web` `POST /workflows/{path}/edge-annotations` now returns
+  `{ annotations, tool_specs }`; `tool_specs` is keyed by
+  `${tool_id}@${tool_version}` and carries the `ParsedTool` specs the
+  validator consumed. Co-resident browsers write these into the IndexedDB
+  cache via `useToolInfoService.addTool`, so the next workflow load —
+  whether server-routed or client-side — hits a warm cache and avoids a
+  second cold-start fanout to ToolShed. Older `gxwf-web` builds that return
+  the bare `Record<edgeKey, EdgeAnnotation>` are still consumed correctly;
+  the UI detects the envelope shape and ignores legacy responses.
+
+  `@galaxy-tool-util/cli` exports `resolveEdgeAnnotationsAndSpecsWithCache`
+  - `ResolvedToolSpec` to support the hybrid response. `gxwf-web`'s
+    existing `operateEdgeAnnotations` now uses it; the original
+    `resolveEdgeAnnotationsWithCache` is unchanged.
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`8cfbe32`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8cfbe327f69ce09578ac49c3eff39282ba66c7fc) Thanks [@jmchilton](https://github.com/jmchilton)! - Encode map-over depth + reductions on workflow diagram edges.
+
+  Phase B of the workflow visualization plan. Threads connection-validation
+  results into the mermaid and cytoscape emitters so edges visually distinguish
+  mapped, list-paired-mapped, and reducing connections.
+  - `connection-validation`: `ConnectionValidationResult` gains `mapDepth` /
+    `reduction` (also surfaced as `map_depth` / `reduction` in
+    `ConnectionResult`); `StepConnectionResult` gains an optional `label`. New
+    `buildEdgeAnnotations(report)` returns a `Map<string, EdgeAnnotation>`
+    keyed by step labels for emitter consumption.
+  - `schema`: `MermaidOptions.edgeAnnotations` and a new
+    `CytoscapeOptions.edgeAnnotations` thread the lookup into emit. Mermaid
+    draws thick `==>|"<mapping>"|` for map-over edges and dashed
+    `-. "reduce" .->` for reductions, with a consolidated `linkStyle` block.
+    Cytoscape edges gain `data.map_depth` / `data.reduction` / `data.mapping`
+    plus `mapover_<n>` / `reduction` classes; the bundled HTML viewer styles
+    these and shows depth/reduction in edge tooltips.
+  - `cli`: `gxwf mermaid` and `gxwf cytoscapejs` accept
+    `--annotate-connections` (with `--cache-dir`) — opt-in; default emit shape
+    stays byte-identical with Python.
+
+  Note: `map_depth` / `reduction` on `ConnectionResult` are TS-only enrichments
+  ahead of a planned Galaxy Python parity addition.
+
+- [#77](https://github.com/jmchilton/galaxy-tool-util-ts/pull/77) [`cc00008`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/cc00008fc42d637fc8a76eeb41eab038a7b0408a) Thanks [@jmchilton](https://github.com/jmchilton)! - New package `@galaxy-tool-util/connection-validation` — port of
+  `galaxy.tool_util.workflow_state.connection_validation`. Walks a typed
+  workflow graph in topological order, validates each connection against
+  collection-type algebra, and produces a snake_case
+  `ConnectionValidationReport` matching Galaxy's Pydantic shape verbatim.
+  All 26 connection-workflow fixtures + 19 sidecar `target/value`
+  expectations pass.
+
+  `gxwf validate --connections` runs the connection validator and attaches
+  the resulting report to the JSON output (`connection_report`). Mirrors
+  Python's opt-in `--connections` flag (default off).
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`673948b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/673948b7629bbe8a698b3eb1b49c44177415eeab) Thanks [@jmchilton](https://github.com/jmchilton)! - `gxwf-web` adds two new endpoints:
+  - `POST /workflows/{path}/edge-annotations` — server-side edge annotation
+    resolution (map-over depth + reductions) backed by the workspace tool
+    cache. Powers the gxwf-ui map/reduce overlay without the browser doing
+    ToolShed fetches.
+  - `GET /healthz` — liveness probe returning `{ status, features }`. The
+    `features` array advertises capabilities (`edge-annotations`) for clients
+    that want to detect the server before falling back to a client-side path.
+
+  To support the route, `@galaxy-tool-util/cli` exposes
+  `resolveEdgeAnnotationsWithCache(data, cache)` so the gxwf-web handler can
+  share the CLI's annotate-connections pipeline against an externally-owned
+  `ToolCache`.
+
+- [#86](https://github.com/jmchilton/galaxy-tool-util-ts/pull/86) [`60e314a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/60e314aba242fb327716a62619b292cafb4d4dd8) Thanks [@jmchilton](https://github.com/jmchilton)! - Invert CLI metadata: spec-driven commander, no codegen.
+
+  `spec/gxwf.json` and `spec/galaxy-tool-cache.json` are now the source of truth for the command surface. `buildGxwfProgram()` and `buildGalaxyToolCacheProgram()` build commander programs at runtime from those specs plus a small handler registry. The `_generated.ts` artifact and `scripts/generate-cli-meta.mjs` are gone; build is a single `tsc` (no double-compile).
+
+  `@galaxy-tool-util/cli/meta` keeps its existing `gxwfCliMeta` / `galaxyToolCacheCliMeta` exports (`CliProgramSpec` shape, derived from the specs by a commander-free walker) and additionally re-exports the raw `gxwfSpec` / `galaxyToolCacheSpec`. The subpath stays browser-safe — no commander, no node-only imports.
+
+### Patch Changes
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`505fefa`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/505fefaead84dcf632695de678ce35d728cd58fa) Thanks [@jmchilton](https://github.com/jmchilton)! - Lift `collectToolRefs` and `buildGetToolInfo` from `@galaxy-tool-util/cli` into
+  `@galaxy-tool-util/connection-validation` so browsers (and any future
+  non-Node consumer) can drive the same preload-then-validate pipeline the CLI
+  uses.
+  - `connection-validation`: new exports `collectToolRefs`, `buildGetToolInfo`,
+    and types `ToolRef`, `AsyncToolFetcher`, `BuildGetToolInfoOptions`. The
+    lifted helper takes an `AsyncToolFetcher` callback (browser caches and CLI
+    ToolCaches both fit) and supports optional `concurrency` (default 1, matching
+    the CLI's prior behavior), `onMiss`, and `onProgress` callbacks. The
+    version-negotiation contract (`lookupKey` + first-by-tool-id fallback) moves
+    with the helper so CLI and future browser callers can't drift.
+  - `cli`: `commands/connection-validation.ts` collapses to a thin adapter that
+    wires the on-disk `ToolCache` into the lifted helper via `loadCachedTool`.
+    External API (`buildConnectionReport`, `buildGetToolInfo`, `collectToolRefs`,
+    `ToolRef`) is unchanged.
+
+- Updated dependencies [[`0826f95`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0826f95e1c05005860c0e45a9794d8bad068d51d), [`6fec560`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/6fec560edbc19b1ba4d535bd64610efcc3d904b0), [`8261f8d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8261f8d95040ad76a053ce3bf5048de53c41dda9), [`0124600`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0124600f0cd42210f20989c6626ece034d13dfe5), [`016385b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/016385bb0e40a9cbe1f6c55d9d18829917914df0), [`8cfbe32`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8cfbe327f69ce09578ac49c3eff39282ba66c7fc), [`cc00008`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/cc00008fc42d637fc8a76eeb41eab038a7b0408a), [`505fefa`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/505fefaead84dcf632695de678ce35d728cd58fa), [`86af88e`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/86af88e0162bbff6d1941f6556e2edd0070a0321), [`ee543b5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ee543b522c9181f0920969746e271e986fea3249)]:
+  - @galaxy-tool-util/core@1.2.0
+  - @galaxy-tool-util/schema@1.2.0
+  - @galaxy-tool-util/connection-validation@1.2.0
+  - @galaxy-tool-util/search@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes

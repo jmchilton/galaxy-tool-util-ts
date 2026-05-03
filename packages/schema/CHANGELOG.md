@@ -1,5 +1,75 @@
 # @galaxy-tool-util/schema
 
+## 1.2.0
+
+### Minor Changes
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`8261f8d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8261f8d95040ad76a053ce3bf5048de53c41dda9) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `--layout <name>` to `gxwf cytoscapejs` (and the underlying
+  `cytoscapeElements({ layout })` builder option).
+
+  `preset` (default) keeps today's coordinate-from-NF2 emission byte-for-byte,
+  including the Python `(10*i, 10*i)` fallback. `topological` overwrites every
+  node's `position` using a small longest-path layering algorithm — pinned in
+  `docs/architecture/cytoscape-layout.md` so the gxformat2 port can land
+  byte-equal coordinates. Hint-only layouts (`dagre`, `breadthfirst`, `grid`,
+  `cose`, `random`) drop `data.position` and emit a top-level
+  `layout: { name: "<n>" }` hint that the bundled HTML viewer (now ships
+  `cytoscape-dagre`) and `gxwf-ui` honor at view time.
+
+  JSON output gains a `{ elements, layout }` wrapper when `--layout` is
+  non-default. The default `preset` flow continues to write a bare list for
+  Python parity.
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`0124600`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0124600f0cd42210f20989c6626ece034d13dfe5) Thanks [@jmchilton](https://github.com/jmchilton)! - Port gxformat2's `gxwf-viz` to TS as `gxwf cytoscapejs`.
+  - `@galaxy-tool-util/schema` exports `cytoscapeElements()` + `elementsToList()` plus
+    output-only TS interfaces (`CytoscapeNode`, `CytoscapeEdge`, `CytoscapeElements`, …).
+    Snake_case field names + edge-id format are preserved byte-for-byte with the
+    Python emitter so the JSON is interchangeable.
+  - `gxwf cytoscapejs <file> [output]` (`--html` / `--json`) renders a workflow as
+    Cytoscape.js JSON or a standalone HTML viewer. Defaults to stdout JSON when no
+    output path is given (diverges from Python's "write `.html` next to input").
+  - The HTML template is synced verbatim from gxformat2 via the new
+    `cytoscape-template` group in `scripts/sync-manifest.json` and bundled into
+    the CLI dist as a string constant.
+  - 13 declarative parity cases (synced `cytoscape.yml`) run against the TS
+    builder via the existing harness — no sidecar JSON goldens.
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`8cfbe32`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8cfbe327f69ce09578ac49c3eff39282ba66c7fc) Thanks [@jmchilton](https://github.com/jmchilton)! - Encode map-over depth + reductions on workflow diagram edges.
+
+  Phase B of the workflow visualization plan. Threads connection-validation
+  results into the mermaid and cytoscape emitters so edges visually distinguish
+  mapped, list-paired-mapped, and reducing connections.
+  - `connection-validation`: `ConnectionValidationResult` gains `mapDepth` /
+    `reduction` (also surfaced as `map_depth` / `reduction` in
+    `ConnectionResult`); `StepConnectionResult` gains an optional `label`. New
+    `buildEdgeAnnotations(report)` returns a `Map<string, EdgeAnnotation>`
+    keyed by step labels for emitter consumption.
+  - `schema`: `MermaidOptions.edgeAnnotations` and a new
+    `CytoscapeOptions.edgeAnnotations` thread the lookup into emit. Mermaid
+    draws thick `==>|"<mapping>"|` for map-over edges and dashed
+    `-. "reduce" .->` for reductions, with a consolidated `linkStyle` block.
+    Cytoscape edges gain `data.map_depth` / `data.reduction` / `data.mapping`
+    plus `mapover_<n>` / `reduction` classes; the bundled HTML viewer styles
+    these and shows depth/reduction in edge tooltips.
+  - `cli`: `gxwf mermaid` and `gxwf cytoscapejs` accept
+    `--annotate-connections` (with `--cache-dir`) — opt-in; default emit shape
+    stays byte-identical with Python.
+
+  Note: `map_depth` / `reduction` on `ConnectionResult` are TS-only enrichments
+  ahead of a planned Galaxy Python parity addition.
+
+### Patch Changes
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`016385b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/016385bb0e40a9cbe1f6c55d9d18829917914df0) Thanks [@jmchilton](https://github.com/jmchilton)! - Fix mermaid + cytoscape diagram step labels for unlabeled native (`.ga`)
+  steps. The native→format2 normalizer assigns synthetic ids of the form
+  `_unlabeled_step_<n>` to steps without a label, which the diagram builders
+  were rendering verbatim instead of falling through to the `tool:<tool_id>`
+  display fallback. `workflowToMermaid` and `cytoscapeElements` now skip
+  unlabeled-prefix step ids when computing the visible label, matching the
+  documented `label || id || tool:tool_id || index` chain.
+
+- [#89](https://github.com/jmchilton/galaxy-tool-util-ts/pull/89) [`ee543b5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ee543b522c9181f0920969746e271e986fea3249) Thanks [@jmchilton](https://github.com/jmchilton)! - Type ParsedTool outputs against current Galaxy output models.
+
 ## 1.1.0
 
 ### Minor Changes
