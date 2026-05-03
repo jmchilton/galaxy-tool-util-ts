@@ -1,5 +1,30 @@
 # @galaxy-tool-util/core
 
+## 1.2.0
+
+### Minor Changes
+
+- [#78](https://github.com/jmchilton/galaxy-tool-util-ts/pull/78) [`0826f95`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0826f95e1c05005860c0e45a9794d8bad068d51d) Thanks [@jmchilton](https://github.com/jmchilton)! - Add cache-inspection primitives on `ToolCache` and `CacheStorage`:
+  - `ToolCache.removeCached(key)` — delete a single cached entry by cache key.
+  - `ToolCache.loadCachedRaw(key)` — read the raw cached payload without `ParsedTool` decoding, for inspecting stale or partial entries.
+  - `ToolCache.getCacheStats()` — aggregate counts, total bytes, source breakdown, and oldest/newest timestamps.
+  - Optional `CacheStorage.stat?(key)` — per-entry size (and mtime on filesystem). Implemented on `FilesystemCacheStorage` and `IndexedDBCacheStorage`.
+  - Lazy-index backfill in `loadCached` now records the version off the decoded `ParsedTool` and tags the source as `"orphan"` so reconstructed entries are flagged.
+
+- [#81](https://github.com/jmchilton/galaxy-tool-util-ts/pull/81) [`86af88e`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/86af88e0162bbff6d1941f6556e2edd0070a0321) Thanks [@jmchilton](https://github.com/jmchilton)! - Tool Cache debugging panel.
+  - `ToolCache.statCached(key)` — per-entry size/mtime (passthrough to `CacheStorage.stat`).
+  - `ToolInfoService.refetch(toolId, version?, {force?})` — idempotent populate (short-circuits on cache hit) / forced re-fetch. Returns `{cacheKey, fetched, alreadyCached}`. Backs the new web routes and any future inspector surfaces.
+  - `gxwf-web`: new `/api/tool-cache` routes — list (with `?decode=1` opt-in decode probe), stats, raw read, single + prefix delete, refetch, add. `AppState` now carries the full `ToolInfoService` (not just its cache) so refetch/add can drive the existing source-fallback logic.
+  - `gxwf-client` regenerated to expose the new schemas.
+  - `gxwf-ui`: new "Tool Cache" navbar tab with stats strip, filterable table (search / source dropdown / undecodable-only), per-row view-raw / refetch / open-toolshed / delete, and overflow menu (Add tool…, Clear by prefix…, Clear all). Decode-probe flags malformed payloads.
+
+### Patch Changes
+
+- [#84](https://github.com/jmchilton/galaxy-tool-util-ts/pull/84) [`6fec560`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/6fec560edbc19b1ba4d535bd64610efcc3d904b0) Thanks [@jmchilton](https://github.com/jmchilton)! - Respect explicit empty tool source lists as cache-only lookup.
+
+- Updated dependencies [[`8261f8d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8261f8d95040ad76a053ce3bf5048de53c41dda9), [`0124600`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0124600f0cd42210f20989c6626ece034d13dfe5), [`016385b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/016385bb0e40a9cbe1f6c55d9d18829917914df0), [`8cfbe32`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8cfbe327f69ce09578ac49c3eff39282ba66c7fc), [`ee543b5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ee543b522c9181f0920969746e271e986fea3249)]:
+  - @galaxy-tool-util/schema@1.2.0
+
 ## 1.1.0
 
 ### Patch Changes
