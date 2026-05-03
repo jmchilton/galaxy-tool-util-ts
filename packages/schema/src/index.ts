@@ -61,7 +61,26 @@ export {
   isConditionalParam,
 } from "./schema/type-guards.js";
 
-export { ParsedTool, HelpContent, XrefDict, Citation } from "./schema/parsed-tool.js";
+export {
+  ParsedTool,
+  HelpContent,
+  XrefDict,
+  Citation,
+  DiscoverVia,
+  SortKey,
+  SortComp,
+  DatasetCollectionDescription,
+  ToolProvidedMetadataDatasetCollection,
+  FilePatternDatasetCollectionDescription,
+  ToolOutput,
+  ToolOutputDataset,
+  ToolOutputCollectionStructure,
+  ToolOutputCollection,
+  ToolOutputText,
+  ToolOutputInteger,
+  ToolOutputFloat,
+  ToolOutputBoolean,
+} from "./schema/parsed-tool.js";
 
 export {
   type GalaxyWorkflow,
