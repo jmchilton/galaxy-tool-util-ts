@@ -105,7 +105,9 @@ describe("ParsedTool", () => {
       throw new Error("expected third output to be a collection output");
     }
     expect(collection.structure.collection_type).toBe("list");
-    expect(collection.structure.discover_datasets?.[0]?.discover_via).toBe("tool_provided_metadata");
+    expect(collection.structure.discover_datasets?.[0]?.discover_via).toBe(
+      "tool_provided_metadata",
+    );
   });
 
   it("exports a JSON Schema that validates FastQC parsed tool fixtures", () => {
