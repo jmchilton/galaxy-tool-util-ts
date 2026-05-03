@@ -1,4 +1,5 @@
 import * as S from "effect/Schema";
+import * as JSONSchema from "effect/JSONSchema";
 
 import type { ToolParameterModel } from "./bundle-types.js";
 
@@ -129,7 +130,7 @@ const NullableDescription = S.transform(S.NullOr(S.String), S.NullOr(S.String), 
 const ToolParameterModelSchema: S.Schema<ToolParameterModel> = S.declare(
   (input: unknown): input is ToolParameterModel =>
     typeof input === "object" && input !== null && !Array.isArray(input),
-);
+).annotations({ jsonSchema: { type: "object" } });
 
 /**
  * Effect Schema for parsed Galaxy tool metadata as returned by the ToolShed TRS API
@@ -150,6 +151,8 @@ export const ParsedTool = S.Struct({
   xrefs: S.Array(XrefDict),
   help: S.optional(S.Union(HelpContent, S.Null)),
 });
+
+export const parsedToolSchema = JSONSchema.make(ParsedTool, { target: "jsonSchema2020-12" });
 
 export type DiscoverVia = S.Schema.Type<typeof DiscoverVia>;
 export type SortKey = S.Schema.Type<typeof SortKey>;

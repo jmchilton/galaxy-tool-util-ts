@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import * as S from "effect/Schema";
-import { ParsedTool } from "../src/schema/parsed-tool.js";
+import Ajv2020Import from "ajv/dist/2020.js";
+import { ParsedTool, parsedToolSchema } from "../src/schema/parsed-tool.js";
 import fastqcFixture from "../../core/test/fixtures/fastqc-parsed-tool.json" with { type: "json" };
+
+const Ajv2020 = Ajv2020Import as unknown as typeof Ajv2020Import.default;
 
 describe("ParsedTool", () => {
   it("decodes a real ToolShed fastqc response", () => {
@@ -103,6 +106,26 @@ describe("ParsedTool", () => {
     }
     expect(collection.structure.collection_type).toBe("list");
     expect(collection.structure.discover_datasets?.[0]?.discover_via).toBe("tool_provided_metadata");
+  });
+
+  it("exports a JSON Schema that validates FastQC parsed tool fixtures", () => {
+    const ajv = new Ajv2020({ allErrors: true, strict: false });
+    const validate = ajv.compile(parsedToolSchema as object);
+
+    expect(validate(fastqcFixture), JSON.stringify(validate.errors)).toBe(true);
+    expect(JSON.stringify(parsedToolSchema)).toContain("from_work_dir");
+    expect(JSON.stringify(parsedToolSchema)).toContain("tool_provided_metadata");
+  });
+
+  it("exports a JSON Schema with typed output requirements", () => {
+    const ajv = new Ajv2020({ allErrors: true, strict: false });
+    const validate = ajv.compile(parsedToolSchema as object);
+    const invalid = {
+      ...fastqcFixture,
+      outputs: [{ name: "bad", label: null, hidden: false, type: "data" }],
+    };
+
+    expect(validate(invalid)).toBe(false);
   });
 
   it("rejects missing required fields", () => {

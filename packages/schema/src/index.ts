@@ -80,6 +80,7 @@ export {
   ToolOutputInteger,
   ToolOutputFloat,
   ToolOutputBoolean,
+  parsedToolSchema,
 } from "./schema/parsed-tool.js";
 
 export {
