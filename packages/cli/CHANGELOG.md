@@ -1,5 +1,11 @@
 # @galaxy-tool-util/cli
 
+## 1.3.0
+
+### Minor Changes
+
+- [#90](https://github.com/jmchilton/galaxy-tool-util-ts/pull/90) [`5310cc4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5310cc448d901f195330761291ed03fe24afc21e) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `galaxy-tool-cache summarize <tool_id>` — emits a JSON manifest for a cached tool (source metadata, ParsedTool, and `workflow_step` / `workflow_step_linked` input JSON Schemas).
+
 ## 1.2.0
 
 ### Minor Changes

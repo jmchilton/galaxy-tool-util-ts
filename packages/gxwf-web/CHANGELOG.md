@@ -1,5 +1,12 @@
 # @galaxy-tool-util/gxwf-web
 
+## 1.3.0
+
+### Patch Changes
+
+- Updated dependencies [[`5310cc4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5310cc448d901f195330761291ed03fe24afc21e)]:
+  - @galaxy-tool-util/cli@1.3.0
+
 ## 1.2.0
 
 ### Minor Changes
