@@ -112,6 +112,31 @@
       ]
     },
     {
+      "name": "summarize",
+      "description": "Emit a deterministic summary manifest for a cached Galaxy tool",
+      "handler": "summarize",
+      "args": [
+        {
+          "raw": "<tool_id>",
+          "description": "Tool ID"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--version <ver>",
+          "description": "Tool version"
+        },
+        {
+          "flags": "--output <file>",
+          "description": "Output file (default: stdout)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Cache directory"
+        }
+      ]
+    },
+    {
       "name": "populate-workflow",
       "description": "Scan a workflow and cache all referenced tools",
       "handler": "populateWorkflow",
