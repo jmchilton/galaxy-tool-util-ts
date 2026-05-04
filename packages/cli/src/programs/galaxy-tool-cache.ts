@@ -9,6 +9,7 @@ import { runInfo } from "../commands/info.js";
 import { runClear } from "../commands/clear.js";
 import { runPopulateWorkflow } from "../commands/populate-workflow.js";
 import { runSchema } from "../commands/schema.js";
+import { runSummarize } from "../commands/summarize.js";
 import { runStructuralSchema } from "../commands/structural-schema.js";
 import { buildProgramFromSpec, type HandlerRegistry } from "../spec/build-program.js";
 import { galaxyToolCacheSpec } from "../meta/specs.js";
@@ -19,6 +20,7 @@ const handlers: HandlerRegistry = {
   info: runInfo,
   clear: runClear,
   schema: runSchema,
+  summarize: runSummarize,
   populateWorkflow: runPopulateWorkflow,
   structuralSchema: runStructuralSchema,
 };
