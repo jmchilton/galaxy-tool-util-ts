@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/cli",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "galaxy-tool-cache CLI — cache and inspect Galaxy tool metadata",
   "type": "module",
   "bin": {
