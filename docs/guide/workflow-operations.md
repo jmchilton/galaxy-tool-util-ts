@@ -381,8 +381,8 @@ gxwf tool-revisions devteam/fastqc/fastqc --tool-version 0.74+galaxy0 --latest -
 Export the structural workflow JSON Schema for use with external validators:
 
 ```bash
-galaxy-tool-cache structural-schema --output galaxy-workflow-schema.json
-galaxy-tool-cache structural-schema --format native --output native-schema.json
+gxwf structural-schema --output galaxy-workflow-schema.json
+gxwf structural-schema --format native --output native-schema.json
 ```
 
 ## Programmatic Usage
@@ -460,7 +460,7 @@ Mapping between Python CLI commands and their TypeScript equivalents:
 | `gxwf-roundtrip-validate` | `gxwf roundtrip` | Done |
 | `gxwf-roundtrip-validate-tree` | `gxwf roundtrip-tree` | Done |
 | `galaxy-tool-cache populate-workflow` | `galaxy-tool-cache populate-workflow` | Done |
-| `galaxy-tool-cache structural-schema` | `galaxy-tool-cache structural-schema` | Done |
+| `galaxy-tool-cache structural-schema` | `gxwf structural-schema` | Done |
 | `galaxy-tool-cache add-local` | — | Out of scope (no local XML parsing) |
 | `gxwf-viz` | — | Out of scope |
 | `gxwf-abstract-export` | — | Out of scope |

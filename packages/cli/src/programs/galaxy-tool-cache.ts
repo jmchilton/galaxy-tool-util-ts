@@ -10,7 +10,6 @@ import { runClear } from "../commands/clear.js";
 import { runPopulateWorkflow } from "../commands/populate-workflow.js";
 import { runSchema } from "../commands/schema.js";
 import { runSummarize } from "../commands/summarize.js";
-import { runStructuralSchema } from "../commands/structural-schema.js";
 import { buildProgramFromSpec, type HandlerRegistry } from "../spec/build-program.js";
 import { galaxyToolCacheSpec } from "../meta/specs.js";
 
@@ -22,7 +21,6 @@ const handlers: HandlerRegistry = {
   schema: runSchema,
   summarize: runSummarize,
   populateWorkflow: runPopulateWorkflow,
-  structuralSchema: runStructuralSchema,
 };
 
 export function buildGalaxyToolCacheProgram(): Command {

@@ -23,6 +23,7 @@ import { runToolSearch } from "../commands/tool-search.js";
 import { runToolVersions } from "../commands/tool-versions.js";
 import { runToolRevisions } from "../commands/tool-revisions.js";
 import { runRepoSearch } from "../commands/repo-search.js";
+import { runStructuralSchema } from "../commands/structural-schema.js";
 import { buildProgramFromSpec, type HandlerRegistry } from "../spec/build-program.js";
 import { gxwfSpec } from "../meta/specs.js";
 
@@ -73,6 +74,7 @@ const handlers: HandlerRegistry = {
   toolVersions: runToolVersions,
   toolRevisions: runToolRevisions,
   repoSearch: runRepoSearch,
+  structuralSchema: runStructuralSchema,
 };
 
 export function buildGxwfProgram(): Command {

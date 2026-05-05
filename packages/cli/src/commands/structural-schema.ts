@@ -1,5 +1,5 @@
 /**
- * `galaxy-tool-cache structural-schema` — export the structural JSON Schema
+ * `gxwf structural-schema` — export the structural JSON Schema
  * for Galaxy workflow validation (gxformat2 or native).
  */
 import { GalaxyWorkflowSchema, NativeGalaxyWorkflowSchema } from "@galaxy-tool-util/schema";
