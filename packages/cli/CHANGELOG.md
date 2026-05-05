@@ -1,5 +1,11 @@
 # @galaxy-tool-util/cli
 
+## 1.4.0
+
+### Minor Changes
+
+- [#92](https://github.com/jmchilton/galaxy-tool-util-ts/pull/92) [`d15da5a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d15da5a32735facf13ab2aaac023ea13737e2383) Thanks [@jmchilton](https://github.com/jmchilton)! - Move `structural-schema` subcommand from `galaxy-tool-cache` to `gxwf`. The command exports workflow JSON Schemas, so it belongs alongside other `gxwf` workflow operations. No back-compat alias.
+
 ## 1.3.0
 
 ### Minor Changes
