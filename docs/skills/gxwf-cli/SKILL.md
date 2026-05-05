@@ -29,6 +29,7 @@ Validate Galaxy workflow files (structure + optional tool state)
 | `--tool-schema-dir <dir>` | Directory of pre-exported per-tool JSON Schemas (for offline json-schema mode) |
 | `--json` | Output structured JSON report |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
+| `--connections` | Validate connection-type compatibility (collection algebra, map-over) |
 | `--strict` | Shorthand for --strict-structure --strict-encoding --strict-state |
 | `--strict-structure` | Reject unknown keys at envelope/step level |
 | `--strict-encoding` | Reject JSON-string tool_state and format2 field misuse |
@@ -141,6 +142,24 @@ Render a Galaxy workflow as a Mermaid flowchart diagram
 | Option | Description |
 |---|---|
 | `--comments` | Render frame comments as Mermaid subgraphs |
+| `--annotate-connections` | Encode map-over depth and reductions on edges (runs the connection validator) |
+| `--cache-dir <dir>` | Tool cache directory (used by --annotate-connections) |
+
+### `cytoscapejs <file> [output]`
+
+Render a Galaxy workflow as Cytoscape.js elements (JSON or standalone HTML)
+
+**Arguments:**
+
+- `<file>` — Workflow file (.ga, .gxwf.yml)
+- `[output]` — Output path (.json or .html); stdout JSON if omitted
+
+| Option | Description |
+|---|---|
+| `--html` | Force HTML output regardless of file extension |
+| `--json` | Force JSON output regardless of file extension |
+| `--annotate-connections` | Encode map-over depth and reductions on edges (runs the connection validator) |
+| `--cache-dir <dir>` | Tool cache directory (used by --annotate-connections) |
 
 ### `validate-tree <dir>`
 
@@ -327,6 +346,15 @@ Search the Galaxy Tool Shed for repositories. Ranking is popularity-boosted; sup
 | `--category <name>` | Restrict to a category (server-side `category:` keyword) |
 | `--json` | Emit machine-readable JSON envelope |
 
+### `structural-schema`
+
+Export the structural JSON Schema for Galaxy workflows
+
+| Option | Description |
+|---|---|
+| `--format <fmt>` | Workflow format: format2 (default) or native (default: `format2`) |
+| `--output <file>` | Output file (default: stdout) |
+
 ## `galaxy-tool-cache`
 
 Cache and inspect Galaxy tool metadata
@@ -394,6 +422,20 @@ Export JSON Schema for a cached tool's parameters
 | `--output <file>` | Output file (default: stdout) |
 | `--cache-dir <dir>` | Cache directory |
 
+### `summarize <tool_id>`
+
+Emit a deterministic summary manifest for a cached Galaxy tool
+
+**Arguments:**
+
+- `<tool_id>` — Tool ID
+
+| Option | Description |
+|---|---|
+| `--version <ver>` | Tool version |
+| `--output <file>` | Output file (default: stdout) |
+| `--cache-dir <dir>` | Cache directory |
+
 ### `populate-workflow <file>`
 
 Scan a workflow and cache all referenced tools
@@ -406,12 +448,3 @@ Scan a workflow and cache all referenced tools
 |---|---|
 | `--cache-dir <dir>` | Cache directory |
 | `--galaxy-url <url>` | Galaxy instance URL for fallback |
-
-### `structural-schema`
-
-Export the structural JSON Schema for Galaxy workflows
-
-| Option | Description |
-|---|---|
-| `--format <fmt>` | Workflow format: format2 (default) or native (default: `format2`) |
-| `--output <file>` | Output file (default: stdout) |

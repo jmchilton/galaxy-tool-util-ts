@@ -688,6 +688,22 @@
           "description": "Emit machine-readable JSON envelope"
         }
       ]
+    },
+    {
+      "name": "structural-schema",
+      "description": "Export the structural JSON Schema for Galaxy workflows",
+      "handler": "structuralSchema",
+      "options": [
+        {
+          "flags": "--format <fmt>",
+          "description": "Workflow format: format2 (default) or native",
+          "default": "format2"
+        },
+        {
+          "flags": "--output <file>",
+          "description": "Output file (default: stdout)"
+        }
+      ]
     }
   ]
 }

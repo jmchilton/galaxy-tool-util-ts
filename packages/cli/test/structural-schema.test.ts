@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { runStructuralSchema } from "../src/commands/structural-schema.js";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 
-describe("galaxy-tool-cache structural-schema", () => {
+describe("gxwf structural-schema", () => {
   let ctx: CliTestContext;
 
   beforeEach(async () => {

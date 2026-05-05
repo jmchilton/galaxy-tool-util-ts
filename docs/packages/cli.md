@@ -105,23 +105,6 @@ galaxy-tool-cache populate-workflow my-workflow.gxwf.yml --galaxy-url https://us
 | `--cache-dir <dir>` | Cache directory |
 | `--galaxy-url <url>` | Galaxy instance URL for fallback fetching |
 
-### `structural-schema`
-
-Export the structural [JSON Schema](https://json-schema.org) for Galaxy workflow files. Enables external tooling to validate workflow structure without the TS runtime.
-
-```bash
-# Format2 schema (default)
-galaxy-tool-cache structural-schema
-
-# Native format schema, write to file
-galaxy-tool-cache structural-schema --format native --output native-schema.json
-```
-
-| Option | Description |
-|---|---|
-| `--format <fmt>` | Workflow format: `format2` (default) or `native` |
-| `--output <file>` | Write to file instead of stdout |
-
 ## gxwf
 
 Unified CLI for Galaxy workflow operations. Replaces the standalone `galaxy-workflow-validate` binary.
@@ -618,3 +601,20 @@ The flag is `--tool-version` rather than `--version` because commander's program
 
 Caveat: tool version strings are not monotonic — two changesets can legally publish the
 same `version` with different content. When pinning, prefer the newest matching revision.
+
+### `structural-schema`
+
+Export the structural [JSON Schema](https://json-schema.org) for Galaxy workflow files. Enables external tooling to validate workflow structure without the TS runtime.
+
+```bash
+# Format2 schema (default)
+gxwf structural-schema
+
+# Native format schema, write to file
+gxwf structural-schema --format native --output native-schema.json
+```
+
+| Option | Description |
+|---|---|
+| `--format <fmt>` | Workflow format: `format2` (default) or `native` |
+| `--output <file>` | Write to file instead of stdout |
