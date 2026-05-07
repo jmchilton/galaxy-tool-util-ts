@@ -371,3 +371,14 @@ export {
   /** Cross-check a tests doc against workflow shape; emits JSON-pointer diagnostics. */
   checkTestsAgainstWorkflow,
 } from "./test-format/index.js";
+
+export {
+  /** Validate a parsed user-defined Galaxy tool source document. */
+  validateUserToolSource,
+  /** Raw JSON Schema synced from galaxy.tool_util_models.DynamicToolSources. */
+  userToolSourceSchema,
+  /** Run only the semantic (model_validator) checks — internal helper, exposed for tests. */
+  runSemanticChecks,
+  type UserToolSourceDiagnostic,
+  type ValidateUserToolSourceOptions,
+} from "./user-tool-source/index.js";

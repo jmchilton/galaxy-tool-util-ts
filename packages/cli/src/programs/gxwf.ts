@@ -18,6 +18,8 @@ import { runLintTree } from "../commands/lint-tree.js";
 import { runValidateWorkflow } from "../commands/validate-workflow.js";
 import { runValidateTests } from "../commands/validate-tests.js";
 import { runValidateTestsTree } from "../commands/validate-tests-tree.js";
+import { runValidateToolSource } from "../commands/validate-tool-source.js";
+import { runValidateToolSourceTree } from "../commands/validate-tool-source-tree.js";
 import { runValidateTree } from "../commands/validate-tree.js";
 import { runToolSearch } from "../commands/tool-search.js";
 import { runToolVersions } from "../commands/tool-versions.js";
@@ -70,6 +72,8 @@ const handlers: HandlerRegistry = {
   convertTree: runConvertTree,
   roundtripTree: runRoundtripTree,
   validateTestsTree: runValidateTestsTree,
+  validateToolSource: runValidateToolSource,
+  validateToolSourceTree: runValidateToolSourceTree,
   toolSearch: runToolSearch,
   toolVersions: runToolVersions,
   toolRevisions: runToolRevisions,

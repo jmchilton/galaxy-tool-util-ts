@@ -556,6 +556,48 @@
       ]
     },
     {
+      "name": "validate-tool-source",
+      "description": "Validate a user-defined Galaxy tool source YAML (class: GalaxyUserTool / GalaxyTool) against the Galaxy DynamicToolSources schema + #22615 semantic checks",
+      "handler": "validateToolSource",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Tool source YAML file"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--schema-only",
+          "description": "Skip semantic (model_validator) checks; structural JSON-Schema validation only"
+        }
+      ]
+    },
+    {
+      "name": "validate-tool-source-tree",
+      "description": "Batch validate user-defined Galaxy tool source YAMLs (auto-discovered by class:) under a directory",
+      "handler": "validateToolSourceTree",
+      "args": [
+        {
+          "raw": "<dir>",
+          "description": "Directory to scan for tool source files"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--schema-only",
+          "description": "Skip semantic (model_validator) checks; structural JSON-Schema validation only"
+        }
+      ]
+    },
+    {
       "name": "tool-search",
       "description": "Search the Galaxy Tool Shed for tools matching a query",
       "handler": "toolSearch",
