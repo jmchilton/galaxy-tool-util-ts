@@ -283,6 +283,32 @@ Batch validate workflow-test files (*-tests.yml / *.gxwf-tests.yml) under a dire
 | `--json` | Output structured JSON report |
 | `--auto-workflow` | Pair each tests file with a sibling workflow by filename convention (foo.gxwf-tests.yml ↔ foo.gxwf.yml/foo.ga) and cross-check inputs/outputs |
 
+### `validate-tool-source <file>`
+
+Validate a user-defined Galaxy tool source YAML (class: GalaxyUserTool / GalaxyTool) against the Galaxy DynamicToolSources schema + #22615 semantic checks
+
+**Arguments:**
+
+- `<file>` — Tool source YAML file
+
+| Option | Description |
+|---|---|
+| `--json` | Output structured JSON report |
+| `--schema-only` | Skip semantic (model_validator) checks; structural JSON-Schema validation only |
+
+### `validate-tool-source-tree <dir>`
+
+Batch validate user-defined Galaxy tool source YAMLs (auto-discovered by class:) under a directory
+
+**Arguments:**
+
+- `<dir>` — Directory to scan for tool source files
+
+| Option | Description |
+|---|---|
+| `--json` | Output structured JSON report |
+| `--schema-only` | Skip semantic (model_validator) checks; structural JSON-Schema validation only |
+
 ### `tool-search <query>`
 
 Search the Galaxy Tool Shed for tools matching a query
