@@ -26,6 +26,18 @@ export type {
   ValidateTestsTreeOptions,
   ValidateTestsTreeReport,
 } from "./commands/validate-tests-tree.js";
+/** Validate a user-defined Galaxy tool source YAML (class: GalaxyUserTool / GalaxyTool). */
+export { runValidateToolSource } from "./commands/validate-tool-source.js";
+export type {
+  ValidateToolSourceOptions,
+  ValidateToolSourceReport,
+} from "./commands/validate-tool-source.js";
+/** Batch-validate user-defined Galaxy tool source YAMLs under a directory. */
+export { runValidateToolSourceTree } from "./commands/validate-tool-source-tree.js";
+export type {
+  ValidateToolSourceTreeOptions,
+  ValidateToolSourceTreeReport,
+} from "./commands/validate-tool-source-tree.js";
 /** Clean a Galaxy workflow — strip stale keys and decode legacy encoding. */
 export { runClean } from "./commands/clean.js";
 /** Lint a Galaxy workflow — structural checks, best practices, tool state validation. */
