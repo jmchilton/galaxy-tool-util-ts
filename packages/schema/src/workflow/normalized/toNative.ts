@@ -377,6 +377,7 @@ function _buildToolStep(
     tool_shed_repository: step.tool_shed_repository as NormalizedNativeStep["tool_shed_repository"],
     tool_state: toolState,
     tool_representation: toolRepresentation,
+    in: _extractStepInDefaults(step),
     tool_uuid: isUserDefinedTool ? null : (step.uuid ?? undefined),
     input_connections: inputConnections,
     post_job_actions: postJobActions,
@@ -424,6 +425,7 @@ function _buildSubworkflowStep(
     tool_state: {},
     subworkflow,
     content_id: contentId,
+    in: _extractStepInDefaults(step),
     input_connections: inputConnections,
     post_job_actions: postJobActions,
     position: _defaultPosition(step.position, orderIndex),
@@ -519,6 +521,20 @@ function _extractConnections(step: NormalizedFormat2Step): Record<string, string
     }
   }
   return connect;
+}
+
+function _extractStepInDefaults(step: NormalizedFormat2Step): Record<string, unknown> | undefined {
+  // Galaxy reads step_dict["in"][name]["default"] to seed
+  // WorkflowStepInput.default_value; preserve Format2 step input defaults
+  // (tool-state scalars, File-class defaults) through to_native.
+  const result: Record<string, unknown> = {};
+  for (const stepInput of step.in) {
+    const inputId = stepInput.id;
+    if (!inputId) continue;
+    if (stepInput.default == null) continue;
+    result[inputId] = { default: stepInput.default };
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 function _buildInputConnections(
