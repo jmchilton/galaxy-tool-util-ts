@@ -16,26 +16,17 @@ string: Unicode character sequence
 export type PrimitiveType = "null" | "boolean" | "int" | "long" | "float" | "double" | "string";
 
 /**
- * Extends primitive types with the native Galaxy concepts such datasets and collections.
-integer: an alias for int type - matches syntax used by Galaxy tools
-text: an alias for string type - matches syntax used by Galaxy tools
-File: an alias for data - there are subtle differences between a plain file, the CWL concept of 'File', and the Galaxy concept of a dataset - this may have subtly difference semantics in the future
-data: a Galaxy dataset
-collection: a Galaxy dataset collection
+ * Extends primitive types with the native Galaxy concepts such as datasets and collections.
+Normalized gxformat2 workflow input declaration spellings are ``data``, ``collection``, ``string``, ``int``, ``float``, and ``boolean``. Other spellings are accepted as compatibility aliases on import but normalized gxformat2 output emits the normalized spellings.
+data: one Galaxy dataset input. Native Galaxy ``data_input`` converts to this spelling.
+File: accepted alias for ``data``, but normalized gxformat2 output emits ``data``. Note: workflow **test job** YAML uses ``type: File`` to mean 'stage this file as test input data', which is a separate concept from workflow input declaration.
+collection: one Galaxy dataset collection input. Native Galaxy ``data_collection_input`` converts to this spelling.
+string: normalized gxformat2 spelling for native Galaxy text workflow parameters.
+text: accepted alias for ``string`` because native Galaxy parameter state and Galaxy tool XML terminology use ``text``.
+int: normalized gxformat2 spelling for native Galaxy integer workflow parameters.
+integer: accepted alias for ``int`` because native Galaxy parameter state and Galaxy tool XML terminology use ``integer``.
  */
-export type GalaxyType =
-  | "null"
-  | "boolean"
-  | "int"
-  | "long"
-  | "float"
-  | "double"
-  | "string"
-  | "integer"
-  | "text"
-  | "File"
-  | "data"
-  | "collection";
+export type GalaxyType = "null" | "boolean" | "int" | "long" | "float" | "double" | "string" | "integer" | "text" | "File" | "data" | "collection";
 
 /**
  * Module types used by Galaxy steps. Galaxy's native format allows additional types such as data_input, data_input_collection, and parameter_type
@@ -60,13 +51,7 @@ export interface RecordField extends Documented {
   /** The name of the field */
   name: string;
   /** The field type */
-  type:
-    | PrimitiveType
-    | RecordSchema
-    | EnumSchema
-    | ArraySchema
-    | string
-    | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
+  type: PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
 }
 
 export interface RecordSchema {
@@ -88,13 +73,7 @@ export interface EnumSchema {
 
 export interface ArraySchema {
   /** Defines the type of the array elements. */
-  items:
-    | PrimitiveType
-    | RecordSchema
-    | EnumSchema
-    | ArraySchema
-    | string
-    | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
+  items: PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
   /** Must be `array` */
   type: "array";
 }
@@ -112,7 +91,8 @@ export interface Identified {
 /**
  * Define an input or output parameter to a process.
  */
-export interface Parameter extends Labeled, Documented, Identified {}
+export interface Parameter extends Labeled, Documented, Identified {
+}
 
 export interface InputParameter extends Parameter {
   /** The unique identifier for this object. */
@@ -141,15 +121,9 @@ directly executed.
  */
 export interface Process extends Identified, Labeled, Documented {
   /** Defines the input parameters of the process.  The process is ready to run when all required input parameters are associated with concrete values.  Input parameters include a schema for each paramet... */
-  inputs:
-    | Array<WorkflowInputParameter>
-    | Record<string, WorkflowInputParameter | string>
-    | Record<string, unknown>;
+  inputs: Array<WorkflowDataParameter | WorkflowCollectionParameter | WorkflowIntegerParameter | WorkflowFloatParameter | WorkflowTextParameter | WorkflowBooleanParameter> | Record<string, WorkflowDataParameter | WorkflowCollectionParameter | WorkflowIntegerParameter | WorkflowFloatParameter | WorkflowTextParameter | WorkflowBooleanParameter | string> | Record<string, unknown>;
   /** Defines the parameters representing the output of the process.  May be used to generate and/or validate the output object. */
-  outputs:
-    | Array<WorkflowOutputParameter>
-    | Record<string, WorkflowOutputParameter | string>
-    | Record<string, unknown>;
+  outputs: Array<WorkflowOutputParameter> | Record<string, WorkflowOutputParameter | string> | Record<string, unknown>;
 }
 
 export interface HasUUID {
@@ -185,6 +159,58 @@ export interface ReferencesTool {
   tool_version?: null | string;
 }
 
+/**
+ * Describes one column of a sample-sheet collection input.
+Used in `column_definitions` on a `collection_type: sample_sheet[:<type>]`
+workflow input.
+ */
+export interface SampleSheetColumnDefinition {
+  /** Column name. Must not contain special characters (matches `^[\w\-_ \?]*$`). */
+  name: string;
+  /** Optional human-readable column description. */
+  description?: null | string;
+  /** Value type for this column. One of `string`, `int`, `float`, `boolean`, or `element_identifier`. Mirrors Galaxy's runtime `SampleSheetColumnType`. */
+  type: "string" | "int" | "float" | "boolean" | "element_identifier";
+  /** If true, rows may omit a value for this column. */
+  optional: boolean;
+  /** Default value used when a row omits this column. Type must be compatible with `type` - validated by the pydantic post-validator. */
+  default_value?: null | string | number | boolean;
+  /** Galaxy-style parameter validators. Modelled as opaque records here - full validator schema lives in galaxy.tool_util_models. */
+  validators?: null | Array<unknown>;
+  /** Closed set of permitted values for this column. Item type must be compatible with the column `type` (post-validated). */
+  restrictions?: null | Array<string | number | number | boolean>;
+  /** Open suggestion list for this column. */
+  suggestions?: null | Array<string | number | number | boolean>;
+}
+
+/**
+ * Describes one field of a `record` collection input.
+Used in `fields` on a `collection_type` containing `record` (e.g.
+`record`, `list:record`, `sample_sheet:record`). Mirrors a subset of
+the CWL `InputRecordSchema` shape that Galaxy persists on
+`DatasetCollection.fields`.
+ */
+export interface RecordFieldDefinition {
+  /** Field name. Must equal the corresponding element identifier in the materialized record collection. */
+  name: string;
+  /** Field value type. A subset of the CWL primitive types: `File`, `null`, `boolean`, `int`, `float`, `string`. May be a list to express a union (e.g. `["File", "null"]` for an optional file). */
+  type: "File" | "null" | "boolean" | "int" | "float" | "string" | Array<"File" | "null" | "boolean" | "int" | "float" | "string">;
+  /** Optional Galaxy datatype hint for `File`-typed fields. */
+  format?: null | string;
+}
+
+/**
+ * A `{value, label}` option used in `restrictions` or `suggestions` on a
+text workflow parameter. Plain strings are also accepted in those
+arrays as shorthand for `{value: <str>, label: <str>}`.
+ */
+export interface WorkflowTextOption {
+  /** Machine value submitted to the connected tool input. */
+  value: string;
+  /** Human label shown in Galaxy. Defaults to `value` when omitted. */
+  label?: null | string;
+}
+
 export interface ToolShedRepository {
   /** The name of the tool shed repository this tool can be found in. */
   name: string;
@@ -196,21 +222,194 @@ export interface ToolShedRepository {
   tool_shed: string;
 }
 
-export interface WorkflowInputParameter extends InputParameter, HasStepPosition {
+export interface BaseInputParameter extends InputParameter, HasStepPosition {
   /** The unique identifier for this object. */
   id?: null | string;
   /** A short, human-readable label of this object. */
   label?: null | string;
   /** A documentation string for this object, or an array of strings which should be concatenated. */
   doc?: null | string | Array<string>;
-  /** Specify valid types of data that may be assigned to this parameter. */
-  type?: GalaxyType | null | Array<GalaxyType>;
-  /** If set to true, `WorkflowInputParameter` is not required to submit the workflow. */
+  /** Controls whether Galaxy allows invocation of the workflow without a user-supplied value for this input. If ``true``, the input may be omitted at invocation time. ``optional`` and ``default`` are in... */
   optional?: boolean | null;
-  /** Specify datatype extension for valid input datasets. */
+}
+
+export interface BaseDataParameter extends BaseInputParameter {
+  /** The unique identifier for this object. */
+  id?: null | string;
+  /** A short, human-readable label of this object. */
+  label?: null | string;
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc?: null | string | Array<string>;
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default?: null | unknown;
+  position?: null | StepPosition;
+  /** Specify datatype extensions for valid input datasets. */
   format?: null | Array<string>;
+}
+
+/**
+ * A data input parameter for a Galaxy workflow. Represents one Galaxy dataset.
+Normalized gxformat2 output uses ``type: data``. ``type: File`` is accepted as
+an alias, but should not be confused with workflow test job syntax where
+``type: File`` means stage a file as test input data.
+ */
+export interface WorkflowDataParameter extends BaseDataParameter {
+  /** The unique identifier for this object. */
+  id?: null | string;
+  /** A short, human-readable label of this object. */
+  label?: null | string;
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc?: null | string | Array<string>;
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default?: null | unknown;
+  position?: null | StepPosition;
+  /** Controls whether Galaxy allows invocation of the workflow without a user-supplied value for this input. If ``true``, the input may be omitted at invocation time. ``optional`` and ``default`` are in... */
+  optional?: boolean | null;
+  /** Specify valid types of data that may be assigned to this parameter. */
+  type?: "data" | "File" | null;
+}
+
+/**
+ * A collection input parameter for a Galaxy workflow - represents a dataset collection.
+ */
+export interface WorkflowCollectionParameter extends BaseDataParameter {
+  /** The unique identifier for this object. */
+  id?: null | string;
+  /** A short, human-readable label of this object. */
+  label?: null | string;
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc?: null | string | Array<string>;
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default?: null | unknown;
+  position?: null | StepPosition;
+  /** Controls whether Galaxy allows invocation of the workflow without a user-supplied value for this input. If ``true``, the input may be omitted at invocation time. ``optional`` and ``default`` are in... */
+  optional?: boolean | null;
+  /** Must be ``collection``. */
+  type: "collection";
   /** Collection type (defaults to `list` if `type` is `collection`). Nested collection types are separated with colons, e.g. `list:list:paired`. */
   collection_type?: null | string;
+  /** Column schema for sample-sheet collection inputs. Only meaningful when `collection_type` begins with `sample_sheet` - cross-field validation is applied in the pydantic post-validator. */
+  column_definitions?: null | Array<SampleSheetColumnDefinition>;
+  /** Field schema for `record` collection inputs. Only meaningful when `collection_type` contains `record` (e.g. `record`, `list:record`, `sample_sheet:record`). */
+  fields?: null | Array<RecordFieldDefinition>;
+}
+
+export interface MinMax {
+  /** Minimum allowed value (inclusive). */
+  min?: number | null;
+  /** Maximum allowed value (inclusive). */
+  max?: number | null;
+}
+
+/**
+ * A scalar integer workflow parameter. Normalized gxformat2 output uses
+``type: int``. ``type: integer`` is accepted for compatibility with native
+Galaxy parameter state and Galaxy tool XML terminology.
+ */
+export interface WorkflowIntegerParameter extends BaseInputParameter, MinMax {
+  /** The unique identifier for this object. */
+  id?: null | string;
+  /** A short, human-readable label of this object. */
+  label?: null | string;
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc?: null | string | Array<string>;
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default?: null | unknown;
+  position?: null | StepPosition;
+  /** Must be ``integer`` or ``int``. */
+  type: "integer" | "int";
+}
+
+/**
+ * A float input parameter for a Galaxy workflow.
+ */
+export interface WorkflowFloatParameter extends BaseInputParameter, MinMax {
+  /** The unique identifier for this object. */
+  id?: null | string;
+  /** A short, human-readable label of this object. */
+  label?: null | string;
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc?: null | string | Array<string>;
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default?: null | unknown;
+  position?: null | StepPosition;
+  /** Must be ``float``. */
+  type: "float";
+}
+
+/**
+ * A scalar text workflow parameter. Normalized gxformat2 output uses
+``type: string``. ``type: text`` is accepted for compatibility with native
+Galaxy parameter state and Galaxy tool XML terminology.
+ */
+export interface WorkflowTextParameter extends BaseInputParameter {
+  /** The unique identifier for this object. */
+  id?: null | string;
+  /** A short, human-readable label of this object. */
+  label?: null | string;
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc?: null | string | Array<string>;
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default?: null | unknown;
+  position?: null | StepPosition;
+  /** Must be ``text`` or ``string``. */
+  type: "text" | "string";
+  /** Closed set of permitted values. When present, Galaxy renders the runtime input as a select. Items may be plain strings or `{value, label}` records. */
+  restrictions?: null | Array<string | WorkflowTextOption>;
+  /** Open suggestion list. Galaxy still treats the input as text but offers these as suggestions. */
+  suggestions?: null | Array<string | WorkflowTextOption>;
+  /** Ask Galaxy to derive valid choices from connected tool or subworkflow select inputs at runtime. Falls back to free text when derivation fails. */
+  restrictOnConnections?: null | boolean;
+}
+
+/**
+ * A boolean input parameter for a Galaxy workflow.
+ */
+export interface WorkflowBooleanParameter extends BaseInputParameter {
+  /** The unique identifier for this object. */
+  id?: null | string;
+  /** A short, human-readable label of this object. */
+  label?: null | string;
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc?: null | string | Array<string>;
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default?: null | unknown;
+  position?: null | StepPosition;
+  /** Must be ``boolean``. */
+  type: "boolean";
+}
+
+/**
+ * An input parameter to a Galaxy workflow. This is the catch-all type used
+by the Schema Salad codegen. The pydantic layer uses a discriminated union
+of the specific parameter types instead.
+ */
+export interface WorkflowInputParameter extends BaseDataParameter, MinMax {
+  /** The unique identifier for this object. */
+  id?: null | string;
+  /** A short, human-readable label of this object. */
+  label?: null | string;
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc?: null | string | Array<string>;
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default?: null | unknown;
+  position?: null | StepPosition;
+  /** Controls whether Galaxy allows invocation of the workflow without a user-supplied value for this input. If ``true``, the input may be omitted at invocation time. ``optional`` and ``default`` are in... */
+  optional?: boolean | null;
+  /** Specify valid types of data that may be assigned to this parameter. */
+  type?: GalaxyType | null | Array<GalaxyType>;
+  /** Collection type (defaults to `list` if `type` is `collection`). Nested collection types are separated with colons, e.g. `list:list:paired`. */
+  collection_type?: null | string;
+  /** Column schema for sample-sheet collection inputs. Only meaningful when `collection_type` begins with `sample_sheet`. */
+  column_definitions?: null | Array<SampleSheetColumnDefinition>;
+  /** Field schema for `record` collection inputs. Only meaningful when `collection_type` contains `record`. */
+  fields?: null | Array<RecordFieldDefinition>;
+  /** Closed set of permitted values for text-typed inputs. See `WorkflowTextParameter.restrictions`. */
+  restrictions?: null | Array<string | WorkflowTextOption>;
+  /** Open suggestion list for text-typed inputs. */
+  suggestions?: null | Array<string | WorkflowTextOption>;
+  /** For text-typed inputs - derive runtime choices from connected tool/subworkflow select inputs. */
+  restrictOnConnections?: null | boolean;
 }
 
 /**
@@ -249,16 +448,17 @@ Galaxy but shouldn't be written by humans.
 `state` can contained a typed map. Repeat values can be represented as YAML arrays. An alternative
 to representing `state` this way is defining inputs with default values.
  */
-export interface WorkflowStep
-  extends Identified, Labeled, Documented, HasStepPosition, ReferencesTool, HasStepErrors, HasUUID {
+export interface WorkflowStep extends Identified, Labeled, Documented, HasStepPosition, ReferencesTool, HasStepErrors, HasUUID {
   /** Defines the input parameters of the workflow step.  The process is ready to run when all required input parameters are associated with concrete values.  Input parameters include a schema for each p... */
-  in?: Array<WorkflowStepInput> | Record<string, WorkflowStepInput | string> | null;
+  in?: Array<WorkflowStepInput> | Record<string, WorkflowStepInput | string | Array<string>> | null;
   /** Defines the parameters representing the output of the process.  May be used to generate and/or validate the output object.  This can also be called 'outputs' for legacy reasons - but the resulting ... */
   out?: Array<WorkflowStepOutput | string> | Record<string, WorkflowStepOutput | string> | null;
   /** Structured tool state. */
   state?: Record<string, unknown> | null;
   /** Unstructured tool state. */
   tool_state?: string | Record<string, unknown> | null;
+  /** Optional dict of post-job actions keyed by ``{ActionType}{OutputName}`` compound strings.  Same shape as the native ``post_job_actions`` field; each value is a record with ``action_type``, ``output... */
+  post_job_actions?: Record<string, unknown> | null;
   /** Workflow step module's type (defaults to 'tool'). */
   type?: null | WorkflowStepType;
   /** Specifies a subworkflow to run. May be an inline workflow definition, a URL string, or an @import reference dict. */
@@ -458,10 +658,7 @@ export interface GalaxyWorkflow extends Process, HasUUID {
   /** Tags for the workflow. */
   tags?: Array<string> | null;
   /** Visual annotations for the workflow editor canvas. Comments are non-functional and do not affect workflow execution. May be specified as a list or as a mapping keyed by label. */
-  comments?:
-    | Array<TextComment | MarkdownComment | FrameComment | FreehandComment>
-    | Record<string, TextComment | MarkdownComment | FrameComment | FreehandComment>
-    | null;
+  comments?: Array<TextComment | MarkdownComment | FrameComment | FreehandComment> | Record<string, TextComment | MarkdownComment | FrameComment | FreehandComment> | null;
   /** Workflow creators. Can be schema.org Person (https://schema.org/Person) or Organization (https://schema.org/Organization) entities. */
   creator?: Array<CreatorPerson | CreatorOrganization> | null;
   /** Must be a valid license listed at https://spdx.org/licenses/ */
@@ -469,3 +666,28 @@ export interface GalaxyWorkflow extends Process, HasUUID {
   /** If listed should correspond to the release of the workflow in its source reposiory. */
   release?: null | string;
 }
+
+export function isWorkflowDataParameter(v: WorkflowDataParameter | WorkflowCollectionParameter | WorkflowIntegerParameter | WorkflowTextParameter | WorkflowFloatParameter | WorkflowBooleanParameter): v is WorkflowDataParameter {
+  return v?.type === "data" || v?.type === "File";
+}
+
+export function isWorkflowCollectionParameter(v: WorkflowDataParameter | WorkflowCollectionParameter | WorkflowIntegerParameter | WorkflowTextParameter | WorkflowFloatParameter | WorkflowBooleanParameter): v is WorkflowCollectionParameter {
+  return v?.type === "collection";
+}
+
+export function isWorkflowIntegerParameter(v: WorkflowDataParameter | WorkflowCollectionParameter | WorkflowIntegerParameter | WorkflowTextParameter | WorkflowFloatParameter | WorkflowBooleanParameter): v is WorkflowIntegerParameter {
+  return v?.type === "integer" || v?.type === "int";
+}
+
+export function isWorkflowTextParameter(v: WorkflowDataParameter | WorkflowCollectionParameter | WorkflowIntegerParameter | WorkflowTextParameter | WorkflowFloatParameter | WorkflowBooleanParameter): v is WorkflowTextParameter {
+  return v?.type === "text" || v?.type === "string";
+}
+
+export function isWorkflowFloatParameter(v: WorkflowDataParameter | WorkflowCollectionParameter | WorkflowIntegerParameter | WorkflowTextParameter | WorkflowFloatParameter | WorkflowBooleanParameter): v is WorkflowFloatParameter {
+  return v?.type === "float";
+}
+
+export function isWorkflowBooleanParameter(v: WorkflowDataParameter | WorkflowCollectionParameter | WorkflowIntegerParameter | WorkflowTextParameter | WorkflowFloatParameter | WorkflowBooleanParameter): v is WorkflowBooleanParameter {
+  return v?.type === "boolean";
+}
+
