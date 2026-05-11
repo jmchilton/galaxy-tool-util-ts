@@ -15,6 +15,7 @@ import { Schema } from "effect";
 
 import { GalaxyWorkflowSchema } from "./raw/gxformat2.effect.js";
 import { NativeGalaxyWorkflowSchema } from "./raw/native.effect.js";
+import { validateWorkflowSemantics } from "./semantic-validators.js";
 
 /**
  * Return `raw` with `class: cls` injected if missing, and the same injection
@@ -60,15 +61,19 @@ function injectStepSubworkflow(step: unknown, cls: string): unknown {
 }
 
 export function validateFormat2(wf: unknown): unknown {
-  return Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "ignore" })(
+  const decoded = Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "ignore" })(
     withClass(wf, "GalaxyWorkflow"),
   );
+  validateWorkflowSemantics(wf);
+  return decoded;
 }
 
 export function validateFormat2Strict(wf: unknown): unknown {
-  return Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "error" })(
+  const decoded = Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "error" })(
     withClass(wf, "GalaxyWorkflow"),
   );
+  validateWorkflowSemantics(wf);
+  return decoded;
 }
 
 export function validateNative(wf: unknown): unknown {

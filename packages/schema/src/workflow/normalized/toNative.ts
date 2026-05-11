@@ -360,7 +360,7 @@ function _buildToolStep(
   }
 
   const inputConnections = _buildInputConnections(connect, ctx);
-  const postJobActions = _buildPostJobActions(step.out);
+  const postJobActions = _buildPostJobActions(step.out, step.post_job_actions);
   const connectedPaths = new Set(Object.keys(inputConnections));
 
   const isUserDefinedTool = toolRepresentation != null;
@@ -377,6 +377,7 @@ function _buildToolStep(
     tool_shed_repository: step.tool_shed_repository as NormalizedNativeStep["tool_shed_repository"],
     tool_state: toolState,
     tool_representation: toolRepresentation,
+    in: _extractStepInDefaults(step),
     tool_uuid: isUserDefinedTool ? null : (step.uuid ?? undefined),
     input_connections: inputConnections,
     post_job_actions: postJobActions,
@@ -413,7 +414,7 @@ function _buildSubworkflowStep(
   const connect = _extractConnections(step);
   const isSubworkflow = subworkflow != null;
   const inputConnections = _buildInputConnections(connect, ctx, isSubworkflow, childCtx);
-  const postJobActions = _buildPostJobActions(step.out);
+  const postJobActions = _buildPostJobActions(step.out, step.post_job_actions);
   const connectedPaths = new Set(Object.keys(inputConnections));
 
   return {
@@ -424,6 +425,7 @@ function _buildSubworkflowStep(
     tool_state: {},
     subworkflow,
     content_id: contentId,
+    in: _extractStepInDefaults(step),
     input_connections: inputConnections,
     post_job_actions: postJobActions,
     position: _defaultPosition(step.position, orderIndex),
@@ -482,7 +484,10 @@ function _buildPickValueStep(
     toolState.num_inputs = Math.max(2, numInputs);
   }
 
-  const postJobActions = _buildPostJobActions([...step.out] as NormalizedFormat2StepOutput[]);
+  const postJobActions = _buildPostJobActions(
+    [...step.out] as NormalizedFormat2StepOutput[],
+    step.post_job_actions,
+  );
 
   return {
     id: orderIndex,
@@ -521,6 +526,20 @@ function _extractConnections(step: NormalizedFormat2Step): Record<string, string
   return connect;
 }
 
+function _extractStepInDefaults(step: NormalizedFormat2Step): Record<string, unknown> | undefined {
+  // Galaxy reads step_dict["in"][name]["default"] to seed
+  // WorkflowStepInput.default_value; preserve Format2 step input defaults
+  // (tool-state scalars, File-class defaults) through to_native.
+  const result: Record<string, unknown> = {};
+  for (const stepInput of step.in) {
+    const inputId = stepInput.id;
+    if (!inputId) continue;
+    if (stepInput.default == null) continue;
+    result[inputId] = { default: stepInput.default };
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function _buildInputConnections(
   connect: Record<string, string[]>,
   ctx: ConversionContext,
@@ -557,13 +576,11 @@ function _buildInputConnections(
 
 function _buildPostJobActions(
   outputs: readonly NormalizedFormat2StepOutput[],
-): Record<
-  string,
-  { action_type: string; output_name: string; action_arguments?: Record<string, unknown> }
-> {
+  explicit?: Record<string, unknown> | null,
+): NormalizedNativeStep["post_job_actions"] {
   const postJobActions: Record<
     string,
-    { action_type: string; output_name: string; action_arguments?: Record<string, unknown> }
+    { action_type: string; output_name?: string | null; action_arguments?: Record<string, unknown> }
   > = {};
 
   for (const output of outputs) {
@@ -587,7 +604,20 @@ function _buildPostJobActions(
     }
   }
 
-  return postJobActions;
+  // Explicit step.post_job_actions wins over out:-shorthand-derived entries on
+  // key collision; entries without a matching shorthand (e.g. ValidateOutputsAction)
+  // are merged in alongside.
+  if (explicit) {
+    for (const [key, value] of Object.entries(explicit)) {
+      postJobActions[key] = value as {
+        action_type: string;
+        output_name?: string | null;
+        action_arguments?: Record<string, unknown>;
+      };
+    }
+  }
+
+  return postJobActions as NormalizedNativeStep["post_job_actions"];
 }
 
 function _isTruthy(val: unknown): boolean {

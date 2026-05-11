@@ -118,6 +118,65 @@ export interface ReferencesTool {
   tool_version?: null | string;
 }
 
+/**
+ * Describes one column of a sample-sheet collection input.
+Used in `column_definitions` on a `collection_type: sample_sheet[:<type>]`
+workflow input.
+ */
+export interface SampleSheetColumnDefinition {
+  /** Column name. Must not contain special characters (matches `^[\w\-_ \?]*$`). */
+  name: string;
+  /** Optional human-readable column description. */
+  description?: null | string;
+  /** Value type for this column. One of `string`, `int`, `float`, `boolean`, or `element_identifier`. Mirrors Galaxy's runtime `SampleSheetColumnType`. */
+  type: "string" | "int" | "float" | "boolean" | "element_identifier";
+  /** If true, rows may omit a value for this column. */
+  optional: boolean;
+  /** Default value used when a row omits this column. Type must be compatible with `type` - validated by the pydantic post-validator. */
+  default_value?: null | string | number | boolean;
+  /** Galaxy-style parameter validators. Modelled as opaque records here - full validator schema lives in galaxy.tool_util_models. */
+  validators?: null | Array<unknown>;
+  /** Closed set of permitted values for this column. Item type must be compatible with the column `type` (post-validated). */
+  restrictions?: null | Array<string | number | number | boolean>;
+  /** Open suggestion list for this column. */
+  suggestions?: null | Array<string | number | number | boolean>;
+}
+
+/**
+ * Describes one field of a `record` collection input.
+Used in `fields` on a `collection_type` containing `record` (e.g.
+`record`, `list:record`, `sample_sheet:record`). Mirrors a subset of
+the CWL `InputRecordSchema` shape that Galaxy persists on
+`DatasetCollection.fields`.
+ */
+export interface RecordFieldDefinition {
+  /** Field name. Must equal the corresponding element identifier in the materialized record collection. */
+  name: string;
+  /** Field value type. A subset of the CWL primitive types: `File`, `null`, `boolean`, `int`, `float`, `string`. May be a list to express a union (e.g. `["File", "null"]` for an optional file). */
+  type:
+    | "File"
+    | "null"
+    | "boolean"
+    | "int"
+    | "float"
+    | "string"
+    | Array<"File" | "null" | "boolean" | "int" | "float" | "string">;
+  /** Optional Galaxy datatype hint for `File`-typed fields. */
+  format?: null | string;
+}
+
+/**
+ * A `{value, label}` option used in `restrictions` or `suggestions` on a
+text workflow parameter. Plain strings are also accepted in those
+arrays as shorthand for `{value: <str>, label: <str>}`.
+ */
+export interface WorkflowTextOption {
+  /** Machine value submitted to the connected tool input. */
+  value: string;
+  /** Human label shown in Galaxy. Defaults to `value` when omitted. */
+  label?: null | string;
+}
+
 export interface ToolShedRepository {
   /** The name of the tool shed repository this tool can be found in. */
   name: string;
@@ -192,8 +251,8 @@ Common action types: ``HideDatasetAction``, ``RenameDatasetAction``,
 export interface NativePostJobAction {
   /** The action type identifier (e.g. ``HideDatasetAction``). */
   action_type: string;
-  /** The step output this action applies to. */
-  output_name: string;
+  /** The step output this action applies to.  Optional: action types that operate on the step as a whole (e.g. ``ValidateOutputsAction``) omit this field. */
+  output_name?: string | null;
   /** Action-specific arguments. For ``RenameDatasetAction``: ``{"newname": "..."}``; for ``ChangeDatatypeAction``: ``{"newtype": "tabular"}``; for ``TagDatasetAction``: ``{"tags": "name:tag"}``. Empty o... */
   action_arguments?: Record<string, unknown> | null;
 }

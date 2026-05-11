@@ -104,6 +104,9 @@ export const NormalizedFormat2StepSchema = Schema.Struct({
   run: Schema.optional(Schema.NullOr(Schema.Union(NormalizedFormat2WorkflowSchema, Schema.String))),
   in: Schema.Array(NormalizedFormat2StepInputSchema),
   out: Schema.Array(NormalizedFormat2StepOutputSchema),
+  post_job_actions: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
   state: Schema.optional(
     Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
   ),
@@ -298,6 +301,7 @@ function _normalizeStep(
     run,
     in: stepIn,
     out: stepOut,
+    post_job_actions: raw.post_job_actions as Record<string, unknown> | null | undefined,
     state,
     tool_state: _parseToolState(raw.tool_state),
     when: raw.when as string | undefined,
@@ -324,6 +328,9 @@ function _normalizeStepIn(raw: unknown): NormalizedFormat2StepInput[] {
   for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof val === "string") {
       result.push({ id: key, source: val });
+    } else if (Array.isArray(val)) {
+      // mapPredicate: source shorthand — bare list value is the multi-source.
+      result.push({ id: key, source: val as string[] } as NormalizedFormat2StepInput);
     } else if (val && typeof val === "object") {
       const obj = val as Record<string, unknown>;
       result.push({ ...obj, id: key } as NormalizedFormat2StepInput);
@@ -399,12 +406,19 @@ const _CONNECTED_VALUE: Record<string, string> = { __class__: "ConnectedValue" }
  * Matches Python gxformat2 _resolve_links — $link is a format-level construct
  * resolved before tool definitions are available.
  */
+function _coerceLinkValue(link: unknown): string {
+  // YAML unquoted integers (e.g. `$link: 0`) parse as number; downstream
+  // source resolution expects a string.
+  if (typeof link === "number" && Number.isInteger(link)) return String(link);
+  return link as string;
+}
+
 function _resolveLinks(value: unknown, key: string, connections: Map<string, string[]>): unknown {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const obj = value as Record<string, unknown>;
     if ("$link" in obj) {
       const sources = connections.get(key) ?? [];
-      sources.push(obj.$link as string);
+      sources.push(_coerceLinkValue(obj.$link));
       connections.set(key, sources);
       return { ..._CONNECTED_VALUE };
     }
@@ -425,7 +439,7 @@ function _resolveLinks(value: unknown, key: string, connections: Map<string, str
         "$link" in (v as Record<string, unknown>)
       ) {
         const sources = connections.get(key) ?? [];
-        sources.push((v as Record<string, unknown>).$link as string);
+        sources.push(_coerceLinkValue((v as Record<string, unknown>).$link));
         connections.set(key, sources);
         return null;
       }

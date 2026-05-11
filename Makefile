@@ -317,6 +317,8 @@ generate-schemas:
 	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format effect-schema "$(CURDIR)/$(SCHEMA_DST)/v19_09/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/gxformat2.effect.ts"
 	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format typescript "$(CURDIR)/$(SCHEMA_DST)/native_v0_1/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/native.ts"
 	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format effect-schema "$(CURDIR)/$(SCHEMA_DST)/native_v0_1/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/native.effect.ts"
+	@echo "Prettier-formatting generated files..."
+	pnpm --filter @galaxy-tool-util/schema exec prettier --write --log-level=warn 'src/workflow/raw/*.ts'
 	@echo "Generated workflow schemas in $(WF_SCHEMA_DST)/."
 
 # Verify golden fixtures match checksums (no GALAXY_ROOT needed, works in CI)

@@ -53,17 +53,6 @@ export const DocumentedSchema = Schema.Struct({
 });
 export type Documented = typeof DocumentedSchema.Type;
 
-/**
- * Define an enumerated type.
- */
-export const EnumSchemaSchema = Schema.Struct({
-  /** Defines the set of valid symbols. */
-  symbols: Schema.Array(Schema.String),
-  /** Must be `enum` */
-  type: Schema.Literal("enum"),
-});
-export type EnumSchema = typeof EnumSchemaSchema.Type;
-
 export const RecordSchemaSchema = Schema.Struct({
   /** Defines the fields of the record. */
   fields: Schema.optional(
@@ -80,6 +69,17 @@ export const RecordSchemaSchema = Schema.Struct({
   type: Schema.Literal("record"),
 });
 export type RecordSchema = typeof RecordSchemaSchema.Type;
+
+/**
+ * Define an enumerated type.
+ */
+export const EnumSchemaSchema = Schema.Struct({
+  /** Defines the set of valid symbols. */
+  symbols: Schema.Array(Schema.String),
+  /** Must be `enum` */
+  type: Schema.Literal("enum"),
+});
+export type EnumSchema = typeof EnumSchemaSchema.Type;
 
 export const ArraySchemaSchema = Schema.Struct({
   /** Defines the type of the array elements. */
@@ -186,6 +186,76 @@ export const ReferencesToolSchema = Schema.Struct({
 export type ReferencesTool = typeof ReferencesToolSchema.Type;
 
 /**
+ * Describes one column of a sample-sheet collection input.
+Used in `column_definitions` on a `collection_type: sample_sheet[:<type>]`
+workflow input.
+ */
+export const SampleSheetColumnDefinitionSchema = Schema.Struct({
+  /** Column name. Must not contain special characters (matches `^[\w\-_ \?]*$`). */
+  name: Schema.String,
+  /** Optional human-readable column description. */
+  description: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Value type for this column. One of `string`, `int`, `float`, `boolean`, or `element_identifier`. Mirrors Galaxy's runtime `SampleSheetColumnType`. */
+  type: Schema.Literal("string", "int", "float", "boolean", "element_identifier"),
+  /** If true, rows may omit a value for this column. */
+  optional: Schema.Boolean,
+  /** Default value used when a row omits this column. Type must be compatible with `type` - validated by the pydantic post-validator. */
+  default_value: Schema.optional(
+    Schema.Union(Schema.Null, Schema.String, Schema.Number, Schema.Boolean),
+  ),
+  /** Galaxy-style parameter validators. Modelled as opaque records here - full validator schema lives in galaxy.tool_util_models. */
+  validators: Schema.optional(Schema.Union(Schema.Null, Schema.Array(Schema.Unknown))),
+  /** Closed set of permitted values for this column. Item type must be compatible with the column `type` (post-validated). */
+  restrictions: Schema.optional(
+    Schema.Union(
+      Schema.Null,
+      Schema.Array(Schema.Union(Schema.String, Schema.Number, Schema.Number, Schema.Boolean)),
+    ),
+  ),
+  /** Open suggestion list for this column. */
+  suggestions: Schema.optional(
+    Schema.Union(
+      Schema.Null,
+      Schema.Array(Schema.Union(Schema.String, Schema.Number, Schema.Number, Schema.Boolean)),
+    ),
+  ),
+});
+export type SampleSheetColumnDefinition = typeof SampleSheetColumnDefinitionSchema.Type;
+
+/**
+ * Describes one field of a `record` collection input.
+Used in `fields` on a `collection_type` containing `record` (e.g.
+`record`, `list:record`, `sample_sheet:record`). Mirrors a subset of
+the CWL `InputRecordSchema` shape that Galaxy persists on
+`DatasetCollection.fields`.
+ */
+export const RecordFieldDefinitionSchema = Schema.Struct({
+  /** Field name. Must equal the corresponding element identifier in the materialized record collection. */
+  name: Schema.String,
+  /** Field value type. A subset of the CWL primitive types: `File`, `null`, `boolean`, `int`, `float`, `string`. May be a list to express a union (e.g. `["File", "null"]` for an optional file). */
+  type: Schema.Union(
+    Schema.Literal("File", "null", "boolean", "int", "float", "string"),
+    Schema.Array(Schema.Literal("File", "null", "boolean", "int", "float", "string")),
+  ),
+  /** Optional Galaxy datatype hint for `File`-typed fields. */
+  format: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type RecordFieldDefinition = typeof RecordFieldDefinitionSchema.Type;
+
+/**
+ * A `{value, label}` option used in `restrictions` or `suggestions` on a
+text workflow parameter. Plain strings are also accepted in those
+arrays as shorthand for `{value: <str>, label: <str>}`.
+ */
+export const WorkflowTextOptionSchema = Schema.Struct({
+  /** Machine value submitted to the connected tool input. */
+  value: Schema.String,
+  /** Human label shown in Galaxy. Defaults to `value` when omitted. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type WorkflowTextOption = typeof WorkflowTextOptionSchema.Type;
+
+/**
  * Describes an input parameter on a step. This is metadata about the input,
 not the connection wiring (which is in ``input_connections``).
  */
@@ -252,8 +322,8 @@ Common action types: ``HideDatasetAction``, ``RenameDatasetAction``,
 export const NativePostJobActionSchema = Schema.Struct({
   /** The action type identifier (e.g. ``HideDatasetAction``). */
   action_type: Schema.String,
-  /** The step output this action applies to. */
-  output_name: Schema.String,
+  /** The step output this action applies to.  Optional: action types that operate on the step as a whole (e.g. ``ValidateOutputsAction``) omit this field. */
+  output_name: Schema.optional(Schema.Union(Schema.String, Schema.Null)),
   /** Action-specific arguments. For ``RenameDatasetAction``: ``{"newname": "..."}``; for ``ChangeDatatypeAction``: ``{"newtype": "tabular"}``; for ``TagDatasetAction``: ``{"tags": "name:tag"}``. Empty o... */
   action_arguments: Schema.optional(
     Schema.Union(Schema.Record({ key: Schema.String, value: Schema.Unknown }), Schema.Null),
@@ -382,6 +452,29 @@ export const NativeReportSchema = Schema.Struct({
 export type NativeReport = typeof NativeReportSchema.Type;
 
 /**
+ * Provenance tracking for workflows imported from external sources.
+Contains either a direct URL or TRS (Tool Registry Service) metadata,
+depending on how the workflow was imported.
+
+For URL imports, only ``url`` is set. For TRS imports (Dockstore,
+WorkflowHub), ``trs_tool_id``, ``trs_version_id``, and ``trs_url``
+are set, with ``trs_server`` optionally identifying the server.
+ */
+export const NativeSourceMetadataSchema = Schema.Struct({
+  /** URL from which the workflow was directly imported. */
+  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Tool identifier in the Tool Registry Service (e.g. ``"#workflow/github.com/user/repo/workflow"`` or ``"109"``). */
+  trs_tool_id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Version identifier in the TRS (e.g. ``"master"``, ``"5"``). */
+  trs_version_id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** TRS server name (e.g. ``"dockstore"``, ``"workflowhub"``). Optional even for TRS imports. */
+  trs_server: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Complete TRS API endpoint URL for this workflow version. */
+  trs_url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type NativeSourceMetadata = typeof NativeSourceMetadataSchema.Type;
+
+/**
  * Base fields shared by all creator types, corresponding to schema.org
 Thing properties common to both Person and Organization.
  */
@@ -408,6 +501,17 @@ export const BaseNativeCreatorSchema = Schema.Struct({
 export type BaseNativeCreator = typeof BaseNativeCreatorSchema.Type;
 
 /**
+ * An organization that created or contributed to the workflow.
+Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
+ */
+export const NativeCreatorOrganizationSchema = Schema.Struct({
+  ...BaseNativeCreatorSchema.fields,
+  /** Creator type discriminator (``Organization``). */
+  class: Schema.Literal("Organization"),
+});
+export type NativeCreatorOrganization = typeof NativeCreatorOrganizationSchema.Type;
+
+/**
  * A person who created or contributed to the workflow.
 Corresponds to a `schema.org Person <https://schema.org/Person>`_.
  */
@@ -427,40 +531,6 @@ export const NativeCreatorPersonSchema = Schema.Struct({
   jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type NativeCreatorPerson = typeof NativeCreatorPersonSchema.Type;
-
-/**
- * Provenance tracking for workflows imported from external sources.
-Contains either a direct URL or TRS (Tool Registry Service) metadata,
-depending on how the workflow was imported.
-
-For URL imports, only ``url`` is set. For TRS imports (Dockstore,
-WorkflowHub), ``trs_tool_id``, ``trs_version_id``, and ``trs_url``
-are set, with ``trs_server`` optionally identifying the server.
- */
-export const NativeSourceMetadataSchema = Schema.Struct({
-  /** URL from which the workflow was directly imported. */
-  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Tool identifier in the Tool Registry Service (e.g. ``"#workflow/github.com/user/repo/workflow"`` or ``"109"``). */
-  trs_tool_id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Version identifier in the TRS (e.g. ``"master"``, ``"5"``). */
-  trs_version_id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** TRS server name (e.g. ``"dockstore"``, ``"workflowhub"``). Optional even for TRS imports. */
-  trs_server: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Complete TRS API endpoint URL for this workflow version. */
-  trs_url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type NativeSourceMetadata = typeof NativeSourceMetadataSchema.Type;
-
-/**
- * An organization that created or contributed to the workflow.
-Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
- */
-export const NativeCreatorOrganizationSchema = Schema.Struct({
-  ...BaseNativeCreatorSchema.fields,
-  /** Creator type discriminator (``Organization``). */
-  class: Schema.Literal("Organization"),
-});
-export type NativeCreatorOrganization = typeof NativeCreatorOrganizationSchema.Type;
 
 /**
  * A Galaxy native workflow document (.ga format). This is the canonical
