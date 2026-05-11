@@ -104,6 +104,9 @@ export const NormalizedFormat2StepSchema = Schema.Struct({
   run: Schema.optional(Schema.NullOr(Schema.Union(NormalizedFormat2WorkflowSchema, Schema.String))),
   in: Schema.Array(NormalizedFormat2StepInputSchema),
   out: Schema.Array(NormalizedFormat2StepOutputSchema),
+  post_job_actions: Schema.optional(
+    Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  ),
   state: Schema.optional(
     Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
   ),
@@ -298,6 +301,7 @@ function _normalizeStep(
     run,
     in: stepIn,
     out: stepOut,
+    post_job_actions: raw.post_job_actions as Record<string, unknown> | null | undefined,
     state,
     tool_state: _parseToolState(raw.tool_state),
     when: raw.when as string | undefined,

@@ -360,7 +360,7 @@ function _buildToolStep(
   }
 
   const inputConnections = _buildInputConnections(connect, ctx);
-  const postJobActions = _buildPostJobActions(step.out);
+  const postJobActions = _buildPostJobActions(step.out, step.post_job_actions);
   const connectedPaths = new Set(Object.keys(inputConnections));
 
   const isUserDefinedTool = toolRepresentation != null;
@@ -414,7 +414,7 @@ function _buildSubworkflowStep(
   const connect = _extractConnections(step);
   const isSubworkflow = subworkflow != null;
   const inputConnections = _buildInputConnections(connect, ctx, isSubworkflow, childCtx);
-  const postJobActions = _buildPostJobActions(step.out);
+  const postJobActions = _buildPostJobActions(step.out, step.post_job_actions);
   const connectedPaths = new Set(Object.keys(inputConnections));
 
   return {
@@ -484,7 +484,7 @@ function _buildPickValueStep(
     toolState.num_inputs = Math.max(2, numInputs);
   }
 
-  const postJobActions = _buildPostJobActions([...step.out] as NormalizedFormat2StepOutput[]);
+  const postJobActions = _buildPostJobActions([...step.out] as NormalizedFormat2StepOutput[], step.post_job_actions);
 
   return {
     id: orderIndex,
@@ -573,14 +573,9 @@ function _buildInputConnections(
 
 function _buildPostJobActions(
   outputs: readonly NormalizedFormat2StepOutput[],
-): Record<
-  string,
-  { action_type: string; output_name: string; action_arguments?: Record<string, unknown> }
-> {
-  const postJobActions: Record<
-    string,
-    { action_type: string; output_name: string; action_arguments?: Record<string, unknown> }
-  > = {};
+  explicit?: Record<string, unknown> | null,
+): Record<string, Record<string, unknown>> {
+  const postJobActions: Record<string, Record<string, unknown>> = {};
 
   for (const output of outputs) {
     const outputName = output.id;
@@ -600,6 +595,15 @@ function _buildPostJobActions(
           action_arguments: actionDef.arguments(actionValue),
         };
       }
+    }
+  }
+
+  // Explicit step.post_job_actions wins over out:-shorthand-derived entries on
+  // key collision; entries without a matching shorthand (e.g. ValidateOutputsAction)
+  // are merged in alongside.
+  if (explicit) {
+    for (const [key, value] of Object.entries(explicit)) {
+      postJobActions[key] = value as Record<string, unknown>;
     }
   }
 
