@@ -574,8 +574,11 @@ function _buildInputConnections(
 function _buildPostJobActions(
   outputs: readonly NormalizedFormat2StepOutput[],
   explicit?: Record<string, unknown> | null,
-): Record<string, Record<string, unknown>> {
-  const postJobActions: Record<string, Record<string, unknown>> = {};
+): NormalizedNativeStep["post_job_actions"] {
+  const postJobActions: Record<
+    string,
+    { action_type: string; output_name?: string | null; action_arguments?: Record<string, unknown> }
+  > = {};
 
   for (const output of outputs) {
     const outputName = output.id;
@@ -603,11 +606,11 @@ function _buildPostJobActions(
   // are merged in alongside.
   if (explicit) {
     for (const [key, value] of Object.entries(explicit)) {
-      postJobActions[key] = value as Record<string, unknown>;
+      postJobActions[key] = value as { action_type: string; output_name?: string | null; action_arguments?: Record<string, unknown> };
     }
   }
 
-  return postJobActions;
+  return postJobActions as NormalizedNativeStep["post_job_actions"];
 }
 
 function _isTruthy(val: unknown): boolean {
