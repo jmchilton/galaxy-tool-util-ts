@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/gxwf-client",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Typed HTTP client for the gxwf-web Galaxy workflow server",
   "type": "module",
   "exports": {
