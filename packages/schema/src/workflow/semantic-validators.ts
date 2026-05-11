@@ -18,8 +18,10 @@ const COLLECTION_TYPE_VALUES = new Set(["collection", "data_collection", "data_c
 
 function _columnDefaultMatchesType(columnType: unknown, value: unknown): boolean {
   if (value == null) return true;
-  if (columnType === "string" || columnType === "element_identifier") return typeof value === "string";
-  if (columnType === "int") return typeof value === "number" && Number.isInteger(value) && typeof value !== "boolean";
+  if (columnType === "string" || columnType === "element_identifier")
+    return typeof value === "string";
+  if (columnType === "int")
+    return typeof value === "number" && Number.isInteger(value) && typeof value !== "boolean";
   if (columnType === "float") return typeof value === "number" && typeof value !== "boolean";
   if (columnType === "boolean") return typeof value === "boolean";
   return true;
@@ -134,7 +136,11 @@ export function validateWorkflowSemantics(workflow: unknown): void {
   for (const step of iterSteps) {
     if (!step || typeof step !== "object") continue;
     const run = (step as Record<string, unknown>).run;
-    if (run && typeof run === "object" && (run as Record<string, unknown>).class === "GalaxyWorkflow") {
+    if (
+      run &&
+      typeof run === "object" &&
+      (run as Record<string, unknown>).class === "GalaxyWorkflow"
+    ) {
       validateWorkflowSemantics(run);
     }
   }

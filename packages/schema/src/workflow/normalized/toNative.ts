@@ -484,7 +484,10 @@ function _buildPickValueStep(
     toolState.num_inputs = Math.max(2, numInputs);
   }
 
-  const postJobActions = _buildPostJobActions([...step.out] as NormalizedFormat2StepOutput[], step.post_job_actions);
+  const postJobActions = _buildPostJobActions(
+    [...step.out] as NormalizedFormat2StepOutput[],
+    step.post_job_actions,
+  );
 
   return {
     id: orderIndex,
@@ -606,7 +609,11 @@ function _buildPostJobActions(
   // are merged in alongside.
   if (explicit) {
     for (const [key, value] of Object.entries(explicit)) {
-      postJobActions[key] = value as { action_type: string; output_name?: string | null; action_arguments?: Record<string, unknown> };
+      postJobActions[key] = value as {
+        action_type: string;
+        output_name?: string | null;
+        action_arguments?: Record<string, unknown>;
+      };
     }
   }
 

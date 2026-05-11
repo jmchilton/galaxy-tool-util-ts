@@ -25,7 +25,14 @@ subworkflow: An embedded or referenced sub-workflow.
 pause: A manual pause point that halts execution until user intervention.
 pick_value: Select the first non-null value from multiple inputs.
  */
-export type NativeStepType = "data_input" | "data_collection_input" | "parameter_input" | "tool" | "subworkflow" | "pause" | "pick_value";
+export type NativeStepType =
+  | "data_input"
+  | "data_collection_input"
+  | "parameter_input"
+  | "tool"
+  | "subworkflow"
+  | "pause"
+  | "pick_value";
 
 export interface Documented {
   /** A documentation string for this object, or an array of strings which should be concatenated. */
@@ -39,7 +46,13 @@ export interface RecordField extends Documented {
   /** The name of the field */
   name: string;
   /** The field type */
-  type: PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
+  type:
+    | PrimitiveType
+    | RecordSchema
+    | EnumSchema
+    | ArraySchema
+    | string
+    | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
 }
 
 export interface RecordSchema {
@@ -61,7 +74,13 @@ export interface EnumSchema {
 
 export interface ArraySchema {
   /** Defines the type of the array elements. */
-  items: PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
+  items:
+    | PrimitiveType
+    | RecordSchema
+    | EnumSchema
+    | ArraySchema
+    | string
+    | Array<PrimitiveType | RecordSchema | EnumSchema | ArraySchema | string>;
   /** Must be `array` */
   type: "array";
 }
@@ -134,7 +153,14 @@ export interface RecordFieldDefinition {
   /** Field name. Must equal the corresponding element identifier in the materialized record collection. */
   name: string;
   /** Field value type. A subset of the CWL primitive types: `File`, `null`, `boolean`, `int`, `float`, `string`. May be a list to express a union (e.g. `["File", "null"]` for an optional file). */
-  type: "File" | "null" | "boolean" | "int" | "float" | "string" | Array<"File" | "null" | "boolean" | "int" | "float" | "string">;
+  type:
+    | "File"
+    | "null"
+    | "boolean"
+    | "int"
+    | "float"
+    | "string"
+    | Array<"File" | "null" | "boolean" | "int" | "float" | "string">;
   /** Optional Galaxy datatype hint for `File`-typed fields. */
   format?: null | string;
 }
@@ -511,34 +537,47 @@ export interface NativeGalaxyWorkflow extends HasUUID {
   /** Provenance tracking metadata for workflows imported from TRS or URLs. */
   source_metadata?: null | NativeSourceMetadata;
   /** Visual annotations in the workflow editor. */
-  comments?: Array<NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment> | null;
+  comments?: Array<
+    NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment
+  > | null;
   /** Step dictionary keyed by string integers (``"0"``, ``"1"``, ...). Values are NativeStep objects. Steps are processed in sorted numeric order during import. */
   steps?: Record<string, NativeStep> | null;
   /** Map of locally-defined subworkflow dicts, used during format conversion. */
   subworkflows?: Record<string, NativeGalaxyWorkflow> | null;
 }
 
-export function isNativeCreatorPerson(v: NativeCreatorPerson | NativeCreatorOrganization): v is NativeCreatorPerson {
+export function isNativeCreatorPerson(
+  v: NativeCreatorPerson | NativeCreatorOrganization,
+): v is NativeCreatorPerson {
   return v?.class === "Person";
 }
 
-export function isNativeCreatorOrganization(v: NativeCreatorPerson | NativeCreatorOrganization): v is NativeCreatorOrganization {
+export function isNativeCreatorOrganization(
+  v: NativeCreatorPerson | NativeCreatorOrganization,
+): v is NativeCreatorOrganization {
   return v?.class === "Organization";
 }
 
-export function isNativeTextComment(v: NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment): v is NativeTextComment {
+export function isNativeTextComment(
+  v: NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment,
+): v is NativeTextComment {
   return v?.type === "text";
 }
 
-export function isNativeMarkdownComment(v: NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment): v is NativeMarkdownComment {
+export function isNativeMarkdownComment(
+  v: NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment,
+): v is NativeMarkdownComment {
   return v?.type === "markdown";
 }
 
-export function isNativeFrameComment(v: NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment): v is NativeFrameComment {
+export function isNativeFrameComment(
+  v: NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment,
+): v is NativeFrameComment {
   return v?.type === "frame";
 }
 
-export function isNativeFreehandComment(v: NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment): v is NativeFreehandComment {
+export function isNativeFreehandComment(
+  v: NativeTextComment | NativeMarkdownComment | NativeFrameComment | NativeFreehandComment,
+): v is NativeFreehandComment {
   return v?.type === "freehand";
 }
-
