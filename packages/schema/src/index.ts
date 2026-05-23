@@ -221,6 +221,21 @@ export {
   /** Detect whether a workflow dict is native (.ga) or format2 (.gxwf.yml). */
   detectFormat,
   type WorkflowFormat,
+  /** Draft workflow sentinel pattern (mirrors gxformat2/draft.py). */
+  TODO_SENTINEL_PATTERN,
+  PLAN_FIELDS,
+  DRAFT_CLASS,
+  isTodoSentinel,
+  /** True iff doc carries `class: GalaxyWorkflowDraft`. */
+  isDraftWorkflow,
+  /** Walk a draft workflow once; collect every TODO sentinel + `_plan_*` field. */
+  detectDraft,
+  type PlanField,
+  type StepPath,
+  type TodoLocation,
+  type TodoHit,
+  type PlanHit,
+  type DraftSurvey,
   /** Format-aware workflow serializer (JSON/YAML, configurable indent and newline). */
   serializeWorkflow,
   type SerializeWorkflowOptions,

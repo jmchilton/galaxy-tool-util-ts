@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-user-tool-source-schema verify-user-tool-source-schema sync-workflow-fixtures sync-workflow-expectations sync-cytoscape-template sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-cytoscape-template check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-connection-type-cases check-sync-connection-type-cases sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all push-toolshed-search-fixtures
+.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-user-tool-source-schema verify-user-tool-source-schema sync-workflow-fixtures sync-workflow-expectations sync-cytoscape-template sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-cytoscape-template check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-connection-type-cases check-sync-connection-type-cases sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all check-sync-draft-sentinel push-toolshed-search-fixtures
 
 all: check test
 
@@ -20,7 +20,7 @@ test:
 test-e2e:
 	pnpm --filter @galaxy-tool-util/gxwf-e2e test
 
-check: lint format typecheck verify-test-format-schema verify-user-tool-source-schema check-sync-parsed-tools
+check: lint format typecheck verify-test-format-schema verify-user-tool-source-schema check-sync-parsed-tools check-sync-draft-sentinel
 
 fix: format-fix
 	pnpm -r lint -- --fix
@@ -250,6 +250,12 @@ check-sync-parsed-tools:
 check-sync:
 	node scripts/sync-fixtures.mjs --check
 
+# Verify the TS draft-sentinel constants in packages/schema/src/workflow/draft-checks.ts
+# match the upstream snapshot in schema-sources/v19_09/draft_constants.json.
+# No-op (with a SKIP message) when the snapshot is not present.
+check-sync-draft-sentinel:
+	@node scripts/check-draft-sentinel.mjs
+
 # Sync Galaxy's terms.yml for the glossary.
 #   GALAXY_ROOT=~/projects/repositories/galaxy make sync-glossary
 GLOSSARY_SRC = $(GALAXY_ROOT)/lib/galaxy/schema/terms.yml
@@ -297,7 +303,14 @@ endif
 	mkdir -p $(SCHEMA_DST)/v19_09 $(SCHEMA_DST)/native_v0_1 $(SCHEMA_DST)/common
 	cp $(SCHEMA_SRC_ROOT)/v19_09/workflow.yml $(SCHEMA_DST)/v19_09/
 	cp $(SCHEMA_SRC_ROOT)/v19_09/Process.yml $(SCHEMA_DST)/v19_09/
-	@if [ -f "$(SCHEMA_SRC_ROOT)/v19_09/draft_workflow.yml" ]; then cp $(SCHEMA_SRC_ROOT)/v19_09/draft_workflow.yml $(SCHEMA_DST)/v19_09/; fi
+	@if [ -f "$(SCHEMA_SRC_ROOT)/v19_09/draft_workflow.yml" ]; then \
+		cp $(SCHEMA_SRC_ROOT)/v19_09/draft_workflow.yml $(SCHEMA_DST)/v19_09/ && \
+		if [ -f "$(GXFORMAT2_ROOT)/gxformat2/draft.py" ]; then \
+			node scripts/extract-draft-constants.mjs "$(GXFORMAT2_ROOT)/gxformat2/draft.py" "$(SCHEMA_DST)/v19_09/draft_constants.json"; \
+		else \
+			echo "WARN: $(GXFORMAT2_ROOT)/gxformat2/draft.py not found; skipping sentinel constants snapshot"; \
+		fi; \
+	fi
 	@if [ -d "$(SCHEMA_SRC_ROOT)/v19_09/examples" ]; then cp -r $(SCHEMA_SRC_ROOT)/v19_09/examples $(SCHEMA_DST)/v19_09/; fi
 	cp $(SCHEMA_SRC_ROOT)/native_v0_1/workflow.yml $(SCHEMA_DST)/native_v0_1/
 	cp $(SCHEMA_SRC_ROOT)/common/common.yml $(SCHEMA_DST)/common/
