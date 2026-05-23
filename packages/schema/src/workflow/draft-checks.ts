@@ -541,3 +541,204 @@ function formatTodoLocation(loc: TodoLocation): string {
       return `outputs.${loc.output_label} (port ${loc.port})`;
   }
 }
+
+// -----------------------------------------------------------------------------
+// nextDraftStep
+// -----------------------------------------------------------------------------
+
+export type NextStepResult = { draft: false } | { draft: true; step: StepPath; work: string[] };
+
+/**
+ * Pick the next step a downstream agent should work on. Pure function;
+ * idempotent — same input → same output, byte-for-byte.
+ *
+ * Walks steps in topological order (steps with no draft-step source deps
+ * first), tie-breaking by alphabetical step label. The first step that
+ * carries any TODO sentinel or `_plan_*` field is returned with a
+ * prompt-shaped `work[]` array. Subworkflows (draft inner `run:`) are
+ * descended only after their outer step is itself fully concrete.
+ *
+ * Returns `{ draft: false }` when the workflow has no remaining work
+ * (this includes non-draft documents — there is nothing to do).
+ */
+export function nextDraftStep(workflow: unknown): NextStepResult {
+  if (!isRecord(workflow) || workflow.class !== DRAFT_CLASS) {
+    return { draft: false };
+  }
+  return nextDraftStepIn(workflow, []);
+}
+
+function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): NextStepResult {
+  const ordered = topoOrderedSteps(workflow.steps);
+  const outputRefs = collectOutputRefs(workflow.outputs);
+
+  for (const [label, step] of ordered) {
+    if (!isRecord(step)) continue;
+    const stepPath = [...prefix, label];
+
+    const work = stepWorkItems(step, label, outputRefs);
+    if (work.length > 0) {
+      return { draft: true, step: stepPath, work };
+    }
+
+    // Step is fully concrete + carries no _plan_*. If it's a draft
+    // subworkflow with work inside, drill in.
+    if (isRecord(step.run) && step.run.class === DRAFT_CLASS) {
+      const inner = nextDraftStepIn(step.run, stepPath);
+      if (inner.draft) return inner;
+    }
+  }
+
+  return { draft: false };
+}
+
+/**
+ * Topological order of steps in this workflow. Tie-break by label
+ * alphabetically. Steps that depend on a missing or non-step source
+ * (e.g. workflow input refs) are level 0.
+ *
+ * Returns `[label, step]` tuples preserving the iteration shape that
+ * iterateSteps would have yielded.
+ */
+function topoOrderedSteps(steps: unknown): Array<[string, unknown]> {
+  const entries: Array<[string, unknown]> = [];
+  const stepLabels = new Set<string>();
+  for (const entry of iterateSteps(steps)) {
+    entries.push(entry);
+    stepLabels.add(entry[0]);
+  }
+
+  // step label -> in-degree count (only counting deps on other declared steps)
+  const inDegree = new Map<string, number>();
+  const deps = new Map<string, Set<string>>();
+  for (const [label, step] of entries) {
+    if (!isRecord(step)) {
+      inDegree.set(label, 0);
+      deps.set(label, new Set());
+      continue;
+    }
+    const seen = new Set<string>();
+    for (const [, inValue] of iterateStepInputEntries(step.in)) {
+      for (const ref of extractSourceRefs(inValue)) {
+        const slash = ref.indexOf("/");
+        if (slash < 0) continue;
+        const depLabel = ref.slice(0, slash);
+        if (depLabel !== label && stepLabels.has(depLabel)) {
+          seen.add(depLabel);
+        }
+      }
+    }
+    inDegree.set(label, seen.size);
+    deps.set(label, seen);
+  }
+
+  // Stable: process levels by alphabetical label order.
+  const ordered: Array<[string, unknown]> = [];
+  const byLabel = new Map(entries);
+  const remaining = new Set(entries.map(([l]) => l));
+  while (remaining.size > 0) {
+    const ready = [...remaining].filter((l) => (inDegree.get(l) ?? 0) === 0).sort();
+    if (ready.length === 0) {
+      // Cycle (or unresolvable refs). Drain the rest in alphabetical order
+      // so the function stays total — validateDraft is responsible for
+      // surfacing cycle/dangling-edge errors separately.
+      for (const label of [...remaining].sort()) {
+        ordered.push([label, byLabel.get(label)]);
+      }
+      break;
+    }
+    for (const label of ready) {
+      ordered.push([label, byLabel.get(label)]);
+      remaining.delete(label);
+      for (const [other, otherDeps] of deps) {
+        if (otherDeps.has(label)) {
+          otherDeps.delete(label);
+          inDegree.set(other, (inDegree.get(other) ?? 0) - 1);
+        }
+      }
+    }
+  }
+  return ordered;
+}
+
+interface OutputRefIndex {
+  /** stepLabel -> port -> set of workflow output labels referencing it. */
+  byStepPort: Map<string, Map<string, Set<string>>>;
+}
+
+function collectOutputRefs(outputs: unknown): OutputRefIndex {
+  const byStepPort = new Map<string, Map<string, Set<string>>>();
+  for (const [label, output] of iterateOutputs(outputs)) {
+    const ref = readOutputSource(output);
+    if (ref == null) continue;
+    const [stepLabel, port] = splitSourceRef(ref);
+    if (port == null) continue;
+    let perPort = byStepPort.get(stepLabel);
+    if (perPort == null) {
+      perPort = new Map();
+      byStepPort.set(stepLabel, perPort);
+    }
+    let set = perPort.get(port);
+    if (set == null) {
+      set = new Set();
+      perPort.set(port, set);
+    }
+    set.add(label);
+  }
+  return { byStepPort };
+}
+
+function stepWorkItems(
+  step: Record<string, unknown>,
+  stepLabel: string,
+  outputRefs: OutputRefIndex,
+): string[] {
+  const work: string[] = [];
+
+  if (isTodoSentinel(step.tool_id)) {
+    work.push("TODO[tool_id]: pick a Galaxy Tool Shed wrapper for this step");
+  }
+  if (isTodoSentinel(step.tool_version)) {
+    work.push("TODO[tool_version]: pick the wrapper version");
+  }
+
+  if (isRecord(step.in)) {
+    for (const key of Object.keys(step.in)) {
+      if (!isTodoSentinel(key)) continue;
+      const hint = sentinelHint(key);
+      const hintFragment = hint != null ? ` (semantic hint: '${hint}')` : "";
+      work.push(`TODO[in.${key}]: assign the real wrapper input port name${hintFragment}`);
+    }
+  }
+
+  const stepOutputRefs = outputRefs.byStepPort.get(stepLabel);
+  for (const id of iterateStepOutIds(step.out)) {
+    if (!isTodoSentinel(id)) continue;
+    const hint = sentinelHint(id);
+    const refs = stepOutputRefs?.get(id);
+    const parts: string[] = [];
+    if (hint != null) parts.push(`semantic hint: '${hint}'`);
+    if (refs != null && refs.size > 0) {
+      const labels = [...refs].sort();
+      const refStr = labels.map((l) => `'${l}'`).join(", ");
+      const word = labels.length === 1 ? "output" : "outputs";
+      parts.push(`referenced by workflow ${word} ${refStr}`);
+    }
+    const hintFragment = parts.length > 0 ? ` (${parts.join("; ")})` : "";
+    work.push(`TODO[out.${id}]: assign the real wrapper output port name${hintFragment}`);
+  }
+
+  for (const field of PLAN_FIELDS) {
+    const value = step[field];
+    if (typeof value === "string" && value.length > 0) {
+      work.push(`${field}: ${value.trim()}`);
+    }
+  }
+
+  return work;
+}
+
+function sentinelHint(sentinel: string): string | null {
+  if (sentinel === "TODO") return null;
+  return sentinel.slice("TODO_".length);
+}

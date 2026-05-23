@@ -171,6 +171,7 @@ export {
   isDraftWorkflow,
   detectDraft,
   validateDraft,
+  nextDraftStep,
   type PlanField,
   type StepPath,
   type TodoLocation,
@@ -179,6 +180,7 @@ export {
   type DraftSurvey,
   type DraftValidationDiagnostic,
   type DraftValidationResult,
+  type NextStepResult,
 } from "./draft-checks.js";
 
 export {

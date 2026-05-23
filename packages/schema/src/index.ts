@@ -232,6 +232,9 @@ export {
   detectDraft,
   /** Validate a draft workflow: structural decode + topology + sentinel-form + warnings. Does not throw. */
   validateDraft,
+  /** Topologically-ordered "what to work on next" for a draft workflow; prompt-shaped work[]. */
+  nextDraftStep,
+  type NextStepResult,
   type PlanField,
   type StepPath,
   type TodoLocation,

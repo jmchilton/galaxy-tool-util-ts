@@ -10,6 +10,7 @@ import {
   detectDraft,
   isDraftWorkflow,
   isTodoSentinel,
+  nextDraftStep,
   validateDraft,
 } from "../src/workflow/draft-checks.js";
 
@@ -336,5 +337,184 @@ describe("validateDraft", () => {
     );
     expect(err).toBeDefined();
     expect(err?.path).toEqual(["outer"]);
+  });
+});
+
+describe("nextDraftStep", () => {
+  it("returns { draft: false } on non-draft documents", () => {
+    expect(nextDraftStep({ class: "GalaxyWorkflow", steps: {} })).toEqual({ draft: false });
+    expect(nextDraftStep(null)).toEqual({ draft: false });
+  });
+
+  it("returns { draft: false } on a draft with no remaining work", () => {
+    const result = nextDraftStep({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { final: { outputSource: "a/out1" } },
+      steps: {
+        a: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+      },
+    });
+    expect(result).toEqual({ draft: false });
+  });
+
+  it("returns prompt-shaped work[] in the locked-decision order on synthetic-draft-tool-step", () => {
+    const result = nextDraftStep(loadFixture("synthetic-draft-tool-step.gxwf.yml"));
+    expect(result.draft).toBe(true);
+    if (!result.draft) throw new Error("unreachable");
+    expect(result.step).toEqual(["fastp"]);
+    expect(result.work).toEqual([
+      "TODO[tool_id]: pick a Galaxy Tool Shed wrapper for this step",
+      "TODO[tool_version]: pick the wrapper version",
+      "TODO[in.TODO_input]: assign the real wrapper input port name (semantic hint: 'input')",
+      "TODO[out.TODO_trimmed_paired]: assign the real wrapper output port name (semantic hint: 'trimmed_paired'; referenced by workflow output 'trimmed')",
+      "TODO[out.TODO_html_report]: assign the real wrapper output port name (semantic hint: 'html_report')",
+      expect.stringMatching(/^_plan_state: Adapter trimming on/),
+      expect.stringMatching(/^_plan_context: Upstream process used fastp/),
+      expect.stringMatching(/^_plan_in: TODO_input is the paired reads/),
+      expect.stringMatching(/^_plan_out: TODO_trimmed_paired feeds/),
+    ]);
+  });
+
+  it("walks steps in topological order — concrete dependencies first, drafts last", () => {
+    // Chain: a (concrete) -> b (concrete) -> c (draft). c is the only step
+    // needing work; the function must return c even though it's last.
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { final: { outputSource: "c/out1" } },
+      steps: {
+        c: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { input1: "b/out1" },
+          out: [{ id: "out1" }],
+        },
+        b: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "a/out1" },
+          out: [{ id: "out1" }],
+        },
+        a: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const result = nextDraftStep(wf);
+    expect(result).toMatchObject({ draft: true, step: ["c"] });
+  });
+
+  it("tie-breaks by step label alphabetically at the same topological level", () => {
+    // Two draft steps both at level 0; alphabetical wins.
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        zulu: { tool_id: "TODO", tool_version: "TODO", in: { x: "reads" } },
+        alpha: { tool_id: "TODO", tool_version: "TODO", in: { x: "reads" } },
+      },
+    };
+    const result = nextDraftStep(wf);
+    expect(result).toMatchObject({ draft: true, step: ["alpha"] });
+  });
+
+  it("is idempotent across repeated runs", () => {
+    const wf = loadFixture("synthetic-draft-tool-step.gxwf.yml");
+    const a = JSON.stringify(nextDraftStep(wf));
+    const b = JSON.stringify(nextDraftStep(wf));
+    const c = JSON.stringify(nextDraftStep(wf));
+    expect(a).toBe(b);
+    expect(b).toBe(c);
+  });
+
+  it("descends into draft subworkflows only after the outer step is concrete", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        outer: {
+          type: "subworkflow",
+          in: { reads: "reads" },
+          out: [{ id: "result" }],
+          run: {
+            class: DRAFT_CLASS,
+            inputs: { reads: { type: "data" } },
+            outputs: {},
+            steps: {
+              inner: {
+                tool_id: "TODO",
+                tool_version: "TODO",
+                in: { x: "reads" },
+                out: [{ id: "result" }],
+              },
+            },
+          },
+        },
+      },
+    };
+    const result = nextDraftStep(wf);
+    expect(result).toMatchObject({ draft: true, step: ["outer", "inner"] });
+  });
+
+  it("returns the outer step first when both outer and inner need work", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        outer: {
+          type: "subworkflow",
+          _plan_context: "settle outer first",
+          in: { reads: "reads" },
+          out: [{ id: "result" }],
+          run: {
+            class: DRAFT_CLASS,
+            steps: { inner: { tool_id: "TODO", tool_version: "TODO" } },
+          },
+        },
+      },
+    };
+    const result = nextDraftStep(wf);
+    expect(result).toMatchObject({
+      draft: true,
+      step: ["outer"],
+      work: ["_plan_context: settle outer first"],
+    });
+  });
+
+  it("handles bare TODO with no semantic hint", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { TODO: "reads" },
+          out: [{ id: "TODO" }],
+        },
+      },
+    };
+    const result = nextDraftStep(wf);
+    expect(result.draft).toBe(true);
+    if (!result.draft) throw new Error("unreachable");
+    expect(result.work).toEqual([
+      "TODO[tool_id]: pick a Galaxy Tool Shed wrapper for this step",
+      "TODO[tool_version]: pick the wrapper version",
+      "TODO[in.TODO]: assign the real wrapper input port name",
+      "TODO[out.TODO]: assign the real wrapper output port name",
+    ]);
   });
 });
