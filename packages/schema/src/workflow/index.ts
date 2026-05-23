@@ -164,6 +164,26 @@ export {
 export { detectFormat, type WorkflowFormat } from "./detect-format.js";
 
 export {
+  TODO_SENTINEL_PATTERN,
+  PLAN_FIELDS,
+  DRAFT_CLASS,
+  isTodoSentinel,
+  isDraftWorkflow,
+  detectDraft,
+  validateDraft,
+  nextDraftStep,
+  type PlanField,
+  type StepPath,
+  type TodoLocation,
+  type TodoHit,
+  type PlanHit,
+  type DraftSurvey,
+  type DraftValidationDiagnostic,
+  type DraftValidationResult,
+  type NextStepResult,
+} from "./draft-checks.js";
+
+export {
   withClass,
   validateFormat2,
   validateFormat2Strict,
