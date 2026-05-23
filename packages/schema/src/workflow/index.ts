@@ -172,6 +172,7 @@ export {
   detectDraft,
   validateDraft,
   nextDraftStep,
+  extractConcreteSubset,
   type PlanField,
   type StepPath,
   type TodoLocation,
@@ -181,6 +182,11 @@ export {
   type DraftValidationDiagnostic,
   type DraftValidationResult,
   type NextStepResult,
+  type DropReason,
+  type DroppedStep,
+  type DroppedOutput,
+  type RewrittenStepInput,
+  type ExtractResult,
 } from "./draft-checks.js";
 
 export {

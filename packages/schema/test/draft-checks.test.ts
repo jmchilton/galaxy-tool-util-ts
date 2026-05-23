@@ -8,6 +8,7 @@ import {
   PLAN_FIELDS,
   TODO_SENTINEL_PATTERN,
   detectDraft,
+  extractConcreteSubset,
   isDraftWorkflow,
   isTodoSentinel,
   nextDraftStep,
@@ -667,5 +668,605 @@ describe("fix-ups (review feedback)", () => {
       expect(outputHit.location.output_label).toBe("result");
       expect(outputHit.location.port).toBe("TODO_port");
     }
+  });
+});
+
+describe("extractConcreteSubset", () => {
+  it("passes non-draft documents through unchanged with empty drop arrays", () => {
+    const wf = { class: "GalaxyWorkflow", steps: {} };
+    const r = extractConcreteSubset(wf);
+    expect(r.workflow).toBe(wf);
+    expect(r.dropped_steps).toEqual([]);
+    expect(r.dropped_outputs).toEqual([]);
+    expect(r.rewritten_step_inputs).toEqual([]);
+  });
+
+  it("drops a directly-drafty tool step and its dependent workflow output", () => {
+    const r = extractConcreteSubset(loadFixture("synthetic-draft-tool-step.gxwf.yml"));
+    expect(r.dropped_steps).toHaveLength(1);
+    expect(r.dropped_steps[0]?.path).toEqual(["fastp"]);
+    // fastp has BOTH TODO sentinels AND _plan_* fields; the locked
+    // ordering reports TODOs first.
+    expect(r.dropped_steps[0]?.reason.kind).toBe("step_has_todo");
+
+    // Workflow output `trimmed` referenced `fastp/TODO_trimmed_paired` — must drop.
+    expect(r.dropped_outputs.map((o) => o.label)).toEqual(["trimmed"]);
+
+    // Returned workflow still carries the draft class.
+    const wf = r.workflow as Record<string, unknown>;
+    expect(wf.class).toBe(DRAFT_CLASS);
+    // Surviving steps map has no entries (fastp was the only step).
+    expect(wf.steps).toEqual({});
+    // Workflow inputs preserved verbatim.
+    expect(wf.inputs).toEqual({
+      reads: { type: "collection", collection_type: "list:paired", format: "fastqsanger.gz" },
+    });
+  });
+
+  it("cascades through a chain — direct drop in round 0, cascade drops in rounds 1+", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { final: { outputSource: "c/out1" } },
+      steps: {
+        a: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+        b: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "a/out1" },
+          out: [{ id: "out1" }],
+        },
+        c: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "b/out1" },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["a"], ["b"], ["c"]]);
+    expect(r.dropped_steps[0]?.reason.kind).toBe("step_has_todo");
+    expect(r.dropped_steps[1]?.reason).toEqual({ kind: "cascade", depends_on: [["a"]] });
+    expect(r.dropped_steps[2]?.reason).toEqual({ kind: "cascade", depends_on: [["b"]] });
+    expect(r.dropped_outputs.map((o) => o.label)).toEqual(["final"]);
+  });
+
+  it("rewrites multi-source inputs to the surviving ref subset (string carrier)", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+        b: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+        c: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { joined: { source: ["a/out1", "b/out1"] } },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["a"]]);
+    expect(r.rewritten_step_inputs).toEqual([
+      {
+        path: ["c"],
+        in_key: "joined",
+        removed_refs: ["a/out1"],
+        surviving_refs: ["b/out1"],
+      },
+    ]);
+    const cIn = (
+      (r.workflow as Record<string, unknown>).steps as Record<string, Record<string, unknown>>
+    ).c?.in as Record<string, unknown>;
+    // 1 surviving ref collapses to string form on the source field.
+    expect(cIn.joined).toEqual({ source: "b/out1" });
+  });
+
+  it("rewrites multi-source inputs to the surviving ref subset (list carrier with 2 left)", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+        a: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+        b: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+        c: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { joined: { source: ["a/out1", "bad/out1", "b/out1"] } },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    const cIn = (
+      (r.workflow as Record<string, unknown>).steps as Record<string, Record<string, unknown>>
+    ).c?.in as Record<string, Record<string, unknown>>;
+    expect(cIn.joined?.source).toEqual(["a/out1", "b/out1"]);
+    expect(r.rewritten_step_inputs).toEqual([
+      {
+        path: ["c"],
+        in_key: "joined",
+        removed_refs: ["bad/out1"],
+        surviving_refs: ["a/out1", "b/out1"],
+      },
+    ]);
+  });
+
+  it("falls back to `default:` when single source dies — step survives, source key removed", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+        c: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { x: { source: "bad/out1", default: "fallback-value" } },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["bad"]]);
+    // c survives via the default.
+    const cStep = (
+      (r.workflow as Record<string, unknown>).steps as Record<string, Record<string, unknown>>
+    ).c;
+    expect(cStep).toBeDefined();
+    expect((cStep?.in as Record<string, unknown>)?.x).toEqual({ default: "fallback-value" });
+    expect(r.rewritten_step_inputs).toEqual([
+      {
+        path: ["c"],
+        in_key: "x",
+        removed_refs: ["bad/out1"],
+        surviving_refs: [],
+      },
+    ]);
+  });
+
+  it("cascades when single source dies and there is no `default:`", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+        c: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { x: { source: "bad/out1" } },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["bad"], ["c"]]);
+    expect(r.rewritten_step_inputs).toEqual([]);
+  });
+
+  it("drops a step carrying only `_plan_*` (no TODO sentinels) with step_has_plan_field reason", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        planner: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+          _plan_context: "drop me — still planning this step",
+          _plan_state: "not implemented yet",
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps).toEqual([
+      {
+        path: ["planner"],
+        reason: { kind: "step_has_plan_field", fields: ["_plan_state", "_plan_context"] },
+      },
+    ]);
+    // Strip itself lives in E (clean.ts stripPlanFields). The returned
+    // workflow's `steps` is empty here — there are no surviving steps to
+    // assert the no-strip invariant against.
+    expect((r.workflow as Record<string, unknown>).steps).toEqual({});
+  });
+
+  it("preserves workflow inputs verbatim even when no surviving step consumes them", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" }, orphan_extra: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect((r.workflow as Record<string, unknown>).inputs).toEqual({
+      reads: { type: "data" },
+      orphan_extra: { type: "data" },
+    });
+  });
+
+  it("recurses into draft subworkflows — inner shrinks, outer survives", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { result: { outputSource: "outer/result" } },
+      steps: {
+        outer: {
+          type: "subworkflow",
+          in: { reads: "reads" },
+          out: [{ id: "result" }],
+          run: {
+            class: DRAFT_CLASS,
+            inputs: { reads: { type: "data" } },
+            outputs: { result: { outputSource: "good/out1" } },
+            steps: {
+              good: {
+                tool_id: "cat1",
+                tool_version: "1.0.0",
+                in: { input1: "reads" },
+                out: [{ id: "out1" }],
+              },
+              bad: {
+                tool_id: "TODO",
+                tool_version: "TODO",
+                in: { input1: "reads" },
+                out: [{ id: "out1" }],
+              },
+            },
+          },
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    // Inner drop surfaces with outer-prefixed path.
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["outer", "bad"]]);
+    // Outer step survives.
+    const outer = (
+      (r.workflow as Record<string, unknown>).steps as Record<string, Record<string, unknown>>
+    ).outer;
+    expect(outer).toBeDefined();
+    const innerWf = outer?.run as Record<string, unknown>;
+    expect(innerWf.class).toBe(DRAFT_CLASS);
+    expect(innerWf.steps).toEqual({
+      good: {
+        tool_id: "cat1",
+        tool_version: "1.0.0",
+        in: { input1: "reads" },
+        out: [{ id: "out1" }],
+      },
+    });
+    // Top-level output survives because outer step's `result` port still maps
+    // to the surviving inner output.
+    expect(r.dropped_outputs).toEqual([]);
+  });
+
+  it("cascades the outer step when the inner subworkflow drops the port the outer consumes", () => {
+    // Outer step S exposes `out: result`, mapping inner workflow's `result` output.
+    // Inner drops the `result` output because its source step is drafty.
+    // Then a downstream outer step that consumes `S/result` cascades.
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        S: {
+          type: "subworkflow",
+          in: { reads: "reads" },
+          out: [{ id: "result" }],
+          run: {
+            class: DRAFT_CLASS,
+            inputs: { reads: { type: "data" } },
+            outputs: { result: { outputSource: "inner_bad/out1" } },
+            steps: {
+              inner_bad: {
+                tool_id: "TODO",
+                tool_version: "TODO",
+                in: { input1: "reads" },
+                out: [{ id: "out1" }],
+              },
+            },
+          },
+        },
+        downstream: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "S/result" },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    // Inner drops `inner_bad`.
+    const innerDrop = r.dropped_steps.find((d) => d.path.join("/") === "S/inner_bad");
+    expect(innerDrop).toBeDefined();
+    // Outer `downstream` cascades because S no longer exposes `result`.
+    const downstreamDrop = r.dropped_steps.find((d) => d.path.join("/") === "downstream");
+    expect(downstreamDrop?.reason).toEqual({ kind: "cascade", depends_on: [["S"]] });
+    // Outer step S itself survives (per the locked decision — outer is never shrunk).
+    const outer = (
+      (r.workflow as Record<string, unknown>).steps as Record<string, Record<string, unknown>>
+    ).S;
+    expect(outer).toBeDefined();
+  });
+
+  it("treats string-form `run:` (URL / @import / TRS) as opaque — no descent", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        opaque_sub: {
+          type: "subworkflow",
+          in: { reads: "reads" },
+          out: [{ id: "result" }],
+          run: "https://example.org/some/workflow.ga",
+        },
+        downstream: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "opaque_sub/result" },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    // No drops — opaque sub's declared `out:` ports count as live.
+    expect(r.dropped_steps).toEqual([]);
+    expect((r.workflow as Record<string, unknown>).steps).toBeDefined();
+  });
+
+  it("does NOT descend into concrete (`class: GalaxyWorkflow`) inline subworkflows", () => {
+    const r = extractConcreteSubset(loadFixture("synthetic-draft-plan-subworkflow.gxwf.yml"));
+    // The outer step `qc` has _plan_context → drops in round 0.
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["qc"]]);
+    expect(r.dropped_steps[0]?.reason.kind).toBe("step_has_plan_field");
+    // The inner concrete workflow is never recursed into.
+  });
+
+  it("orders drops: directly-drafty alphabetical first, then cascade rounds", () => {
+    // Two directly-drafty steps (zulu, alpha), one cascading step (mid).
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        zulu: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+        alpha: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+        mid: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "zulu/out1" },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["alpha"], ["zulu"], ["mid"]]);
+  });
+
+  it("orders dropped_outputs alphabetically by label", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {
+        zout: { outputSource: "bad/out1" },
+        aout: { outputSource: "bad/out1" },
+        mout: { outputSource: "bad/out1" },
+      },
+      steps: {
+        bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_outputs.map((o) => o.label)).toEqual(["aout", "mout", "zout"]);
+  });
+
+  it("is byte-for-byte idempotent across repeated runs", () => {
+    const wf = loadFixture("synthetic-draft-tool-step.gxwf.yml");
+    const a = JSON.stringify(extractConcreteSubset(wf));
+    const b = JSON.stringify(extractConcreteSubset(wf));
+    const c = JSON.stringify(extractConcreteSubset(wf));
+    expect(a).toBe(b);
+    expect(b).toBe(c);
+  });
+
+  it("preserves original step iteration order among survivors", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        zulu: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+        bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+        alpha: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+        middle: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    const stepKeys = Object.keys((r.workflow as Record<string, unknown>).steps as object);
+    expect(stepKeys).toEqual(["zulu", "alpha", "middle"]);
+  });
+
+  it("supports list-form step `in:` rewrites (carrier preserved as list entry)", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+        good: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+        c: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: [{ id: "joined", source: ["bad/out1", "good/out1"] }],
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    const cIn = (
+      (r.workflow as Record<string, unknown>).steps as Record<string, Record<string, unknown>>
+    ).c?.in;
+    expect(cIn).toEqual([{ id: "joined", source: "good/out1" }]);
+    expect(r.rewritten_step_inputs).toEqual([
+      {
+        path: ["c"],
+        in_key: "joined",
+        removed_refs: ["bad/out1"],
+        surviving_refs: ["good/out1"],
+      },
+    ]);
+  });
+
+  it("preserves top-level `_plan_*` fields on the workflow root verbatim (extract does not strip)", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      _plan_context: "root-level planning notes that survive extract",
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect((r.workflow as Record<string, unknown>)._plan_context).toBe(
+      "root-level planning notes that survive extract",
+    );
+  });
+
+  it("surfaces an inner subworkflow output drop with its outer-step path", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        S: {
+          type: "subworkflow",
+          in: { reads: "reads" },
+          out: [{ id: "result" }],
+          run: {
+            class: DRAFT_CLASS,
+            inputs: { reads: { type: "data" } },
+            outputs: { result: { outputSource: "bad/out1" } },
+            steps: {
+              bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+            },
+          },
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    // Outer step S itself survives (we never shrink outer subworkflow steps in v1).
+    expect(Object.keys((r.workflow as Record<string, unknown>).steps as object)).toEqual(["S"]);
+    // The inner `result` output drop is hoisted with path: ["S"].
+    const innerOutputDrop = r.dropped_outputs.find(
+      (o) => o.path.join("/") === "S" && o.label === "result",
+    );
+    expect(innerOutputDrop).toBeDefined();
+    expect(innerOutputDrop?.reason.kind).toBe("cascade");
+  });
+
+  it("emits no rewrite entry when every multi-source ref survives", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+        b: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+        c: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { joined: { source: ["a/out1", "b/out1"] } },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps).toEqual([]);
+    expect(r.rewritten_step_inputs).toEqual([]);
+  });
+
+  it("leaves `default:`-only step inputs (no `source:`) untouched", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { x: { default: "v" } },
+          out: [{ id: "out1" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps).toEqual([]);
+    expect(r.rewritten_step_inputs).toEqual([]);
+    const aIn = (
+      (r.workflow as Record<string, unknown>).steps as Record<string, Record<string, unknown>>
+    ).a?.in as Record<string, unknown>;
+    expect(aIn.x).toEqual({ default: "v" });
+  });
+
+  it("supports list-form workflow `outputs:` drops", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: [
+        { id: "keep", outputSource: "good/out1" },
+        { id: "drop_me", outputSource: "bad/out1" },
+      ],
+      steps: {
+        good: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "out1" }] },
+        bad: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "out1" }] },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect((r.workflow as Record<string, unknown>).outputs).toEqual([
+      { id: "keep", outputSource: "good/out1" },
+    ]);
+    expect(r.dropped_outputs.map((o) => o.label)).toEqual(["drop_me"]);
   });
 });

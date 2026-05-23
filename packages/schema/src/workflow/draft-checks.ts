@@ -758,3 +758,677 @@ function sentinelHint(sentinel: string): string | null {
   if (sentinel === "TODO") return null;
   return sentinel.slice("TODO_".length);
 }
+
+// -----------------------------------------------------------------------------
+// extractConcreteSubset
+// -----------------------------------------------------------------------------
+
+export type DropReason =
+  | { kind: "step_has_todo"; locations: TodoLocation[] }
+  | { kind: "step_has_plan_field"; fields: PlanField[] }
+  | { kind: "cascade"; depends_on: StepPath[] };
+
+export interface DroppedStep {
+  path: StepPath;
+  reason: DropReason;
+}
+
+export interface DroppedOutput {
+  /**
+   * Step path of the workflow the output lives in. `[]` for the top-level
+   * document; `[outerStep, ...]` for inner subworkflow outputs.
+   */
+  path: StepPath;
+  label: string;
+  reason: DropReason;
+}
+
+export interface RewrittenStepInput {
+  path: StepPath;
+  in_key: string;
+  /** Dropped step/port refs removed from this input's `source:`. */
+  removed_refs: string[];
+  /** Surviving step/port refs after the rewrite. Empty when only a `default:` keeps the entry alive. */
+  surviving_refs: string[];
+}
+
+export interface ExtractResult {
+  /**
+   * Trimmed workflow dict. Still carries `class: GalaxyWorkflowDraft` —
+   * promoting to `GalaxyWorkflow` is the CLI command's call, not B's.
+   * `_plan_*` fields are preserved verbatim (including top-level fields and
+   * any survivor steps — though by construction survivor steps never have
+   * `_plan_*`, since carrying one is itself a drop trigger). Stripping lives
+   * in the `clean` module (E).
+   */
+  workflow: unknown;
+  /**
+   * Dropped steps across the (sub)workflow tree. Ordering within a single
+   * workflow level: by cascade round (round 0 = direct TODO/_plan_* drops;
+   * rounds 1+ = cascade drops), then by alphabetical step-path within a
+   * round. Across levels: a level's drops come first, then for each
+   * surviving subworkflow step (in source iteration order) its drops
+   * follow, recursively. Cascade rounds are local to a workflow level — not
+   * compared across nesting.
+   *
+   * `cascade.depends_on` paths point at the steps cited in the dead `in:`.
+   * In the common case these appear in `dropped_steps` themselves; in the
+   * subworkflow-port-loss case the cited path may be a *surviving* outer
+   * subworkflow step whose inner workflow lost the referenced port — look
+   * under that step's recursed inner drops for the underlying cause.
+   */
+  dropped_steps: DroppedStep[];
+  /**
+   * Workflow outputs dropped because their source step / port went away.
+   * Carries `path` to distinguish top-level outputs (`path: []`) from inner
+   * subworkflow outputs (`path: [outerStep, ...]`). Ordered alphabetically
+   * by label within a level; across levels, top-level first, then per
+   * surviving subworkflow step in iteration order.
+   */
+  dropped_outputs: DroppedOutput[];
+  /**
+   * Per-input rewrites where the source survived in part. Two cases:
+   *   - Multi-source input lost some refs but kept others (rewritten to the
+   *     surviving subset; string form if 1 left, list form if >1).
+   *   - Single-source input lost its only ref but the input has a `default:`
+   *     so the entry stays alive — `surviving_refs` is empty, the rewritten
+   *     value retains the default and drops the `source:` key.
+   */
+  rewritten_step_inputs: RewrittenStepInput[];
+}
+
+/**
+ * Trim a draft workflow down to its concrete subset: drop any step that
+ * carries a TODO sentinel or `_plan_*` field, then cascade-drop steps whose
+ * `in:` becomes dead, then drop workflow outputs whose source went away.
+ * Multi-source inputs are rewritten in place to the surviving ref subset.
+ *
+ * Pure + idempotent. The result always carries `class: GalaxyWorkflowDraft`
+ * — promotion to concrete is a CLI-layer decision (E).
+ *
+ * Non-draft inputs pass through unchanged with empty drop / rewrite arrays.
+ */
+export function extractConcreteSubset(workflow: unknown): ExtractResult {
+  if (!isRecord(workflow) || workflow.class !== DRAFT_CLASS) {
+    return {
+      workflow,
+      dropped_steps: [],
+      dropped_outputs: [],
+      rewritten_step_inputs: [],
+    };
+  }
+
+  const result = extractLevel(workflow, []);
+
+  return {
+    workflow: result.workflow,
+    dropped_steps: result.droppedSteps.map(({ path, reason }) => ({ path, reason })),
+    dropped_outputs: result.droppedOutputs,
+    rewritten_step_inputs: result.rewrittenStepInputs,
+  };
+}
+
+interface InternalDroppedStep extends DroppedStep {
+  round: number;
+}
+
+interface ExtractLevelResult {
+  workflow: Record<string, unknown>;
+  droppedSteps: InternalDroppedStep[];
+  droppedOutputs: DroppedOutput[];
+  rewrittenStepInputs: RewrittenStepInput[];
+  /** Surviving step-label -> set of surviving output port labels. */
+  livePorts: Map<string, Set<string>>;
+}
+
+function extractLevel(workflow: Record<string, unknown>, prefix: StepPath): ExtractLevelResult {
+  // Collect step entries in original iteration order. Same shape as
+  // iterateSteps so we keep dict-form / list-form distinguishable later.
+  const stepEntries: Array<[string, Record<string, unknown>]> = [];
+  for (const [label, step] of iterateSteps(workflow.steps)) {
+    if (isRecord(step)) stepEntries.push([label, step]);
+  }
+  const stepLabels = new Set(stepEntries.map(([l]) => l));
+
+  // Round 0: directly-drafty steps.
+  const drops = new Map<string, InternalDroppedStep>();
+  for (const [label, step] of stepEntries) {
+    const reason = directDropReason(step);
+    if (reason != null) {
+      drops.set(label, { path: [...prefix, label], reason, round: 0 });
+    }
+  }
+
+  // Recurse into surviving subworkflow steps (inline draft `run:` only).
+  // String-form `run:` and concrete (`class: GalaxyWorkflow`) `run:` are
+  // opaque — no descent.
+  const innerResults = new Map<string, ExtractLevelResult>();
+  for (const [label, step] of stepEntries) {
+    if (drops.has(label)) continue;
+    const innerWf = step.run;
+    if (isDraftWorkflow(innerWf)) {
+      const sub = extractLevel(innerWf as Record<string, unknown>, [...prefix, label]);
+      innerResults.set(label, sub);
+    }
+  }
+
+  // Cascade rounds.
+  let round = 1;
+  while (true) {
+    const livePorts = computeLivePorts(stepEntries, drops, innerResults);
+    let changed = false;
+    for (const [label, step] of stepEntries) {
+      if (drops.has(label)) continue;
+      const cascade = checkStepCascade(step, prefix, drops, livePorts, stepLabels);
+      if (cascade != null) {
+        drops.set(label, {
+          path: [...prefix, label],
+          reason: { kind: "cascade", depends_on: cascade.depsOnDropped },
+          round,
+        });
+        changed = true;
+      }
+    }
+    if (!changed) break;
+    round++;
+  }
+
+  // Final live ports after all drops settled.
+  const livePorts = computeLivePorts(stepEntries, drops, innerResults);
+
+  // Compute rewrites for surviving steps.
+  const rewrittenStepInputs: RewrittenStepInput[] = [];
+  for (const [label, step] of stepEntries) {
+    if (drops.has(label)) continue;
+    for (const rewrite of computeInputRewrites(step, [...prefix, label], drops, livePorts)) {
+      rewrittenStepInputs.push(rewrite);
+    }
+  }
+
+  // Build the trimmed workflow dict; collect this level's output drops.
+  const trimmed = trimWorkflow(workflow, stepEntries, drops, innerResults, livePorts, prefix);
+
+  // Sort this level's step drops: by round, then alphabetical step-path.
+  const levelDrops: InternalDroppedStep[] = [...drops.values()];
+  levelDrops.sort((a, b) => {
+    if (a.round !== b.round) return a.round - b.round;
+    return pathKey(a.path).localeCompare(pathKey(b.path));
+  });
+
+  // Concatenate inner-level results in source iteration order. Each inner
+  // level is already sorted by its own recursive call; we don't re-sort
+  // across levels (cascade rounds are not comparable across nesting).
+  const droppedSteps: InternalDroppedStep[] = [...levelDrops];
+  const droppedOutputs: DroppedOutput[] = [...trimmed.droppedOutputs];
+  for (const [label, inner] of innerResults) {
+    if (drops.has(label)) continue;
+    droppedSteps.push(...inner.droppedSteps);
+    droppedOutputs.push(...inner.droppedOutputs);
+    rewrittenStepInputs.push(...inner.rewrittenStepInputs);
+  }
+
+  return {
+    workflow: trimmed.workflow,
+    droppedSteps,
+    droppedOutputs,
+    rewrittenStepInputs,
+    livePorts,
+  };
+}
+
+/** TODO sentinels first, then plan fields; mirrors the planning ordering. */
+function directDropReason(step: Record<string, unknown>): DropReason | null {
+  const locations: TodoLocation[] = [];
+  if (isTodoSentinel(step.tool_id)) locations.push({ kind: "tool_id" });
+  if (isTodoSentinel(step.tool_version)) locations.push({ kind: "tool_version" });
+  for (const [key] of iterateStepInputEntries(step.in)) {
+    if (isTodoSentinel(key)) locations.push({ kind: "in_key", key });
+  }
+  for (const id of iterateStepOutIds(step.out)) {
+    if (isTodoSentinel(id)) locations.push({ kind: "out_id", id });
+  }
+  if (locations.length > 0) return { kind: "step_has_todo", locations };
+
+  const fields: PlanField[] = [];
+  for (const field of PLAN_FIELDS) {
+    const value = step[field];
+    if (typeof value === "string" && value.length > 0) fields.push(field);
+  }
+  if (fields.length > 0) return { kind: "step_has_plan_field", fields };
+  return null;
+}
+
+/**
+ * For each surviving step, compute its currently-live output ports:
+ *   - Non-subworkflow steps: all declared `out:` ids.
+ *   - Inline-draft subworkflow steps: keys of the recursed inner workflow's
+ *     surviving outputs (so outer refs that referenced now-dropped inner
+ *     outputs evaluate as dead).
+ *   - String-form `run:` / concrete-class `run:`: opaque; all declared
+ *     `out:` ids are live.
+ */
+function computeLivePorts(
+  stepEntries: Array<[string, Record<string, unknown>]>,
+  drops: Map<string, InternalDroppedStep>,
+  innerResults: Map<string, ExtractLevelResult>,
+): Map<string, Set<string>> {
+  const livePorts = new Map<string, Set<string>>();
+  for (const [label, step] of stepEntries) {
+    if (drops.has(label)) {
+      livePorts.set(label, new Set());
+      continue;
+    }
+    const inner = innerResults.get(label);
+    if (inner != null) {
+      const surviving = new Set<string>();
+      for (const [outLabel] of iterateOutputs(inner.workflow.outputs)) {
+        surviving.add(outLabel);
+      }
+      livePorts.set(label, surviving);
+    } else {
+      livePorts.set(label, new Set(iterateStepOutIds(step.out)));
+    }
+  }
+  return livePorts;
+}
+
+interface CascadeOutcome {
+  depsOnDropped: StepPath[];
+}
+
+function checkStepCascade(
+  step: Record<string, unknown>,
+  prefix: StepPath,
+  drops: Map<string, InternalDroppedStep>,
+  livePorts: Map<string, Set<string>>,
+  stepLabels: Set<string>,
+): CascadeOutcome | null {
+  const depsOnDropped = new Map<string, StepPath>();
+  let cascade = false;
+  for (const [, inValue] of iterateStepInputEntries(step.in)) {
+    const refs = extractSourceRefs(inValue);
+    if (refs.length === 0) continue;
+    let anyAlive = false;
+    const localDeps: Array<[string, StepPath]> = [];
+    for (const ref of refs) {
+      const [refStep, refPort] = splitSourceRef(ref);
+      if (refPort == null) {
+        // Workflow input ref — always alive (workflow inputs are preserved verbatim).
+        anyAlive = true;
+        continue;
+      }
+      if (!stepLabels.has(refStep)) {
+        // Dangling ref — validateDraft owns the diagnostic; treat as alive
+        // here so extract doesn't double-fail on the same issue.
+        anyAlive = true;
+        continue;
+      }
+      const drop = drops.get(refStep);
+      if (drop != null) {
+        localDeps.push([refStep, drop.path]);
+        continue;
+      }
+      const ports = livePorts.get(refStep);
+      if (ports == null || !ports.has(refPort)) {
+        // Step survives but the port doesn't (inner-workflow shrink).
+        localDeps.push([refStep, [...prefix, refStep]]);
+        continue;
+      }
+      anyAlive = true;
+    }
+    if (!anyAlive) {
+      if (inputHasDefault(inValue)) continue; // default fallback — not dead
+      cascade = true;
+      for (const [key, path] of localDeps) {
+        if (!depsOnDropped.has(key)) depsOnDropped.set(key, path);
+      }
+    }
+  }
+  if (!cascade) return null;
+  const paths = [...depsOnDropped.values()].sort((a, b) => pathKey(a).localeCompare(pathKey(b)));
+  return { depsOnDropped: paths };
+}
+
+function inputHasDefault(value: unknown): boolean {
+  if (isRecord(value) && "default" in value) return true;
+  return false;
+}
+
+interface InputSourceShape {
+  /** Original source refs, in order. */
+  refs: string[];
+  /** True iff the value is a dict carrying a `default:` field. */
+  hasDefault: boolean;
+  /** Carrier shape for emitting the rewrite back. */
+  carrier:
+    | { kind: "string" }
+    | { kind: "object_source_string"; original: Record<string, unknown> }
+    | { kind: "object_source_list"; original: Record<string, unknown> }
+    | { kind: "list_of_refs" }
+    | { kind: "object_no_source"; original: Record<string, unknown> };
+}
+
+function readInputShape(value: unknown): InputSourceShape | null {
+  if (typeof value === "string") {
+    return { refs: [value], hasDefault: false, carrier: { kind: "string" } };
+  }
+  if (Array.isArray(value)) {
+    // Bare list of refs / sub-objects: `in: { x: ["a/out", "b/out"] }` or
+    // `in: { x: [{ source: "a/out" }, "b/out"] }`. No defaults at this level.
+    const refs: string[] = [];
+    for (const entry of value) {
+      if (typeof entry === "string") refs.push(entry);
+      else if (isRecord(entry) && typeof entry.source === "string") refs.push(entry.source);
+      else if (isRecord(entry) && Array.isArray(entry.source)) {
+        for (const s of entry.source) if (typeof s === "string") refs.push(s);
+      }
+    }
+    return { refs, hasDefault: false, carrier: { kind: "list_of_refs" } };
+  }
+  if (isRecord(value)) {
+    const hasDefault = "default" in value;
+    const src = value.source;
+    if (typeof src === "string") {
+      return {
+        refs: [src],
+        hasDefault,
+        carrier: { kind: "object_source_string", original: value },
+      };
+    }
+    if (Array.isArray(src)) {
+      const refs = src.filter((s): s is string => typeof s === "string");
+      return {
+        refs,
+        hasDefault,
+        carrier: { kind: "object_source_list", original: value },
+      };
+    }
+    return { refs: [], hasDefault, carrier: { kind: "object_no_source", original: value } };
+  }
+  return null;
+}
+
+function computeInputRewrites(
+  step: Record<string, unknown>,
+  stepPath: StepPath,
+  drops: Map<string, InternalDroppedStep>,
+  livePorts: Map<string, Set<string>>,
+): RewrittenStepInput[] {
+  const out: RewrittenStepInput[] = [];
+  for (const [inKey, value] of iterateStepInputEntries(step.in)) {
+    const shape = readInputShape(value);
+    if (shape == null || shape.refs.length === 0) continue;
+    const removed: string[] = [];
+    const surviving: string[] = [];
+    for (const ref of shape.refs) {
+      if (refIsDead(ref, drops, livePorts)) removed.push(ref);
+      else surviving.push(ref);
+    }
+    if (removed.length === 0) continue;
+    out.push({ path: stepPath, in_key: inKey, removed_refs: removed, surviving_refs: surviving });
+  }
+  return out;
+}
+
+function refIsDead(
+  ref: string,
+  drops: Map<string, InternalDroppedStep>,
+  livePorts: Map<string, Set<string>>,
+): boolean {
+  const [refStep, refPort] = splitSourceRef(ref);
+  if (refPort == null) return false;
+  if (drops.has(refStep)) return true;
+  const ports = livePorts.get(refStep);
+  // Unknown step → defer to validateDraft; treat as live here.
+  if (ports == null) return false;
+  return !ports.has(refPort);
+}
+
+interface TrimResult {
+  workflow: Record<string, unknown>;
+  droppedOutputs: DroppedOutput[];
+}
+
+function trimWorkflow(
+  workflow: Record<string, unknown>,
+  stepEntries: Array<[string, Record<string, unknown>]>,
+  drops: Map<string, InternalDroppedStep>,
+  innerResults: Map<string, ExtractLevelResult>,
+  livePorts: Map<string, Set<string>>,
+  prefix: StepPath,
+): TrimResult {
+  // Iterate steps in source order; replace dropped + inner-shrunk inline; preserve list/dict shape.
+  const trimmedSteps = trimStepsContainer(workflow.steps, drops, innerResults, livePorts);
+  const trimmedOutputsResult = trimOutputsContainer(workflow.outputs, drops, livePorts, prefix);
+
+  // Build the result dict — preserve key iteration order from the source.
+  const trimmed: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(workflow)) {
+    if (k === "steps") trimmed[k] = trimmedSteps;
+    else if (k === "outputs") trimmed[k] = trimmedOutputsResult.outputs;
+    else trimmed[k] = v;
+  }
+  // If the source had no `outputs:` key originally, don't synthesize one.
+  // (Object.entries above handles that — the key only appears if it existed.)
+
+  // Always carry the draft class — the caller may flip later.
+  trimmed.class = DRAFT_CLASS;
+
+  return { workflow: trimmed, droppedOutputs: trimmedOutputsResult.droppedOutputs };
+}
+
+function trimStepsContainer(
+  steps: unknown,
+  drops: Map<string, InternalDroppedStep>,
+  innerResults: Map<string, ExtractLevelResult>,
+  livePorts: Map<string, Set<string>>,
+): unknown {
+  if (Array.isArray(steps)) {
+    const out: unknown[] = [];
+    for (const entry of steps) {
+      if (!isRecord(entry)) continue;
+      const label =
+        typeof entry.label === "string"
+          ? entry.label
+          : typeof entry.id === "string"
+            ? entry.id
+            : "";
+      if (drops.has(label)) continue;
+      out.push(trimStep(entry, label, drops, innerResults, livePorts));
+    }
+    return out;
+  }
+  if (isRecord(steps)) {
+    const out: Record<string, unknown> = {};
+    for (const [label, step] of Object.entries(steps)) {
+      if (drops.has(label)) continue;
+      if (!isRecord(step)) {
+        out[label] = step;
+        continue;
+      }
+      out[label] = trimStep(step, label, drops, innerResults, livePorts);
+    }
+    return out;
+  }
+  return steps;
+}
+
+function trimStep(
+  step: Record<string, unknown>,
+  label: string,
+  drops: Map<string, InternalDroppedStep>,
+  innerResults: Map<string, ExtractLevelResult>,
+  livePorts: Map<string, Set<string>>,
+): Record<string, unknown> {
+  const trimmed: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(step)) {
+    if (k === "in") {
+      trimmed[k] = rewriteStepIn(v, drops, livePorts);
+    } else if (k === "run" && innerResults.has(label)) {
+      trimmed[k] = innerResults.get(label)!.workflow;
+    } else {
+      trimmed[k] = v;
+    }
+  }
+  return trimmed;
+}
+
+function rewriteStepIn(
+  input: unknown,
+  drops: Map<string, InternalDroppedStep>,
+  livePorts: Map<string, Set<string>>,
+): unknown {
+  if (Array.isArray(input)) {
+    return input.map((entry) => {
+      if (!isRecord(entry)) return entry;
+      return rewriteStepInputEntry(entry, drops, livePorts);
+    });
+  }
+  if (isRecord(input)) {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(input)) {
+      out[key] = rewriteStepInputValue(value, drops, livePorts);
+    }
+    return out;
+  }
+  return input;
+}
+
+function rewriteStepInputEntry(
+  entry: Record<string, unknown>,
+  drops: Map<string, InternalDroppedStep>,
+  livePorts: Map<string, Set<string>>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(entry)) {
+    if (k === "source") {
+      const rewritten = rewriteSourceField(v, drops, livePorts);
+      if (rewritten === DROP_SOURCE_KEY) continue;
+      out[k] = rewritten;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+function rewriteStepInputValue(
+  value: unknown,
+  drops: Map<string, InternalDroppedStep>,
+  livePorts: Map<string, Set<string>>,
+): unknown {
+  const shape = readInputShape(value);
+  if (shape == null) return value;
+  if (shape.refs.length === 0) return value;
+  const surviving = shape.refs.filter((r) => !refIsDead(r, drops, livePorts));
+  if (surviving.length === shape.refs.length) return value;
+
+  switch (shape.carrier.kind) {
+    case "string": {
+      // Single-ref string form. If it survives, value unchanged.
+      // If dead and dict-style with default isn't applicable (string form has no default),
+      // the consuming step would have cascaded — we shouldn't be here.
+      // If we are here with 0 survivors and no default, return value untouched
+      // (defensive — should be unreachable).
+      return surviving.length > 0 ? surviving[0] : value;
+    }
+    case "object_source_string":
+    case "object_source_list": {
+      const original = shape.carrier.original;
+      if (surviving.length === 0) {
+        // default-fallback: drop source key, keep default + the rest.
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(original)) {
+          if (k !== "source") out[k] = v;
+        }
+        return out;
+      }
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(original)) {
+        if (k === "source") out[k] = surviving.length === 1 ? surviving[0] : surviving;
+        else out[k] = v;
+      }
+      return out;
+    }
+    case "list_of_refs": {
+      if (surviving.length === 0) return value; // unreachable; would've cascaded
+      if (surviving.length === 1) return surviving[0];
+      return surviving;
+    }
+    case "object_no_source":
+      return value;
+  }
+}
+
+const DROP_SOURCE_KEY = Symbol("drop");
+
+function rewriteSourceField(
+  source: unknown,
+  drops: Map<string, InternalDroppedStep>,
+  livePorts: Map<string, Set<string>>,
+): unknown | typeof DROP_SOURCE_KEY {
+  if (typeof source === "string") {
+    return refIsDead(source, drops, livePorts) ? DROP_SOURCE_KEY : source;
+  }
+  if (Array.isArray(source)) {
+    const surviving = source.filter(
+      (r): r is string => typeof r === "string" && !refIsDead(r, drops, livePorts),
+    );
+    if (surviving.length === 0) return DROP_SOURCE_KEY;
+    if (surviving.length === 1) return surviving[0];
+    return surviving;
+  }
+  return source;
+}
+
+interface TrimOutputsResult {
+  outputs: unknown;
+  droppedOutputs: DroppedOutput[];
+}
+
+function trimOutputsContainer(
+  outputs: unknown,
+  drops: Map<string, InternalDroppedStep>,
+  livePorts: Map<string, Set<string>>,
+  prefix: StepPath,
+): TrimOutputsResult {
+  const dropped: DroppedOutput[] = [];
+  const keep = (label: string, value: unknown): boolean => {
+    const ref = readOutputSource(value);
+    if (ref == null) return true;
+    if (!refIsDead(ref, drops, livePorts)) return true;
+    const [refStep] = splitSourceRef(ref);
+    const drop = drops.get(refStep);
+    const reason: DropReason =
+      drop != null
+        ? { kind: "cascade", depends_on: [drop.path] }
+        : { kind: "cascade", depends_on: [[...prefix, refStep]] };
+    dropped.push({ path: prefix, label, reason });
+    return false;
+  };
+
+  let trimmed: unknown;
+  if (Array.isArray(outputs)) {
+    const out: unknown[] = [];
+    for (const entry of outputs) {
+      const label = isRecord(entry) && typeof entry.id === "string" ? entry.id : "";
+      if (keep(label, entry)) out.push(entry);
+    }
+    trimmed = out;
+  } else if (isRecord(outputs)) {
+    const out: Record<string, unknown> = {};
+    for (const [label, value] of Object.entries(outputs)) {
+      if (keep(label, value)) out[label] = value;
+    }
+    trimmed = out;
+  } else {
+    trimmed = outputs;
+  }
+
+  dropped.sort((a, b) => a.label.localeCompare(b.label));
+  return { outputs: trimmed, droppedOutputs: dropped };
+}
+
+function pathKey(path: StepPath): string {
+  return path.join("/");
+}
