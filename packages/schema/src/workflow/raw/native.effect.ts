@@ -53,6 +53,17 @@ export const DocumentedSchema = Schema.Struct({
 });
 export type Documented = typeof DocumentedSchema.Type;
 
+/**
+ * Define an enumerated type.
+ */
+export const EnumSchemaSchema = Schema.Struct({
+  /** Defines the set of valid symbols. */
+  symbols: Schema.Array(Schema.String),
+  /** Must be `enum` */
+  type: Schema.Literal("enum"),
+});
+export type EnumSchema = typeof EnumSchemaSchema.Type;
+
 export const RecordSchemaSchema = Schema.Struct({
   /** Defines the fields of the record. */
   fields: Schema.optional(
@@ -69,17 +80,6 @@ export const RecordSchemaSchema = Schema.Struct({
   type: Schema.Literal("record"),
 });
 export type RecordSchema = typeof RecordSchemaSchema.Type;
-
-/**
- * Define an enumerated type.
- */
-export const EnumSchemaSchema = Schema.Struct({
-  /** Defines the set of valid symbols. */
-  symbols: Schema.Array(Schema.String),
-  /** Must be `enum` */
-  type: Schema.Literal("enum"),
-});
-export type EnumSchema = typeof EnumSchemaSchema.Type;
 
 export const ArraySchemaSchema = Schema.Struct({
   /** Defines the type of the array elements. */
@@ -443,38 +443,6 @@ export const NativeFreehandCommentSchema = Schema.Struct({
 export type NativeFreehandComment = typeof NativeFreehandCommentSchema.Type;
 
 /**
- * Workflow invocation report template.
- */
-export const NativeReportSchema = Schema.Struct({
-  /** Galaxy-flavored Markdown content for the invocation report. Supports template directives like ``history_dataset_as_image(output="...")``. */
-  markdown: Schema.String,
-});
-export type NativeReport = typeof NativeReportSchema.Type;
-
-/**
- * Provenance tracking for workflows imported from external sources.
-Contains either a direct URL or TRS (Tool Registry Service) metadata,
-depending on how the workflow was imported.
-
-For URL imports, only ``url`` is set. For TRS imports (Dockstore,
-WorkflowHub), ``trs_tool_id``, ``trs_version_id``, and ``trs_url``
-are set, with ``trs_server`` optionally identifying the server.
- */
-export const NativeSourceMetadataSchema = Schema.Struct({
-  /** URL from which the workflow was directly imported. */
-  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Tool identifier in the Tool Registry Service (e.g. ``"#workflow/github.com/user/repo/workflow"`` or ``"109"``). */
-  trs_tool_id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Version identifier in the TRS (e.g. ``"master"``, ``"5"``). */
-  trs_version_id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** TRS server name (e.g. ``"dockstore"``, ``"workflowhub"``). Optional even for TRS imports. */
-  trs_server: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Complete TRS API endpoint URL for this workflow version. */
-  trs_url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type NativeSourceMetadata = typeof NativeSourceMetadataSchema.Type;
-
-/**
  * Base fields shared by all creator types, corresponding to schema.org
 Thing properties common to both Person and Organization.
  */
@@ -531,6 +499,38 @@ export const NativeCreatorPersonSchema = Schema.Struct({
   jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type NativeCreatorPerson = typeof NativeCreatorPersonSchema.Type;
+
+/**
+ * Workflow invocation report template.
+ */
+export const NativeReportSchema = Schema.Struct({
+  /** Galaxy-flavored Markdown content for the invocation report. Supports template directives like ``history_dataset_as_image(output="...")``. */
+  markdown: Schema.String,
+});
+export type NativeReport = typeof NativeReportSchema.Type;
+
+/**
+ * Provenance tracking for workflows imported from external sources.
+Contains either a direct URL or TRS (Tool Registry Service) metadata,
+depending on how the workflow was imported.
+
+For URL imports, only ``url`` is set. For TRS imports (Dockstore,
+WorkflowHub), ``trs_tool_id``, ``trs_version_id``, and ``trs_url``
+are set, with ``trs_server`` optionally identifying the server.
+ */
+export const NativeSourceMetadataSchema = Schema.Struct({
+  /** URL from which the workflow was directly imported. */
+  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Tool identifier in the Tool Registry Service (e.g. ``"#workflow/github.com/user/repo/workflow"`` or ``"109"``). */
+  trs_tool_id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Version identifier in the TRS (e.g. ``"master"``, ``"5"``). */
+  trs_version_id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** TRS server name (e.g. ``"dockstore"``, ``"workflowhub"``). Optional even for TRS imports. */
+  trs_server: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Complete TRS API endpoint URL for this workflow version. */
+  trs_url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type NativeSourceMetadata = typeof NativeSourceMetadataSchema.Type;
 
 /**
  * A Galaxy native workflow document (.ga format). This is the canonical

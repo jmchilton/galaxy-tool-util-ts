@@ -297,6 +297,7 @@ endif
 	mkdir -p $(SCHEMA_DST)/v19_09 $(SCHEMA_DST)/native_v0_1 $(SCHEMA_DST)/common
 	cp $(SCHEMA_SRC_ROOT)/v19_09/workflow.yml $(SCHEMA_DST)/v19_09/
 	cp $(SCHEMA_SRC_ROOT)/v19_09/Process.yml $(SCHEMA_DST)/v19_09/
+	@if [ -f "$(SCHEMA_SRC_ROOT)/v19_09/draft_workflow.yml" ]; then cp $(SCHEMA_SRC_ROOT)/v19_09/draft_workflow.yml $(SCHEMA_DST)/v19_09/; fi
 	@if [ -d "$(SCHEMA_SRC_ROOT)/v19_09/examples" ]; then cp -r $(SCHEMA_SRC_ROOT)/v19_09/examples $(SCHEMA_DST)/v19_09/; fi
 	cp $(SCHEMA_SRC_ROOT)/native_v0_1/workflow.yml $(SCHEMA_DST)/native_v0_1/
 	cp $(SCHEMA_SRC_ROOT)/common/common.yml $(SCHEMA_DST)/common/
@@ -315,6 +316,10 @@ generate-schemas:
 	mkdir -p $(WF_SCHEMA_DST)
 	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format typescript "$(CURDIR)/$(SCHEMA_DST)/v19_09/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/gxformat2.ts"
 	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format effect-schema "$(CURDIR)/$(SCHEMA_DST)/v19_09/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/gxformat2.effect.ts"
+	@if [ -f "$(SCHEMA_DST)/v19_09/draft_workflow.yml" ]; then \
+		$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format typescript "$(CURDIR)/$(SCHEMA_DST)/v19_09/draft_workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/gxformat2-draft.ts" && \
+		$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format effect-schema "$(CURDIR)/$(SCHEMA_DST)/v19_09/draft_workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/gxformat2-draft.effect.ts"; \
+	fi
 	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format typescript "$(CURDIR)/$(SCHEMA_DST)/native_v0_1/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/native.ts"
 	$(SCHEMA_SALAD_PLUS_PYDANTIC) generate --format effect-schema "$(CURDIR)/$(SCHEMA_DST)/native_v0_1/workflow.yml" -o "$(CURDIR)/$(WF_SCHEMA_DST)/native.effect.ts"
 	@echo "Prettier-formatting generated files..."
