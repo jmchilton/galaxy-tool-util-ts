@@ -260,7 +260,7 @@ describe("validateDraft", () => {
     expect(r.topologyErrors).toEqual([]);
   });
 
-  it("emits semantic error on malformed TODO-shaped strings", () => {
+  it("emits semantic error on malformed TODO-shaped strings (TODO_, TODO-foo, TODO_Foo)", () => {
     const r = validateDraft({
       class: DRAFT_CLASS,
       inputs: { reads: { type: "data" } },
@@ -269,7 +269,7 @@ describe("validateDraft", () => {
         a: {
           tool_id: "TODO-foo",
           tool_version: "TODO_",
-          in: { TODOfoo: "reads" },
+          in: { TODO_input: "reads" }, // canonical, not malformed
           out: [{ id: "TODO_Foo" }],
         },
       },
@@ -280,10 +280,13 @@ describe("validateDraft", () => {
       expect.arrayContaining([
         expect.stringContaining(`tool_id "TODO-foo" is TODO-shaped but malformed`),
         expect.stringContaining(`tool_version "TODO_" is TODO-shaped but malformed`),
-        expect.stringContaining(`in: key "TODOfoo" is TODO-shaped but malformed`),
         expect.stringContaining(`out: id "TODO_Foo" is TODO-shaped but malformed`),
       ]),
     );
+    // `TODOfoo`-style strings (TODO followed by a letter, no separator) are
+    // NOT flagged — the heuristic only matches TODO followed by `_`, `-`,
+    // or end-of-string, to avoid false positives on unrelated identifiers
+    // like TODONE / TODOLIST.
   });
 
   it("warns on bare TODO in port position", () => {
@@ -516,5 +519,153 @@ describe("nextDraftStep", () => {
       "TODO[in.TODO]: assign the real wrapper input port name",
       "TODO[out.TODO]: assign the real wrapper output port name",
     ]);
+  });
+});
+
+describe("fix-ups (review feedback)", () => {
+  // Reviewer #1: list-form `in:` and `out:` shapes.
+  it("detectDraft picks up TODO sentinels in list-form `in:` entries", () => {
+    const survey = detectDraft({
+      class: DRAFT_CLASS,
+      steps: {
+        fastp: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: [{ id: "TODO_input", source: "reads" }],
+          out: [{ id: "TODO_trimmed" }],
+        },
+      },
+    });
+    const kinds = survey.todos.map((t) => t.location.kind);
+    expect(kinds).toContain("in_key");
+    const inHit = survey.todos.find((t) => t.location.kind === "in_key");
+    expect(inHit?.sentinel).toBe("TODO_input");
+  });
+
+  it("detectDraft picks up TODO sentinels in list-form `out:` (already worked, locking in)", () => {
+    const survey = detectDraft({
+      class: DRAFT_CLASS,
+      steps: {
+        a: { tool_id: "TODO", tool_version: "TODO", out: [{ id: "TODO_x" }, { id: "TODO_y" }] },
+      },
+    });
+    const outIds = survey.todos
+      .filter((t) => t.location.kind === "out_id")
+      .map((t) => (t.location.kind === "out_id" ? t.location.id : ""));
+    expect(outIds).toEqual(["TODO_x", "TODO_y"]);
+  });
+
+  it("validateDraft picks up dangling edge refs in list-form `in:` entries", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: [{ id: "input1", source: "missing/out1" }],
+          out: [{ id: "out1" }],
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.topologyErrors.map((e) => e.message)).toContain(
+      `step input "input1" source "missing/out1" references unknown step "missing"`,
+    );
+  });
+
+  // Reviewer #2: top-level _plan_* warning at INNER draft roots.
+  it("validateDraft warns about _plan_* at inner draft subworkflow roots, with the outer step's path", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        outer: {
+          type: "subworkflow",
+          in: { reads: "reads" },
+          out: [{ id: "result" }],
+          run: {
+            class: DRAFT_CLASS,
+            _plan_context: "settle the inner workflow",
+            inputs: { reads: { type: "data" } },
+            outputs: {},
+            steps: { inner: { tool_id: "cat1", tool_version: "1.0.0" } },
+          },
+        },
+      },
+    });
+    // Outer has no _plan_*; inner does. Expect exactly one warning.
+    const planWarnings = r.warnings.filter((w) => w.message.includes("_plan_context"));
+    expect(planWarnings).toHaveLength(1);
+    expect(planWarnings[0]?.path).toEqual(["outer"]);
+  });
+
+  // Reviewer #5: tighter TODO_LIKE regex no longer false-positives on TODONE/TODOLIST.
+  it("validateDraft does NOT flag identifiers that merely start with TODO", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        TODONE_step: {
+          tool_id: "TODONE",
+          tool_version: "TODOLIST",
+          in: { TODONE: "reads" },
+          out: [{ id: "TODOLIST" }],
+        },
+      },
+    });
+    expect(r.semanticErrors).toEqual([]);
+  });
+
+  // Reviewer #6: ordering idempotence — different dict insertion orders produce identical nextDraftStep output.
+  it("nextDraftStep is byte-for-byte identical across two semantically-equal workflows with different dict key order", () => {
+    const wfA = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        alpha: { tool_id: "TODO", tool_version: "TODO", in: { x: "reads" } },
+        zulu: { tool_id: "TODO", tool_version: "TODO", in: { x: "reads" } },
+      },
+    };
+    // Same content, opposite insertion order.
+    const wfB = {
+      class: DRAFT_CLASS,
+      outputs: {},
+      inputs: { reads: { type: "data" } },
+      steps: {
+        zulu: { tool_id: "TODO", tool_version: "TODO", in: { x: "reads" } },
+        alpha: { tool_id: "TODO", tool_version: "TODO", in: { x: "reads" } },
+      },
+    };
+    expect(JSON.stringify(nextDraftStep(wfA))).toBe(JSON.stringify(nextDraftStep(wfB)));
+  });
+
+  // Reviewer #4: clarify inner-draft outputs path.
+  it("detectDraft uses the outer-step path for inner-draft workflow outputs", () => {
+    const survey = detectDraft({
+      class: DRAFT_CLASS,
+      steps: {
+        outer: {
+          type: "subworkflow",
+          run: {
+            class: DRAFT_CLASS,
+            outputs: { result: { outputSource: "inner_step/TODO_port" } },
+            steps: {
+              inner_step: { tool_id: "cat1", tool_version: "1.0.0", out: [{ id: "TODO_port" }] },
+            },
+          },
+        },
+      },
+    });
+    const outputHit = survey.todos.find((t) => t.location.kind === "output_source");
+    expect(outputHit?.path).toEqual(["outer"]);
+    if (outputHit?.location.kind === "output_source") {
+      expect(outputHit.location.output_label).toBe("result");
+      expect(outputHit.location.port).toBe("TODO_port");
+    }
   });
 });
