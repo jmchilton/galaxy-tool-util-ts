@@ -16,7 +16,10 @@ import { GalaxyWorkflowDraftSchema } from "./raw/gxformat2-draft.effect.js";
 export const TODO_SENTINEL_PATTERN = /^TODO(_[a-z0-9_]+)?$/;
 // Heuristic for TODO-shaped strings — flags malformed sentinels (TODO-foo,
 // TODOfoo, TODO_, TODO_Foo with uppercase) that the canonical pattern misses.
-const TODO_LIKE = /^TODO/;
+// Anchored: only TODO followed by `_`, `-`, or end-of-string counts; this
+// avoids false positives on unrelated identifiers that happen to start with
+// TODO (e.g. TODOLIST, TODONE).
+const TODO_LIKE = /^TODO([_-]|$)/;
 
 export const PLAN_FIELDS = ["_plan_state", "_plan_context", "_plan_in", "_plan_out"] as const;
 export type PlanField = (typeof PLAN_FIELDS)[number];
@@ -68,6 +71,12 @@ export interface DraftSurvey {
  *
  * Step paths are `[outerLabel, ..., innerStepLabel]`. Subworkflows recurse
  * only when the inner `run:` block also carries `class: GalaxyWorkflowDraft`.
+ *
+ * Note: this survey is step-focused — it intentionally does NOT report
+ * top-level `_plan_*` fields on a draft workflow root. Those are flagged
+ * by `validateDraft` (a rules-focused walker); `detectDraft` exists to
+ * drive `nextDraftStep` / `extractConcreteSubset`, which only act on
+ * per-step state.
  */
 export function detectDraft(workflow: unknown): DraftSurvey {
   const todos: TodoHit[] = [];
@@ -99,6 +108,10 @@ function walkDraftSteps(
   }
 
   // Workflow-level outputs: outputSource may contain a TODO port reference.
+  // For inner draft subworkflows (recursive call), `prefix` is the path to
+  // reach this workflow (i.e. the outer step's path); inner outputs collect
+  // at that prefix. For the outermost call `prefix` is [], so outer outputs
+  // collect at path [].
   for (const [label, output] of iterateOutputs(workflow.outputs)) {
     const ref = readOutputSource(output);
     if (ref == null) continue;
@@ -124,11 +137,11 @@ function collectStepTodos(step: Record<string, unknown>, path: StepPath, todos: 
       sentinel: step.tool_version,
     });
   }
-  if (isRecord(step.in)) {
-    for (const key of Object.keys(step.in)) {
-      if (isTodoSentinel(key)) {
-        todos.push({ path, location: { kind: "in_key", key }, sentinel: key });
-      }
+  // Use the shared iterator so dict-form (`in: { TODO_x: ... }`) and list-form
+  // (`in: [{ id: TODO_x, source: ... }]`) draft inputs are covered uniformly.
+  for (const [key] of iterateStepInputEntries(step.in)) {
+    if (isTodoSentinel(key)) {
+      todos.push({ path, location: { kind: "in_key", key }, sentinel: key });
     }
   }
   for (const id of iterateStepOutIds(step.out)) {
@@ -300,16 +313,6 @@ export function validateDraft(workflow: unknown): DraftValidationResult {
     }
   }
 
-  for (const field of PLAN_FIELDS) {
-    const value = (workflow as Record<string, unknown>)[field];
-    if (typeof value === "string" && value.length > 0) {
-      warnings.push({
-        path: [],
-        message: `top-level \`${field}\` is not part of the draft contract; planning fields belong on individual steps`,
-      });
-    }
-  }
-
   const ok =
     structureErrors.length === 0 && topologyErrors.length === 0 && semanticErrors.length === 0;
 
@@ -323,6 +326,19 @@ function walkDraftValidation(
   semanticErrors: DraftValidationDiagnostic[],
   warnings: DraftValidationDiagnostic[],
 ): void {
+  // Plan fields belong on individual steps, never at a draft root — applies
+  // to the outer document AND any nested draft subworkflow root reached via
+  // recursion below.
+  for (const field of PLAN_FIELDS) {
+    const value = workflow[field];
+    if (typeof value === "string" && value.length > 0) {
+      warnings.push({
+        path: prefix,
+        message: `top-level \`${field}\` is not part of the draft contract; planning fields belong on individual steps`,
+      });
+    }
+  }
+
   // Workflow inputs: labels and types must be concrete.
   const inputLabels = new Set<string>();
   for (const [label, input] of iterateMapOrArrayLabeled(workflow.inputs)) {
