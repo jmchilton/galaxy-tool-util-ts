@@ -252,6 +252,9 @@ export {
   type SingleValidationReport,
   type SingleLintReport,
   type SingleCleanReport,
+  type DraftValidationDiagnosticReport,
+  type DraftSurveyReport,
+  type SingleDraftValidationReport,
   // Round-trip validation
   type DiffType,
   type DiffSeverity,
@@ -294,6 +297,7 @@ export {
   buildSingleValidationReport,
   buildSingleLintReport,
   buildSingleCleanReport,
+  buildSingleDraftValidationReport,
   buildWorkflowValidationResult,
   buildLintWorkflowResult,
   buildWorkflowCleanResult,

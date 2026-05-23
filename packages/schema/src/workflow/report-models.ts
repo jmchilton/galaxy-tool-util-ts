@@ -9,6 +9,12 @@
  *   Step-level  →  Single-workflow wrappers  →  Tree-level reports
  */
 
+import type {
+  DraftSurvey,
+  DraftValidationDiagnostic,
+  DraftValidationResult,
+} from "./draft-checks.js";
+
 // ── Status literals ──────────────────────────────────────────────────
 
 export type StepStatus = "ok" | "fail" | "skip_tool_not_found" | "skip_replacement_params";
@@ -133,6 +139,34 @@ export interface SingleCleanReport {
   steps_with_removals: number;
   before_content?: string | null;
   after_content?: string | null;
+}
+
+// ── Draft-validation report (workstream C) ───────────────────────────
+
+export interface DraftValidationDiagnosticReport {
+  /** Step path; empty array `[]` for workflow-level diagnostics. */
+  path: string[];
+  message: string;
+}
+
+export interface DraftSurveyReport {
+  is_draft: boolean;
+  todo_count: number;
+  /** Distinct step paths carrying at least one TODO sentinel, in walk order. */
+  todo_paths: string[][];
+  /** Distinct step paths carrying at least one `_plan_*` field, in walk order. */
+  plan_step_paths: string[][];
+}
+
+export interface SingleDraftValidationReport {
+  workflow: string;
+  ok: boolean;
+  structure_errors: DraftValidationDiagnosticReport[];
+  topology_errors: DraftValidationDiagnosticReport[];
+  semantic_errors: DraftValidationDiagnosticReport[];
+  warnings: DraftValidationDiagnosticReport[];
+  survey: DraftSurveyReport;
+  summary: string;
 }
 
 // ── Round-trip validation types ──────────────────────────────────────
@@ -499,6 +533,60 @@ export function buildSingleCleanReport(
     results,
     total_removed: results.reduce((n, r) => n + r.removed_keys.length, 0),
     steps_with_removals: results.filter((r) => r.removed_keys.length > 0).length,
+  };
+}
+
+export function buildSingleDraftValidationReport(
+  workflow: string,
+  result: DraftValidationResult,
+): SingleDraftValidationReport {
+  const errorCount =
+    result.structureErrors.length + result.topologyErrors.length + result.semanticErrors.length;
+  const warnCount = result.warnings.length;
+  const summary =
+    errorCount === 0
+      ? `draft valid${warnCount > 0 ? ` (${warnCount} warning${warnCount === 1 ? "" : "s"})` : ""}`
+      : `${errorCount} error${errorCount === 1 ? "" : "s"}${
+          warnCount > 0 ? `, ${warnCount} warning${warnCount === 1 ? "" : "s"}` : ""
+        }`;
+  return {
+    workflow,
+    ok: result.ok,
+    structure_errors: result.structureErrors.map(diagnosticToReport),
+    topology_errors: result.topologyErrors.map(diagnosticToReport),
+    semantic_errors: result.semanticErrors.map(diagnosticToReport),
+    warnings: result.warnings.map(diagnosticToReport),
+    survey: buildDraftSurveyReport(result.survey),
+    summary,
+  };
+}
+
+function diagnosticToReport(d: DraftValidationDiagnostic): DraftValidationDiagnosticReport {
+  return { path: [...d.path], message: d.message };
+}
+
+function buildDraftSurveyReport(survey: DraftSurvey): DraftSurveyReport {
+  const todoSeen = new Set<string>();
+  const todoPaths: string[][] = [];
+  for (const hit of survey.todos) {
+    const key = hit.path.join("/");
+    if (todoSeen.has(key)) continue;
+    todoSeen.add(key);
+    todoPaths.push([...hit.path]);
+  }
+  const planSeen = new Set<string>();
+  const planStepPaths: string[][] = [];
+  for (const hit of survey.planFields) {
+    const key = hit.path.join("/");
+    if (planSeen.has(key)) continue;
+    planSeen.add(key);
+    planStepPaths.push([...hit.path]);
+  }
+  return {
+    is_draft: survey.isDraft,
+    todo_count: survey.todos.length,
+    todo_paths: todoPaths,
+    plan_step_paths: planStepPaths,
   };
 }
 
