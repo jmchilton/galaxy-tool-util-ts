@@ -170,12 +170,15 @@ export {
   isTodoSentinel,
   isDraftWorkflow,
   detectDraft,
+  validateDraft,
   type PlanField,
   type StepPath,
   type TodoLocation,
   type TodoHit,
   type PlanHit,
   type DraftSurvey,
+  type DraftValidationDiagnostic,
+  type DraftValidationResult,
 } from "./draft-checks.js";
 
 export {

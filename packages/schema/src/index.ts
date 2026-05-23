@@ -230,12 +230,16 @@ export {
   isDraftWorkflow,
   /** Walk a draft workflow once; collect every TODO sentinel + `_plan_*` field. */
   detectDraft,
+  /** Validate a draft workflow: structural decode + topology + sentinel-form + warnings. Does not throw. */
+  validateDraft,
   type PlanField,
   type StepPath,
   type TodoLocation,
   type TodoHit,
   type PlanHit,
   type DraftSurvey,
+  type DraftValidationDiagnostic,
+  type DraftValidationResult,
   /** Format-aware workflow serializer (JSON/YAML, configurable indent and newline). */
   serializeWorkflow,
   type SerializeWorkflowOptions,

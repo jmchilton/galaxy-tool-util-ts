@@ -10,6 +10,7 @@ import {
   detectDraft,
   isDraftWorkflow,
   isTodoSentinel,
+  validateDraft,
 } from "../src/workflow/draft-checks.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -143,5 +144,197 @@ describe("detectDraft", () => {
     // Step `cat` is fully concrete and has no _plan_* — survey should be empty.
     expect(survey.todos).toEqual([]);
     expect(survey.planFields).toEqual([]);
+  });
+});
+
+describe("validateDraft", () => {
+  it("rejects non-draft documents up front", () => {
+    const r = validateDraft({ class: "GalaxyWorkflow", steps: {} });
+    expect(r.ok).toBe(false);
+    expect(r.structureErrors).toHaveLength(1);
+    expect(r.structureErrors[0]?.message).toMatch(/class must be "GalaxyWorkflowDraft"/);
+  });
+
+  it("passes on the upstream synthetic-draft-tool-step fixture", () => {
+    const r = validateDraft(loadFixture("synthetic-draft-tool-step.gxwf.yml"));
+    expect(r.ok).toBe(true);
+    expect(r.structureErrors).toEqual([]);
+    expect(r.topologyErrors).toEqual([]);
+    expect(r.semanticErrors).toEqual([]);
+    // No warnings expected: TODO_<hint> ports, no top-level _plan_*.
+    expect(r.warnings).toEqual([]);
+    expect(r.survey.isDraft).toBe(true);
+  });
+
+  it("flags top-level _plan_* as a warning (not an error)", () => {
+    const r = validateDraft(loadFixture("synthetic-draft-plan-top-level.gxwf.yml"));
+    expect(r.ok).toBe(true);
+    expect(r.warnings.map((w) => w.message)).toEqual([
+      "top-level `_plan_context` is not part of the draft contract; planning fields belong on individual steps",
+    ]);
+  });
+
+  it("errors on TODO sentinel in step label", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: { TODO: { tool_id: "cat1", tool_version: "1.0.0" } },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.topologyErrors.map((e) => e.message)).toContain(
+      `step label cannot be a TODO sentinel: "TODO"`,
+    );
+  });
+
+  it("errors on dangling step/port edge ref", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { final: { outputSource: "missing_step/out1" } },
+      steps: {
+        a: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "missing_step/out1" },
+          out: [{ id: "out1" }],
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    const msgs = r.topologyErrors.map((e) => e.message);
+    expect(msgs).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          `workflow output "final" source "missing_step/out1" references unknown step "missing_step"`,
+        ),
+        expect.stringContaining(
+          `step input "input1" source "missing_step/out1" references unknown step "missing_step"`,
+        ),
+      ]),
+    );
+  });
+
+  it("errors on unknown port on a declared step", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "out1" }],
+        },
+        b: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "a/wrong_port" },
+          out: [{ id: "out1" }],
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.topologyErrors.map((e) => e.message)).toContain(
+      `step input "input1" source "a/wrong_port" references unknown port "wrong_port" on step "a"`,
+    );
+  });
+
+  it("allows TODO_<hint> ports as edge sources (drafts may reference unresolved ports)", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { final: { outputSource: "fastp/TODO_trimmed" } },
+      steps: {
+        fastp: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { TODO_input: "reads" },
+          out: [{ id: "TODO_trimmed" }],
+        },
+      },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.topologyErrors).toEqual([]);
+  });
+
+  it("emits semantic error on malformed TODO-shaped strings", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: {
+          tool_id: "TODO-foo",
+          tool_version: "TODO_",
+          in: { TODOfoo: "reads" },
+          out: [{ id: "TODO_Foo" }],
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    const malformed = r.semanticErrors.map((e) => e.message);
+    expect(malformed).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(`tool_id "TODO-foo" is TODO-shaped but malformed`),
+        expect.stringContaining(`tool_version "TODO_" is TODO-shaped but malformed`),
+        expect.stringContaining(`in: key "TODOfoo" is TODO-shaped but malformed`),
+        expect.stringContaining(`out: id "TODO_Foo" is TODO-shaped but malformed`),
+      ]),
+    );
+  });
+
+  it("warns on bare TODO in port position", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { TODO: "reads" },
+          out: [{ id: "TODO" }],
+        },
+      },
+    });
+    expect(r.ok).toBe(true);
+    const warnMsgs = r.warnings.map((w) => w.message);
+    expect(warnMsgs).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("bare `TODO` in port position (location: in.TODO)"),
+        expect.stringContaining("bare `TODO` in port position (location: out.TODO)"),
+      ]),
+    );
+    // tool_id / tool_version bare TODO is *allowed* — should not appear as a warning.
+    expect(warnMsgs.some((m) => m.includes("tool_id"))).toBe(false);
+  });
+
+  it("recurses into draft subworkflows and emits errors with the outer-prefixed step path", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        outer: {
+          type: "subworkflow",
+          in: { reads: "reads" },
+          out: [{ id: "result" }],
+          run: {
+            class: DRAFT_CLASS,
+            inputs: { reads: { type: "data" } },
+            outputs: {},
+            steps: { TODO: { tool_id: "cat1", tool_version: "1.0.0" } },
+          },
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    const err = r.topologyErrors.find((e) =>
+      e.message.includes("step label cannot be a TODO sentinel"),
+    );
+    expect(err).toBeDefined();
+    expect(err?.path).toEqual(["outer"]);
   });
 });
