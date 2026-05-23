@@ -382,3 +382,9 @@ export {
   type UserToolSourceDiagnostic,
   type ValidateUserToolSourceOptions,
 } from "./user-tool-source/index.js";
+
+export {
+  /** Parse an inline GalaxyUserTool `tool_representation` dict into a ParsedTool. */
+  parseInlineTool,
+  type InlineRepresentation,
+} from "./user-tool-parse/index.js";

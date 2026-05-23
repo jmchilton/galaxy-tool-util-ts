@@ -1,7 +1,7 @@
 {
-  "id": "collection_paired_or_unpaired",
-  "version": "0.1.0",
-  "name": "collection_paired_or_unpaired",
+  "id": "gx_data_collection_list",
+  "version": "1.0.0",
+  "name": "gx_data_collection_list",
   "description": "",
   "requirements": [],
   "containers": [],
@@ -11,16 +11,16 @@
   },
   "inputs": [
     {
-      "name": "f1",
+      "name": "parameter",
       "parameter_type": "gx_data_collection",
       "hidden": false,
-      "label": "Input",
+      "label": null,
       "help": null,
       "argument": null,
       "is_dynamic": false,
       "optional": false,
       "type": "data_collection",
-      "collection_type": "paired_or_unpaired",
+      "collection_type": "list",
       "extensions": [
         "data"
       ],
@@ -29,11 +29,11 @@
   ],
   "outputs": [
     {
-      "name": "out1",
+      "name": "output",
       "label": null,
       "hidden": false,
       "type": "data",
-      "format": "txt",
+      "format": "data",
       "format_source": null,
       "metadata_source": null,
       "discover_datasets": [

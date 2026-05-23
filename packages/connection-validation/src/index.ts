@@ -28,6 +28,13 @@ export type { GetToolInfo } from "./get-tool-info.js";
 export { collectToolRefs, buildGetToolInfo } from "./build-get-tool-info.js";
 export type { ToolRef, AsyncToolFetcher, BuildGetToolInfoOptions } from "./build-get-tool-info.js";
 export {
+  resolveForStep,
+  InlineResolver,
+  ensureInlineResolver,
+  collectInlineTools,
+  type InlineToolEntry,
+} from "./inline-resolver.js";
+export {
   canMatch,
   canMapOver,
   compatible,

@@ -1,11 +1,18 @@
 import type { ParsedTool } from "@galaxy-tool-util/schema";
 
 import type { GetToolInfo } from "./get-tool-info.js";
+import {
+  collectInlineTools,
+  ensureInlineResolver,
+  type InlineToolEntry,
+} from "./inline-resolver.js";
 
 export interface ToolRef {
   toolId: string;
   toolVersion: string | null;
 }
+
+export type InlineRef = InlineToolEntry;
 
 export type AsyncToolFetcher = (
   toolId: string,
@@ -110,7 +117,7 @@ export async function buildGetToolInfo(
     await Promise.all(workers);
   }
 
-  return {
+  const remote: GetToolInfo = {
     getToolInfo: (id, version) => {
       const versioned = lookup.get(lookupKey(id, version ?? null));
       if (versioned) return versioned;
@@ -118,6 +125,28 @@ export async function buildGetToolInfo(
       return lookup.get(lookupKey(id, null)) ?? firstByToolId(lookup, id);
     },
   };
+
+  // Parse inline tool representations up-front. Surfaces parse errors during
+  // preload (same `onMiss` channel ToolShed misses use) and warms the
+  // InlineResolver cache so the graph build avoids re-parsing.
+  const resolver = ensureInlineResolver(remote);
+  for (const entry of collectInlineTools(data)) {
+    if (entry.inlineClass !== "GalaxyUserTool") {
+      // GalaxyTool admin dynamic tools are out of scope; the graph builder
+      // emits `inline_source_unsupported` at validation time. No-op here.
+      continue;
+    }
+    try {
+      resolver.parseInlineOnce(entry.representation);
+    } catch (e) {
+      opts.onMiss?.(
+        { toolId: String(entry.representation.id ?? "(inline)"), toolVersion: null },
+        e,
+      );
+    }
+  }
+
+  return resolver;
 }
 
 function lookupKey(toolId: string, toolVersion: string | null): string {

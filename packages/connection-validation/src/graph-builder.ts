@@ -11,6 +11,7 @@ import type { NormalizedNativeStep, NormalizedNativeWorkflow } from "@galaxy-too
 import type { ConditionalParameterModel, ToolParameterModel } from "@galaxy-tool-util/schema";
 
 import type { GetToolInfo } from "./get-tool-info.js";
+import { ensureInlineResolver, resolveForStep } from "./inline-resolver.js";
 import type {
   ConnectionRef,
   ResolvedInput,
@@ -39,7 +40,10 @@ interface RawConnection {
 
 export function buildWorkflowGraph(workflow: unknown, getToolInfo: GetToolInfo): WorkflowGraph {
   const native = _coerceNormalizedNative(workflow);
-  return _buildFromNormalized(native, getToolInfo);
+  // Wrap once at the top so per-step parse results are memoized across the
+  // whole walk (including subworkflow recursion). Idempotent — if the caller
+  // already wrapped, we re-use their cache.
+  return _buildFromNormalized(native, ensureInlineResolver(getToolInfo));
 }
 
 function _coerceNormalizedNative(workflow: unknown): NormalizedNativeWorkflow {
@@ -147,18 +151,18 @@ function _resolveToolStep(
   let inputs: Record<string, ResolvedInput> = {};
   let outputs: Record<string, ResolvedOutput> = {};
 
-  if (step.tool_id) {
-    const parsed = getToolInfo.getToolInfo(step.tool_id, step.tool_version);
-    if (parsed) {
-      inputs = _collectInputs(parsed.inputs as ToolParameterModel[], step.tool_state ?? {});
-      outputs = _collectOutputs(parsed.outputs);
-      // Python additionally calls _resolve_rules_collection_types here to
-      // populate `collection_type` from a RuleSet mapping when the output
-      // declares `collection_type_from_rules`. RuleSet (galaxy.util.rules_dsl)
-      // is not yet ported — affected outputs stay unresolved (ANY) instead of
-      // gaining a concrete type. Outputs without rules-driven types behave
-      // identically to Python.
-    }
+  // resolveForStep handles inline UDT (`tool_representation`) too — when
+  // present, the inline parse wins over `tool_id`.
+  const parsed = resolveForStep(getToolInfo, step);
+  if (parsed) {
+    inputs = _collectInputs(parsed.inputs as ToolParameterModel[], step.tool_state ?? {});
+    outputs = _collectOutputs(parsed.outputs);
+    // Python additionally calls _resolve_rules_collection_types here to
+    // populate `collection_type` from a RuleSet mapping when the output
+    // declares `collection_type_from_rules`. RuleSet (galaxy.util.rules_dsl)
+    // is not yet ported — affected outputs stay unresolved (ANY) instead of
+    // gaining a concrete type. Outputs without rules-driven types behave
+    // identically to Python.
   }
 
   if (step.when && "when" in connections) {
@@ -167,8 +171,11 @@ function _resolveToolStep(
 
   return {
     stepId,
-    toolId: step.tool_id ?? null,
-    toolVersion: step.tool_version ?? null,
+    // Inline UDT steps have null tool_id but carry the id inside the
+    // representation; surface that so reports/diagnostics have something to
+    // show.
+    toolId: step.tool_id ?? (parsed ? parsed.id : null) ?? null,
+    toolVersion: step.tool_version ?? (parsed ? parsed.version : null) ?? null,
     stepType: "tool",
     inputs,
     outputs,

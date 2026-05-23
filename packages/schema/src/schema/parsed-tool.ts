@@ -154,6 +154,9 @@ export const ParsedTool = S.Struct({
 
 export const parsedToolSchema = JSONSchema.make(ParsedTool, { target: "jsonSchema2020-12" });
 
+export type HelpContent = S.Schema.Type<typeof HelpContent>;
+export type XrefDict = S.Schema.Type<typeof XrefDict>;
+export type Citation = S.Schema.Type<typeof Citation>;
 export type DiscoverVia = S.Schema.Type<typeof DiscoverVia>;
 export type SortKey = S.Schema.Type<typeof SortKey>;
 export type SortComp = S.Schema.Type<typeof SortComp>;

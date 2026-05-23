@@ -2,7 +2,13 @@
   "id": "output_format",
   "version": "1.0.0",
   "name": "output_format",
-  "description": null,
+  "description": "",
+  "requirements": [],
+  "containers": [],
+  "stdio": {
+    "exit_codes": [],
+    "regexes": []
+  },
   "inputs": [
     {
       "name": "input_data_1",

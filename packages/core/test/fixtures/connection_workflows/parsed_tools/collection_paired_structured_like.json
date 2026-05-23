@@ -2,7 +2,13 @@
   "id": "collection_paired_structured_like",
   "version": "0.1.0",
   "name": "collection_paired_structured_like",
-  "description": null,
+  "description": "",
+  "requirements": [],
+  "containers": [],
+  "stdio": {
+    "exit_codes": [],
+    "regexes": []
+  },
   "inputs": [
     {
       "name": "input1",
