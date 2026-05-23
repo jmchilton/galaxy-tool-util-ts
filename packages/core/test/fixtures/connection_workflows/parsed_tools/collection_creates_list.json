@@ -2,7 +2,13 @@
   "id": "collection_creates_list",
   "version": "0.1.0",
   "name": "collection_creates_list",
-  "description": null,
+  "description": "",
+  "requirements": [],
+  "containers": [],
+  "stdio": {
+    "exit_codes": [],
+    "regexes": []
+  },
   "inputs": [
     {
       "name": "input1",

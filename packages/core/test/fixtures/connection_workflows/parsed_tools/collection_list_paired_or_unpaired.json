@@ -2,7 +2,13 @@
   "id": "collection_list_paired_or_unpaired",
   "version": "0.1.0",
   "name": "collection_list_paired_or_unpaired",
-  "description": null,
+  "description": "",
+  "requirements": [],
+  "containers": [],
+  "stdio": {
+    "exit_codes": [],
+    "regexes": []
+  },
   "inputs": [
     {
       "name": "f1",

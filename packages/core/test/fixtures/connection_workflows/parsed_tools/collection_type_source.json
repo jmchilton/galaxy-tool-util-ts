@@ -2,7 +2,13 @@
   "id": "collection_type_source",
   "version": "0.1.0",
   "name": "collection_type_source",
-  "description": null,
+  "description": "",
+  "requirements": [],
+  "containers": [],
+  "stdio": {
+    "exit_codes": [],
+    "regexes": []
+  },
   "inputs": [
     {
       "name": "header",

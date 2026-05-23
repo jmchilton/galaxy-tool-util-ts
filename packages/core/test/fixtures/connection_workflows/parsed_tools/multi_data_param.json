@@ -2,7 +2,13 @@
   "id": "multi_data_param",
   "version": "0.1.0",
   "name": "multi_data_param",
-  "description": null,
+  "description": "",
+  "requirements": [],
+  "containers": [],
+  "stdio": {
+    "exit_codes": [],
+    "regexes": []
+  },
   "inputs": [
     {
       "name": "f1",

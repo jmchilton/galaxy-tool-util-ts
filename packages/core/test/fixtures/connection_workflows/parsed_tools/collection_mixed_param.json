@@ -2,7 +2,13 @@
   "id": "collection_mixed_param",
   "version": "0.1.0",
   "name": "collection_mixed_param",
-  "description": null,
+  "description": "",
+  "requirements": [],
+  "containers": [],
+  "stdio": {
+    "exit_codes": [],
+    "regexes": []
+  },
   "inputs": [
     {
       "name": "f1",

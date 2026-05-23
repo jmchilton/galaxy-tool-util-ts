@@ -2,7 +2,13 @@
   "id": "gx_data",
   "version": "1.0.0",
   "name": "gx_data",
-  "description": null,
+  "description": "",
+  "requirements": [],
+  "containers": [],
+  "stdio": {
+    "exit_codes": [],
+    "regexes": []
+  },
   "inputs": [
     {
       "name": "parameter",
