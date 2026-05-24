@@ -31,7 +31,7 @@ describe("draft-validate (text mode)", () => {
     await ctx.cleanup();
   });
 
-  it("passes on synthetic-draft-tool-step (exit 0, clean summary)", async () => {
+  it("passes on synthetic-draft-tool-step (exit 0, clean summary, survey line)", async () => {
     const wfPath = await stagedFixture(ctx, "synthetic-draft-tool-step.gxwf.yml");
     await runDraftValidate(wfPath, {});
 
@@ -41,7 +41,35 @@ describe("draft-validate (text mode)", () => {
     expect(out).not.toContain("Structure errors");
     expect(out).not.toContain("Topology errors");
     expect(out).not.toContain("Semantic errors");
+    // Survey line: plural sentinels + paths (fixture has 6 across 2), singular step with _plan_*.
+    expect(out).toMatch(
+      /Survey: 6 TODO sentinels across 2 step paths; 1 step with _plan_\* fields/,
+    );
     expect(process.exitCode).toBe(0);
+  });
+
+  it("survey line pluralizes correctly for zero/one/many", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs: {}
+steps:
+  one:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out
+`;
+    const wfPath = join(ctx.tmpDir, "no-todos.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, {});
+    const out = joined(ctx.logSpy);
+    expect(out).toMatch(
+      /Survey: 0 TODO sentinels across 0 step paths; 0 steps with _plan_\* fields/,
+    );
   });
 
   it("reports topology error (label: TODO) → exit 1, cites the path", async () => {
@@ -172,8 +200,10 @@ steps:
     expect(process.exitCode).toBe(1);
   });
 
-  it("produces byte-identical JSON across two runs (determinism)", async () => {
-    const wfPath = await stagedFixture(ctx, "synthetic-draft-tool-step.gxwf.yml");
+  it("produces byte-identical JSON across two runs (determinism, subworkflow fixture)", async () => {
+    // Use the subworkflow fixture so survey/path serialization actually has
+    // structure to stress (nested draft step + _plan_* fields under run:).
+    const wfPath = await stagedFixture(ctx, "synthetic-draft-plan-subworkflow.gxwf.yml");
 
     await runDraftValidate(wfPath, { json: true });
     const first = joined(ctx.logSpy);
@@ -183,6 +213,21 @@ steps:
     const second = joined(ctx.logSpy);
 
     expect(first).toBe(second);
+    // Sanity: the subworkflow fixture has at least one _plan_* step path so we
+    // know the determinism check is exercising survey serialization, not an
+    // empty object.
+    const report = JSON.parse(first) as SingleDraftValidationReport;
+    expect(report.survey.plan_step_paths.length).toBeGreaterThan(0);
+  });
+
+  it("rejects --json + --report-html (stdout) with exit 2 and a clear message", async () => {
+    const wfPath = await stagedFixture(ctx, "synthetic-draft-tool-step.gxwf.yml");
+    await runDraftValidate(wfPath, { json: true, reportHtml: true });
+
+    const err = joined(ctx.errSpy);
+    expect(err).toMatch(/--json.*--report-html/);
+    expect(err).toContain("stdout");
+    expect(process.exitCode).toBe(2);
   });
 });
 

@@ -30,6 +30,28 @@ export interface ReportOutputOptions {
   reportHtml?: string | boolean;
 }
 
+/** True if dest is unset to a filename and would write to stdout. */
+function targetsStdout(dest: string | boolean | undefined): boolean {
+  return dest === true || dest === "-";
+}
+
+/**
+ * If more than one report sink (JSON + rendered reports) would write to
+ * stdout, return an error message describing the conflict. Otherwise null.
+ */
+export function findStdoutSinkConflict(opts: {
+  json?: boolean;
+  reportHtml?: string | boolean;
+  reportMarkdown?: string | boolean;
+}): string | null {
+  const sinks: string[] = [];
+  if (opts.json) sinks.push("--json");
+  if (targetsStdout(opts.reportHtml)) sinks.push("--report-html");
+  if (targetsStdout(opts.reportMarkdown)) sinks.push("--report-markdown");
+  if (sinks.length < 2) return null;
+  return `cannot write ${sinks.join(" + ")} to stdout simultaneously — pick one, or redirect a report to a file`;
+}
+
 /**
  * Render and write report output if --report-markdown / --report-html flags
  * were passed. Both can be specified simultaneously.

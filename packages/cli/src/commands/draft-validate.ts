@@ -20,7 +20,7 @@ import {
   type SingleDraftValidationReport,
 } from "@galaxy-tool-util/schema";
 import { readWorkflowFile } from "./workflow-io.js";
-import { writeReportHtml, writeReportOutput } from "./report-output.js";
+import { findStdoutSinkConflict, writeReportHtml, writeReportOutput } from "./report-output.js";
 
 export interface DraftValidateOptions {
   format?: string;
@@ -33,6 +33,13 @@ export async function runDraftValidate(
   filePath: string,
   opts: DraftValidateOptions,
 ): Promise<void> {
+  const conflict = findStdoutSinkConflict(opts);
+  if (conflict) {
+    console.error(conflict);
+    process.exitCode = 2;
+    return;
+  }
+
   const data = await readWorkflowFile(filePath);
   if (!data) {
     process.exitCode = 2;
