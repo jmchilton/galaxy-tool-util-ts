@@ -16,7 +16,7 @@ export function buildProgramFromSpec(spec: ProgramSpec, handlers: HandlerRegistr
   program.name(spec.name).description(spec.description).version(spec.version);
   const groups = spec.optionGroups ?? {};
   for (const cmd of spec.commands) {
-    program.addCommand(buildCommand(cmd, groups, handlers));
+    program.addCommand(buildCommand(cmd, groups, handlers), cmd.hidden ? { hidden: true } : {});
   }
   return program;
 }

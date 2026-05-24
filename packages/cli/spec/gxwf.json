@@ -121,6 +121,32 @@
       ]
     },
     {
+      "name": "_draft-extract",
+      "description": "Extract the concrete subset of a draft workflow (agent-loop internal; hidden)",
+      "handler": "draftExtract",
+      "hidden": true,
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Draft workflow file (.gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "-o, --output <file>",
+          "description": "Write extracted workflow to file (default: stdout)"
+        },
+        {
+          "flags": "--report-json [file]",
+          "description": "Write extraction report JSON (drops, rewrites, class flip) — to file or stdout if omitted"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force input format: format2 (default; native is rejected)"
+        }
+      ]
+    },
+    {
       "name": "draft-next-step",
       "description": "Pick the next step a downstream agent should work on (or report no remaining work)",
       "handler": "draftNextStep",

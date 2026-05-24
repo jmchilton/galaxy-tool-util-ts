@@ -31,6 +31,8 @@ export interface SpecCommand {
   optionGroups?: string[];
   /** Key into the handler registry passed to `buildProgramFromSpec`. */
   handler: string;
+  /** When true, suppress this command from `--help` output. */
+  hidden?: boolean;
 }
 
 export interface ProgramSpec {

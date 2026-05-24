@@ -36,6 +36,23 @@ function targetsStdout(dest: string | boolean | undefined): boolean {
 }
 
 /**
+ * If more than one sink in `candidates` would write to stdout, return an
+ * error message naming the conflicting flags. Otherwise null.
+ *
+ * Generalizes `findStdoutSinkConflict` for commands whose stdout sinks
+ * aren't drawn from the standard `--json` / `--report-{html,markdown}`
+ * set (e.g. `draft-extract` writes the trimmed workflow to stdout by
+ * default + `--report-json` may also target stdout).
+ */
+export function findStdoutSinkCollision(
+  candidates: Array<{ flag: string; toStdout: boolean }>,
+): string | null {
+  const sinks = candidates.filter((c) => c.toStdout).map((c) => c.flag);
+  if (sinks.length < 2) return null;
+  return `cannot write ${sinks.join(" + ")} to stdout simultaneously — pick one, or redirect a report to a file`;
+}
+
+/**
  * If more than one report sink (JSON + rendered reports) would write to
  * stdout, return an error message describing the conflict. Otherwise null.
  */
@@ -44,13 +61,15 @@ export function findStdoutSinkConflict(opts: {
   reportHtml?: string | boolean;
   reportMarkdown?: string | boolean;
 }): string | null {
-  const sinks: string[] = [];
-  if (opts.json) sinks.push("--json");
-  if (targetsStdout(opts.reportHtml)) sinks.push("--report-html");
-  if (targetsStdout(opts.reportMarkdown)) sinks.push("--report-markdown");
-  if (sinks.length < 2) return null;
-  return `cannot write ${sinks.join(" + ")} to stdout simultaneously — pick one, or redirect a report to a file`;
+  return findStdoutSinkCollision([
+    { flag: "--json", toStdout: !!opts.json },
+    { flag: "--report-html", toStdout: targetsStdout(opts.reportHtml) },
+    { flag: "--report-markdown", toStdout: targetsStdout(opts.reportMarkdown) },
+  ]);
 }
+
+/** Re-export for command handlers that need their own collision-detection sites. */
+export { targetsStdout };
 
 /**
  * Render and write report output if --report-markdown / --report-html flags
