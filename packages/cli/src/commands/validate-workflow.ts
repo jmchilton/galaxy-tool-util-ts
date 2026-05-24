@@ -30,7 +30,7 @@ import { createDefaultResolver } from "./url-resolver.js";
 import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
-import { writeReportHtml } from "./report-output.js";
+import { findStdoutSinkConflict, writeReportHtml } from "./report-output.js";
 import { buildConnectionReport } from "./connection-validation.js";
 import type { ConnectionValidationReport } from "@galaxy-tool-util/schema";
 
@@ -82,6 +82,13 @@ export async function runValidateWorkflow(
   filePath: string,
   opts: ValidateWorkflowOptions,
 ): Promise<void> {
+  const conflict = findStdoutSinkConflict(opts);
+  if (conflict) {
+    console.error(conflict);
+    process.exitCode = 2;
+    return;
+  }
+
   const data = await readWorkflowFile(filePath);
   if (!data) return;
 
