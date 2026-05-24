@@ -20,6 +20,7 @@ import {
   type SingleDraftValidationReport,
 } from "@galaxy-tool-util/schema";
 import { readWorkflowFile } from "./workflow-io.js";
+import { writeReportHtml, writeReportOutput } from "./report-output.js";
 
 export interface DraftValidateOptions {
   format?: string;
@@ -48,7 +49,14 @@ export async function runDraftValidate(
   const result = validateDraft(data);
   const report = buildSingleDraftValidationReport(filePath, result);
 
-  printTextReport(report, result);
+  if (opts.json) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    printTextReport(report, result);
+  }
+
+  await writeReportOutput("draft_validate.md.j2", report, opts);
+  await writeReportHtml("draft-validate", report, opts.reportHtml);
 
   process.exitCode = exitCodeFor(result);
 }
