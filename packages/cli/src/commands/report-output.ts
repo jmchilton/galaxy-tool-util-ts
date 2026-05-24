@@ -13,6 +13,7 @@ export type ReportType =
   | "validate"
   | "lint"
   | "clean"
+  | "draft-validate"
   | "validate-tree"
   | "lint-tree"
   | "clean-tree"

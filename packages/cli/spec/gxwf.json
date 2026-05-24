@@ -92,6 +92,35 @@
       ]
     },
     {
+      "name": "draft-validate",
+      "description": "Validate a draft Galaxy workflow (class: GalaxyWorkflowDraft)",
+      "handler": "draftValidate",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Draft workflow file (.gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--format <fmt>",
+          "description": "Force format: format2 (native is rejected for drafts)"
+        },
+        {
+          "flags": "--json",
+          "description": "Output structured JSON report"
+        },
+        {
+          "flags": "--report-html [file]",
+          "description": "Write HTML report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--report-markdown [file]",
+          "description": "Write Markdown report to file (or stdout if omitted)"
+        }
+      ]
+    },
+    {
       "name": "clean",
       "description": "Strip stale keys and decode legacy tool_state encoding",
       "handler": "clean",

@@ -7,6 +7,7 @@
 import type { Command } from "commander";
 import { runClean } from "../commands/clean.js";
 import { runCleanTree } from "../commands/clean-tree.js";
+import { runDraftValidate } from "../commands/draft-validate.js";
 import { runConvert } from "../commands/convert.js";
 import { runConvertTree } from "../commands/convert-tree.js";
 import { runRoundtrip } from "../commands/roundtrip.js";
@@ -33,6 +34,7 @@ const handlers: HandlerRegistry = {
   validateWorkflow: runValidateWorkflow,
   validateTests: runValidateTests,
   clean: runClean,
+  draftValidate: runDraftValidate,
   lint: runLint,
   convert: runConvert,
   roundtrip: runRoundtrip,
