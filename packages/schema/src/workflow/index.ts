@@ -190,6 +190,14 @@ export {
 } from "./draft-checks.js";
 
 export {
+  stripPlanFields,
+  promoteFullyConcreteDrafts,
+  type StrippedPlanField,
+  type StripPlanFieldsResult,
+  type PromoteFullyConcreteDraftsResult,
+} from "./promote-draft.js";
+
+export {
   withClass,
   validateFormat2,
   validateFormat2Strict,
@@ -255,6 +263,9 @@ export {
   type DraftValidationDiagnosticReport,
   type DraftSurveyReport,
   type SingleDraftValidationReport,
+  type DraftExtractDropReport,
+  type DraftExtractRewriteReport,
+  type SingleDraftExtractReport,
   // Round-trip validation
   type DiffType,
   type DiffSeverity,
@@ -298,6 +309,7 @@ export {
   buildSingleLintReport,
   buildSingleCleanReport,
   buildSingleDraftValidationReport,
+  buildSingleDraftExtractReport,
   buildWorkflowValidationResult,
   buildLintWorkflowResult,
   buildWorkflowCleanResult,

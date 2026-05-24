@@ -13,7 +13,10 @@ import type {
   DraftSurvey,
   DraftValidationDiagnostic,
   DraftValidationResult,
+  DropReason,
+  ExtractResult,
 } from "./draft-checks.js";
+import type { PromoteFullyConcreteDraftsResult } from "./promote-draft.js";
 
 // ── Status literals ──────────────────────────────────────────────────
 
@@ -166,6 +169,42 @@ export interface SingleDraftValidationReport {
   semantic_errors: DraftValidationDiagnosticReport[];
   warnings: DraftValidationDiagnosticReport[];
   survey: DraftSurveyReport;
+  summary: string;
+}
+
+// ── Draft-extract report (workstream E) ──────────────────────────────
+
+export interface DraftExtractDropReport {
+  /** Step path; for workflow-output drops, `[]` for top-level or `[outerStep, ...]` for inner. */
+  path: string[];
+  /** Output label, present only on `dropped_outputs` entries. */
+  label?: string;
+  reason: DropReason;
+}
+
+export interface DraftExtractRewriteReport {
+  /** Step path of the rewritten step. */
+  path: string[];
+  /** `in:` key on that step whose source was rewritten. */
+  in_key: string;
+  /** Refs removed because their source step / port went away. */
+  removed_refs: string[];
+  /** Refs that survived the rewrite. Empty when only a `default:` keeps the entry alive. */
+  surviving_refs: string[];
+}
+
+export interface SingleDraftExtractReport {
+  /** Input file path. */
+  workflow: string;
+  /** `-o` destination, or null when the trimmed workflow was written to stdout. */
+  output: string | null;
+  dropped_steps: DraftExtractDropReport[];
+  dropped_outputs: DraftExtractDropReport[];
+  rewritten_step_inputs: DraftExtractRewriteReport[];
+  /** Step paths whose (sub)workflow was flipped from `GalaxyWorkflowDraft` to `GalaxyWorkflow`; `[]` = outermost. */
+  promoted_paths: string[][];
+  /** Class on the outermost workflow after extract + strip + promote. */
+  class_after: "GalaxyWorkflowDraft" | "GalaxyWorkflow";
   summary: string;
 }
 
@@ -563,6 +602,53 @@ export function buildSingleDraftValidationReport(
 
 function diagnosticToReport(d: DraftValidationDiagnostic): DraftValidationDiagnosticReport {
   return { path: [...d.path], message: d.message };
+}
+
+export function buildSingleDraftExtractReport(
+  workflow: string,
+  output: string | null,
+  extract: ExtractResult,
+  promote: PromoteFullyConcreteDraftsResult,
+  classAfter: "GalaxyWorkflowDraft" | "GalaxyWorkflow",
+): SingleDraftExtractReport {
+  const dropped_steps: DraftExtractDropReport[] = extract.dropped_steps.map((d) => ({
+    path: [...d.path],
+    reason: d.reason,
+  }));
+  const dropped_outputs: DraftExtractDropReport[] = extract.dropped_outputs.map((d) => ({
+    path: [...d.path],
+    label: d.label,
+    reason: d.reason,
+  }));
+  const rewritten_step_inputs: DraftExtractRewriteReport[] = extract.rewritten_step_inputs.map(
+    (r) => ({
+      path: [...r.path],
+      in_key: r.in_key,
+      removed_refs: [...r.removed_refs],
+      surviving_refs: [...r.surviving_refs],
+    }),
+  );
+  const promoted_paths: string[][] = promote.promotedPaths.map((p) => [...p]);
+
+  const stepsWord = dropped_steps.length === 1 ? "step" : "steps";
+  const outputsWord = dropped_outputs.length === 1 ? "output" : "outputs";
+  const rewritesWord = rewritten_step_inputs.length === 1 ? "input rewrite" : "input rewrites";
+  const summary =
+    `${dropped_steps.length} ${stepsWord} dropped, ${dropped_outputs.length} ${outputsWord} dropped,` +
+    ` ${rewritten_step_inputs.length} ${rewritesWord};` +
+    ` class_after=${classAfter}` +
+    (promoted_paths.length > 0 ? ` (${promoted_paths.length} promoted)` : "");
+
+  return {
+    workflow,
+    output,
+    dropped_steps,
+    dropped_outputs,
+    rewritten_step_inputs,
+    promoted_paths,
+    class_after: classAfter,
+    summary,
+  };
 }
 
 function buildDraftSurveyReport(survey: DraftSurvey): DraftSurveyReport {

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DRAFT_CLASS,
+  buildSingleDraftExtractReport,
   buildSingleDraftValidationReport,
+  extractConcreteSubset,
+  promoteFullyConcreteDrafts,
+  stripPlanFields,
   validateDraft,
 } from "../src/workflow/index.js";
 
@@ -146,5 +150,152 @@ describe("buildSingleDraftValidationReport", () => {
       e.message.includes("step label cannot be a TODO sentinel"),
     );
     expect(todoLabelErr?.path).toEqual(["outer"]);
+  });
+});
+
+describe("buildSingleDraftExtractReport", () => {
+  it("zeroes counts + flags promotion when extract is a no-op on a fully-concrete draft", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { out: { outputSource: "s/o" } },
+      steps: {
+        s: { tool_id: "cat1", tool_version: "1.0.0", in: { input1: "reads" }, out: [{ id: "o" }] },
+      },
+    };
+    const extract = extractConcreteSubset(wf);
+    stripPlanFields(extract.workflow);
+    const promote = promoteFullyConcreteDrafts(extract.workflow);
+    const r = buildSingleDraftExtractReport(
+      "concrete.gxwf.yml",
+      "/tmp/out.gxwf.yml",
+      extract,
+      promote,
+      "GalaxyWorkflow",
+    );
+    expect(r.workflow).toBe("concrete.gxwf.yml");
+    expect(r.output).toBe("/tmp/out.gxwf.yml");
+    expect(r.dropped_steps).toEqual([]);
+    expect(r.dropped_outputs).toEqual([]);
+    expect(r.rewritten_step_inputs).toEqual([]);
+    expect(r.promoted_paths).toEqual([[]]);
+    expect(r.class_after).toBe("GalaxyWorkflow");
+    expect(r.summary).toContain("class_after=GalaxyWorkflow");
+    expect(r.summary).toContain("(1 promoted)");
+  });
+
+  it("reports a cascade drop with reason kind: cascade", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        drafty: {
+          tool_id: "TODO",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "o" }],
+        },
+        downstream: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "drafty/o" },
+          out: [{ id: "o" }],
+        },
+      },
+    };
+    const extract = extractConcreteSubset(wf);
+    const promote = promoteFullyConcreteDrafts(extract.workflow);
+    const r = buildSingleDraftExtractReport(
+      "cascade.gxwf.yml",
+      null,
+      extract,
+      promote,
+      (extract.workflow as { class: string }).class as "GalaxyWorkflowDraft" | "GalaxyWorkflow",
+    );
+    expect(r.output).toBeNull();
+    expect(r.dropped_steps.length).toBeGreaterThanOrEqual(2);
+    const reasons = r.dropped_steps.map((d) => d.reason.kind);
+    expect(reasons).toContain("step_has_todo");
+    expect(reasons).toContain("cascade");
+    expect(r.summary).toContain(`class_after=${r.class_after}`);
+  });
+
+  it("omits '(N promoted)' from summary when no promotions fired (non-draft input)", () => {
+    const wf = {
+      class: "GalaxyWorkflow",
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        s: { tool_id: "cat1", tool_version: "1.0.0", in: { input1: "reads" }, out: [{ id: "o" }] },
+      },
+    };
+    const extract = extractConcreteSubset(wf);
+    const promote = promoteFullyConcreteDrafts(extract.workflow);
+    const r = buildSingleDraftExtractReport(
+      "noop.gxwf.yml",
+      null,
+      extract,
+      promote,
+      "GalaxyWorkflow",
+    );
+    expect(r.promoted_paths).toEqual([]);
+    expect(r.summary).not.toContain("promoted");
+  });
+
+  it("preserves dropped_outputs labels", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {
+        final: { outputSource: "drafty/o" },
+      },
+      steps: {
+        drafty: {
+          tool_id: "TODO",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "o" }],
+        },
+      },
+    };
+    const extract = extractConcreteSubset(wf);
+    const promote = promoteFullyConcreteDrafts(extract.workflow);
+    const r = buildSingleDraftExtractReport(
+      "dropouts.gxwf.yml",
+      null,
+      extract,
+      promote,
+      "GalaxyWorkflowDraft",
+    );
+    expect(r.dropped_outputs).toHaveLength(1);
+    expect(r.dropped_outputs[0]?.label).toBe("final");
+  });
+
+  it("clones path arrays so mutating the report does not feed back into the extract result", () => {
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        drafty: {
+          tool_id: "TODO",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "o" }],
+        },
+      },
+    };
+    const extract = extractConcreteSubset(wf);
+    const promote = promoteFullyConcreteDrafts(extract.workflow);
+    const r = buildSingleDraftExtractReport(
+      "clones.gxwf.yml",
+      null,
+      extract,
+      promote,
+      "GalaxyWorkflowDraft",
+    );
+    r.dropped_steps[0]?.path.push("MUTATED");
+    expect(extract.dropped_steps[0]?.path).not.toContain("MUTATED");
   });
 });

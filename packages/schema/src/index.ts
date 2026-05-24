@@ -235,6 +235,20 @@ export {
   /** Topologically-ordered "what to work on next" for a draft workflow; prompt-shaped work[]. */
   nextDraftStep,
   type NextStepResult,
+  /** Trim a draft workflow to its concrete subset; cascade drops + multi-source rewrites. */
+  extractConcreteSubset,
+  type DropReason,
+  type DroppedStep,
+  type DroppedOutput,
+  type RewrittenStepInput,
+  type ExtractResult,
+  /** Strip `_plan_*` planning fields from every step + workflow root (recursive over draft subworkflows). */
+  stripPlanFields,
+  type StrippedPlanField,
+  type StripPlanFieldsResult,
+  /** Flip `class: GalaxyWorkflowDraft` → `class: GalaxyWorkflow` on any (sub)workflow now fully concrete. */
+  promoteFullyConcreteDrafts,
+  type PromoteFullyConcreteDraftsResult,
   type PlanField,
   type StepPath,
   type TodoLocation,
@@ -311,6 +325,9 @@ export {
   type DraftValidationDiagnosticReport,
   type DraftSurveyReport,
   type SingleDraftValidationReport,
+  type DraftExtractDropReport,
+  type DraftExtractRewriteReport,
+  type SingleDraftExtractReport,
   type DiffType,
   type DiffSeverity,
   type BenignArtifact,
@@ -350,6 +367,7 @@ export {
   buildSingleLintReport,
   buildSingleCleanReport,
   buildSingleDraftValidationReport,
+  buildSingleDraftExtractReport,
   buildWorkflowValidationResult,
   buildLintWorkflowResult,
   buildWorkflowCleanResult,
