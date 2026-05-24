@@ -121,6 +121,28 @@
       ]
     },
     {
+      "name": "draft-next-step",
+      "description": "Pick the next step a downstream agent should work on (or report no remaining work)",
+      "handler": "draftNextStep",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Draft workflow file (.gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--format <fmt>",
+          "description": "Force input format: format2 (default; native is rejected)"
+        },
+        {
+          "flags": "--output-format <fmt>",
+          "description": "Output format: json (default) or markdown",
+          "default": "json"
+        }
+      ]
+    },
+    {
       "name": "clean",
       "description": "Strip stale keys and decode legacy tool_state encoding",
       "handler": "clean",

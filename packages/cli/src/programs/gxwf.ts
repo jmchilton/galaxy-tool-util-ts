@@ -7,6 +7,7 @@
 import type { Command } from "commander";
 import { runClean } from "../commands/clean.js";
 import { runCleanTree } from "../commands/clean-tree.js";
+import { runDraftNextStep } from "../commands/draft-next-step.js";
 import { runDraftValidate } from "../commands/draft-validate.js";
 import { runConvert } from "../commands/convert.js";
 import { runConvertTree } from "../commands/convert-tree.js";
@@ -34,6 +35,7 @@ const handlers: HandlerRegistry = {
   validateWorkflow: runValidateWorkflow,
   validateTests: runValidateTests,
   clean: runClean,
+  draftNextStep: runDraftNextStep,
   draftValidate: runDraftValidate,
   lint: runLint,
   convert: runConvert,

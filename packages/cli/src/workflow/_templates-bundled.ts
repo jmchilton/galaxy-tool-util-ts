@@ -159,7 +159,7 @@ Summary: {{ report.summary }}
 
 ## Survey
 
-- Draft: {{ report.survey.is_draft }}
+- Draft: {% if report.survey.is_draft %}yes{% else %}no{% endif %}
 - TODO sentinels: {{ report.survey.todo_count }} across {{ report.survey.todo_paths | length }} step path(s)
 - Steps with \`_plan_*\` fields: {{ report.survey.plan_step_paths | length }}
 
@@ -167,7 +167,7 @@ Summary: {{ report.summary }}
 ## Structure Errors ({{ report.structure_errors | length }})
 
 {% for d in report.structure_errors %}
-- \`{% if d.path | length == 0 %}<workflow>{% else %}{{ d.path | join("/") }}{% endif %}\` — {{ d.message }}
+- \`\`{% if d.path | length == 0 %}<workflow>{% else %}{{ d.path | join("/") }}{% endif %}\`\` — {{ d.message }}
 {% endfor %}
 
 {% endif %}
@@ -175,7 +175,7 @@ Summary: {{ report.summary }}
 ## Topology Errors ({{ report.topology_errors | length }})
 
 {% for d in report.topology_errors %}
-- \`{% if d.path | length == 0 %}<workflow>{% else %}{{ d.path | join("/") }}{% endif %}\` — {{ d.message }}
+- \`\`{% if d.path | length == 0 %}<workflow>{% else %}{{ d.path | join("/") }}{% endif %}\`\` — {{ d.message }}
 {% endfor %}
 
 {% endif %}
@@ -183,7 +183,7 @@ Summary: {{ report.summary }}
 ## Semantic Errors ({{ report.semantic_errors | length }})
 
 {% for d in report.semantic_errors %}
-- \`{% if d.path | length == 0 %}<workflow>{% else %}{{ d.path | join("/") }}{% endif %}\` — {{ d.message }}
+- \`\`{% if d.path | length == 0 %}<workflow>{% else %}{{ d.path | join("/") }}{% endif %}\`\` — {{ d.message }}
 {% endfor %}
 
 {% endif %}
@@ -191,7 +191,7 @@ Summary: {{ report.summary }}
 ## Warnings ({{ report.warnings | length }})
 
 {% for d in report.warnings %}
-- \`{% if d.path | length == 0 %}<workflow>{% else %}{{ d.path | join("/") }}{% endif %}\` — {{ d.message }}
+- \`\`{% if d.path | length == 0 %}<workflow>{% else %}{{ d.path | join("/") }}{% endif %}\`\` — {{ d.message }}
 {% endfor %}
 
 {% endif %}
