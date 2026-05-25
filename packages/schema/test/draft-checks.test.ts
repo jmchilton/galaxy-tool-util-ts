@@ -26,6 +26,8 @@ describe("isTodoSentinel", () => {
     ["TODO", true],
     ["TODO_foo", true],
     ["TODO_foo_bar_2", true],
+    ["TODO_Trimmed", true],
+    ["TODO_TRIMMED", true],
     ["TODO_", false],
     ["TODO-foo", false],
     ["TODOfoo", false],
@@ -68,7 +70,7 @@ describe("isDraftWorkflow", () => {
 describe("PLAN_FIELDS / TODO_SENTINEL_PATTERN constants", () => {
   it("matches the values shipped by gxformat2/draft.py", () => {
     expect(PLAN_FIELDS).toEqual(["_plan_state", "_plan_context", "_plan_in", "_plan_out"]);
-    expect(TODO_SENTINEL_PATTERN.source).toBe("^TODO(_[a-z0-9_]+)?$");
+    expect(TODO_SENTINEL_PATTERN.source).toBe("^TODO(_[a-zA-Z0-9_]+)?$");
   });
 });
 
@@ -261,7 +263,7 @@ describe("validateDraft", () => {
     expect(r.topologyErrors).toEqual([]);
   });
 
-  it("emits semantic error on malformed TODO-shaped strings (TODO_, TODO-foo, TODO_Foo)", () => {
+  it("emits semantic error on malformed TODO-shaped strings (TODO_, TODO-foo)", () => {
     const r = validateDraft({
       class: DRAFT_CLASS,
       inputs: { reads: { type: "data" } },
@@ -271,7 +273,7 @@ describe("validateDraft", () => {
           tool_id: "TODO-foo",
           tool_version: "TODO_",
           in: { TODO_input: "reads" }, // canonical, not malformed
-          out: [{ id: "TODO_Foo" }],
+          out: [{ id: "TODO_Mixed" }], // mixed-case suffix is canonical, not malformed
         },
       },
     });
@@ -281,9 +283,9 @@ describe("validateDraft", () => {
       expect.arrayContaining([
         expect.stringContaining(`tool_id "TODO-foo" is TODO-shaped but malformed`),
         expect.stringContaining(`tool_version "TODO_" is TODO-shaped but malformed`),
-        expect.stringContaining(`out: id "TODO_Foo" is TODO-shaped but malformed`),
       ]),
     );
+    // Mixed-case suffixes (TODO_Mixed, TODO_TRIMMED) are valid sentinels.
     // `TODOfoo`-style strings (TODO followed by a letter, no separator) are
     // NOT flagged — the heuristic only matches TODO followed by `_`, `-`,
     // or end-of-string, to avoid false positives on unrelated identifiers

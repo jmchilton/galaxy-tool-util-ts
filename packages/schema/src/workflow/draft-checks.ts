@@ -13,9 +13,10 @@ import { Either, ParseResult, Schema } from "effect";
 
 import { GalaxyWorkflowDraftSchema } from "./raw/gxformat2-draft.effect.js";
 
-export const TODO_SENTINEL_PATTERN = /^TODO(_[a-z0-9_]+)?$/;
+export const TODO_SENTINEL_PATTERN = /^TODO(_[a-zA-Z0-9_]+)?$/;
 // Heuristic for TODO-shaped strings — flags malformed sentinels (TODO-foo,
-// TODOfoo, TODO_, TODO_Foo with uppercase) that the canonical pattern misses.
+// TODOfoo, TODO_) that the canonical pattern misses. Mixed-case suffixes
+// (TODO_Trimmed, TODO_TRIMMED) are valid sentinels.
 // Anchored: only TODO followed by `_`, `-`, or end-of-string counts; this
 // avoids false positives on unrelated identifiers that happen to start with
 // TODO (e.g. TODOLIST, TODONE).
