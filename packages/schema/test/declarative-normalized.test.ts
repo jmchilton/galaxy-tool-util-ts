@@ -91,22 +91,39 @@ const KNOWN_BEHAVIOR_DIVERGENCES = new Set<string>([
 
 // --- Fixture loading ---
 
+function findFixture(name: string): string | null {
+  for (const root of [FORMAT2_DIR, NATIVE_DIR]) {
+    const found = walkFor(root, name);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+function walkFor(root: string, name: string): string | null {
+  if (!fs.existsSync(root)) return null;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const full = path.join(root, entry.name);
+    if (entry.isFile() && entry.name === name) return full;
+    if (entry.isDirectory()) {
+      const found = walkFor(full, name);
+      if (found != null) return found;
+    }
+  }
+  return null;
+}
+
 function fixtureExists(name: string): boolean {
-  return [FORMAT2_DIR, NATIVE_DIR].some((dir) => fs.existsSync(path.join(dir, name)));
+  return findFixture(name) != null;
 }
 
 function loadWorkflow(name: string): unknown {
-  for (const dir of [FORMAT2_DIR, NATIVE_DIR]) {
-    const filePath = path.join(dir, name);
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, "utf-8");
-      if (name.endsWith(".ga")) {
-        return JSON.parse(content);
-      }
-      return yaml.parse(content);
-    }
+  const filePath = findFixture(name);
+  if (filePath == null) throw new Error(`Fixture not found: ${name}`);
+  const content = fs.readFileSync(filePath, "utf-8");
+  if (name.endsWith(".ga")) {
+    return JSON.parse(content);
   }
-  throw new Error(`Fixture not found: ${name}`);
+  return yaml.parse(content);
 }
 
 // --- Test runner ---

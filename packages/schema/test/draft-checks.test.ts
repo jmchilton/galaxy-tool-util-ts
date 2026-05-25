@@ -16,7 +16,7 @@ import {
 } from "../src/workflow/draft-checks.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const fixturesDir = path.join(here, "fixtures", "draft");
+const fixturesDir = path.join(here, "fixtures", "workflows", "format2", "draft");
 function loadFixture(name: string): unknown {
   return parseYaml(fs.readFileSync(path.join(fixturesDir, name), "utf-8"));
 }

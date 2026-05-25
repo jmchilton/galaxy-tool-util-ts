@@ -11,6 +11,11 @@
           "patterns": ["synthetic-*.gxwf.yml"]
         },
         {
+          "src": "gxformat2/examples/format2/draft/",
+          "dst": "packages/schema/test/fixtures/workflows/format2/draft/",
+          "patterns": ["synthetic-draft-*.gxwf.yml"]
+        },
+        {
           "src": "gxformat2/examples/native/",
           "dst": "packages/schema/test/fixtures/workflows/native/",
           "patterns": ["synthetic-*.ga", "real-*.ga"]

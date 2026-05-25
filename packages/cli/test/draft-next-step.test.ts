@@ -8,7 +8,7 @@ import type { NextStepResult } from "@galaxy-tool-util/schema";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const FIXTURE_DIR = join(__dirname, "fixtures/draft");
+const FIXTURE_DIR = join(__dirname, "../../schema/test/fixtures/workflows/format2/draft");
 
 async function stagedFixture(ctx: CliTestContext, name: string): Promise<string> {
   const dest = join(ctx.tmpDir, name);
