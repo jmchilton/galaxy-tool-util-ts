@@ -316,6 +316,103 @@ describe("validateDraft", () => {
     expect(warnMsgs.some((m) => m.includes("tool_id"))).toBe(false);
   });
 
+  it("errors on _plan_* fields on a fully-resolved tool step", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { out: { outputSource: "cat/out_file1" } },
+      steps: {
+        cat: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "out_file1" }],
+          _plan_state: "stale planning context",
+          _plan_context: "more stale context",
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.semanticErrors.map((e) => ({ path: e.path, message: e.message }))).toEqual([
+      {
+        path: ["cat"],
+        message: expect.stringContaining(
+          "tool step has no TODO sentinels but still carries planning fields (_plan_state, _plan_context)",
+        ),
+      },
+    ]);
+  });
+
+  it("allows _plan_* on a fully-resolved non-tool step (subworkflow / pause / pick_value, v1 carve-out)", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { out: { outputSource: "outer/output" } },
+      steps: {
+        outer: {
+          type: "subworkflow",
+          in: { reads: "reads" },
+          out: [{ id: "output" }],
+          _plan_context: "planning context on a concrete subworkflow step",
+          run: {
+            class: "GalaxyWorkflow",
+            inputs: { reads: { type: "data" } },
+            outputs: { output: { outputSource: "cat/out_file1" } },
+            steps: {
+              cat: {
+                tool_id: "cat1",
+                tool_version: "1.0.0",
+                in: { input1: "reads" },
+                out: [{ id: "out_file1" }],
+              },
+            },
+          },
+        },
+      },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.semanticErrors).toEqual([]);
+  });
+
+  it("errors on _plan_* on a fully-resolved step with explicit `type: tool`", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { out: { outputSource: "cat/out_file1" } },
+      steps: {
+        cat: {
+          type: "tool",
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "reads" },
+          out: [{ id: "out_file1" }],
+          _plan_state: "stale",
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.semanticErrors).toHaveLength(1);
+    expect(r.semanticErrors[0]?.message).toContain("tool step has no TODO sentinels");
+  });
+
+  it("does NOT flag _plan_* on a step that still has TODO sentinels", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        fastp: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { TODO_input: "reads" },
+          out: [{ id: "TODO_out" }],
+          _plan_state: "planning context, legitimately on a drafty step",
+        },
+      },
+    });
+    expect(r.semanticErrors).toEqual([]);
+  });
+
   it("recurses into draft subworkflows and emits errors with the outer-prefixed step path", () => {
     const r = validateDraft({
       class: DRAFT_CLASS,

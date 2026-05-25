@@ -440,11 +440,43 @@ function walkDraftValidation(
       }
     }
 
+    // _plan_* on a fully-resolved tool step is a contract violation: planning
+    // context must be cleaned up before the step is treated as ready. Non-tool
+    // steps (subworkflow / pause / pick_value) are allowed in v1 — the locked
+    // decision keeps modeling simple until usage shows we need to tighten.
+    if (isToolStep(step) && !stepHasAnyTodo(step)) {
+      const planFieldsPresent = PLAN_FIELDS.filter(
+        (f) => typeof step[f] === "string" && (step[f] as string).length > 0,
+      );
+      if (planFieldsPresent.length > 0) {
+        semanticErrors.push({
+          path: stepPath,
+          message: `tool step has no TODO sentinels but still carries planning fields (${planFieldsPresent.join(", ")}); strip planning state before treating the step as resolved`,
+        });
+      }
+    }
+
     // Recurse into draft subworkflows.
     if (isRecord(step.run) && step.run.class === DRAFT_CLASS) {
       walkDraftValidation(step.run, stepPath, topologyErrors, semanticErrors, warnings);
     }
   }
+}
+
+function stepHasAnyTodo(step: Record<string, unknown>): boolean {
+  if (isTodoSentinel(step.tool_id)) return true;
+  if (isTodoSentinel(step.tool_version)) return true;
+  for (const [key] of iterateStepInputEntries(step.in)) {
+    if (isTodoSentinel(key)) return true;
+  }
+  for (const id of iterateStepOutIds(step.out)) {
+    if (isTodoSentinel(id)) return true;
+  }
+  return false;
+}
+
+function isToolStep(step: Record<string, unknown>): boolean {
+  return step.type == null || step.type === "tool";
 }
 
 function checkTodoLike(
