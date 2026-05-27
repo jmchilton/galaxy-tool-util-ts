@@ -72,7 +72,11 @@ describe("ToolStateValidator", () => {
 
   beforeEach(async () => {
     cacheDir = makeTempDir();
-    toolInfo = makeNodeToolInfoService({ cacheDir });
+    toolInfo = makeNodeToolInfoService({
+      cacheDir,
+      sources: [],
+      fetcher: () => Promise.reject(new Error("no-network")),
+    });
     validator = new ToolStateValidator(toolInfo);
   });
 
