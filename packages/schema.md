@@ -29,21 +29,21 @@ Returns `undefined` if any parameter type in the bundle lacks a registered gener
 
 State representations control the shape of the generated schema. Different Galaxy contexts expect different parameter formats:
 
-| Representation | Description |
-|---|---|
-| `workflow_step` | Workflow editor step state — all fields optional, no connected values |
-| `workflow_step_linked` | Workflow step with connections — parameters can be [`ConnectedValue`](glossary#connected-value) markers |
-| `workflow_step_native` | Native (.ga) workflow state — parameters can be `ConnectedValue` or [`RuntimeValue`](glossary#runtime-value) |
-| `request` | API request with string-encoded IDs |
-| `request_internal` | Internal request with integer IDs |
-| `request_internal_dereferenced` | Dereferenced internal request |
-| `relaxed_request` | Relaxed API request |
-| `landing_request` | Landing page request (all optional) |
-| `landing_request_internal` | Internal landing request (all optional) |
-| `job_internal` | Job execution state — all fields required |
-| `job_runtime` | Job runtime state — all fields required |
-| `test_case_xml` | Test case from XML definition |
-| `test_case_json` | Test case from JSON definition |
+| Representation                  | Description                                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `workflow_step`                 | Workflow editor step state — all fields optional, no connected values                                        |
+| `workflow_step_linked`          | Workflow step with connections — parameters can be [`ConnectedValue`](glossary#connected-value) markers      |
+| `workflow_step_native`          | Native (.ga) workflow state — parameters can be `ConnectedValue` or [`RuntimeValue`](glossary#runtime-value) |
+| `request`                       | API request with string-encoded IDs                                                                          |
+| `request_internal`              | Internal request with integer IDs                                                                            |
+| `request_internal_dereferenced` | Dereferenced internal request                                                                                |
+| `relaxed_request`               | Relaxed API request                                                                                          |
+| `landing_request`               | Landing page request (all optional)                                                                          |
+| `landing_request_internal`      | Internal landing request (all optional)                                                                      |
+| `job_internal`                  | Job execution state — all fields required                                                                    |
+| `job_runtime`                   | Job runtime state — all fields required                                                                      |
+| `test_case_xml`                 | Test case from XML definition                                                                                |
+| `test_case_json`                | Test case from JSON definition                                                                               |
 
 ### Parameter Type Registry
 
@@ -112,3 +112,53 @@ const expanded = await expandedNative(rawWorkflow, { resolver });
 - `scanForReplacements(state)` — find `${...}` replacement patterns in tool state
 - `repeatInputsToArray(inputs)` — convert repeat block inputs to arrays
 - `selectWhichWhen(inputs)` — resolve conditional parameter selections
+
+## Draft Workflows
+
+A _draft workflow_ (`class: GalaxyWorkflowDraft`) is an in-progress Format2 workflow carrying `TODO_<hint>` sentinels in place of unresolved tool ids, ports, and edges, plus optional `_plan_*` planning fields on individual steps. Drafts are the substrate for the `gxwf draft-*` CLI commands and for autonomous agents iterating a workflow toward runnable.
+
+Schema definitions live in `raw/gxformat2-draft.{ts,effect.ts}`; pure-logic helpers live in `workflow/draft-checks.ts`.
+
+### Sentinel constants
+
+```typescript
+import {
+  TODO_SENTINEL_PATTERN,
+  PLAN_FIELDS,
+  DRAFT_CLASS,
+  isTodoSentinel,
+  isDraftWorkflow,
+} from "@galaxy-tool-util/schema";
+
+// Mirrors gxformat2/draft.py — drift is enforced by `make check-sync-draft-sentinel`.
+TODO_SENTINEL_PATTERN; // /^TODO(_[a-z0-9_]+)?$/
+PLAN_FIELDS; // ["_plan_state", "_plan_context", "_plan_in", "_plan_out"]
+DRAFT_CLASS; // "GalaxyWorkflowDraft"
+
+isTodoSentinel("TODO_input"); // true
+isTodoSentinel("TODO-foo"); // false (malformed)
+isDraftWorkflow({ class: DRAFT_CLASS }); // true
+```
+
+### `detectDraft(workflow): DraftSurvey`
+
+One-pass step-focused survey collecting every TODO sentinel and `_plan_*` hit with its step path. Recurses into draft `run:` subworkflows; concrete (`class: GalaxyWorkflow`) and string-form `run:` are not descended.
+
+### `validateDraft(workflow): DraftValidationResult`
+
+Collects all draft diagnostics into structured arrays — does not throw. Pipeline: lax structural decode against `GalaxyWorkflowDraftSchema`, concrete-topology checks (workflow input/output/step labels and step types cannot be TODO sentinels; every `step/port` edge ref must resolve), sentinel-form checks (TODO-shaped strings that don't match the canonical pattern → semantic error), and warnings (bare `TODO` in port positions; top-level `_plan_*`).
+
+### `nextDraftStep(workflow): NextStepResult`
+
+Pure, idempotent function that picks the next step a downstream agent should work on. Topological walk with alphabetical tie-break; first step carrying any TODO or `_plan_*` is returned with a prompt-shaped `work[]` array in the locked-decision order (`tool_id → tool_version → in.* → out.* → _plan_state → _plan_context → _plan_in → _plan_out`). Subworkflow-aware: descends into draft `run:` blocks only after the outer step is itself fully concrete.
+
+### `extractConcreteSubset(workflow): ExtractResult`
+
+Trims a draft workflow down to the subset that could plausibly run. Fixpoint loop: round 0 drops every step carrying a TODO sentinel or `_plan_*`; cascade rounds drop any step whose `in:` becomes dead (all source refs point at dropped steps / now-missing inner-subworkflow ports, with no `default:` fallback). Multi-source step inputs where some refs survive are rewritten in place to the surviving subset. Step inputs with both `source:` and `default:` that lose their source keep the entry (default fallback) — no cascade. Workflow outputs whose `outputSource` references a dropped step / dead port are dropped. Recurses into inline draft subworkflows; outer subworkflow steps are never shrunk in v1. The returned workflow always carries `class: GalaxyWorkflowDraft` — promotion to concrete + `_plan_*` strip live in the `clean` module (CLI command E).
+
+```typescript
+import { extractConcreteSubset } from "@galaxy-tool-util/schema";
+
+const { workflow, dropped_steps, dropped_outputs, rewritten_step_inputs } =
+  extractConcreteSubset(draft);
+```

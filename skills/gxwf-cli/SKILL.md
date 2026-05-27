@@ -48,6 +48,34 @@ Validate a workflow-test file (*-tests.yml, *.gxwf-tests.yml) against the Galaxy
 | `--json` | Output structured JSON report |
 | `--workflow <path>` | Cross-check job inputs + output assertions against a workflow (.ga / .gxwf.yml) |
 
+### `draft-validate <file>`
+
+Validate a draft Galaxy workflow (class: GalaxyWorkflowDraft)
+
+**Arguments:**
+
+- `<file>` — Draft workflow file (.gxwf.yml)
+
+| Option | Description |
+|---|---|
+| `--format <fmt>` | Force format: format2 (native is rejected for drafts) |
+| `--json` | Output structured JSON report |
+| `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
+| `--report-markdown [file]` | Write Markdown report to file (or stdout if omitted) |
+
+### `draft-next-step <file>`
+
+Pick the next step a downstream agent should work on (or report no remaining work)
+
+**Arguments:**
+
+- `<file>` — Draft workflow file (.gxwf.yml)
+
+| Option | Description |
+|---|---|
+| `--format <fmt>` | Force input format: format2 (default; native is rejected) |
+| `--output-format <fmt>` | Output format: json (default) or markdown (default: `json`) |
+
 ### `clean <file>`
 
 Strip stale keys and decode legacy tool_state encoding
