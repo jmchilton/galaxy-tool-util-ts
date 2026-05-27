@@ -164,7 +164,10 @@ async function runConcretePass(
       class_after,
       skipped_reason: "extracted subset is still a draft — not fully promoted",
       structure_errors: [],
-      ok: true,
+      // ok=null (not true) — concrete validation didn't run, so we cannot
+      // claim the subset would have validated. Downstream readers must treat
+      // null as "unknown," not as a pass.
+      ok: null,
     };
   }
 
@@ -230,7 +233,8 @@ function summarize(results: ValidationStepResult[]): { ok: number; fail: number;
   return { ok, fail, skip };
 }
 
-function isConcreteOk(c: ConcreteValidationReport): boolean {
+function isConcreteOk(c: ConcreteValidationReport): boolean | null {
+  if (c.skipped_reason !== null) return null;
   if (c.structure_errors.length > 0) return false;
   if (c.strict_structure_errors && c.strict_structure_errors.length > 0) return false;
   if (c.strict_encoding_errors && c.strict_encoding_errors.length > 0) return false;
@@ -246,7 +250,8 @@ function exitCodeFor(
 ): number {
   if (result.structureErrors.length > 0) return 2;
   if (result.topologyErrors.length > 0 || result.semanticErrors.length > 0) return 1;
-  if (concrete && !concrete.ok) return 1;
+  // Only explicit `false` escalates — `null` (skipped) is informational.
+  if (concrete && concrete.ok === false) return 1;
   return 0;
 }
 
@@ -271,7 +276,7 @@ function printConcrete(concrete: ConcreteValidationReport): void {
     console.log(`  Concrete: SKIPPED (${concrete.skipped_reason})`);
     return;
   }
-  console.log(`  Concrete: ${concrete.ok ? "OK" : "FAIL"}`);
+  console.log(`  Concrete: ${concrete.ok === true ? "OK" : "FAIL"}`);
   printList("    Structure errors", concrete.structure_errors);
   if (concrete.strict_structure_errors)
     printList("    Strict-structure errors", concrete.strict_structure_errors);

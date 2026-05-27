@@ -191,8 +191,13 @@ export interface ConcreteValidationReport {
   };
   /** Connection-type compatibility report. Present only when --connections was set. */
   connection_report?: ConnectionValidationReport;
-  /** True iff every check that ran came back clean. */
-  ok: boolean;
+  /**
+   * Tri-state: `true` if every check that ran came back clean, `false` if any
+   * failed, `null` if the concrete pass was skipped (`skipped_reason !== null`).
+   * Consumers must distinguish `null` from `true` — a skipped pass is **not**
+   * an endorsement that the subset would have validated.
+   */
+  ok: boolean | null;
 }
 
 export interface SingleDraftValidationReport {
@@ -628,7 +633,9 @@ export function buildSingleDraftValidationReport(
       : `${errorCount} error${errorCount === 1 ? "" : "s"}${
           warnCount > 0 ? `, ${warnCount} warning${warnCount === 1 ? "" : "s"}` : ""
         }`;
-  const ok = result.ok && (concrete?.ok ?? true);
+  // Skipped concrete (ok === null) does NOT drag the aggregate down — it's
+  // informational. Only explicit `false` counts as a failure.
+  const ok = result.ok && concrete?.ok !== false;
   const report: SingleDraftValidationReport = {
     workflow,
     ok,
