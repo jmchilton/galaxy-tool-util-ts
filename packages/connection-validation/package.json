@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/connection-validation",
-  "version": "1.2.0",
+  "version": "1.5.0",
   "description": "Connection validator for Galaxy workflows — port of galaxy.tool_util.workflow_state.connection_validation",
   "type": "module",
   "sideEffects": false,

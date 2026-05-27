@@ -1,5 +1,96 @@
 # @galaxy-tool-util/schema
 
+## 1.5.0
+
+### Minor Changes
+
+- [#100](https://github.com/jmchilton/galaxy-tool-util-ts/pull/100) [`b8e61b0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/b8e61b0e1908149a683e1c9b86876346e3ad325d) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `draft-checks.ts` module — pure logic for Galaxy draft workflows (`class: GalaxyWorkflowDraft`). Exports `TODO_SENTINEL_PATTERN`, `PLAN_FIELDS`, `DRAFT_CLASS` constants plus `isTodoSentinel`, `isDraftWorkflow`, and `detectDraft(workflow): DraftSurvey` for collecting every TODO sentinel and `_plan_*` field with its step path. Subworkflow-aware: recurses into `run:` blocks only when the inner workflow is itself a draft. No CLI surface yet — substrate for forthcoming `gxwf draft-*` commands.
+
+  Sentinel constants are kept in sync with upstream `gxformat2/draft.py` via a new `make check-sync-draft-sentinel` target wired into `make check`; `sync-schema-sources` snapshots the upstream constants to `schema-sources/v19_09/draft_constants.json` when a draft-aware gxformat2 checkout is available.
+
+- [#105](https://github.com/jmchilton/galaxy-tool-util-ts/pull/105) [`cda837c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/cda837cbe95a64654c088c299bd2e6cb812dd7dd) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `extractConcreteSubset(workflow): ExtractResult` to the draft-checks module — trims a draft Galaxy workflow down to the subset that could plausibly run.
+
+  Algorithm (per locked B-plan):
+  - Round 0 drops every step carrying any TODO sentinel or `_plan_*` field.
+  - Cascade rounds iteratively drop any step whose `in:` becomes dead (all source refs point at dropped steps / now-missing inner-subworkflow ports, with no `default:` fallback).
+  - Multi-source step inputs (`source: [a/p, b/p]`) where some refs survive are rewritten in place to the surviving ref subset (string carrier collapses to a single ref, list carrier preserves list shape).
+  - `default:`-only fallback: an input with both `source:` and `default:` whose source dies loses the `source:` key but keeps the entry — no cascade.
+  - Workflow outputs whose `outputSource` references a dropped step / dead port are dropped, reported in `dropped_outputs` with a `path` field — top-level outputs have `path: []`, inner subworkflow output drops are surfaced with the outer step path.
+  - Recurses into inline draft subworkflows (`run:` with `class: GalaxyWorkflowDraft`); inner shrinks in place. String-form `run:` (URL / `@import` / TRS) and concrete (`class: GalaxyWorkflow`) `run:` are opaque — no descent.
+  - Outer subworkflow steps are never shrunk in v1 — only inner workflows shrink in place. If an outer step's `in:` cascades, it drops whole.
+  - Workflow `inputs:` are preserved verbatim — orphan-input pruning is a separate lint concern.
+  - Top-level `_plan_*` fields on the workflow root pass through unchanged.
+  - Returned `workflow.class` is always `GalaxyWorkflowDraft` even after a clean extract; promotion to concrete + `_plan_*` strip live in the upcoming `clean.ts` `stripPlanFields` option (CLI command E).
+
+  Determinism: per workflow level, `dropped_steps` is sorted by cascade round (0 → N) then alphabetical step-path; across levels, a level's drops come first followed by per surviving subworkflow's drops in source iteration order. `dropped_outputs` is alphabetical by label within a level. Surviving steps / inputs / outputs preserve their original input iteration order. Pure + byte-for-byte idempotent.
+
+  **Notes on intentional deviations from the original B-plan:**
+  - The plan defined a `DropReason` variant `subworkflow_not_concrete`; not emitted in this implementation. An outer subworkflow step whose inner workflow degrades is signalled via the standard `cascade` reason on the outer step (when its `in:` cascades) and via inner drops surfaced under the outer step's path. Adding a dedicated reason was not necessary to express that.
+  - Plan test-step 9 (cross-decoding the extract output against the concrete `GalaxyWorkflowSchema`) is intentionally deferred to E (CLI `_draft-extract` command). The result of `extractConcreteSubset` always carries `class: GalaxyWorkflowDraft`, so a concrete-schema decode would fail by design without an intervening `clean.ts stripPlanFields: true` + class flip. E owns that conversion and is the right place for the structural cross-check.
+
+- [#105](https://github.com/jmchilton/galaxy-tool-util-ts/pull/105) [`44a437c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/44a437c214b4de7947e6f3e0cbe8d5262b510451) Thanks [@jmchilton](https://github.com/jmchilton)! - Add the draft-extract pipeline:
+  - **schema**: new helpers `stripPlanFields` (remove `_plan_*` planning fields from steps + workflow root, recursive into draft subworkflows) and `promoteFullyConcreteDrafts` (flip `class: GalaxyWorkflowDraft` → `class: GalaxyWorkflow` on any (sub)workflow that is now fully concrete). Plus `SingleDraftExtractReport` + `buildSingleDraftExtractReport` sidecar report model. `extractConcreteSubset` and its drop/rewrite types are now re-exported from the package root.
+  - **cli**: new hidden command `gxwf _draft-extract <file>` — pipes a draft workflow through `extractConcreteSubset` → `stripPlanFields` → `promoteFullyConcreteDrafts` and emits the trimmed workflow (YAML to stdout or `-o file`; `.ga`/`.json` extensions trigger native JSON serialization). Optional `--report-json [file]` sidecar. Rejects the stdout-collision case where the workflow + `--report-json` would both write to stdout. Hidden from `gxwf --help` and from the generated skill doc.
+  - **cli/meta**: `SpecCommand.hidden?: boolean` — declarative way to mark a command as hidden from help. `buildProgramFromSpec` honors it; the skill generator (`make gen-skill`) skips hidden commands too.
+  - **cli/internal**: new `findStdoutSinkCollision` helper in `report-output.ts` — generalizes the C-fixup `findStdoutSinkConflict` to accept arbitrary `{flag, toStdout}` pairs, so commands whose stdout sinks aren't drawn from `--json` / `--report-{html,markdown}` can reuse the same check.
+
+- [#100](https://github.com/jmchilton/galaxy-tool-util-ts/pull/100) [`001ded9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/001ded9a4cbe7f2a2ce3838ed4ee480bba8ad2a9) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `nextDraftStep(workflow): NextStepResult` — pure, idempotent function that returns the next step a downstream agent should work on. Walks steps in topological order with alphabetical tie-break; first step carrying any TODO sentinel or `_plan_*` field returns with a prompt-shaped `work[]` array in the locked-decision order (tool_id → tool_version → in._ → out._ → \_plan_state → \_plan_context → \_plan_in → \_plan_out).
+
+  Work items embed semantic hints stripped from `TODO_<hint>` port names and, for `out:` ports, the workflow-output labels that reference them (helps the next agent pick the right wrapper port). Subworkflow-aware: descends into draft `run:` blocks only after the outer step is itself fully concrete.
+
+  Returns `{ draft: false }` when there's nothing left to do (including non-draft documents).
+
+- [#100](https://github.com/jmchilton/galaxy-tool-util-ts/pull/100) [`f63f210`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/f63f21094f24bacc36d9c18cd634c8790f285c57) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `validateDraft(workflow)` to the draft-checks module. Collects all diagnostics into a structured `DraftValidationResult { ok, structureErrors, topologyErrors, semanticErrors, warnings, survey }` — does not throw.
+
+  Checks:
+  - structural decode against `GalaxyWorkflowDraftSchema`
+  - concrete-topology: workflow input/output/step labels and step types cannot be TODO sentinels
+  - syntactic edge resolution: every `step/port` source ref must resolve to a declared step + declared port (TODO\_\* ports count if declared in the source step's `out:`)
+  - sentinel form: TODO-shaped strings that don't match `^TODO(_[a-z0-9_]+)?$` (e.g. `TODO-foo`, `TODOfoo`, `TODO_`) emit semantic errors
+  - warnings: bare `TODO` in port position (canonical form is `TODO_<hint>`), and top-level `_plan_*` fields (planning fields belong on individual steps)
+
+  Recurses into draft subworkflows (`run:` with `class: GalaxyWorkflowDraft`); diagnostic step paths are prefixed with the outer chain.
+
+- [#105](https://github.com/jmchilton/galaxy-tool-util-ts/pull/105) [`1d53e62`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/1d53e628e4a1a6e771e090897194f72391087b2b) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `SingleDraftValidationReport` + `buildSingleDraftValidationReport` to `workflow/report-models.ts`. Wraps `DraftValidationResult` (from the draft-checks module) in the snake_case, frontend-compatible report shape the upcoming `gxwf draft-validate` CLI command emits via `--json`. Includes a `DraftSurveyReport` summary deduped to one entry per step path (TODO paths + plan-field paths), a `summary` string ("draft valid" / "draft valid (N warnings)" / "M errors[, N warnings]"), and faithful pass-through of structure / topology / semantic / warning diagnostics.
+
+  Substrate for workstream C; no CLI surface yet.
+
+- [#100](https://github.com/jmchilton/galaxy-tool-util-ts/pull/100) [`5b0b3be`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5b0b3bed3892c965263b30e00b87e0d7140f34e3) Thanks [@jmchilton](https://github.com/jmchilton)! - Wire the new gxformat2 draft workflow schema (`class: GalaxyWorkflowDraft`) through `make sync` + `make generate-schemas`. Adds `gxformat2-draft.ts` / `gxformat2-draft.effect.ts` to `packages/schema/src/workflow/raw/` and re-exports `DraftWorkflowStep`, `GalaxyWorkflowDraft`, `DraftWorkflowStepSchema`, `GalaxyWorkflowDraftSchema` from the raw barrel. Draft steps carry the `_plan_state` / `_plan_context` / `_plan_in` / `_plan_out` optional string fields with their literal underscore-prefixed keys preserved by the Effect Schema generator. No runtime behavior change yet; downstream draft-checks logic will land in a follow-up.
+
+- [#103](https://github.com/jmchilton/galaxy-tool-util-ts/pull/103) [`9053be9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/9053be9e54a8095bb950d1e57cd6b95134ec3578) Thanks [@jmchilton](https://github.com/jmchilton)! - Inline UDT resolver for connection validation (jmchilton/galaxy-tool-util-ts#101). Also refreshes the parsed_tools/ fixture cache to pick up new ParsedTool fields (`requirements`, `containers`, `stdio`) added upstream — incidental to this PR; the TS-side `ParsedTool` schema ignores them. TS port of Galaxy's `_inline_tool` module on the `wf_tool_state` branch: `@galaxy-tool-util/schema` now ships `parseInlineTool(repr)` (full port of `parse_tool(YamlToolSource(repr))` covering id/version/name/description, inputs, outputs, citations, license, profile, edam, xrefs, help). `@galaxy-tool-util/connection-validation` ships `resolveForStep`, `InlineResolver`, `ensureInlineResolver`, and `collectInlineTools`; `buildWorkflowGraph` wraps its resolver in an `InlineResolver` so inline `tool_representation` steps (with `class: GalaxyUserTool`) resolve without a remote lookup. `buildGetToolInfo` walks inline reps up-front and pre-parses them into the cache, surfacing parse errors via `onMiss` alongside ToolShed misses. Unblocks UDT fixtures in the connection-validation corpus (eight new fixtures pulled byte-identical from Galaxy's `wf_tool_state` branch).
+
+- [#99](https://github.com/jmchilton/galaxy-tool-util-ts/pull/99) [`e4e46e0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/e4e46e0e4625532363c2d10b9c3beeaa03d05ed4) Thanks [@jmchilton](https://github.com/jmchilton)! - Add cross-field semantic validation for Format2 workflow inputs (mirrors gxformat2 [#212](https://github.com/jmchilton/galaxy-tool-util-ts/issues/212) + [#216](https://github.com/jmchilton/galaxy-tool-util-ts/issues/216)). New `semantic-validators.ts` module rejects `restrictions:` / `suggestions:` / `restrictOnConnections:` on non-text inputs, `column_definitions:` on non-`sample_sheet` collections, column-default-vs-type mismatches, and `fields:` on non-record collection inputs. Wired into `validateFormat2` / `validateFormat2Strict`.
+
+- [#99](https://github.com/jmchilton/galaxy-tool-util-ts/pull/99) [`941ac0e`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/941ac0e3b373521db8814003cc9dcf5a7bb9115f) Thanks [@jmchilton](https://github.com/jmchilton)! - Propagate step-level `post_job_actions:` through Format2 → native (mirrors gxformat2 [#210](https://github.com/jmchilton/galaxy-tool-util-ts/issues/210)). Explicit PJAs merge alongside (and win key collisions over) `out:`-shorthand-derived entries. Action types without an `output_name` (e.g. `ValidateOutputsAction`) now round-trip instead of being silently dropped. Native `output_name` becomes optional via schema regen.
+
+- [#94](https://github.com/jmchilton/galaxy-tool-util-ts/pull/94) [`62dc8a7`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/62dc8a71ba284022e2be5bf607fcead523df0370) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `validateUserToolSource` and `gxwf validate-tool-source[-tree]` for validating user-defined Galaxy tool source YAML (`class: GalaxyUserTool` / `GalaxyTool`) against the Galaxy `DynamicToolSources` JSON Schema plus the semantic checks from galaxyproject/galaxy#22615 (input refs in `shell_command`/`configfiles`, output discovery requirements, citation DOI/BibTeX shape, blank required fields). Schema is synced via `make sync-user-tool-source-schema`; sha256 verified by `make check`.
+
+- [#105](https://github.com/jmchilton/galaxy-tool-util-ts/pull/105) [`ae33d9d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ae33d9d6de39475e2646f2d8790ada7d12cfd676) Thanks [@jmchilton](https://github.com/jmchilton)! - `validateDraft` now flags `_plan_*` fields on a fully-resolved tool step as
+  a semantic error. Non-tool steps (subworkflow / pause / pick*value) keep
+  the v1 carve-out — `\_plan*\*`is allowed there. Closes the gap where the
+locked metaplan decision was operationally enforced only by`extractConcreteSubset`'s drop; the validate-time contract now matches.
+
+### Patch Changes
+
+- [#102](https://github.com/jmchilton/galaxy-tool-util-ts/pull/102) [`fcef54f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/fcef54fdc27d228040ae45aeec7019f32368e344) Thanks [@jmchilton](https://github.com/jmchilton)! - Fix-ups to `draft-checks.ts` from an independent review pass:
+  - `detectDraft` now reads TODO sentinels from list-form step `in:` entries (`in: [{ id: "TODO_x", source: "..." }]`), matching the long-supported list-form coverage in `validateDraft`. Previously dict-form was the only path that hit the sentinel walker.
+  - `validateDraft` now emits the "top-level `_plan_*`" warning at every draft root (outer document + every nested draft subworkflow root), not just the outermost. Inner-draft `_plan_*` was previously silent.
+  - `TODO_LIKE` heuristic anchored to `/^TODO([_-]|$)/` (was `/^TODO/`), so identifiers like `TODONE`, `TODOLIST` no longer false-positive as "malformed sentinels."
+  - Added a documentation comment clarifying the intentional asymmetry between `detectDraft` (step-focused survey; ignores top-level `_plan_*`) and `validateDraft` (rules-focused walker; warns).
+  - Added documentation comment on inner-draft outputs path convention (path = outer step's path, mirrors how subworkflow steps reach their inner workflow).
+
+  7 new tests covering each fix-up + an input-ordering idempotence test for `nextDraftStep`.
+
+- [#105](https://github.com/jmchilton/galaxy-tool-util-ts/pull/105) [`527b8b8`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/527b8b88e812219ae0a9965a4b3090d9c902575a) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `gxwf draft-validate <file>` — single-file validation of draft Galaxy workflows (`class: GalaxyWorkflowDraft`). Wraps `validateDraft` from `@galaxy-tool-util/schema`; emits a human-readable text summary by default, with `--json` (full `SingleDraftValidationReport`), `--report-html` (self-contained gxwf-report-shell page), and `--report-markdown` (new `draft_validate.md.j2` template) modes. Exit codes: `0` clean (warnings allowed), `1` topology/semantic errors, `2` parse failure / class mismatch / structural decode failure / `--format native` on a draft. Tree variant (`draft-validate-tree`) and connection validation against concrete tool ids are deferred to v2.
+
+  Schema patch: re-export `buildSingleDraftValidationReport` and the `DraftValidationDiagnosticReport` / `DraftSurveyReport` / `SingleDraftValidationReport` types from the package root index so CLI callers don't have to reach into the `workflow/` subpath.
+
+- [#99](https://github.com/jmchilton/galaxy-tool-util-ts/pull/99) [`f9e4ede`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/f9e4ede76a5e9353dd60009e3d5aa7523cd232fe) Thanks [@jmchilton](https://github.com/jmchilton)! - `make generate-schemas` now pipes generator output through prettier so regenerated `raw/*.ts` files land prettier-conforming in the same step (no more separate post-sync `format-fix` commit).
+
+- [#99](https://github.com/jmchilton/galaxy-tool-util-ts/pull/99) [`22a982b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/22a982b28b1e028192cd892c96a629cb7112c7be) Thanks [@jmchilton](https://github.com/jmchilton)! - Accept bare-list multi-source and integer `$link` in Format2 step inputs (mirrors gxformat2 [#211](https://github.com/jmchilton/galaxy-tool-util-ts/issues/211)).
+
+- [#99](https://github.com/jmchilton/galaxy-tool-util-ts/pull/99) [`2bdd932`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/2bdd932e8dc0acc1010f94493fa7fbc7d2a4a16d) Thanks [@jmchilton](https://github.com/jmchilton)! - Propagate Format2 step input defaults through `to_native` (mirrors gxformat2 [#213](https://github.com/jmchilton/galaxy-tool-util-ts/issues/213)). Tool and subworkflow steps now emit `step.in = {input: {default: ...}}` for each `WorkflowStepInput` with a non-null default.
+
 ## 1.2.0
 
 ### Minor Changes
