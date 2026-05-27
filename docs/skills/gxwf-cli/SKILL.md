@@ -62,6 +62,28 @@ Validate a draft Galaxy workflow (class: GalaxyWorkflowDraft)
 | `--json` | Output structured JSON report |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 | `--report-markdown [file]` | Write Markdown report to file (or stdout if omitted) |
+| `--concrete` | Additionally extract the concrete subset and run the regular `gxwf validate` checks on it |
+| `--cache-dir <dir>` | Tool cache directory (for --concrete tool-state validation) |
+| `--no-tool-state` | Skip tool-state validation in the --concrete pass (default: enabled when --concrete is set) |
+| `--connections` | Validate connection-type compatibility on the --concrete subset (collection algebra, map-over) |
+| `--strict` | Shorthand for --strict-structure --strict-encoding --strict-state |
+| `--strict-structure` | Reject unknown keys at envelope/step level |
+| `--strict-encoding` | Reject JSON-string tool_state and format2 field misuse |
+| `--strict-state` | Require every tool step to validate; no skips allowed |
+
+### `draft-extract <file>`
+
+Extract the concrete subset of a draft workflow (drop drafty steps, strip _plan_* fields, promote class when fully concrete)
+
+**Arguments:**
+
+- `<file>` — Draft workflow file (.gxwf.yml)
+
+| Option | Description |
+|---|---|
+| `-o, --output <file>` | Write extracted workflow to file (default: stdout) |
+| `--report-json [file]` | Write extraction report JSON (drops, rewrites, class flip) — to file or stdout if omitted |
+| `--format <fmt>` | Force input format: format2 (default; native is rejected) |
 
 ### `draft-next-step <file>`
 

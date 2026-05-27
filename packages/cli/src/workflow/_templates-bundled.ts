@@ -195,6 +195,71 @@ Summary: {{ report.summary }}
 {% endfor %}
 
 {% endif %}
+{% if report.concrete %}
+## Concrete Subset Validation
+
+- Class after extract: \`{{ report.concrete.class_after }}\`
+{% if report.concrete.skipped_reason %}
+- Status: SKIPPED — {{ report.concrete.skipped_reason }}
+{% else %}
+- Status: {% if report.concrete.ok %}OK{% else %}FAIL{% endif %}
+
+{% if report.concrete.structure_errors | length > 0 %}
+### Structure Errors ({{ report.concrete.structure_errors | length }})
+
+{% for e in report.concrete.structure_errors %}
+- {{ e }}
+{% endfor %}
+
+{% endif %}
+{% if report.concrete.strict_structure_errors and report.concrete.strict_structure_errors | length > 0 %}
+### Strict-Structure Errors ({{ report.concrete.strict_structure_errors | length }})
+
+{% for e in report.concrete.strict_structure_errors %}
+- {{ e }}
+{% endfor %}
+
+{% endif %}
+{% if report.concrete.strict_encoding_errors and report.concrete.strict_encoding_errors | length > 0 %}
+### Strict-Encoding Errors ({{ report.concrete.strict_encoding_errors | length }})
+
+{% for e in report.concrete.strict_encoding_errors %}
+- {{ e }}
+{% endfor %}
+
+{% endif %}
+{% if report.concrete.strict_state_errors and report.concrete.strict_state_errors | length > 0 %}
+### Strict-State Errors ({{ report.concrete.strict_state_errors | length }})
+
+{% for e in report.concrete.strict_state_errors %}
+- {{ e }}
+{% endfor %}
+
+{% endif %}
+{% if report.concrete.tool_state %}
+### Tool State
+
+- Summary: {{ report.concrete.tool_state.summary.ok }} ok, {{ report.concrete.tool_state.summary.fail }} fail, {{ report.concrete.tool_state.summary.skip }} skip
+
+{% for r in report.concrete.tool_state.results %}
+{% if r.status != "ok" %}
+- \`\`{{ r.step }}\`\` ({{ r.tool_id }}) — \`{{ r.status }}\`
+{% for e in r.errors %}
+  - {{ e }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+{% endif %}
+{% if report.concrete.connection_report %}
+### Connections
+
+- Status: {% if report.concrete.connection_report.valid %}OK{% else %}INVALID{% endif %} — {{ report.concrete.connection_report.summary.ok }} ok, {{ report.concrete.connection_report.summary.invalid }} invalid, {{ report.concrete.connection_report.summary.skip }} skip
+
+{% endif %}
+{% endif %}
+
+{% endif %}
 `,
   "export_tree.md.j2": `{#-
   Tree-level report for \`\`gxwf-to-format2-stateful\`\`.

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import * as S from "effect/Schema";
 
-import { runDraftExtract } from "../src/commands/_draft-extract.js";
+import { runDraftExtract } from "../src/commands/draft-extract.js";
 import { buildGxwfProgram } from "../src/programs/gxwf.js";
 import type { SingleDraftExtractReport } from "@galaxy-tool-util/schema";
 import { GalaxyWorkflowSchema } from "@galaxy-tool-util/schema";
@@ -32,7 +32,7 @@ function joinedErr(ctx: CliTestContext): string {
   return ctx.errSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("\n");
 }
 
-describe("_draft-extract (happy path)", () => {
+describe("draft-extract (happy path)", () => {
   let ctx: CliTestContext;
 
   beforeEach(async () => {
@@ -222,7 +222,7 @@ steps:
     await writeFile(wfPath, wf);
     await runDraftExtract(wfPath, {});
 
-    expect(joinedErr(ctx)).toContain("_draft-extract requires format2");
+    expect(joinedErr(ctx)).toContain("draft-extract requires format2");
     expect(process.exitCode).toBe(2);
   });
 
@@ -234,7 +234,7 @@ steps:
   });
 });
 
-describe("_draft-extract (stdout-sink collision)", () => {
+describe("draft-extract (stdout-sink collision)", () => {
   let ctx: CliTestContext;
 
   beforeEach(async () => {
@@ -283,12 +283,11 @@ describe("_draft-extract (stdout-sink collision)", () => {
   });
 });
 
-describe("_draft-extract (hidden command)", () => {
-  it("does not appear in `gxwf --help`", () => {
+describe("draft-extract (registration)", () => {
+  it("appears in `gxwf --help` as a first-class command", () => {
     const program = buildGxwfProgram();
     const help = program.helpInformation();
-    expect(help).not.toContain("_draft-extract");
-    // sanity — other commands still show up
+    expect(help).toContain("draft-extract");
     expect(help).toContain("draft-validate");
   });
 });

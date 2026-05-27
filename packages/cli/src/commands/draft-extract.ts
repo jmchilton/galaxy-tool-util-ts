@@ -1,11 +1,11 @@
 /**
- * `gxwf _draft-extract` — extract the concrete subset of a draft workflow.
+ * `gxwf draft-extract` — extract the concrete subset of a draft workflow.
  *
- * Hidden agent-loop command: runs `extractConcreteSubset` from
- * @galaxy-tool-util/schema, strips `_plan_*` planning fields, and promotes
- * `class: GalaxyWorkflowDraft` → `class: GalaxyWorkflow` on any
- * (sub)workflow that is now fully concrete. Emits the trimmed workflow to
- * stdout (or `-o` file) and an optional sidecar JSON report.
+ * Runs `extractConcreteSubset` from @galaxy-tool-util/schema, strips
+ * `_plan_*` planning fields, and promotes `class: GalaxyWorkflowDraft` →
+ * `class: GalaxyWorkflow` on any (sub)workflow that is now fully concrete.
+ * Emits the trimmed workflow to stdout (or `-o` file) and an optional
+ * sidecar JSON report.
  *
  * Exit codes:
  *   0 — input parses + extract ran (including empty-extract case)
@@ -49,7 +49,7 @@ export async function runDraftExtract(filePath: string, opts: DraftExtractOption
 
   const format = resolveFormat(data, opts.format);
   if (format === "native") {
-    console.error("_draft-extract requires format2 — native workflows cannot be drafts");
+    console.error("draft-extract requires format2 — native workflows cannot be drafts");
     process.exitCode = 2;
     return;
   }
