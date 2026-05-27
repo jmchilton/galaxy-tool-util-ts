@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/search",
-  "version": "1.2.0",
+  "version": "1.5.0",
   "description": "Tool discovery — Tool Shed search client, result normalization, and ranking",
   "type": "module",
   "sideEffects": false,
