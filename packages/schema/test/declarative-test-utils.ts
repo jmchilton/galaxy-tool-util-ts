@@ -24,6 +24,33 @@ import * as yaml from "yaml";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+// --- Camel → snake key conversion (used by draft ops whose return types
+// haven't been migrated to snake_case yet) ---
+
+/**
+ * Recursively convert camelCase object keys to snake_case. Used to align
+ * draft-checks result shapes (`isDraft`, `structureErrors`, `planFields`, …)
+ * with the assertion-path conventions in expectation files. Array values
+ * recurse element-wise; primitive values pass through unchanged. The
+ * conversion is structural-only — string values are never modified, so
+ * sentinel strings like `TODO_<hint>` survive intact.
+ */
+export function toSnakeCaseKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(toSnakeCaseKeys);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[camelToSnake(k)] = toSnakeCaseKeys(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+function camelToSnake(name: string): string {
+  return name.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
+}
+
 // --- Python field alias mapping ---
 // gxformat2/Galaxy expectations use in_ and type_ (Pydantic aliases for reserved words).
 // In TS objects the actual keys are "in" and "type".

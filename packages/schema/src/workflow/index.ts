@@ -172,6 +172,7 @@ export {
   detectDraft,
   validateDraft,
   nextDraftStep,
+  extractConcreteSubset,
   type PlanField,
   type StepPath,
   type TodoLocation,
@@ -181,7 +182,20 @@ export {
   type DraftValidationDiagnostic,
   type DraftValidationResult,
   type NextStepResult,
+  type DropReason,
+  type DroppedStep,
+  type DroppedOutput,
+  type RewrittenStepInput,
+  type ExtractResult,
 } from "./draft-checks.js";
+
+export {
+  stripPlanFields,
+  promoteFullyConcreteDrafts,
+  type StrippedPlanField,
+  type StripPlanFieldsResult,
+  type PromoteFullyConcreteDraftsResult,
+} from "./promote-draft.js";
 
 export {
   withClass,
@@ -246,6 +260,12 @@ export {
   type SingleValidationReport,
   type SingleLintReport,
   type SingleCleanReport,
+  type DraftValidationDiagnosticReport,
+  type DraftSurveyReport,
+  type SingleDraftValidationReport,
+  type DraftExtractDropReport,
+  type DraftExtractRewriteReport,
+  type SingleDraftExtractReport,
   // Round-trip validation
   type DiffType,
   type DiffSeverity,
@@ -288,6 +308,8 @@ export {
   buildSingleValidationReport,
   buildSingleLintReport,
   buildSingleCleanReport,
+  buildSingleDraftValidationReport,
+  buildSingleDraftExtractReport,
   buildWorkflowValidationResult,
   buildLintWorkflowResult,
   buildWorkflowCleanResult,

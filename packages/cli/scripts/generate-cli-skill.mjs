@@ -76,6 +76,7 @@ function renderProgram(program, depth) {
     "",
   ];
   for (const cmd of program.commands) {
+    if (cmd._hidden) continue;
     lines.push(renderCommand(cmd, depth + 1));
   }
   return lines.join("\n");

@@ -11,7 +11,7 @@ import * as yaml from "yaml";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { loadExpectations, runAssertions } from "./declarative-test-utils.js";
+import { loadExpectations, runAssertions, toSnakeCaseKeys } from "./declarative-test-utils.js";
 
 import { normalizedFormat2 } from "../src/workflow/normalized/format2.js";
 import { normalizedNative } from "../src/workflow/normalized/native.js";
@@ -34,6 +34,12 @@ import {
 import { workflowToMermaid } from "../src/workflow/mermaid.js";
 import { cytoscapeElements } from "../src/workflow/cytoscape.js";
 import { elementsToList } from "../src/workflow/cytoscape-models.js";
+import {
+  detectDraft,
+  validateDraft,
+  nextDraftStep,
+  extractConcreteSubset,
+} from "../src/workflow/draft-checks.js";
 
 // --- Directories ---
 
@@ -73,6 +79,14 @@ const OPERATIONS: Record<string, Operation> = {
   cytoscape_elements_to_list: (raw: unknown) => elementsToList(cytoscapeElements(raw)),
   cytoscape_node_ids: (raw: unknown) => cytoscapeElements(raw).nodes.map((n) => n.data.id),
   cytoscape_edge_ids: (raw: unknown) => cytoscapeElements(raw).edges.map((e) => e.data.id),
+  // Draft-workflow ops. detect/validate return camelCase shapes today; wrap
+  // with toSnakeCaseKeys so expectation paths stay consistent with the rest
+  // of the file. next/extract are already snake_case (and extract returns a
+  // workflow doc whose Format2 keys must stay camelCase — don't transform it).
+  detect_draft: (raw: unknown) => toSnakeCaseKeys(detectDraft(raw)),
+  validate_draft: (raw: unknown) => toSnakeCaseKeys(validateDraft(raw)),
+  next_draft_step: (raw: unknown) => nextDraftStep(raw),
+  extract_draft_subset: (raw: unknown) => extractConcreteSubset(raw),
 };
 
 const UNSUPPORTED_OPERATIONS = new Set<string>([]);
@@ -91,22 +105,39 @@ const KNOWN_BEHAVIOR_DIVERGENCES = new Set<string>([
 
 // --- Fixture loading ---
 
+function findFixture(name: string): string | null {
+  for (const root of [FORMAT2_DIR, NATIVE_DIR]) {
+    const found = walkFor(root, name);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+function walkFor(root: string, name: string): string | null {
+  if (!fs.existsSync(root)) return null;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const full = path.join(root, entry.name);
+    if (entry.isFile() && entry.name === name) return full;
+    if (entry.isDirectory()) {
+      const found = walkFor(full, name);
+      if (found != null) return found;
+    }
+  }
+  return null;
+}
+
 function fixtureExists(name: string): boolean {
-  return [FORMAT2_DIR, NATIVE_DIR].some((dir) => fs.existsSync(path.join(dir, name)));
+  return findFixture(name) != null;
 }
 
 function loadWorkflow(name: string): unknown {
-  for (const dir of [FORMAT2_DIR, NATIVE_DIR]) {
-    const filePath = path.join(dir, name);
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, "utf-8");
-      if (name.endsWith(".ga")) {
-        return JSON.parse(content);
-      }
-      return yaml.parse(content);
-    }
+  const filePath = findFixture(name);
+  if (filePath == null) throw new Error(`Fixture not found: ${name}`);
+  const content = fs.readFileSync(filePath, "utf-8");
+  if (name.endsWith(".ga")) {
+    return JSON.parse(content);
   }
-  throw new Error(`Fixture not found: ${name}`);
+  return yaml.parse(content);
 }
 
 // --- Test runner ---

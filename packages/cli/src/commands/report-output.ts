@@ -13,6 +13,7 @@ export type ReportType =
   | "validate"
   | "lint"
   | "clean"
+  | "draft-validate"
   | "validate-tree"
   | "lint-tree"
   | "clean-tree"
@@ -28,6 +29,47 @@ export interface ReportOutputOptions {
   /** Same semantics as reportMarkdown but for HTML output. */
   reportHtml?: string | boolean;
 }
+
+/** True if dest is unset to a filename and would write to stdout. */
+function targetsStdout(dest: string | boolean | undefined): boolean {
+  return dest === true || dest === "-";
+}
+
+/**
+ * If more than one sink in `candidates` would write to stdout, return an
+ * error message naming the conflicting flags. Otherwise null.
+ *
+ * Generalizes `findStdoutSinkConflict` for commands whose stdout sinks
+ * aren't drawn from the standard `--json` / `--report-{html,markdown}`
+ * set (e.g. `draft-extract` writes the trimmed workflow to stdout by
+ * default + `--report-json` may also target stdout).
+ */
+export function findStdoutSinkCollision(
+  candidates: Array<{ flag: string; toStdout: boolean }>,
+): string | null {
+  const sinks = candidates.filter((c) => c.toStdout).map((c) => c.flag);
+  if (sinks.length < 2) return null;
+  return `cannot write ${sinks.join(" + ")} to stdout simultaneously — pick one, or redirect a report to a file`;
+}
+
+/**
+ * If more than one report sink (JSON + rendered reports) would write to
+ * stdout, return an error message describing the conflict. Otherwise null.
+ */
+export function findStdoutSinkConflict(opts: {
+  json?: boolean;
+  reportHtml?: string | boolean;
+  reportMarkdown?: string | boolean;
+}): string | null {
+  return findStdoutSinkCollision([
+    { flag: "--json", toStdout: !!opts.json },
+    { flag: "--report-html", toStdout: targetsStdout(opts.reportHtml) },
+    { flag: "--report-markdown", toStdout: targetsStdout(opts.reportMarkdown) },
+  ]);
+}
+
+/** Re-export for command handlers that need their own collision-detection sites. */
+export { targetsStdout };
 
 /**
  * Render and write report output if --report-markdown / --report-html flags

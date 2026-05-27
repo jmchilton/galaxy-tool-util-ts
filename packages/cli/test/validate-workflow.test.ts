@@ -500,4 +500,49 @@ describe("validate-workflow (connection-aware)", () => {
       expect(report.encoding_errors[0]).toContain("mode");
     });
   });
+
+  describe("stdout-sink collisions", () => {
+    it("rejects --json + --report-html (stdout) with exit 2", async () => {
+      // No need to even author a real workflow — the guard fires before file I/O.
+      const wfPath = join(ctx.tmpDir, "anything.ga");
+      await writeFile(wfPath, "{}");
+      await runValidateWorkflow(wfPath, { json: true, reportHtml: true });
+
+      const err = ctx.errSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(err).toMatch(/--json.*--report-html/);
+      expect(err).toContain("stdout");
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("allows --json + --report-html=<file> (only one stdout sink)", async () => {
+      await seedAllTools(ctx.tmpDir);
+      const workflow = {
+        a_galaxy_workflow: "true",
+        "format-version": "0.1",
+        steps: {
+          "0": {
+            id: 0,
+            type: "tool",
+            tool_id: SIMPLE_TOOL_ID,
+            tool_version: "1.0",
+            tool_state: JSON.stringify({ input_text: "hello", num_lines: "5" }),
+            input_connections: {},
+          },
+        },
+      };
+      const wfPath = join(ctx.tmpDir, "ok.ga");
+      await writeFile(wfPath, JSON.stringify(workflow));
+      const htmlPath = join(ctx.tmpDir, "report.html");
+      await runValidateWorkflow(wfPath, {
+        cacheDir: ctx.tmpDir,
+        json: true,
+        reportHtml: htmlPath,
+      });
+
+      // JSON still goes to stdout; HTML went to a file. No collision error.
+      const err = ctx.errSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      expect(err).not.toContain("stdout");
+      expect(process.exitCode).toBe(0);
+    });
+  });
 });
