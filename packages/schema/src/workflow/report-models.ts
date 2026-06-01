@@ -161,6 +161,45 @@ export interface DraftSurveyReport {
   plan_step_paths: string[][];
 }
 
+/**
+ * Result of `--concrete` validation pass: extract the concrete subset, then
+ * run the regular `gxwf validate` checks on it. The set of populated buckets
+ * depends on which flags were forwarded (cache-dir / no-tool-state /
+ * connections / strict-*). Empty arrays mean the check ran cleanly; absence
+ * of the buckets below means the check was skipped.
+ */
+export interface ConcreteValidationReport {
+  /** Class on the outermost workflow after extract + strip + promote. */
+  class_after: "GalaxyWorkflow" | "GalaxyWorkflowDraft";
+  /**
+   * Reason concrete decode was skipped (e.g., "subset is still a draft —
+   * not fully promoted"). null when decode actually ran.
+   */
+  skipped_reason: string | null;
+  /** Effect Schema decode errors against `GalaxyWorkflowSchema`. */
+  structure_errors: string[];
+  /** Strict-structure check errors. Present only when --strict-structure (or --strict) was set. */
+  strict_structure_errors?: string[];
+  /** Strict-encoding check errors. Present only when --strict-encoding (or --strict) was set. */
+  strict_encoding_errors?: string[];
+  /** Strict-state errors — skipped steps treated as failures. Present only when --strict-state (or --strict) was set. */
+  strict_state_errors?: string[];
+  /** Per-step tool-state validation. Present only when tool-state validation ran. */
+  tool_state?: {
+    results: ValidationStepResult[];
+    summary: { ok: number; fail: number; skip: number };
+  };
+  /** Connection-type compatibility report. Present only when --connections was set. */
+  connection_report?: ConnectionValidationReport;
+  /**
+   * Tri-state: `true` if every check that ran came back clean, `false` if any
+   * failed, `null` if the concrete pass was skipped (`skipped_reason !== null`).
+   * Consumers must distinguish `null` from `true` — a skipped pass is **not**
+   * an endorsement that the subset would have validated.
+   */
+  ok: boolean | null;
+}
+
 export interface SingleDraftValidationReport {
   workflow: string;
   ok: boolean;
@@ -169,6 +208,8 @@ export interface SingleDraftValidationReport {
   semantic_errors: DraftValidationDiagnosticReport[];
   warnings: DraftValidationDiagnosticReport[];
   survey: DraftSurveyReport;
+  /** Present only when --concrete was requested. */
+  concrete?: ConcreteValidationReport;
   summary: string;
 }
 
@@ -578,9 +619,13 @@ export function buildSingleCleanReport(
 export function buildSingleDraftValidationReport(
   workflow: string,
   result: DraftValidationResult,
+  concrete?: ConcreteValidationReport,
 ): SingleDraftValidationReport {
   const errorCount =
-    result.structureErrors.length + result.topologyErrors.length + result.semanticErrors.length;
+    result.structureErrors.length +
+    result.topologyErrors.length +
+    result.semanticErrors.length +
+    (concrete ? concreteErrorCount(concrete) : 0);
   const warnCount = result.warnings.length;
   const summary =
     errorCount === 0
@@ -588,9 +633,12 @@ export function buildSingleDraftValidationReport(
       : `${errorCount} error${errorCount === 1 ? "" : "s"}${
           warnCount > 0 ? `, ${warnCount} warning${warnCount === 1 ? "" : "s"}` : ""
         }`;
-  return {
+  // Skipped concrete (ok === null) does NOT drag the aggregate down — it's
+  // informational. Only explicit `false` counts as a failure.
+  const ok = result.ok && concrete?.ok !== false;
+  const report: SingleDraftValidationReport = {
     workflow,
-    ok: result.ok,
+    ok,
     structure_errors: result.structureErrors.map(diagnosticToReport),
     topology_errors: result.topologyErrors.map(diagnosticToReport),
     semantic_errors: result.semanticErrors.map(diagnosticToReport),
@@ -598,10 +646,23 @@ export function buildSingleDraftValidationReport(
     survey: buildDraftSurveyReport(result.survey),
     summary,
   };
+  if (concrete) report.concrete = concrete;
+  return report;
 }
 
 function diagnosticToReport(d: DraftValidationDiagnostic): DraftValidationDiagnosticReport {
   return { path: [...d.path], message: d.message };
+}
+
+function concreteErrorCount(c: ConcreteValidationReport): number {
+  return (
+    c.structure_errors.length +
+    (c.strict_structure_errors?.length ?? 0) +
+    (c.strict_encoding_errors?.length ?? 0) +
+    (c.strict_state_errors?.length ?? 0) +
+    (c.tool_state?.summary.fail ?? 0) +
+    (c.connection_report && !c.connection_report.valid ? 1 : 0)
+  );
 }
 
 export function buildSingleDraftExtractReport(

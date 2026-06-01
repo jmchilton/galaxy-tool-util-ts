@@ -5,6 +5,10 @@ export { serializeWorkflow, resolveFormat, type SerializeWorkflowOptions } from 
 export {
   type GalaxyWorkflow,
   GalaxyWorkflowSchema,
+  type GalaxyWorkflowDraft,
+  GalaxyWorkflowDraftSchema,
+  type DraftWorkflowStep,
+  DraftWorkflowStepSchema,
   type NativeGalaxyWorkflow,
   NativeGalaxyWorkflowSchema,
 } from "./raw/index.js";
@@ -263,6 +267,7 @@ export {
   type DraftValidationDiagnosticReport,
   type DraftSurveyReport,
   type SingleDraftValidationReport,
+  type ConcreteValidationReport,
   type DraftExtractDropReport,
   type DraftExtractRewriteReport,
   type SingleDraftExtractReport,

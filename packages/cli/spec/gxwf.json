@@ -117,14 +117,30 @@
         {
           "flags": "--report-markdown [file]",
           "description": "Write Markdown report to file (or stdout if omitted)"
+        },
+        {
+          "flags": "--concrete",
+          "description": "Additionally extract the concrete subset and run the regular `gxwf validate` checks on it"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory (for --concrete tool-state validation)"
+        },
+        {
+          "flags": "--no-tool-state",
+          "description": "Skip tool-state validation in the --concrete pass (default: enabled when --concrete is set)"
+        },
+        {
+          "flags": "--connections",
+          "description": "Validate connection-type compatibility on the --concrete subset (collection algebra, map-over)"
         }
-      ]
+      ],
+      "optionGroups": ["strict"]
     },
     {
-      "name": "_draft-extract",
-      "description": "Extract the concrete subset of a draft workflow (agent-loop internal; hidden)",
+      "name": "draft-extract",
+      "description": "Extract the concrete subset of a draft workflow (drop drafty steps, strip _plan_* fields, promote class when fully concrete)",
       "handler": "draftExtract",
-      "hidden": true,
       "args": [
         {
           "raw": "<file>",

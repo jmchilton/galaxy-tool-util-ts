@@ -151,6 +151,52 @@ describe("buildSingleDraftValidationReport", () => {
     );
     expect(todoLabelErr?.path).toEqual(["outer"]);
   });
+
+  describe("concrete tri-state ok", () => {
+    const cleanDraft = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        a: { tool_id: "cat1", tool_version: "1.0.0", in: { input1: "reads" }, out: [{ id: "o" }] },
+      },
+    };
+
+    it("ok=true when concrete pass ran clean", () => {
+      const r = buildSingleDraftValidationReport("x.gxwf.yml", validateDraft(cleanDraft), {
+        class_after: "GalaxyWorkflow",
+        skipped_reason: null,
+        structure_errors: [],
+        ok: true,
+      });
+      expect(r.concrete?.ok).toBe(true);
+      expect(r.ok).toBe(true);
+    });
+
+    it("ok=false when concrete pass surfaced any error; aggregate report.ok=false", () => {
+      const r = buildSingleDraftValidationReport("x.gxwf.yml", validateDraft(cleanDraft), {
+        class_after: "GalaxyWorkflow",
+        skipped_reason: null,
+        structure_errors: ["bogus"],
+        ok: false,
+      });
+      expect(r.concrete?.ok).toBe(false);
+      expect(r.ok).toBe(false);
+    });
+
+    it("ok=null when concrete was skipped; aggregate report.ok stays true", () => {
+      const r = buildSingleDraftValidationReport("x.gxwf.yml", validateDraft(cleanDraft), {
+        class_after: "GalaxyWorkflowDraft",
+        skipped_reason: "extracted subset is still a draft — not fully promoted",
+        structure_errors: [],
+        ok: null,
+      });
+      expect(r.concrete?.ok).toBeNull();
+      // Skipped concrete must NOT drag the aggregate down — the draft itself
+      // is fine, we just couldn't run the concrete projection.
+      expect(r.ok).toBe(true);
+    });
+  });
 });
 
 describe("buildSingleDraftExtractReport", () => {

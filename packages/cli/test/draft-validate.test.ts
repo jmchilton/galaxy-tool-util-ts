@@ -289,3 +289,324 @@ steps:
     expect(process.exitCode).toBe(1);
   });
 });
+
+describe("draft-validate (--concrete)", () => {
+  let ctx: CliTestContext;
+
+  beforeEach(async () => {
+    ctx = await createCliTestContext("draft-validate-concrete");
+  });
+
+  afterEach(async () => {
+    await ctx.cleanup();
+  });
+
+  it("promotes a fully-concrete draft and decodes against GalaxyWorkflowSchema (text)", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    label: cat
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "concrete-draft.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, { concrete: true });
+
+    const out = joined(ctx.logSpy);
+    expect(out).toContain("Concrete: OK");
+    expect(process.exitCode).toBe(0);
+  });
+
+  it("drops drafty steps then concrete-decodes the trimmed remainder", async () => {
+    // The TODO step is dropped during extract; the surviving `cat` step is
+    // concrete. Promote flips the class and decode passes.
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  drafty:
+    tool_id: TODO_pick_tool
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "partial-drafty.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, { json: true, concrete: true });
+
+    const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
+    expect(report.concrete?.class_after).toBe("GalaxyWorkflow");
+    expect(report.concrete?.ok).toBe(true);
+  });
+
+  it("--concrete JSON report carries the concrete field", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "concrete.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, { json: true, concrete: true });
+
+    const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
+    expect(report.concrete).toBeDefined();
+    expect(report.concrete?.class_after).toBe("GalaxyWorkflow");
+    expect(report.concrete?.skipped_reason).toBeNull();
+    expect(report.concrete?.structure_errors).toEqual([]);
+    expect(report.concrete?.ok).toBe(true);
+    expect(process.exitCode).toBe(0);
+  });
+
+  it("omits the concrete field when --concrete is not passed", async () => {
+    const wfPath = await stagedFixture(ctx, "synthetic-draft-tool-step.gxwf.yml");
+    await runDraftValidate(wfPath, { json: true });
+    const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
+    expect(report.concrete).toBeUndefined();
+  });
+
+  it("--no-tool-state omits the tool_state bucket from the concrete report", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "no-toolstate.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, { json: true, concrete: true, toolState: false });
+
+    const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
+    expect(report.concrete?.tool_state).toBeUndefined();
+    expect(report.concrete?.ok).toBe(true);
+    expect(process.exitCode).toBe(0);
+  });
+
+  it("default --concrete runs tool-state validation (skip when cache empty)", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "with-toolstate.gxwf.yml");
+    await writeFile(wfPath, wf);
+    // Point at an empty cache dir so we exercise the tool-state loop without
+    // depending on a particular tool being cached locally.
+    await runDraftValidate(wfPath, {
+      json: true,
+      concrete: true,
+      cacheDir: join(ctx.tmpDir, "empty-cache"),
+    });
+
+    const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
+    expect(report.concrete?.tool_state).toBeDefined();
+    expect(report.concrete?.tool_state?.results.length).toBe(1);
+    // Empty cache → skip_tool_not_found, not a fail. Exit code stays 0.
+    expect(report.concrete?.tool_state?.summary.skip).toBe(1);
+    expect(report.concrete?.tool_state?.summary.fail).toBe(0);
+    expect(process.exitCode).toBe(0);
+  });
+
+  it("--strict-state escalates skipped tool-state steps to errors (exit 1)", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "strict-state.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, {
+      json: true,
+      concrete: true,
+      strictState: true,
+      cacheDir: join(ctx.tmpDir, "empty-cache"),
+    });
+
+    const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
+    expect(report.concrete?.strict_state_errors?.length).toBeGreaterThan(0);
+    expect(report.concrete?.ok).toBe(false);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("--connections populates connection_report on the concrete subset", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "conn.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, {
+      json: true,
+      concrete: true,
+      connections: true,
+      cacheDir: join(ctx.tmpDir, "empty-cache"),
+    });
+
+    const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
+    expect(report.concrete?.connection_report).toBeDefined();
+  });
+
+  it("warns when --strict-* is passed without --concrete and silently no-ops", async () => {
+    const wfPath = await stagedFixture(ctx, "synthetic-draft-tool-step.gxwf.yml");
+    await runDraftValidate(wfPath, { strictStructure: true });
+
+    const err = joined(ctx.errSpy);
+    expect(err).toMatch(/--strict\*.*only apply with --concrete/);
+    expect(process.exitCode).toBe(0);
+  });
+
+  it("warns when --no-tool-state + --strict-state are combined under --concrete", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "ts-ss.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, { concrete: true, toolState: false, strictState: true });
+
+    const err = joined(ctx.errSpy);
+    expect(err).toMatch(/--strict-state.*no effect/);
+  });
+
+  it("skips concrete pass when draft has structure errors (does not mutate input)", async () => {
+    // class: GalaxyWorkflow → draft-validate flags this as a structure error
+    // and exits 2. The concrete pass must NOT run (it would early-return
+    // extract.workflow === data and stripPlanFields would mutate the input).
+    const wf = `class: GalaxyWorkflow
+inputs: []
+outputs: []
+steps:
+  s:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    _plan_context: must not be stripped
+`;
+    const wfPath = join(ctx.tmpDir, "non-draft.gxwf.yml");
+    await writeFile(wfPath, wf);
+    await runDraftValidate(wfPath, { json: true, concrete: true });
+
+    const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
+    expect(report.concrete).toBeUndefined();
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("--concrete + --report-markdown renders a Concrete Subset section", async () => {
+    const wf = `class: GalaxyWorkflowDraft
+inputs:
+  reads:
+    type: data
+outputs:
+  out:
+    outputSource: cat/out_file1
+steps:
+  cat:
+    tool_id: cat1
+    tool_version: "1.0.0"
+    in:
+      input1: reads
+    out:
+      - id: out_file1
+`;
+    const wfPath = join(ctx.tmpDir, "concrete.gxwf.yml");
+    await writeFile(wfPath, wf);
+    const mdPath = join(ctx.tmpDir, "report.md");
+    await runDraftValidate(wfPath, { concrete: true, reportMarkdown: mdPath });
+
+    const md = await readFile(mdPath, "utf-8");
+    expect(md).toContain("## Concrete Subset Validation");
+    expect(md).toContain("Class after extract: `GalaxyWorkflow`");
+    expect(md).toContain("Status: OK");
+    expect(process.exitCode).toBe(0);
+  });
+});

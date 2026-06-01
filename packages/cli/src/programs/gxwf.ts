@@ -7,7 +7,7 @@
 import type { Command } from "commander";
 import { runClean } from "../commands/clean.js";
 import { runCleanTree } from "../commands/clean-tree.js";
-import { runDraftExtract } from "../commands/_draft-extract.js";
+import { runDraftExtract } from "../commands/draft-extract.js";
 import { runDraftNextStep } from "../commands/draft-next-step.js";
 import { runDraftValidate } from "../commands/draft-validate.js";
 import { runConvert } from "../commands/convert.js";

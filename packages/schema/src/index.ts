@@ -87,6 +87,12 @@ export {
   type GalaxyWorkflow,
   /** Union schema accepting any Galaxy workflow format (format2 or native). */
   GalaxyWorkflowSchema,
+  type GalaxyWorkflowDraft,
+  /** Relaxed format2 schema for in-progress drafts; permits TODO sentinels and `_plan_*` planning fields. */
+  GalaxyWorkflowDraftSchema,
+  type DraftWorkflowStep,
+  /** Schema for a single step inside a GalaxyWorkflowDraft; relaxed vs. the concrete step schema. */
+  DraftWorkflowStepSchema,
   type NativeGalaxyWorkflow,
   /** Schema for raw native (.ga) Galaxy workflows. */
   NativeGalaxyWorkflowSchema,
@@ -325,6 +331,7 @@ export {
   type DraftValidationDiagnosticReport,
   type DraftSurveyReport,
   type SingleDraftValidationReport,
+  type ConcreteValidationReport,
   type DraftExtractDropReport,
   type DraftExtractRewriteReport,
   type SingleDraftExtractReport,

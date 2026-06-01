@@ -2,7 +2,7 @@
  * Pure logic for Galaxy draft workflows (`class: GalaxyWorkflowDraft`).
  *
  * Substrate for the `gxwf draft-validate`, `gxwf draft-next-step`, and
- * `gxwf _draft-extract` CLI commands. No I/O.
+ * `gxwf draft-extract` CLI commands. No I/O.
  *
  * The sentinel constants mirror `gxformat2/draft.py`. Drift is enforced by
  * `make check-sync-draft-sentinel` against the JSON snapshot in
