@@ -1,5 +1,26 @@
 # @galaxy-tool-util/cli
 
+## 1.6.0
+
+### Minor Changes
+
+- [#106](https://github.com/jmchilton/galaxy-tool-util-ts/pull/106) [`ac53ba0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ac53ba0e0f38979dc70fc83763fa1f1c5ba8d5ec) Thanks [@jmchilton](https://github.com/jmchilton)! - Promote `draft-extract` to a first-class command + add `--concrete` to `draft-validate`:
+  - **cli**: rename `_draft-extract` → `draft-extract` (no longer hidden from `gxwf --help` or the generated skill doc). Same behavior, same flags.
+  - **cli**: `gxwf draft-validate --concrete <file>` runs the extract pipeline (`extractConcreteSubset` → `stripPlanFields` → `promoteFullyConcreteDrafts`) and then runs the regular `gxwf validate` checks on the trimmed workflow. Forwards the relevant validate flags:
+    - `--cache-dir <dir>` + `--no-tool-state` — tool-state validation (default on; matches `gxwf validate`)
+    - `--connections` — connection-type compatibility
+    - `--strict` / `--strict-structure` / `--strict-encoding` / `--strict-state`
+      Any concrete-pass failure escalates the exit code to 1. When the extracted subset is still a draft (not fully promoted), every concrete-stage check is skipped, not failed.
+  - **schema**: `SingleDraftValidationReport` gains an optional `concrete` field (`ConcreteValidationReport`) populated when `--concrete` was requested. Carries `class_after`, `skipped_reason`, `structure_errors`, plus optional `strict_structure_errors`, `strict_encoding_errors`, `strict_state_errors`, `tool_state`, `connection_report` depending on which flags were forwarded. `ok` is tri-state: `true` when every check ran clean, `false` when any failed, `null` when the concrete pass was skipped (e.g., subset still draft). Skipped concrete does NOT drag the aggregate `report.ok` down — consumers must treat `null` as "unknown," not as a pass. `buildSingleDraftValidationReport` takes an optional third arg.
+
+### Patch Changes
+
+- Updated dependencies [[`ac53ba0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ac53ba0e0f38979dc70fc83763fa1f1c5ba8d5ec), [`ac53ba0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ac53ba0e0f38979dc70fc83763fa1f1c5ba8d5ec)]:
+  - @galaxy-tool-util/schema@1.6.0
+  - @galaxy-tool-util/connection-validation@1.6.0
+  - @galaxy-tool-util/core@1.6.0
+  - @galaxy-tool-util/search@1.6.0
+
 ## 1.5.0
 
 ### Minor Changes

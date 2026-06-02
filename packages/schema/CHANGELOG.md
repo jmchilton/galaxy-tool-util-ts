@@ -1,5 +1,22 @@
 # @galaxy-tool-util/schema
 
+## 1.6.0
+
+### Minor Changes
+
+- [#106](https://github.com/jmchilton/galaxy-tool-util-ts/pull/106) [`ac53ba0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ac53ba0e0f38979dc70fc83763fa1f1c5ba8d5ec) Thanks [@jmchilton](https://github.com/jmchilton)! - Promote `draft-extract` to a first-class command + add `--concrete` to `draft-validate`:
+  - **cli**: rename `_draft-extract` → `draft-extract` (no longer hidden from `gxwf --help` or the generated skill doc). Same behavior, same flags.
+  - **cli**: `gxwf draft-validate --concrete <file>` runs the extract pipeline (`extractConcreteSubset` → `stripPlanFields` → `promoteFullyConcreteDrafts`) and then runs the regular `gxwf validate` checks on the trimmed workflow. Forwards the relevant validate flags:
+    - `--cache-dir <dir>` + `--no-tool-state` — tool-state validation (default on; matches `gxwf validate`)
+    - `--connections` — connection-type compatibility
+    - `--strict` / `--strict-structure` / `--strict-encoding` / `--strict-state`
+      Any concrete-pass failure escalates the exit code to 1. When the extracted subset is still a draft (not fully promoted), every concrete-stage check is skipped, not failed.
+  - **schema**: `SingleDraftValidationReport` gains an optional `concrete` field (`ConcreteValidationReport`) populated when `--concrete` was requested. Carries `class_after`, `skipped_reason`, `structure_errors`, plus optional `strict_structure_errors`, `strict_encoding_errors`, `strict_state_errors`, `tool_state`, `connection_report` depending on which flags were forwarded. `ok` is tri-state: `true` when every check ran clean, `false` when any failed, `null` when the concrete pass was skipped (e.g., subset still draft). Skipped concrete does NOT drag the aggregate `report.ok` down — consumers must treat `null` as "unknown," not as a pass. `buildSingleDraftValidationReport` takes an optional third arg.
+
+### Patch Changes
+
+- [#106](https://github.com/jmchilton/galaxy-tool-util-ts/pull/106) [`ac53ba0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ac53ba0e0f38979dc70fc83763fa1f1c5ba8d5ec) Thanks [@jmchilton](https://github.com/jmchilton)! - Expose `GalaxyWorkflowDraftSchema` / `DraftWorkflowStepSchema` (and their `GalaxyWorkflowDraft` / `DraftWorkflowStep` types) from the package root for downstream consumers. Previously reachable only at the deep `./workflow/raw` path; now importable as `import { GalaxyWorkflowDraftSchema } from "@galaxy-tool-util/schema"` alongside `GalaxyWorkflowSchema` / `NativeGalaxyWorkflowSchema`. Additive — no migration.
+
 ## 1.5.0
 
 ### Minor Changes
@@ -34,7 +51,7 @@
   - **cli/meta**: `SpecCommand.hidden?: boolean` — declarative way to mark a command as hidden from help. `buildProgramFromSpec` honors it; the skill generator (`make gen-skill`) skips hidden commands too.
   - **cli/internal**: new `findStdoutSinkCollision` helper in `report-output.ts` — generalizes the C-fixup `findStdoutSinkConflict` to accept arbitrary `{flag, toStdout}` pairs, so commands whose stdout sinks aren't drawn from `--json` / `--report-{html,markdown}` can reuse the same check.
 
-- [#100](https://github.com/jmchilton/galaxy-tool-util-ts/pull/100) [`001ded9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/001ded9a4cbe7f2a2ce3838ed4ee480bba8ad2a9) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `nextDraftStep(workflow): NextStepResult` — pure, idempotent function that returns the next step a downstream agent should work on. Walks steps in topological order with alphabetical tie-break; first step carrying any TODO sentinel or `_plan_*` field returns with a prompt-shaped `work[]` array in the locked-decision order (tool_id → tool_version → in._ → out._ → \_plan_state → \_plan_context → \_plan_in → \_plan_out).
+- [#100](https://github.com/jmchilton/galaxy-tool-util-ts/pull/100) [`001ded9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/001ded9a4cbe7f2a2ce3838ed4ee480bba8ad2a9) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `nextDraftStep(workflow): NextStepResult` — pure, idempotent function that returns the next step a downstream agent should work on. Walks steps in topological order with alphabetical tie-break; first step carrying any TODO sentinel or `_plan_*` field returns with a prompt-shaped `work[]` array in the locked-decision order (tool*id → tool_version → in.* → out.\_ → \_plan_state → \_plan_context → \_plan_in → \_plan_out).
 
   Work items embed semantic hints stripped from `TODO_<hint>` port names and, for `out:` ports, the workflow-output labels that reference them (helps the next agent pick the right wrapper port). Subworkflow-aware: descends into draft `run:` blocks only after the outer step is itself fully concrete.
 
