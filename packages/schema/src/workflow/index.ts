@@ -13,6 +13,9 @@ export {
   NativeGalaxyWorkflowSchema,
 } from "./raw/index.js";
 
+// Plain JSON Schema siblings for downstream packagers (issue #108)
+export { galaxyWorkflowDraftJsonSchema } from "./json-schemas.js";
+
 // Normalized workflow types + normalizers
 export {
   normalizedFormat2,

@@ -90,6 +90,8 @@ export {
   type GalaxyWorkflowDraft,
   /** Relaxed format2 schema for in-progress drafts; permits TODO sentinels and `_plan_*` planning fields. */
   GalaxyWorkflowDraftSchema,
+  /** Plain JSON Schema (2020-12) sibling of `GalaxyWorkflowDraftSchema` — survives `JSON.stringify` for downstream packagers. */
+  galaxyWorkflowDraftJsonSchema,
   type DraftWorkflowStep,
   /** Schema for a single step inside a GalaxyWorkflowDraft; relaxed vs. the concrete step schema. */
   DraftWorkflowStepSchema,
