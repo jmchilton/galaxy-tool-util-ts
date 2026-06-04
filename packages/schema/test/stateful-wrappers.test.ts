@@ -196,10 +196,12 @@ describe("toFormat2Stateful", () => {
     expect(coolStep).toBeDefined();
     expect(uncachedStep).toBeDefined();
 
-    // cool_tool: state should have coerced scalars + no stale keys
-    const coolState = coolStep!.tool_state as Record<string, unknown> | null | undefined;
+    // cool_tool: converted → schema-aware `state` block (not `tool_state`),
+    // with coerced scalars and no stale keys.
+    const coolState = coolStep!.state as Record<string, unknown> | null | undefined;
     expect(coolState).toBeDefined();
     expect(coolState).not.toBeNull();
+    expect(coolStep!.tool_state).toBeFalsy(); // converted steps carry `state`, not `tool_state`
     expect(coolState!.count).toBe(42);
     expect(coolState!.enabled).toBe(true);
     expect(coolState!.tags).toEqual(["a", "b", "c"]);
@@ -207,8 +209,10 @@ describe("toFormat2Stateful", () => {
     expect(coolState!).not.toHaveProperty("__page__");
     expect(coolState!).not.toHaveProperty("__rerun_remap_job_id__");
 
-    // uncached_tool: fell back to schema-free passthrough (stale keys stripped)
+    // uncached_tool: fell back to schema-free passthrough → raw `tool_state`
+    // (stale keys stripped), no `state` block.
     const uncachedState = uncachedStep!.tool_state as Record<string, unknown>;
+    expect(uncachedStep!.state).toBeFalsy();
     expect(uncachedState.whatever).toBe("99"); // still a string (no coercion)
   });
 

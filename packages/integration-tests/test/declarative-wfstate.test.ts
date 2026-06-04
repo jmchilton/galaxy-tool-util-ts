@@ -184,11 +184,34 @@ async function validateNativeStep(
     };
   }
 
-  // Skip if replacement parameters detected
-  const replacementScan = scanForReplacements(
-    bundle.parameters,
+  const inputConnections = (stepDef.input_connections ?? {}) as Record<string, unknown>;
+  const connections: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(inputConnections)) {
+    connections[key] = val;
+  }
+
+  return validateNativeState(
+    bundle,
     toolState as Record<string, unknown>,
+    connections,
+    stepLabel,
+    toolId,
   );
+}
+
+/**
+ * Validate native-encoded tool_state against workflow_step_native. Shared by
+ * native-body steps and format2-body steps carrying a verbatim tool_state block.
+ */
+function validateNativeState(
+  bundle: ToolParameterBundleModel,
+  toolState: Record<string, unknown>,
+  connections: Record<string, unknown>,
+  stepLabel: string,
+  toolId: string,
+): StepValidationResult {
+  // Skip if replacement parameters detected
+  const replacementScan = scanForReplacements(bundle.parameters, toolState);
   if (replacementScan === "yes") {
     return {
       step: stepLabel,
@@ -199,12 +222,7 @@ async function validateNativeStep(
   }
 
   // Deep copy state and inject connection markers
-  const state = structuredClone(toolState) as Record<string, unknown>;
-  const inputConnections = (stepDef.input_connections ?? {}) as Record<string, unknown>;
-  const connections: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(inputConnections)) {
-    connections[key] = val;
-  }
+  const state = structuredClone(toolState);
   injectConnectionsIntoState(bundle.parameters, state, connections);
 
   // Validate against workflow_step_native with strict excess property checking
@@ -284,8 +302,30 @@ async function validateFormat2Step(
     parameters: parsedTool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  const rawState = (step.state ?? step.tool_state ?? {}) as Record<string, unknown>;
-  const state = structuredClone(rawState);
+  // A verbatim native tool_state block validates through the native path
+  // (same encoding regardless of workflow format); a schema-aware state block
+  // validates below. State shape — not workflow format — picks the validator.
+  const stateEmpty = step.state == null || Object.keys(step.state).length === 0;
+  const toolStateEmpty = step.tool_state == null || Object.keys(step.tool_state).length === 0;
+  if (stateEmpty && !toolStateEmpty) {
+    const nativeConnections: Record<string, unknown> = {};
+    for (const stepInput of step.in) {
+      if (stepInput.id && stepInput.source) {
+        nativeConnections[stepInput.id] = Array.isArray(stepInput.source)
+          ? stepInput.source
+          : [stepInput.source];
+      }
+    }
+    return validateNativeState(
+      bundle,
+      step.tool_state as Record<string, unknown>,
+      nativeConnections,
+      stepLabel,
+      toolId,
+    );
+  }
+
+  const state = structuredClone((step.state ?? {}) as Record<string, unknown>);
   stripConnectedValues(bundle.parameters, state);
 
   // Base validation

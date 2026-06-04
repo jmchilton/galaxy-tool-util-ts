@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import type { ToolCache } from "@galaxy-tool-util/core";
 import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
-import { checkStrictEncoding, checkStrictStructure } from "@galaxy-tool-util/schema";
+import { checkStrictEncoding, checkStrictStructure, SKIP_STATUSES } from "@galaxy-tool-util/schema";
 import {
   validateNativeSteps,
   type StepValidationResult,
@@ -73,7 +73,7 @@ function runSweep(
         const results = await validateFn(data, cache);
 
         for (const r of results) {
-          if (r.status === "skip_tool_not_found" || r.status === "skip_replacement_params") {
+          if (SKIP_STATUSES.has(r.status)) {
             skipped++;
           } else if (r.status === "fail") {
             failures.push({ workflow: workflowId(wfPath), step: r });

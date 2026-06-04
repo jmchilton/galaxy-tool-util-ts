@@ -5,6 +5,8 @@ import * as YAML from "yaml";
 
 import { runConvert } from "../src/commands/convert.js";
 import { runConvertTree } from "../src/commands/convert-tree.js";
+import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
+import type { SingleValidationReport } from "@galaxy-tool-util/schema";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 import { seedAllTools, SIMPLE_TOOL_ID } from "./helpers/fixtures.js";
 
@@ -64,7 +66,14 @@ describe("gxwf convert --stateful", () => {
 
     const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
     const converted = YAML.parse(output);
+    const step = (converted.steps as Array<Record<string, unknown>>)[0];
     const state = getStepState(converted);
+
+    // Contract: a successful stateful conversion emits the clean `state` block
+    // and no `tool_state` — this is what lets `validate` treat the output as
+    // validatable rather than skipping it as unconverted.
+    expect(step.state).toBeDefined();
+    expect(step.tool_state == null).toBe(true);
 
     // gx_integer coerced string → number
     expect(state.num_lines).toBe(10);
@@ -77,6 +86,38 @@ describe("gxwf convert --stateful", () => {
     expect(process.exitCode).toBeFalsy();
   });
 
+  it("stateful output validates (state block), unaware output validates (tool_state via native path)", async () => {
+    await seedAllTools(ctx.tmpDir);
+    const nativePath = join(ctx.tmpDir, "native.ga");
+    await writeFile(nativePath, JSON.stringify(buildNativeWorkflow()));
+
+    // Stateful conversion → `state` block → validates as `ok`.
+    const statefulPath = join(ctx.tmpDir, "stateful.gxwf.yml");
+    await runConvert(nativePath, {
+      stateful: true,
+      cacheDir: ctx.tmpDir,
+      output: statefulPath,
+    });
+    ctx.logSpy.mockClear();
+    await runValidateWorkflow(statefulPath, { cacheDir: ctx.tmpDir, json: true });
+    const statefulReport = JSON.parse(
+      ctx.logSpy.mock.calls.map((c) => c[0]).join("\n"),
+    ) as SingleValidationReport;
+    expect(statefulReport.results).toHaveLength(1);
+    expect(statefulReport.results[0].status).toBe("ok");
+
+    // Unaware conversion → `tool_state` → validated via the native path.
+    const unawarePath = join(ctx.tmpDir, "unaware.gxwf.yml");
+    await runConvert(nativePath, { output: unawarePath });
+    ctx.logSpy.mockClear();
+    await runValidateWorkflow(unawarePath, { cacheDir: ctx.tmpDir, json: true });
+    const unawareReport = JSON.parse(
+      ctx.logSpy.mock.calls.map((c) => c[0]).join("\n"),
+    ) as SingleValidationReport;
+    expect(unawareReport.results).toHaveLength(1);
+    expect(unawareReport.results[0].status).toBe("ok");
+  });
+
   it("schema-free mode preserves tool_state as-is (baseline for comparison)", async () => {
     const wfPath = join(ctx.tmpDir, "native.ga");
     await writeFile(wfPath, JSON.stringify(buildNativeWorkflow()));
@@ -85,7 +126,13 @@ describe("gxwf convert --stateful", () => {
 
     const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
     const converted = YAML.parse(output);
+    const step = (converted.steps as Array<Record<string, unknown>>)[0];
     const state = getStepState(converted);
+
+    // Contract: the state-unaware path emits raw `tool_state` and no `state` —
+    // such steps are not format2-validatable and `validate` skips them.
+    expect(step.tool_state).toBeDefined();
+    expect(step.state == null).toBe(true);
 
     // Without stateful, num_lines stays as a string
     expect(state.num_lines).toBe("10");
