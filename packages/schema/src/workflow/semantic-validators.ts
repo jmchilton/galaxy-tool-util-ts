@@ -113,6 +113,37 @@ function validateInputParameter(inputParam: unknown): void {
 }
 
 /**
+ * True when a step's `state`/`tool_state` field actually carries content.
+ *
+ * Non-empty semantics: null/undefined, an empty object, and a blank or `{}`
+ * JSON string all count as unspecified — so an empty `state: {}` left by
+ * conversion does not falsely conflict with a populated `tool_state`. Mirrors
+ * gxformat2 `_semantic_validators._state_is_specified`.
+ */
+function _stateIsSpecified(value: unknown): boolean {
+  if (value == null) return false;
+  if (typeof value === "string") {
+    const s = value.trim();
+    return s !== "" && s !== "{}";
+  }
+  if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0;
+  return Boolean(value);
+}
+
+/**
+ * Validate cross-field rules on a single workflow step.
+ *
+ * Enforces that `state` and `tool_state` are mutually exclusive (the schema doc
+ * says "Only one or the other should be specified") — they are two encodings of
+ * the same tool state, so carrying both is ambiguous.
+ */
+function validateStep(step: Record<string, unknown>): void {
+  if (_stateIsSpecified(step.state) && _stateIsSpecified(step.tool_state)) {
+    throw new Error("Workflow step specifies both 'state' and 'tool_state'; only one may be set");
+  }
+}
+
+/**
  * Walk a (lax or strict) GalaxyWorkflow dict and validate cross-field rules.
  * Recurses into inline subworkflows under step.run.
  */
@@ -135,6 +166,7 @@ export function validateWorkflowSemantics(workflow: unknown): void {
   else if (steps && typeof steps === "object") iterSteps = Object.values(steps);
   for (const step of iterSteps) {
     if (!step || typeof step !== "object") continue;
+    validateStep(step as Record<string, unknown>);
     const run = (step as Record<string, unknown>).run;
     if (
       run &&
