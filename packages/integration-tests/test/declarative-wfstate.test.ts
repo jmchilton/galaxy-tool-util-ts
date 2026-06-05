@@ -23,6 +23,7 @@ import {
   detectFormat,
   injectConnectionsIntoState,
   stripConnectedValues,
+  nativeConnectionsFromFormat2In,
   scanForReplacements,
   scanToolState,
   normalizedFormat2,
@@ -308,18 +309,10 @@ async function validateFormat2Step(
   const stateEmpty = step.state == null || Object.keys(step.state).length === 0;
   const toolStateEmpty = step.tool_state == null || Object.keys(step.tool_state).length === 0;
   if (stateEmpty && !toolStateEmpty) {
-    const nativeConnections: Record<string, unknown> = {};
-    for (const stepInput of step.in) {
-      if (stepInput.id && stepInput.source) {
-        nativeConnections[stepInput.id] = Array.isArray(stepInput.source)
-          ? stepInput.source
-          : [stepInput.source];
-      }
-    }
     return validateNativeState(
       bundle,
       step.tool_state as Record<string, unknown>,
-      nativeConnections,
+      nativeConnectionsFromFormat2In(step.in),
       stepLabel,
       toolId,
     );

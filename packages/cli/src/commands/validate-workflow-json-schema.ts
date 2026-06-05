@@ -32,7 +32,11 @@ import Ajv2020 from "ajv/dist/2020.js";
 import type { ValidateFunction } from "ajv";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { buildSingleValidationReport, SKIP_STATUSES } from "@galaxy-tool-util/schema";
+import {
+  buildSingleValidationReport,
+  SKIP_STATUSES,
+  nativeConnectionsFromFormat2In,
+} from "@galaxy-tool-util/schema";
 import type {
   ValidateWorkflowOptions,
   WorkflowFormat,
@@ -526,17 +530,10 @@ async function _validateFormat2StepJsonSchema(
   // (same encoding regardless of workflow format); a schema-aware `state` block
   // validates below. State shape — not workflow format — picks the validator.
   if (isEmptyState(step.state) && !isEmptyState(step.tool_state)) {
-    const nativeConnections: Record<string, unknown> = {};
-    for (const stepInput of step.in) {
-      if (stepInput.id && stepInput.source) {
-        const src = stepInput.source;
-        nativeConnections[stepInput.id] = Array.isArray(src) ? src : [src];
-      }
-    }
     return _validateNativeStateJsonSchema(
       bundle,
       step.tool_state as Record<string, unknown>,
-      nativeConnections,
+      nativeConnectionsFromFormat2In(step.in),
       stepLabel,
       toolId,
       toolVersion,

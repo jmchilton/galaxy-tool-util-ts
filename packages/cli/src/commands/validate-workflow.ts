@@ -8,6 +8,7 @@ import {
   expandedFormat2,
   injectConnectionsIntoState,
   stripConnectedValues,
+  nativeConnectionsFromFormat2In,
   scanForReplacements,
   checkStrictEncoding,
   checkStrictStructure,
@@ -467,17 +468,10 @@ async function _validateFormat2Step(
   // State shape — not workflow format — picks the validator: tool_state validates
   // through the native path, the same one native-body steps use.
   if (isEmptyState(step.state) && !isEmptyState(step.tool_state)) {
-    const nativeConnections: Record<string, unknown> = {};
-    for (const stepInput of step.in) {
-      if (stepInput.id && stepInput.source) {
-        const src = stepInput.source;
-        nativeConnections[stepInput.id] = Array.isArray(src) ? src : [src];
-      }
-    }
     return _validateNativeState(
       bundle,
       step.tool_state as Record<string, unknown>,
-      nativeConnections,
+      nativeConnectionsFromFormat2In(step.in),
       stepLabel,
       toolId,
       toolVersion,

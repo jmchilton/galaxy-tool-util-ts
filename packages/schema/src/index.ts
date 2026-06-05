@@ -124,6 +124,8 @@ export {
   injectConnectionsIntoState,
   /** Strip ConnectedValue markers from state using parameter tree. */
   stripConnectedValues,
+  /** Build a connections map from a format2 step's `in` block (keys only). */
+  nativeConnectionsFromFormat2In,
   /** Expand defaults into a tool state dict (port of Python fill_static_defaults). */
   expandToolStateDefaults,
   /** Build the minimal `tool_state` for a freshly inserted step. Today returns `{}`; designated extension point. */
