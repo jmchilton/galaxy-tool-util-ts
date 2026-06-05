@@ -216,13 +216,18 @@ function _buildToolFormat2Step(
   const inList = _buildFormat2StepInputs(step, labelMap);
   const outList = _buildFormat2StepOutputs(step);
 
-  // Stateful override: if the caller provides a per-step state encoder
-  // and it returns a non-null result, use its state (and optional `in`
-  // block entries) instead of the default schema-free passthrough.
+  // Tool state routing mirrors gxformat2's state_encode_to_format2 contract:
+  // when the per-step encoder succeeds, its schema-aware result is the clean
+  // `state` block (connections/runtime lifted into `in:`); when it returns null
+  // (no encoder, precheck/validation/conversion failure), we fall back to the
+  // raw native `tool_state` passthrough. Only one of the two fields is ever set,
+  // so a step carrying `tool_state` and no `state` unambiguously signals
+  // unconverted/state-unaware output (validators skip it).
   const override = options?.stateEncodeToFormat2?.(step);
+  let state: Record<string, unknown> | undefined;
   let toolState: Record<string, unknown> | null | undefined = null;
   if (override != null) {
-    toolState = Object.keys(override.state).length > 0 ? override.state : null;
+    state = override.state;
     if (override.in) {
       _mergeInOverrides(inList, override.in);
     }
@@ -248,6 +253,7 @@ function _buildToolFormat2Step(
       step.tool_shed_repository as NormalizedFormat2Step["tool_shed_repository"],
     in: inList,
     out: outList,
+    state,
     tool_state: toolState,
     position: step.position as NormalizedFormat2Step["position"],
     when: step.when ?? undefined,

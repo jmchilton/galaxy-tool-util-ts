@@ -250,6 +250,106 @@ describe("validate-workflow (connection-aware)", () => {
     });
   });
 
+  // Format2 steps from the state-unaware native->format2 conversion carry
+  // native-style `tool_state` (inline ConnectedValue/RuntimeValue markers) and
+  // no schema-aware `state`. tool_state is the same encoding regardless of
+  // workflow format, so it validates through the native path, not skipped.
+  describe("format2 native tool_state", () => {
+    function format2Step(stepExtra: Record<string, unknown>) {
+      return {
+        class: "GalaxyWorkflow",
+        label: "NativeToolState",
+        inputs: [],
+        outputs: [],
+        steps: [
+          {
+            id: "step1",
+            tool_id: SIMPLE_TOOL_ID,
+            tool_version: "1.0",
+            in: [],
+            out: [],
+            ...stepExtra,
+          },
+        ],
+      };
+    }
+
+    async function runStep(stepExtra: Record<string, unknown>): Promise<SingleValidationReport> {
+      await seedAllTools(ctx.tmpDir);
+      const wfPath = join(ctx.tmpDir, "native-tool-state.gxwf.yml");
+      await writeFile(wfPath, YAML.stringify(format2Step(stepExtra)));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, json: true });
+      const calls = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+      return JSON.parse(calls);
+    }
+
+    it("tool_state with no state validates via native path → ok", async () => {
+      const report = await runStep({ tool_state: { input_text: "hi", num_lines: 5 } });
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].status).toBe("ok");
+      expect(report.summary).toEqual({ ok: 1, fail: 0, skip: 0 });
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("inline RuntimeValue marker in tool_state → ok (native accepts markers)", async () => {
+      // The original bug: the format2 model rejected inline RuntimeValue →
+      // false-positive fail. The native model accepts the marker.
+      const report = await runStep({
+        tool_state: { input_text: "hi", num_lines: { __class__: "RuntimeValue" } },
+      });
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].status).toBe("ok");
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("bad value in tool_state → fail (native validation runs)", async () => {
+      const report = await runStep({
+        tool_state: { input_text: "hi", num_lines: { bad: true } },
+      });
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].status).toBe("fail");
+    });
+
+    it("replacement param in tool_state → skip_replacement_params", async () => {
+      const report = await runStep({ tool_state: { input_text: "hi", num_lines: "${n}" } });
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].status).toBe("skip_replacement_params");
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("schema-aware state still validates → ok", async () => {
+      const report = await runStep({ state: { input_text: "hi", num_lines: 5 } });
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].status).toBe("ok");
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("neither state nor tool_state → ok", async () => {
+      const report = await runStep({});
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].status).toBe("ok");
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("empty tool_state dict → ok", async () => {
+      const report = await runStep({ tool_state: {} });
+      expect(report.results).toHaveLength(1);
+      expect(report.results[0].status).toBe("ok");
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("--strict-state promotes a skip to a non-zero exit", async () => {
+      await seedAllTools(ctx.tmpDir);
+      const wfPath = join(ctx.tmpDir, "native-tool-state-strict.gxwf.yml");
+      await writeFile(
+        wfPath,
+        YAML.stringify(format2Step({ tool_state: { input_text: "hi", num_lines: "${n}" } })),
+      );
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, strictState: true });
+      expect(process.exitCode).toBe(2);
+    });
+  });
+
   describe("skip and error cases", () => {
     it("skips steps with uncached tools", async () => {
       const workflow = {

@@ -76,7 +76,11 @@ export {
   selectWhichWhen,
 } from "./walk-helpers.js";
 
-export { injectConnectionsIntoState, stripConnectedValues } from "./state-merge.js";
+export {
+  injectConnectionsIntoState,
+  stripConnectedValues,
+  nativeConnectionsFromFormat2In,
+} from "./state-merge.js";
 
 export { expandToolStateDefaults } from "./fill-defaults.js";
 export { buildMinimalToolState } from "./minimal-tool-state.js";

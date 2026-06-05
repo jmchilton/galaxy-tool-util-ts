@@ -8,6 +8,7 @@ import {
   expandedFormat2,
   injectConnectionsIntoState,
   stripConnectedValues,
+  nativeConnectionsFromFormat2In,
   scanForReplacements,
   checkStrictEncoding,
   checkStrictStructure,
@@ -52,6 +53,11 @@ export interface ValidateWorkflowOptions extends StrictOptions {
 function formatIssues(error: ParseResult.ParseError): string[] {
   const issues = ParseResult.ArrayFormatter.formatErrorSync(error);
   return issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+}
+
+/** A state field is "empty" when null/undefined or an object with no keys (mirrors Python `not step.state`). */
+export function isEmptyState(value: unknown): boolean {
+  return value == null || Object.keys(value as Record<string, unknown>).length === 0;
 }
 
 /** Run Effect Schema decode on raw workflow data and return structural decode failures. */
@@ -314,11 +320,38 @@ async function _validateNativeStep(
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  // Skip validation if replacement parameters (${...}) are present in typed fields
-  const replacementScan = scanForReplacements(
-    bundle.parameters,
+  const connections: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(step.input_connections)) {
+    connections[key] = val;
+  }
+
+  return _validateNativeState(
+    bundle,
     step.tool_state as Record<string, unknown>,
+    connections,
+    stepLabel,
+    toolId,
+    toolVersion,
   );
+}
+
+/**
+ * Validate a native-encoded tool_state block against the `workflow_step_native`
+ * model. Shared by native-body steps and format2-body steps that carry a
+ * verbatim `tool_state` block instead of a schema-aware `state` block — the
+ * encoding (double-encoded scalars, inline ConnectedValue/RuntimeValue markers)
+ * is identical regardless of workflow format, so the same model validates both.
+ */
+function _validateNativeState(
+  bundle: ToolParameterBundleModel,
+  toolState: Record<string, unknown>,
+  connections: Record<string, unknown>,
+  stepLabel: string,
+  toolId: string,
+  toolVersion: string | null,
+): StepValidationResult {
+  // Skip validation if replacement parameters (${...}) are present in typed fields
+  const replacementScan = scanForReplacements(bundle.parameters, toolState);
   if (replacementScan === "yes") {
     return {
       step: stepLabel,
@@ -330,14 +363,9 @@ async function _validateNativeStep(
   }
 
   // Deep copy state and inject connection markers
-  const state = structuredClone(step.tool_state) as Record<string, unknown>;
-  const connections: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(step.input_connections)) {
-    connections[key] = val;
-  }
+  const state = structuredClone(toolState);
   injectConnectionsIntoState(bundle.parameters, state, connections);
 
-  // Validate against workflow_step_native schema
   const fieldModel = createFieldModel(bundle, "workflow_step_native");
   if (!fieldModel) {
     return {
@@ -435,10 +463,25 @@ async function _validateFormat2Step(
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  // Get state from step.state or step.tool_state.
-  // Deep-copy and strip ConnectedValue markers left by $link normalization —
-  // these are captured in step.in and will be injected during linked validation.
-  const state = structuredClone((step.state ?? step.tool_state ?? {}) as Record<string, unknown>);
+  // A step carries either a schema-aware `state` block or a verbatim native
+  // `tool_state` block (gxformat2's state-unaware conversion copies the latter).
+  // State shape — not workflow format — picks the validator: tool_state validates
+  // through the native path, the same one native-body steps use.
+  if (isEmptyState(step.state) && !isEmptyState(step.tool_state)) {
+    return _validateNativeState(
+      bundle,
+      step.tool_state as Record<string, unknown>,
+      nativeConnectionsFromFormat2In(step.in),
+      stepLabel,
+      toolId,
+      toolVersion,
+    );
+  }
+
+  // Only the schema-aware `state` block is validatable. Deep-copy and strip
+  // ConnectedValue markers left by $link normalization — these are captured in
+  // step.in and will be injected during linked validation.
+  const state = structuredClone((step.state ?? {}) as Record<string, unknown>);
   stripConnectedValues(bundle.parameters, state);
 
   // Level 1: Validate base state against workflow_step

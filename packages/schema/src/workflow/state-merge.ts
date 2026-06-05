@@ -10,6 +10,7 @@
  */
 
 import type { ToolParameterModel } from "../schema/bundle-types.js";
+import type { NormalizedFormat2StepInput } from "./normalized/format2.js";
 import { CONNECTED_VALUE, isConnectedValue } from "./runtime-markers.js";
 import { walkNativeState, SKIP_VALUE } from "./walker.js";
 import {
@@ -21,6 +22,29 @@ import {
 
 // Re-export helpers so existing importers don't break
 export { flatStatePath, keysStartingWith, repeatInputsToArray, selectWhichWhen };
+
+// --- Connection-key construction ---
+
+/**
+ * Build the connections map for a format2 step's `in` block so a verbatim
+ * native `tool_state` block can be validated through the native path.
+ *
+ * injectConnectionsIntoState consumes only the *keys* of this map — it matches
+ * them against state paths and substitutes ConnectedValue markers — so the value
+ * is a bare presence marker. The connection's source is intentionally irrelevant
+ * here; encoding it would be dead computation.
+ */
+export function nativeConnectionsFromFormat2In(
+  inputs: readonly NormalizedFormat2StepInput[],
+): Record<string, true> {
+  const connections: Record<string, true> = {};
+  for (const input of inputs) {
+    if (input.id && input.source) {
+      connections[input.id] = true;
+    }
+  }
+  return connections;
+}
 
 // --- Main injection function ---
 

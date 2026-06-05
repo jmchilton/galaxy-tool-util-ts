@@ -32,12 +32,17 @@ import Ajv2020 from "ajv/dist/2020.js";
 import type { ValidateFunction } from "ajv";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { buildSingleValidationReport } from "@galaxy-tool-util/schema";
+import {
+  buildSingleValidationReport,
+  SKIP_STATUSES,
+  nativeConnectionsFromFormat2In,
+} from "@galaxy-tool-util/schema";
 import type {
   ValidateWorkflowOptions,
   WorkflowFormat,
   StepValidationResult,
 } from "./validate-workflow.js";
+import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
@@ -269,7 +274,7 @@ export async function runValidateWorkflowJsonSchema(
   let skipped = 0;
 
   for (const r of results) {
-    if (r.status === "skip_tool_not_found" || r.status === "skip_replacement_params") {
+    if (SKIP_STATUSES.has(r.status)) {
       skipped++;
       console.warn(`  [${r.step}] skipped — ${r.errors[0] ?? "unknown"}`);
     } else if (r.status === "fail") {
@@ -366,10 +371,39 @@ async function _validateNativeStepJsonSchema(
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  const replacementScan = scanForReplacements(
-    bundle.parameters,
+  const connections: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(step.input_connections)) {
+    connections[k] = v;
+  }
+
+  return _validateNativeStateJsonSchema(
+    bundle,
     step.tool_state as Record<string, unknown>,
+    connections,
+    stepLabel,
+    toolId,
+    toolVersion,
+    toolSchemaDir,
   );
+}
+
+/**
+ * Validate a native-encoded tool_state block against the `workflow_step_native`
+ * JSON Schema. Shared by native-body steps and format2-body steps carrying a
+ * verbatim `tool_state` block — same encoding, same validator regardless of
+ * workflow format. (JSON Schema can't enforce double-encoded scalar types, e.g.
+ * "5" for an int, but still checks structure and unknown keys.)
+ */
+function _validateNativeStateJsonSchema(
+  bundle: ToolParameterBundleModel,
+  toolState: Record<string, unknown>,
+  connections: Record<string, unknown>,
+  stepLabel: string,
+  toolId: string,
+  toolVersion: string | null,
+  toolSchemaDir?: string,
+): StepValidationResult {
+  const replacementScan = scanForReplacements(bundle.parameters, toolState);
   if (replacementScan === "yes") {
     return {
       step: stepLabel,
@@ -380,11 +414,7 @@ async function _validateNativeStepJsonSchema(
     };
   }
 
-  const state = structuredClone(step.tool_state) as Record<string, unknown>;
-  const connections: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(step.input_connections)) {
-    connections[k] = v;
-  }
+  const state = structuredClone(toolState);
   injectConnectionsIntoState(bundle.parameters, state, connections);
 
   const validate = getOrBuildValidator(
@@ -496,8 +526,22 @@ async function _validateFormat2StepJsonSchema(
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  const rawState = step.state ?? step.tool_state ?? {};
-  const state = rawState as Record<string, unknown>;
+  // A verbatim native `tool_state` block validates through the native path
+  // (same encoding regardless of workflow format); a schema-aware `state` block
+  // validates below. State shape — not workflow format — picks the validator.
+  if (isEmptyState(step.state) && !isEmptyState(step.tool_state)) {
+    return _validateNativeStateJsonSchema(
+      bundle,
+      step.tool_state as Record<string, unknown>,
+      nativeConnectionsFromFormat2In(step.in),
+      stepLabel,
+      toolId,
+      toolVersion,
+      toolSchemaDir,
+    );
+  }
+
+  const state = (step.state ?? {}) as Record<string, unknown>;
 
   // Level 1: base validation against workflow_step
   const baseValidate = getOrBuildValidator(
