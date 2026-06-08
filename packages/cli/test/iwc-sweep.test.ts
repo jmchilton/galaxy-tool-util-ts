@@ -25,6 +25,7 @@ import {
   type StepValidationResult,
 } from "../src/commands/validate-workflow.js";
 import { validateNativeStepsJsonSchema } from "../src/commands/validate-workflow-json-schema.js";
+import { lintWorkflowReport } from "../src/commands/lint.js";
 
 const IWC_DIR = process.env.GALAXY_TEST_IWC_DIRECTORY;
 
@@ -115,6 +116,16 @@ runSweep("native JSON Schema validation", validateNativeStepsJsonSchema);
 
 // --- Strict sweep suites ---
 
+// Older IWC workflows with deprecated position sub-fields (bottom, height,
+// right, width, x, y) intentionally dropped from the strict structure model.
+// Keep in sync with test_iwc_sweep.py _STRICT_STRUCTURE_SKIP.
+const STRICT_STRUCTURE_SKIP: ReadonlySet<string> = new Set([
+  "computational-chemistry/fragment-based-docking-scoring/fragment-based-docking-scoring.ga",
+  "computational-chemistry/protein-ligand-complex-parameterization/protein-ligand-complex-parameterization.ga",
+  "sars-cov-2-variant-calling/sars-cov-2-ont-artic-variant-calling/ont-artic-variation.ga",
+  "sars-cov-2-variant-calling/sars-cov-2-pe-illumina-wgs-variant-calling/pe-wgs-variation.ga",
+]);
+
 describe.skipIf(!IWC_DIR)("IWC sweep: strict-encoding", { timeout: 300_000 }, () => {
   let workflows: string[];
 
@@ -159,6 +170,7 @@ describe.skipIf(!IWC_DIR)("IWC sweep: strict-structure", { timeout: 300_000 }, (
   it("all IWC native workflows pass strict-structure", () => {
     const failures: Array<{ workflow: string; errors: string[] }> = [];
     for (const wfPath of workflows) {
+      if (STRICT_STRUCTURE_SKIP.has(workflowId(wfPath))) continue;
       const raw = readFileSync(wfPath, "utf-8");
       let data: Record<string, unknown>;
       try {
@@ -194,6 +206,7 @@ describe.skipIf(!IWC_DIR)("IWC sweep: strict (all)", { timeout: 300_000 }, () =>
     let skippedSteps = 0;
 
     for (const wfPath of workflows) {
+      if (STRICT_STRUCTURE_SKIP.has(workflowId(wfPath))) continue;
       const raw = readFileSync(wfPath, "utf-8");
       let data: Record<string, unknown>;
       try {
@@ -231,6 +244,67 @@ describe.skipIf(!IWC_DIR)("IWC sweep: strict (all)", { timeout: 300_000 }, () =>
         .map((f) => `  ${f.workflow} [${f.phase}]: ${f.errors.join("; ")}`)
         .join("\n");
       expect.fail(`${failures.length} strict failures:\n${details}`);
+    }
+  });
+});
+
+// --- Lint-stateful sweep ---
+
+// Run the unified lint pipeline (structural + best-practices + tool-state
+// validation) over every IWC native workflow. Mirrors Python
+// TestIWCSweepLintStateful: the bar is "lint runs to completion without
+// crashing." Lint warnings/errors and uncached-tool state skips are expected
+// on a real corpus and are reported, not failed.
+describe.skipIf(!IWC_DIR)("IWC sweep: lint-stateful", { timeout: 600_000 }, () => {
+  let workflows: string[];
+  let cache: ToolCache;
+
+  beforeAll(async () => {
+    workflows = await discoverNativeWorkflows(join(IWC_DIR!, "workflows"));
+    cache = makeNodeToolCache();
+    await cache.index.load();
+  });
+
+  it("lints all native workflows without crashing", async () => {
+    const crashes: Array<{ workflow: string; error: string }> = [];
+    let lintErrors = 0;
+    let lintWarnings = 0;
+    let stateValidated = 0;
+    let stateSkipped = 0;
+    let stateFailed = 0;
+
+    for (const wfPath of workflows) {
+      const id = workflowId(wfPath);
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(readFileSync(wfPath, "utf-8"));
+      } catch {
+        continue;
+      }
+      try {
+        const report = await lintWorkflowReport(wfPath, data, "native", { cache });
+        lintErrors += report.structural.error_count + (report.bestPractices?.error_count ?? 0);
+        lintWarnings += report.structural.warn_count + (report.bestPractices?.warn_count ?? 0);
+        for (const r of report.stateValidation ?? []) {
+          if (SKIP_STATUSES.has(r.status)) stateSkipped++;
+          else if (r.status === "fail") stateFailed++;
+          else stateValidated++;
+        }
+      } catch (err) {
+        crashes.push({ workflow: id, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    console.log(
+      `\nIWC lint-stateful sweep: ${workflows.length} workflows, ${lintErrors} lint errors, ${lintWarnings} lint warnings`,
+    );
+    console.log(
+      `  tool state: ${stateValidated} validated, ${stateSkipped} skipped, ${stateFailed} failed`,
+    );
+
+    if (crashes.length > 0) {
+      const details = crashes.map((c) => `  ${c.workflow}: ${c.error}`).join("\n");
+      expect.fail(`${crashes.length} workflow(s) crashed during lint:\n${details}`);
     }
   });
 });
