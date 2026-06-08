@@ -97,6 +97,11 @@ export interface Format2ConvertedState {
 /** Data parameter types — always go to `in` block, never to state. */
 const DATA_PARAM_TYPES = new Set(["gx_data", "gx_data_collection"]);
 
+/** Read `optional` defensively — CWL parameter models lack the field. */
+function isOptionalParam(toolInput: ToolParameterModel): boolean {
+  return (toolInput as { optional?: boolean }).optional === true;
+}
+
 /**
  * Convert a native step's tool_state to format2 state + in block.
  *
@@ -120,13 +125,18 @@ export function convertStateToFormat2(
   const leafCallback: LeafCallback = (toolInput, value, statePath) => {
     const paramType = toolInput.parameter_type;
 
-    // Data parameters: always to `in` block
+    // Data parameters: never to state. Connection wins over any marker.
     if (DATA_PARAM_TYPES.has(paramType)) {
-      if (isConnectedValue(value) || connectedPaths.has(statePath)) {
+      if (connectedPaths.has(statePath) || isConnectedValue(value)) {
         // Connected data param — recorded via input_connections, handled by structural conversion
+        return SKIP_VALUE;
       }
       if (isRuntimeValue(value)) {
-        inBlock[statePath] = "runtime_value";
+        // Disconnected runtime: keep placeholder only when required; omit when optional.
+        if (!isOptionalParam(toolInput)) {
+          inBlock[statePath] = "runtime_value";
+        }
+        return SKIP_VALUE;
       }
       return SKIP_VALUE;
     }
@@ -149,15 +159,16 @@ export function convertStateToFormat2(
       return value;
     }
 
-    // ConnectedValue → record in `in` block, skip from state
-    if (isConnectedValue(value)) {
-      // Connection source handled by structural conversion's input_connections
+    // Connection wins over any marker — source handled by structural conversion.
+    if (connectedPaths.has(statePath) || isConnectedValue(value)) {
       return SKIP_VALUE;
     }
 
-    // RuntimeValue → record in `in` block, skip from state
+    // Disconnected runtime: keep placeholder only when required; omit when optional.
     if (isRuntimeValue(value)) {
-      inBlock[statePath] = "runtime_value";
+      if (!isOptionalParam(toolInput)) {
+        inBlock[statePath] = "runtime_value";
+      }
       return SKIP_VALUE;
     }
 
