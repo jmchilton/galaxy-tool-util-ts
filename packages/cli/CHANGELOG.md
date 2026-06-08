@@ -1,5 +1,41 @@
 # @galaxy-tool-util/cli
 
+## 1.7.0
+
+### Minor Changes
+
+- [#114](https://github.com/jmchilton/galaxy-tool-util-ts/pull/114) [`8afd4d0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8afd4d064180231bdba0b386746deb48da44eeb8) Thanks [@jmchilton](https://github.com/jmchilton)! - format2 conversion + validate: honor the `state` vs `tool_state` contract.
+
+  **Converter:** `toFormat2Stateful` now writes a successful schema-aware conversion to the format2 `state` field (with connections/runtime lifted into `in:`), and only falls back to raw `tool_state` when conversion is unavailable or fails — matching gxformat2's `state_encode_to_format2` contract. Previously the clean state was incorrectly written to `tool_state`, leaving the `state` field unused even though the native-side reader already expects it.
+
+  **Validate:** `gxwf validate` now picks the validator by state shape, not workflow format. A schema-aware `state` block validates against the format2 model as before; a verbatim native `tool_state` block (what the state-unaware conversion copies in, with inline `ConnectedValue`/`RuntimeValue` markers) validates against the native model — the same one native `.ga` steps use. This fixes the false-positive `fail` on inline `RuntimeValue`, which the native model accepts, and gives real validation coverage instead of a skip. Replacement-parameter (`${...}`) tool_state still skips as `skip_replacement_params`.
+
+  Together: a successful stateful conversion produces a validatable `state` block; an unaware/failed conversion produces a `tool_state` block that validate now checks via the native path. Closes [#113](https://github.com/jmchilton/galaxy-tool-util-ts/issues/113).
+
+  **Mutual exclusion:** `validate_format2` (and its strict variant) now reject a step that specifies both `state` and `tool_state` — the schema has always documented "only one or the other should be specified", but the rule was previously unenforced. The check uses non-empty semantics, so an empty `state: {}` left by conversion does not falsely conflict with a populated `tool_state`. Mirrors the matching enforcement added upstream in gxformat2's semantic validators.
+
+### Patch Changes
+
+- [#115](https://github.com/jmchilton/galaxy-tool-util-ts/pull/115) [`455fdcb`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/455fdcbcf8eaa6060f45dec9f4fbabd138252673) Thanks [@jmchilton](https://github.com/jmchilton)! - Stateful conversion: drop disconnected-optional `RuntimeValue` markers and stop double-stamping connected params.
+
+  `convertStateToFormat2` now evaluates each leaf connection-first with an early return, then gates `RuntimeValue` handling on optionality (mirrors Galaxy's Phase 1 converter change):
+  - A `RuntimeValue` on an **optional, disconnected** leaf is omitted entirely — no state key and, crucially, no phantom `in:` connection claiming `source: "runtime_value"`. This is native authored content (a real optional input the user left unset), not a missed connection, so format2 should carry no trace of it. Verified against the IWC `average-bigwig-between-replicates` workflow, whose `advancedOpt|blackListFileName` now drops cleanly.
+  - A `RuntimeValue` on a **required, disconnected** leaf still records the placeholder (correct `workflow_step_linked` behavior).
+  - A leaf that is **connected** — via `input_connections` or a `ConnectedValue` marker — is always treated as a pure connection, even when the native state also carries a stray `RuntimeValue` marker (legacy workflows do this). The previous empty-`if`/fall-through double-stamped these with a runtime placeholder.
+
+  Roundtrip diffing already classifies a dropped optional `RuntimeValue` as benign (`connection_only_section_omitted`), so no roundtrip change was needed.
+
+- [#118](https://github.com/jmchilton/galaxy-tool-util-ts/pull/118) [`38ff7d2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/38ff7d2f235a34f81785768dd5299d8e1fbe76a1) Thanks [@jmchilton](https://github.com/jmchilton)! - Fix format2 two-level JSON Schema validation to match Galaxy:
+  - A connected `multiple` select now validates against `workflow_step_linked`. `injectConnectionsIntoState` gained a `{ linked: true }` option that encodes the marker as a single-element list `[{ConnectedValue}]` (the linked select-multiple schema accepts ConnectedValue only as an array item, per `parameter_specification.yml`), instead of the bare `{ConnectedValue}` that the schema rejected.
+  - `validateFormat2StepsJsonSchema` no longer crashes (`"/schemas/unknown" resolves to more than one schema`) on tools with two or more unknown/any params — each schema compiles in its own ajv instance with `$id` stripped.
+  - Structural JSON Schema validation is non-strict (additional properties allowed) and unmatched connection keys (e.g. the `when` gate) are tolerated, matching Python's `validate_workflow_json_schema`.
+
+- Updated dependencies [[`d51a18b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d51a18b2f19ce5d3cce8fe8b6a4ff0053ac2af60), [`455fdcb`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/455fdcbcf8eaa6060f45dec9f4fbabd138252673), [`38ff7d2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/38ff7d2f235a34f81785768dd5299d8e1fbe76a1), [`8afd4d0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8afd4d064180231bdba0b386746deb48da44eeb8), [`0f36639`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0f36639ea065bb330c24c512224fb5e1ae74187e)]:
+  - @galaxy-tool-util/schema@1.7.0
+  - @galaxy-tool-util/connection-validation@1.7.0
+  - @galaxy-tool-util/core@1.7.0
+  - @galaxy-tool-util/search@1.7.0
+
 ## 1.6.0
 
 ### Minor Changes

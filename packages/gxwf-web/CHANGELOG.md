@@ -1,5 +1,27 @@
 # @galaxy-tool-util/gxwf-web
 
+## 1.7.0
+
+### Minor Changes
+
+- [#114](https://github.com/jmchilton/galaxy-tool-util-ts/pull/114) [`8afd4d0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8afd4d064180231bdba0b386746deb48da44eeb8) Thanks [@jmchilton](https://github.com/jmchilton)! - format2 conversion + validate: honor the `state` vs `tool_state` contract.
+
+  **Converter:** `toFormat2Stateful` now writes a successful schema-aware conversion to the format2 `state` field (with connections/runtime lifted into `in:`), and only falls back to raw `tool_state` when conversion is unavailable or fails — matching gxformat2's `state_encode_to_format2` contract. Previously the clean state was incorrectly written to `tool_state`, leaving the `state` field unused even though the native-side reader already expects it.
+
+  **Validate:** `gxwf validate` now picks the validator by state shape, not workflow format. A schema-aware `state` block validates against the format2 model as before; a verbatim native `tool_state` block (what the state-unaware conversion copies in, with inline `ConnectedValue`/`RuntimeValue` markers) validates against the native model — the same one native `.ga` steps use. This fixes the false-positive `fail` on inline `RuntimeValue`, which the native model accepts, and gives real validation coverage instead of a skip. Replacement-parameter (`${...}`) tool_state still skips as `skip_replacement_params`.
+
+  Together: a successful stateful conversion produces a validatable `state` block; an unaware/failed conversion produces a `tool_state` block that validate now checks via the native path. Closes [#113](https://github.com/jmchilton/galaxy-tool-util-ts/issues/113).
+
+  **Mutual exclusion:** `validate_format2` (and its strict variant) now reject a step that specifies both `state` and `tool_state` — the schema has always documented "only one or the other should be specified", but the rule was previously unenforced. The check uses non-empty semantics, so an empty `state: {}` left by conversion does not falsely conflict with a populated `tool_state`. Mirrors the matching enforcement added upstream in gxformat2's semantic validators.
+
+### Patch Changes
+
+- Updated dependencies [[`d51a18b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d51a18b2f19ce5d3cce8fe8b6a4ff0053ac2af60), [`455fdcb`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/455fdcbcf8eaa6060f45dec9f4fbabd138252673), [`38ff7d2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/38ff7d2f235a34f81785768dd5299d8e1fbe76a1), [`8afd4d0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8afd4d064180231bdba0b386746deb48da44eeb8), [`0f36639`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0f36639ea065bb330c24c512224fb5e1ae74187e)]:
+  - @galaxy-tool-util/schema@1.7.0
+  - @galaxy-tool-util/cli@1.7.0
+  - @galaxy-tool-util/connection-validation@1.7.0
+  - @galaxy-tool-util/core@1.7.0
+
 ## 1.6.0
 
 ### Patch Changes
