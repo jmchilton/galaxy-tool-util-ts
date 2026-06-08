@@ -1,5 +1,12 @@
 # @galaxy-tool-util/gxwf-e2e
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies [[`8afd4d0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8afd4d064180231bdba0b386746deb48da44eeb8)]:
+  - @galaxy-tool-util/gxwf-web@1.7.0
+
 ## 0.0.9
 
 ### Patch Changes
