@@ -48,6 +48,22 @@ export function nativeConnectionsFromFormat2In(
 
 // --- Main injection function ---
 
+export interface InjectConnectionsOptions {
+  /**
+   * Target the `workflow_step_linked` representation. A connected `multiple`
+   * select is encoded there as a single-element list `[{ConnectedValue}]` (the
+   * select-multiple linked schema accepts ConnectedValue only as an array item,
+   * per Galaxy's parameter_specification.yml), whereas every other parameter —
+   * and the native representation — uses a bare `{ConnectedValue}`.
+   */
+  linked?: boolean;
+}
+
+function isMultipleSelect(input: ToolParameterModel): boolean {
+  const p = input as { parameter_type?: string; multiple?: boolean };
+  return p.parameter_type === "gx_select" && p.multiple === true;
+}
+
 /**
  * Inject ConnectedValue markers into a state dict for all connections.
  *
@@ -61,16 +77,19 @@ export function injectConnectionsIntoState(
   toolInputs: ToolParameterModel[],
   state: Record<string, unknown>,
   connections: Record<string, unknown>,
+  options?: InjectConnectionsOptions,
 ): Record<string, unknown> {
   const remaining = { ...connections };
   const result = walkNativeState(
     connections,
     toolInputs,
     state,
-    (_input, value, statePath) => {
+    (input, value, statePath) => {
       if (statePath in remaining) {
         delete remaining[statePath];
-        return { ...CONNECTED_VALUE };
+        return options?.linked && isMultipleSelect(input)
+          ? [{ ...CONNECTED_VALUE }]
+          : { ...CONNECTED_VALUE };
       }
       return value === undefined ? SKIP_VALUE : value;
     },

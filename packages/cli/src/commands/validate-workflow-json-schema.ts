@@ -46,17 +46,46 @@ import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
-const ajv = new Ajv({ allErrors: true, strict: false }) as any;
+
+// Recursively drop `$id` keys. Effect's JSONSchema.make inlines unknown/any
+// params as `{$id: "/schemas/unknown", title: "unknown"}` (and `/schemas/any`)
+// — a leaf that matches anything. A tool with two such params emits the same
+// `$id` twice in one schema, and AJV rejects duplicate `$id` registration with
+// "resolves to more than one schema". These ids are inlined (never `$ref`
+// targets) and `$defs` refs use JSON-pointer paths, so stripping `$id` is safe.
+function stripIds(schema: unknown): unknown {
+  if (schema === null || typeof schema !== "object") return schema;
+  if (Array.isArray(schema)) return schema.map(stripIds);
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
+    if (key === "$id") continue;
+    result[key] = stripIds(value);
+  }
+  return result;
+}
+
+// Compile a schema, stripping `$id` first (see stripIds). Each compile uses a
+// fresh Ajv instance so no cross-schema `$id`/`$ref` state leaks between tools.
+// Validators are cached by callers (module structural singletons +
+// _toolStateCache), so this runs once per unique schema.
+function compileSchema(schema: object): ValidateFunction {
+  const instance = new Ajv({ allErrors: true, strict: false }) as any;
+  return instance.compile(stripIds(schema)) as ValidateFunction;
+}
 
 // --- structural schema cache (generated once) ---
 
 let _nativeStructValidator: ValidateFunction | undefined;
 let _format2StructValidator: ValidateFunction | undefined;
 
+// Structural validation is non-strict (additionalProperties allowed), matching
+// Python's `_get_structural_validator(strict=False)` default — real workflows
+// carry extra envelope/step keys. The strict-structure axis is a separate path
+// (`checkStrictStructure`, Effect decode with onExcessProperty: "error").
 function nativeStructuralValidator(): ValidateFunction {
   if (!_nativeStructValidator) {
     const schema = JSONSchema.make(NativeGalaxyWorkflowSchema, { target: "jsonSchema2020-12" });
-    _nativeStructValidator = ajv.compile(schema as object) as ValidateFunction;
+    _nativeStructValidator = compileSchema(stripAdditionalProperties(schema) as object);
   }
   return _nativeStructValidator!;
 }
@@ -64,7 +93,7 @@ function nativeStructuralValidator(): ValidateFunction {
 function format2StructuralValidator(): ValidateFunction {
   if (!_format2StructValidator) {
     const schema = JSONSchema.make(GalaxyWorkflowSchema, { target: "jsonSchema2020-12" });
-    _format2StructValidator = ajv.compile(schema as object) as ValidateFunction;
+    _format2StructValidator = compileSchema(stripAdditionalProperties(schema) as object);
   }
   return _format2StructValidator!;
 }
@@ -106,7 +135,7 @@ function buildToolStateValidator(
   try {
     const jsonSchema = JSONSchema.make(effectSchema, { target: "jsonSchema2020-12" });
     const relaxed = stripAdditionalProperties(jsonSchema);
-    return ajv.compile(relaxed as object) as ValidateFunction;
+    return compileSchema(relaxed as object);
   } catch {
     return null;
   }
@@ -127,7 +156,7 @@ function loadToolStateValidatorFromDir(
   if (!existsSync(schemaPath)) return null;
   try {
     const raw = JSON.parse(readFileSync(schemaPath, "utf-8"));
-    return ajv.compile(raw);
+    return compileSchema(raw);
   } catch {
     return null;
   }
@@ -584,18 +613,12 @@ async function _validateFormat2StepJsonSchema(
   // Level 2: linked validation with connections injected
   if (Object.keys(connections).length > 0) {
     const linkedState = structuredClone(state);
-    const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections);
-
-    const unmatchedKeys = Object.keys(remaining);
-    if (unmatchedKeys.length > 0) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
-      };
-    }
+    // Unmatched connection keys (e.g. the synthetic `when` gate on conditional
+    // steps) are discarded, not failed — mirrors Python's
+    // validate_workflow_json_schema, which injects connections and ignores the
+    // returned unmatched paths. (The Pydantic path raises on unmatched; the
+    // JSON Schema path is intentionally lenient.)
+    injectConnectionsIntoState(bundle.parameters, linkedState, connections, { linked: true });
 
     const linkedValidate = getOrBuildValidator(
       toolId,

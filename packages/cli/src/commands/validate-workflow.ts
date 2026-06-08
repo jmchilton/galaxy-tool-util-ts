@@ -522,7 +522,9 @@ async function _validateFormat2Step(
   // Level 2: Validate with connections injected against workflow_step_linked
   if (Object.keys(connections).length > 0) {
     const linkedState = structuredClone(state);
-    const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections);
+    const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
+      linked: true,
+    });
 
     const unmatchedKeys = Object.keys(remaining);
     if (unmatchedKeys.length > 0) {
