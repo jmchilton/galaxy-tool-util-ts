@@ -1086,14 +1086,21 @@ export const testsSchema = {
           anyOf: [
             {
               additionalProperties: {
-                oneOf: [
-                  {
-                    $ref: "#/$defs/TestCollectionDatasetElementAssertions",
+                else: {
+                  $ref: "#/$defs/TestCollectionDatasetElementAssertions",
+                },
+                if: {
+                  properties: {
+                    class: {
+                      const: "Collection",
+                    },
                   },
-                  {
-                    $ref: "#/$defs/TestCollectionCollectionElementAssertions",
-                  },
-                ],
+                  required: ["class"],
+                  type: "object",
+                },
+                then: {
+                  $ref: "#/$defs/TestCollectionCollectionElementAssertions",
+                },
               },
               type: "object",
             },
@@ -1108,14 +1115,21 @@ export const testsSchema = {
           anyOf: [
             {
               additionalProperties: {
-                oneOf: [
-                  {
-                    $ref: "#/$defs/TestCollectionDatasetElementAssertions",
+                else: {
+                  $ref: "#/$defs/TestCollectionDatasetElementAssertions",
+                },
+                if: {
+                  properties: {
+                    class: {
+                      const: "Collection",
+                    },
                   },
-                  {
-                    $ref: "#/$defs/TestCollectionCollectionElementAssertions",
-                  },
-                ],
+                  required: ["class"],
+                  type: "object",
+                },
+                then: {
+                  $ref: "#/$defs/TestCollectionCollectionElementAssertions",
+                },
               },
               type: "object",
             },
@@ -1390,14 +1404,21 @@ export const testsSchema = {
           anyOf: [
             {
               additionalProperties: {
-                oneOf: [
-                  {
-                    $ref: "#/$defs/TestCollectionDatasetElementAssertions",
+                else: {
+                  $ref: "#/$defs/TestCollectionDatasetElementAssertions",
+                },
+                if: {
+                  properties: {
+                    class: {
+                      const: "Collection",
+                    },
                   },
-                  {
-                    $ref: "#/$defs/TestCollectionCollectionElementAssertions",
-                  },
-                ],
+                  required: ["class"],
+                  type: "object",
+                },
+                then: {
+                  $ref: "#/$defs/TestCollectionCollectionElementAssertions",
+                },
               },
               type: "object",
             },
@@ -1412,14 +1433,21 @@ export const testsSchema = {
           anyOf: [
             {
               additionalProperties: {
-                oneOf: [
-                  {
-                    $ref: "#/$defs/TestCollectionDatasetElementAssertions",
+                else: {
+                  $ref: "#/$defs/TestCollectionDatasetElementAssertions",
+                },
+                if: {
+                  properties: {
+                    class: {
+                      const: "Collection",
+                    },
                   },
-                  {
-                    $ref: "#/$defs/TestCollectionCollectionElementAssertions",
-                  },
-                ],
+                  required: ["class"],
+                  type: "object",
+                },
+                then: {
+                  $ref: "#/$defs/TestCollectionCollectionElementAssertions",
+                },
               },
               type: "object",
             },
@@ -1674,14 +1702,8 @@ export const testsSchema = {
         },
         outputs: {
           additionalProperties: {
-            oneOf: [
-              {
-                $ref: "#/$defs/TestCollectionOutputAssertions",
-              },
-              {
-                $ref: "#/$defs/TestDataOutputAssertions",
-              },
-              {
+            else: {
+              else: {
                 anyOf: [
                   {
                     type: "boolean",
@@ -1697,7 +1719,25 @@ export const testsSchema = {
                   },
                 ],
               },
-            ],
+              if: {
+                type: "object",
+              },
+              then: {
+                $ref: "#/$defs/TestDataOutputAssertions",
+              },
+            },
+            if: {
+              properties: {
+                class: {
+                  const: "Collection",
+                },
+              },
+              required: ["class"],
+              type: "object",
+            },
+            then: {
+              $ref: "#/$defs/TestCollectionOutputAssertions",
+            },
           },
           description:
             "Defines assertions about outputs (datasets, collections or parameters). Each key corresponds to a labeled output; values are dictionaries describing the expected output.",
