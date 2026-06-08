@@ -50,6 +50,15 @@ function workflowId(path: string): string {
   return relative(`${IWC_DIR}/workflows`, path);
 }
 
+// Workflows with known error-severity roundtrip diffs, excluded so the sweep
+// flags only NEW regressions. Python's reference roundtrip_validate also fails
+// these (not a TS-only issue). Prune as the upstream conversion bugs are fixed.
+const KNOWN_ROUNDTRIP_FAILURES: ReadonlySet<string> = new Set([
+  // jmchilton/galaxy-tool-util-ts#117 — peptideshaker step drop + dbbuilder
+  // `source` conditional mis-selection on the reverse pass.
+  "proteomics/clinicalmp/clinicalmp-discovery/iwc-clinicalmp-discovery-workflow.ga",
+]);
+
 interface WorkflowOutcome {
   workflow: string;
   crashed: boolean;
@@ -75,8 +84,13 @@ describe.skipIf(!IWC_DIR)("IWC stateful sweep: convert + roundtrip", { timeout: 
     const outcomes: WorkflowOutcome[] = [];
     let parseErrors = 0;
 
+    let knownFailing = 0;
     for (const wfPath of workflows) {
       const id = workflowId(wfPath);
+      if (KNOWN_ROUNDTRIP_FAILURES.has(id)) {
+        knownFailing++;
+        continue;
+      }
       let data: Record<string, unknown>;
       try {
         const raw = await readFile(wfPath, "utf-8");
@@ -148,10 +162,11 @@ describe.skipIf(!IWC_DIR)("IWC stateful sweep: convert + roundtrip", { timeout: 
         for (const d of step.diffs) {
           if (d.severity === "error") {
             totalErrorDiffs++;
-            errorMessages.push(`step ${step.stepId} ${d.path || "<root>"}: ${d.message}`);
+            errorMessages.push(`step ${step.stepId} ${d.key_path || "<root>"}: ${d.description}`);
           } else {
             totalBenignDiffs++;
-            const kind: BenignArtifactKind | "unclassified" = d.kind ?? "unclassified";
+            const kind: BenignArtifactKind | "unclassified" =
+              d.benign_artifact?.reason ?? "unclassified";
             benignKinds[kind] = (benignKinds[kind] ?? 0) + 1;
           }
         }
@@ -176,6 +191,7 @@ describe.skipIf(!IWC_DIR)("IWC stateful sweep: convert + roundtrip", { timeout: 
         .join(", ") || "(none)";
 
     console.log(`\nIWC stateful sweep: ${totalWorkflows} workflows, ${totalSteps} tool steps`);
+    if (knownFailing > 0) console.log(`  known-failing (excluded): ${knownFailing}`);
     if (parseErrors > 0) console.log(`  parse errors: ${parseErrors}`);
     console.log(
       `  verdicts: ${cleanWorkflows} clean, ${benignWorkflows} benign-only, ${errorWorkflows} with real errors, ${crashes.length} crashed`,

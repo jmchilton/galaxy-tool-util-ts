@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -43,6 +44,42 @@ jobs:
         with:
           name: playwright-report
           path: packages/gxwf-e2e/playwright-report/
+
+  iwc-sweep:
+    runs-on: ubuntu-latest
+    env:
+      GALAXY_TEST_IWC_DIRECTORY: ${{ github.workspace }}/iwc
+      GALAXY_TOOL_CACHE_DIR: ${{ github.workspace }}/.iwc-tool-cache
+      # Pinned IWC corpus — keeps the sweep deterministic and the tool cache
+      # reusable. Bump alongside the sweep allowlists (STRICT_STRUCTURE_SKIP,
+      # KNOWN_INVALID_TESTS_FILES, KNOWN_ROUNDTRIP_FAILURES) when the corpus drifts.
+      IWC_REF: ed959c92a4b70ea5bc09d999df833f7566e9eee3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      - name: Checkout IWC corpus
+        uses: actions/checkout@v4
+        with:
+          repository: galaxyproject/iwc
+          ref: ${{ env.IWC_REF }}
+          path: iwc
+      - name: Restore tool cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.GALAXY_TOOL_CACHE_DIR }}
+          key: iwc-tool-cache-v1-${{ env.IWC_REF }}
+          restore-keys: iwc-tool-cache-v1-
+      # Populate any tools missing from the (possibly partial) restored cache.
+      # Idempotent: cached tools are skipped; only cache misses hit the ToolShed.
+      - name: Populate tool cache
+        run: |
+          find "$GALAXY_TEST_IWC_DIRECTORY/workflows" -name '*.ga' -print0 \
+            | while IFS= read -r -d '' wf; do
+                node packages/cli/dist/bin/galaxy-tool-cache.js populate-workflow "$wf" || true
+              done
+      - name: Run IWC sweeps
+        run: pnpm --filter @galaxy-tool-util/cli exec vitest run test/iwc-sweep.test.ts test/stateful-iwc-sweep.test.ts
 
   changeset-check:
     runs-on: ubuntu-latest
