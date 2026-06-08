@@ -85,6 +85,22 @@ function textParam(name: string): TextParameterModel {
   };
 }
 
+function dataParam(name: string, optional: boolean): ToolParameterModel {
+  return {
+    name,
+    parameter_type: "gx_data",
+    type: "data",
+    hidden: false,
+    label: null,
+    help: null,
+    argument: null,
+    is_dynamic: false,
+    optional,
+    multiple: false,
+    extensions: ["data"],
+  } as ToolParameterModel;
+}
+
 // --- Fixtures ---
 
 /**
@@ -237,6 +253,45 @@ describe("roundtripValidate", () => {
     expect(result.success).toBe(false);
     expect(result.stepResults[0].failureClass).toBe("conversion_error");
     expect(result.forwardSteps[0].converted).toBe(false);
+  });
+
+  it("optional disconnected RuntimeValue dropped in conversion is benign", () => {
+    // The converter omits a RuntimeValue marker on an optional, disconnected
+    // data param (no phantom `in:` entry). Round-trip: the marker is present
+    // in the original native state but absent after, and the differ must
+    // classify the drop as benign (connection_only_section_omitted), not error.
+    const inputs = [...coolToolInputs(), dataParam("ref", true)];
+    const wf = nativeWorkflow({
+      count: 42,
+      enabled: true,
+      tags: ["a"],
+      label: "hi",
+      ref: { __class__: "RuntimeValue" },
+    });
+    const result = roundtripValidate(wf, mapResolver({ cool_tool: inputs }));
+    expect(result.success).toBe(true);
+    const errorDiffs = result.stepResults[0].diffs.filter((d) => d.severity === "error");
+    expect(errorDiffs).toEqual([]);
+    const refDiff = result.stepResults[0].diffs.find((d) => d.key_path === "ref");
+    expect(refDiff?.severity).toBe("benign");
+    expect(refDiff?.benign_artifact?.reason).toBe("connection_only_section_omitted");
+  });
+
+  it("required disconnected RuntimeValue keeps a placeholder (no benign drop)", () => {
+    // Control: a required param's RuntimeValue becomes an `in:` placeholder and
+    // is restored on reverse, so there is no dropped-key diff at all.
+    const inputs = [...coolToolInputs(), dataParam("ref", false)];
+    const wf = nativeWorkflow({
+      count: 42,
+      enabled: true,
+      tags: ["a"],
+      label: "hi",
+      ref: { __class__: "RuntimeValue" },
+    });
+    const result = roundtripValidate(wf, mapResolver({ cool_tool: inputs }));
+    expect(result.success).toBe(true);
+    const errorDiffs = result.stepResults[0].diffs.filter((d) => d.severity === "error");
+    expect(errorDiffs).toEqual([]);
   });
 
   it("clean=true when zero diffs of any severity", () => {

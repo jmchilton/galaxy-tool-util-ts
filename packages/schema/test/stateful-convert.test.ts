@@ -510,20 +510,64 @@ describe("convertStateToFormat2", () => {
     expect(result.state).toEqual({ label: "test" });
   });
 
-  it("records RuntimeValue data params in `in` block", () => {
-    const inputs = [dataParam("input1")];
+  // Leaf decision table: connection-first early return, then RuntimeValue
+  // gated on optionality. Mirrors Python convert_leaf.
+
+  it("row: required disconnected data RuntimeValue → `in` placeholder", () => {
+    const inputs = [dataParam("input1")]; // optional: false
     const step = nativeStep({ input1: { __class__: "RuntimeValue" } });
     const result = convertStateToFormat2(step, inputs);
     expect(result.state).toEqual({});
     expect(result.in).toEqual({ input1: "runtime_value" });
   });
 
-  it("records RuntimeValue scalar params in `in` block", () => {
-    const inputs = [textParam("query")];
+  it("row: optional disconnected data RuntimeValue → omitted (no state, no `in`)", () => {
+    const inputs = [{ ...dataParam("input1"), optional: true }];
+    const step = nativeStep({ input1: { __class__: "RuntimeValue" } });
+    const result = convertStateToFormat2(step, inputs);
+    expect(result.state).toEqual({});
+    expect(result.in).toEqual({});
+  });
+
+  it("row: required disconnected scalar RuntimeValue → `in` placeholder", () => {
+    const inputs = [{ ...textParam("query"), optional: false }];
     const step = nativeStep({ query: { __class__: "RuntimeValue" } });
     const result = convertStateToFormat2(step, inputs);
     expect(result.state).toEqual({});
     expect(result.in).toEqual({ query: "runtime_value" });
+  });
+
+  it("row: optional disconnected scalar RuntimeValue → omitted", () => {
+    const inputs = [textParam("query")]; // optional: true
+    const step = nativeStep({ query: { __class__: "RuntimeValue" } });
+    const result = convertStateToFormat2(step, inputs);
+    expect(result.state).toEqual({});
+    expect(result.in).toEqual({});
+  });
+
+  it("row: connected data ConnectedValue → not in state, no runtime stamp", () => {
+    const inputs = [dataParam("input1")];
+    const step = nativeStep(
+      { input1: { __class__: "ConnectedValue" } },
+      { connectedPaths: ["input1"] },
+    );
+    const result = convertStateToFormat2(step, inputs);
+    expect(result.state).toEqual({});
+    expect(result.in).toEqual({});
+  });
+
+  it("row: legacy connected path carrying RuntimeValue marker → connection wins, not double-stamped", () => {
+    // optional data param connected via input_connections but tool_state still
+    // carries a RuntimeValue marker. Connection must win — no runtime omission,
+    // no `in` placeholder (structural conversion records the connection).
+    const inputs = [{ ...dataParam("input1"), optional: true }];
+    const step = nativeStep(
+      { input1: { __class__: "RuntimeValue" } },
+      { connectedPaths: ["input1"] },
+    );
+    const result = convertStateToFormat2(step, inputs);
+    expect(result.state).toEqual({});
+    expect(result.in).toEqual({});
   });
 
   it("skips ConnectedValue markers from state", () => {
