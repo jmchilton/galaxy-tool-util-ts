@@ -1,5 +1,13 @@
 # @galaxy-tool-util/search
 
+## 1.7.2
+
+### Patch Changes
+
+- Updated dependencies [[`25b6e15`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/25b6e15c797647e9f12a887a95c55c265fa30f3f)]:
+  - @galaxy-tool-util/schema@1.7.2
+  - @galaxy-tool-util/core@1.7.2
+
 ## 1.7.1
 
 ### Patch Changes

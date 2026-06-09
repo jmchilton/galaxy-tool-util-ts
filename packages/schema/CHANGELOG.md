@@ -1,5 +1,22 @@
 # @galaxy-tool-util/schema
 
+## 1.7.2
+
+### Patch Changes
+
+- [#124](https://github.com/jmchilton/galaxy-tool-util-ts/pull/124) [`25b6e15`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/25b6e15c797647e9f12a887a95c55c265fa30f3f) Thanks [@jmchilton](https://github.com/jmchilton)! - fix: deduplicate `galaxyWorkflowDraftJsonSchema` via `$defs`/`$ref`
+
+  `JSONSchema.make` inlines every subschema lacking an `identifier` annotation, so
+  structurally-identical fragments (workflow step variants, tool_state value types,
+  RuntimeValue/ConnectedValue, …) were duplicated many times over — inflating the plain-JSON
+  draft schema to ~95 KB compact / ~580 KB pretty-printed. A schema-aware post-process now
+  hoists each repeated subschema into `$defs` and replaces its occurrences with `$ref`,
+  operating only at legal schema positions (`properties` values, `items`, `anyOf` members, …)
+  and never on array/value keywords like `required`/`enum`/`type`. The result is ~19 KB
+  compact / ~60 KB pretty-printed with identical validation behavior (still compiles under
+  Ajv 2020-12; accepts/rejects the same documents), so downstream packagers that vendor the
+  schema verbatim no longer ship a ~580 KB file per bundle.
+
 ## 1.7.1
 
 ### Patch Changes
