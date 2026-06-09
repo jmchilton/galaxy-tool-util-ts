@@ -2,14 +2,14 @@ import { cacheKey } from "@galaxy-tool-util/core";
 import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 
 export interface InfoOptions {
-  version?: string;
+  toolVersion?: string;
   cacheDir?: string;
 }
 
 export async function runInfo(toolId: string, opts: InfoOptions): Promise<void> {
   const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
-  const coords = cache.resolveToolCoordinates(toolId, opts.version);
+  const coords = cache.resolveToolCoordinates(toolId, opts.toolVersion);
   if (coords.version === null) {
     console.error(`No version specified for tool: ${toolId}`);
     process.exitCode = 1;

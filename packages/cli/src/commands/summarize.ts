@@ -11,7 +11,7 @@ import * as JSONSchema from "effect/JSONSchema";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
 export interface SummarizeOptions {
-  version?: string;
+  toolVersion?: string;
   output?: string;
   cacheDir?: string;
 }
@@ -75,7 +75,7 @@ export async function buildToolSummaryManifest(
   const cacheDir = getCacheDir(opts.cacheDir);
   const cache = makeNodeToolCache({ cacheDir });
   await cache.index.load();
-  const result = await loadCachedTool(cache, toolId, opts.version);
+  const result = await loadCachedTool(cache, toolId, opts.toolVersion);
   if (isResolveError(result)) {
     if (result.kind === "no_version") {
       console.error(`No version specified for tool: ${toolId}`);

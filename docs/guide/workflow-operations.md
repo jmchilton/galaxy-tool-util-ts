@@ -75,7 +75,7 @@ For CI or air-gapped environments, pre-export tool schemas and validate without 
 ```bash
 # Step 1: Export schemas for all tools in the workflow
 galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
-  --version 0.74+galaxy0 \
+  --tool-version 0.74+galaxy0 \
   --output schemas/fastqc-0.74.json
 
 # Step 2: Validate using pre-exported schemas
@@ -351,7 +351,7 @@ galaxy-tool-cache populate-workflow my-workflow.ga
 
 ```bash
 # Cache individual tools
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 ```
 
 ### Tool Shed Discovery
@@ -370,7 +370,7 @@ gxwf tool-search fastqc --json
 gxwf tool-versions devteam/fastqc/fastqc --latest
 
 # 3. Cache the ParsedTool for validation / lint / convert --stateful
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 
 # 4. (Optional) Resolve to a specific changeset for reproducible workflow pinning
 gxwf tool-revisions devteam/fastqc/fastqc --tool-version 0.74+galaxy0 --latest --json

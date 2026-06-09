@@ -46,7 +46,7 @@ describe("galaxy-tool-cache summarize", () => {
     const key = await seedFastqc();
 
     const manifest = await buildToolSummaryManifest(FASTQC_TOOL_ID, {
-      version: FASTQC_VERSION,
+      toolVersion: FASTQC_VERSION,
       cacheDir: ctx.tmpDir,
     });
 
@@ -62,7 +62,7 @@ describe("galaxy-tool-cache summarize", () => {
   it("writes JSON to stdout by default", async () => {
     await seedFastqc();
 
-    await runSummarize(FASTQC_TOOL_ID, { version: FASTQC_VERSION, cacheDir: ctx.tmpDir });
+    await runSummarize(FASTQC_TOOL_ID, { toolVersion: FASTQC_VERSION, cacheDir: ctx.tmpDir });
 
     expect(process.exitCode).toBeUndefined();
     const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
@@ -75,7 +75,7 @@ describe("galaxy-tool-cache summarize", () => {
     const outPath = join(ctx.tmpDir, "summary.json");
 
     await runSummarize(FASTQC_TOOL_ID, {
-      version: FASTQC_VERSION,
+      toolVersion: FASTQC_VERSION,
       cacheDir: ctx.tmpDir,
       output: outPath,
     });

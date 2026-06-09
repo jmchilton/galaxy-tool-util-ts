@@ -10,7 +10,7 @@ import { writeFile } from "node:fs/promises";
 import { isResolveError, loadCachedTool } from "./resolve-tool.js";
 
 export interface SchemaOptions {
-  version?: string;
+  toolVersion?: string;
   representation?: string;
   output?: string;
   cacheDir?: string;
@@ -29,7 +29,7 @@ export async function runSchema(toolId: string, opts: SchemaOptions): Promise<vo
 
   const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
-  const result = await loadCachedTool(cache, toolId, opts.version);
+  const result = await loadCachedTool(cache, toolId, opts.toolVersion);
   if (isResolveError(result)) {
     if (result.kind === "no_version") {
       console.error(`No version specified for tool: ${toolId}`);

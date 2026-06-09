@@ -445,7 +445,7 @@ Fetch a tool from ToolShed/Galaxy and cache it
 
 | Option | Description |
 |---|---|
-| `--version <ver>` | Tool version |
+| `--tool-version <ver>` | Tool version |
 | `--cache-dir <dir>` | Cache directory |
 | `--galaxy-url <url>` | Galaxy instance URL for fallback |
 
@@ -468,7 +468,7 @@ Show metadata for a cached tool
 
 | Option | Description |
 |---|---|
-| `--version <ver>` | Tool version |
+| `--tool-version <ver>` | Tool version |
 | `--cache-dir <dir>` | Cache directory |
 
 ### `clear [prefix]`
@@ -493,7 +493,7 @@ Export JSON Schema for a cached tool's parameters
 
 | Option | Description |
 |---|---|
-| `--version <ver>` | Tool version |
+| `--tool-version <ver>` | Tool version |
 | `--representation <rep>` | State representation (e.g., workflow_step) (default: `workflow_step`) |
 | `--output <file>` | Output file (default: stdout) |
 | `--cache-dir <dir>` | Cache directory |
@@ -508,7 +508,7 @@ Emit a deterministic summary manifest for a cached Galaxy tool
 
 | Option | Description |
 |---|---|
-| `--version <ver>` | Tool version |
+| `--tool-version <ver>` | Tool version |
 | `--output <file>` | Output file (default: stdout) |
 | `--cache-dir <dir>` | Cache directory |
 

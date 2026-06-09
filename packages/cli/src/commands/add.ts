@@ -1,7 +1,7 @@
 import { makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
 
 export interface AddOptions {
-  version?: string;
+  toolVersion?: string;
   cacheDir?: string;
   galaxyUrl?: string;
 }
@@ -12,7 +12,7 @@ export async function runAdd(toolId: string, opts: AddOptions): Promise<void> {
     galaxyUrl: opts.galaxyUrl,
   });
 
-  const result = await service.getToolInfo(toolId, opts.version);
+  const result = await service.getToolInfo(toolId, opts.toolVersion);
   if (result === null) {
     console.error(`Failed to fetch tool: ${toolId}`);
     process.exitCode = 1;
