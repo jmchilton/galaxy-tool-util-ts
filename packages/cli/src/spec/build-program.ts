@@ -10,6 +10,14 @@ import type { ProgramSpec, SpecCommand, SpecOption } from "../meta/spec-types.js
 export type HandlerFn = (...args: any[]) => void | Promise<void>;
 export type HandlerRegistry = Record<string, HandlerFn>;
 
+/**
+ * Attribute names commander reserves for its built-in flags. `.version()`
+ * registers `--version` on the program (and it propagates to subcommands);
+ * `--help` is auto-added to every command. A spec data option with either
+ * name silently triggers the built-in action instead of binding a value.
+ */
+const RESERVED_OPTION_NAMES = new Set(["version", "help"]);
+
 export function buildProgramFromSpec(spec: ProgramSpec, handlers: HandlerRegistry): Command {
   validateSpec(spec, handlers);
   const program = new Command();
@@ -41,6 +49,13 @@ function validateSpec(spec: ProgramSpec, handlers: HandlerRegistry): void {
     const seenOptions = new Set<string>();
     const checkOptName = (flags: string): void => {
       const optName = attributeNameFromFlags(flags);
+      if (RESERVED_OPTION_NAMES.has(optName)) {
+        throw new Error(
+          `Option "--${optName}" on command "${cmd.name}" collides with commander's built-in ` +
+            `--${optName} flag (it would silently trigger ${optName === "version" ? "the version" : "the help"} ` +
+            `action instead of binding). Rename it (e.g. --tool-version).`,
+        );
+      }
       if (seenOptions.has(optName)) {
         throw new Error(`Duplicate option "${optName}" on command "${cmd.name}"`);
       }

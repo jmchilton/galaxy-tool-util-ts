@@ -55,3 +55,32 @@ describe("buildProgramFromSpec hidden command support", () => {
     expect(program.helpInformation()).toContain("shown");
   });
 });
+
+describe("buildProgramFromSpec reserved-flag guard", () => {
+  const reservedSpec = (flags: string): ProgramSpec => ({
+    name: "demo",
+    description: "test spec",
+    version: "0.0.0",
+    commands: [
+      { name: "add", description: "add", handler: "v", options: [{ flags, description: "x" }] },
+    ],
+  });
+
+  it("rejects a --version data option (collides with commander's version flag)", () => {
+    expect(() => buildProgramFromSpec(reservedSpec("--version <ver>"), handlers)).toThrow(
+      /collides with commander's built-in --version flag/,
+    );
+  });
+
+  it("rejects a --help data option (collides with commander's help flag)", () => {
+    expect(() => buildProgramFromSpec(reservedSpec("--help"), handlers)).toThrow(
+      /collides with commander's built-in --help flag/,
+    );
+  });
+
+  it("allows --tool-version", () => {
+    expect(() =>
+      buildProgramFromSpec(reservedSpec("--tool-version <ver>"), handlers),
+    ).not.toThrow();
+  });
+});

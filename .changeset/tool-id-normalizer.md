@@ -17,4 +17,6 @@ Also rename the `galaxy-tool-cache add`/`info`/`schema`/`summarize` version flag
 `--version` to `--tool-version`. Commander's program-level `--version` propagates to
 subcommands and shadowed the old flag (it printed the CLI version instead of pinning the
 tool version), so `--version` never worked on those commands. `--tool-version` matches the
-existing `gxwf tool-revisions` convention.
+existing `gxwf tool-revisions` convention. The spec validator now rejects any data option
+that collides with commander's reserved `--version`/`--help` flags, so this class of bug
+fails at build time instead of silently no-opping at runtime.
