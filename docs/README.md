@@ -43,10 +43,10 @@ galaxy-tool-util-ts is **not** a planemo replacement. It's a TypeScript implemen
 npm install -g @galaxy-tool-util/cli
 
 # Cache a tool from the main ToolShed
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 
 # Export a JSON Schema for its parameters
-galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 
 # Validate a Galaxy workflow
 gxwf validate my-workflow.ga

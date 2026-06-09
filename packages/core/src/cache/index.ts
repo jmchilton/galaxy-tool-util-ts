@@ -1,4 +1,9 @@
-export { parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
+export {
+  parseToolshedToolId,
+  toolIdFromTrs,
+  normalizeShortTrsToolId,
+  toTrsToolId,
+} from "./tool-id.js";
 export type { ToolCoordinates } from "./tool-id.js";
 export { cacheKey } from "./cache-key.js";
 export { CacheIndex } from "./cache-index.js";

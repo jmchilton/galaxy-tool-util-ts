@@ -16,6 +16,16 @@ describe("toTrsToolId", () => {
   it("converts pretty form", () => {
     expect(toTrsToolId("devteam/fastqc/fastqc")).toBe("devteam~fastqc~fastqc");
   });
+  it("accepts full toolshed id", () => {
+    expect(toTrsToolId("toolshed.g2.bx.psu.edu/repos/iuc/stringtie/stringtie_merge")).toBe(
+      "iuc~stringtie~stringtie_merge",
+    );
+  });
+  it("accepts full toolshed id with version", () => {
+    expect(toTrsToolId("toolshed.g2.bx.psu.edu/repos/iuc/stringtie/stringtie_merge/2.2.1")).toBe(
+      "iuc~stringtie~stringtie_merge",
+    );
+  });
   it("rejects malformed input", () => {
     expect(() => toTrsToolId("just-a-string")).toThrow(/Invalid tool id/);
     expect(() => toTrsToolId("owner/repo")).toThrow(/Invalid tool id/);

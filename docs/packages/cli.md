@@ -13,13 +13,13 @@ Two CLI tools:
 Fetch a tool from [ToolShed](https://toolshed.g2.bx.psu.edu) or Galaxy and cache it locally.
 
 ```bash
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/iuc/bcftools_norm/bcftools_norm --version 1.15.1+galaxy3
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/iuc/bcftools_norm/bcftools_norm --tool-version 1.15.1+galaxy3
 ```
 
 | Option | Description |
 |---|---|
-| `--version <ver>` | Tool version (required for ToolShed tools) |
+| `--tool-version <ver>` | Tool version (required for ToolShed tools) |
 | `--cache-dir <dir>` | Override cache directory |
 | `--galaxy-url <url>` | Galaxy instance URL for fallback fetching |
 
@@ -42,12 +42,12 @@ galaxy-tool-cache list --json
 Show metadata for a cached tool.
 
 ```bash
-galaxy-tool-cache info toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache info toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 ```
 
 | Option | Description |
 |---|---|
-| `--version <ver>` | Tool version |
+| `--tool-version <ver>` | Tool version |
 | `--cache-dir <dir>` | Override cache directory |
 
 ### `clear [prefix]`
@@ -72,18 +72,18 @@ Export a [JSON Schema](https://json-schema.org) for a tool's parameters at a giv
 
 ```bash
 # Default: workflow_step representation, stdout
-galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 
 # Different representation, write to file
 galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
-  --version 0.74+galaxy0 \
+  --tool-version 0.74+galaxy0 \
   --representation workflow_step_linked \
   --output fastqc-schema.json
 ```
 
 | Option | Description |
 |---|---|
-| `--version <ver>` | Tool version |
+| `--tool-version <ver>` | Tool version |
 | `--representation <rep>` | State representation (default: `workflow_step`) |
 | `--output <file>` | Write to file instead of stdout |
 | `--cache-dir <dir>` | Override cache directory |

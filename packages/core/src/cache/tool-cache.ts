@@ -3,7 +3,7 @@ import * as S from "effect/Schema";
 import { ParsedTool } from "@galaxy-tool-util/schema";
 import { CacheIndex } from "./cache-index.js";
 import { cacheKey } from "./cache-key.js";
-import { parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
+import { normalizeShortTrsToolId, parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
 import type { CacheStorage } from "./storage/interface.js";
 import { DEFAULT_TOOLSHED_URL, TOOLSHED_URL_ENV_VAR } from "./tool-cache-defaults.js";
 
@@ -64,11 +64,12 @@ export class ToolCache {
         readableId: toolIdFromTrs(parsed.toolshedUrl, parsed.trsToolId),
       };
     }
+    const trsToolId = normalizeShortTrsToolId(toolId) ?? toolId;
     return {
       toolshedUrl: this.defaultToolshedUrl,
-      trsToolId: toolId,
+      trsToolId,
       version: toolVersion ?? null,
-      readableId: toolIdFromTrs(this.defaultToolshedUrl, toolId),
+      readableId: toolIdFromTrs(this.defaultToolshedUrl, trsToolId),
     };
   }
 

@@ -75,7 +75,7 @@ For CI or air-gapped environments, pre-export tool schemas and validate without 
 ```bash
 # Step 1: Export schemas for all tools in the workflow
 galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
-  --version 0.74+galaxy0 \
+  --tool-version 0.74+galaxy0 \
   --output schemas/fastqc-0.74.json
 
 # Step 2: Validate using pre-exported schemas

@@ -175,6 +175,17 @@ describe("ToolCache", () => {
     expect(coords.readableId).toBe("toolshed.g2.bx.psu.edu/repos/cat1");
   });
 
+  it("resolveToolCoordinates normalizes short owner/repo/tool form", () => {
+    const coords = cache.resolveToolCoordinates("iuc/stringtie/stringtie_merge");
+    expect(coords.trsToolId).toBe("iuc~stringtie~stringtie_merge");
+    expect(coords.readableId).toBe("toolshed.g2.bx.psu.edu/repos/iuc/stringtie/stringtie_merge");
+  });
+
+  it("resolveToolCoordinates passes tilde form through", () => {
+    const coords = cache.resolveToolCoordinates("iuc~stringtie~stringtie_merge");
+    expect(coords.trsToolId).toBe("iuc~stringtie~stringtie_merge");
+  });
+
   it("save + load round-trip", async () => {
     const key = await cacheKey(
       "https://toolshed.g2.bx.psu.edu",

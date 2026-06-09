@@ -1,5 +1,8 @@
-import { DEFAULT_TOOLSHED_URL } from "@galaxy-tool-util/core";
+import { DEFAULT_TOOLSHED_URL, toTrsToolId } from "@galaxy-tool-util/core";
 import { ToolFetchError, getTRSToolVersions } from "@galaxy-tool-util/search";
+
+// Re-exported for tool-revisions and tests; canonical impl lives in @galaxy-tool-util/core.
+export { toTrsToolId };
 
 export interface ToolVersionsOptions {
   json?: boolean;
@@ -9,15 +12,6 @@ export interface ToolVersionsOptions {
 export interface ToolVersionsJsonOutput {
   trsToolId: string;
   versions: string[];
-}
-
-export function toTrsToolId(input: string): string {
-  if (input.includes("~")) return input;
-  const parts = input.split("/").filter((p) => p.length > 0);
-  if (parts.length === 3) return `${parts[0]}~${parts[1]}~${parts[2]}`;
-  throw new Error(
-    `Invalid tool id: expected \`<owner>~<repo>~<tool_id>\` or \`<owner>/<repo>/<tool_id>\`, got: ${input}`,
-  );
 }
 
 export async function runToolVersions(toolId: string, opts: ToolVersionsOptions): Promise<void> {

@@ -11,6 +11,10 @@ export {
   parseToolshedToolId,
   /** Reconstruct a full tool ID from ToolShed URL and TRS tool ID. */
   toolIdFromTrs,
+  /** Normalize a short `owner/repo/tool` or `owner~repo~tool` id to TRS form, or null. */
+  normalizeShortTrsToolId,
+  /** Normalize any accepted tool-id form (full/tilde/slash) to the TRS `owner~repo~tool` form. */
+  toTrsToolId,
   /** Compute a deterministic SHA-256 cache key from ToolShed URL + TRS ID + version. */
   cacheKey,
   /** Cache metadata index — tracks tool IDs, versions, sources, and timestamps. */

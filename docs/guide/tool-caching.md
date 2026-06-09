@@ -32,13 +32,13 @@ Cache keys are deterministic — computed from ToolShed URL + TRS tool ID + vers
 
 ```bash
 # Add a tool to cache
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 
 # List cached tools
 galaxy-tool-cache list
 
 # Inspect a cached tool
-galaxy-tool-cache info toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache info toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 
 # Clear everything
 galaxy-tool-cache clear
@@ -53,8 +53,8 @@ For CI environments, pre-populate the cache with all tools referenced by your wo
 
 ```bash
 # Cache tools needed by a workflow
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/iuc/bcftools_norm/bcftools_norm --version 1.15.1+galaxy3
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/iuc/bcftools_norm/bcftools_norm --tool-version 1.15.1+galaxy3
 
 # Then validate offline
 gxwf validate my-workflow.ga
