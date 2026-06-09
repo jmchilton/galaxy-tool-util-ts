@@ -24,6 +24,12 @@ export interface SerializeWorkflowOptions {
  * `json` / `yaml` overrides).
  *
  * YAML uses `lineWidth: 0` to disable line-wrapping so diffs stay stable.
+ *
+ * The `yaml-1.1` schema is used for emission so the writer quotes plain scalars
+ * that a YAML 1.1 reader (e.g. PyYAML, which Galaxy uses) would otherwise coerce
+ * — the word-form booleans `no`/`yes`/`on`/`off`/`y`/`n`. Tool_state stores these
+ * as strings (a select option value like `"no"`); emitting them bare lets a 1.1
+ * reader decode them as booleans. Real numbers/booleans are unaffected.
  */
 export function serializeWorkflow(
   data: Record<string, unknown>,
@@ -33,7 +39,7 @@ export function serializeWorkflow(
   const useYaml = opts.yaml || (!opts.json && format === "format2");
   const newline = opts.trailingNewline ?? true;
   if (useYaml) {
-    const out = stringifyYaml(data, { lineWidth: 0 });
+    const out = stringifyYaml(data, { lineWidth: 0, schema: "yaml-1.1" });
     // `yaml` already ends with a newline; don't double-append.
     if (newline) return out.endsWith("\n") ? out : out + "\n";
     return out.endsWith("\n") ? out.slice(0, -1) : out;
