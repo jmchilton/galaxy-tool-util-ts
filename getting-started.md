@@ -24,7 +24,7 @@ This gives you two commands: `galaxy-tool-cache` (tool metadata management) and 
 Before you can validate workflows, you need tool metadata cached locally. The CLI fetches it from the [Galaxy ToolShed](https://toolshed.g2.bx.psu.edu) and stores it in `~/.galaxy/tool_info_cache/`:
 
 ```bash
-galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --version 0.74+galaxy0
+galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 ```
 
 Or cache all tools referenced in a workflow at once:
@@ -56,7 +56,7 @@ Generate a [JSON Schema](https://json-schema.org) describing valid parameter val
 
 ```bash
 galaxy-tool-cache schema toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc \
-  --version 0.74+galaxy0 \
+  --tool-version 0.74+galaxy0 \
   --representation workflow_step_linked
 ```
 

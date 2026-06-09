@@ -15,11 +15,11 @@ All commands accept `--cache-dir <dir>` to override the cache directory.
 
 | Command | Flag | Default | Description |
 |---|---|---|---|
-| `add` | `--version <ver>` | — | Tool version |
+| `add` | `--tool-version <ver>` | — | Tool version |
 | `add` | `--galaxy-url <url>` | — | Galaxy instance URL for fallback |
 | `list` | `--json` | `false` | JSON output |
-| `info` | `--version <ver>` | — | Tool version |
-| `schema` | `--version <ver>` | — | Tool version |
+| `info` | `--tool-version <ver>` | — | Tool version |
+| `schema` | `--tool-version <ver>` | — | Tool version |
 | `schema` | `--representation <rep>` | `workflow_step` | [State representation](glossary#state-representations) |
 | `schema` | `--output <file>` | stdout | Output file |
 
