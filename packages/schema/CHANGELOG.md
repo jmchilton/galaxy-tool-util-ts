@@ -1,5 +1,11 @@
 # @galaxy-tool-util/schema
 
+## 1.7.1
+
+### Patch Changes
+
+- [#121](https://github.com/jmchilton/galaxy-tool-util-ts/pull/121) [`d15c5c0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d15c5c0543aca01901f34e28eda66ba1ac3a5242) Thanks [@jmchilton](https://github.com/jmchilton)! - Emit format2 YAML with the `yaml-1.1` schema so reserved words quote. `serializeWorkflow` previously stringified with the default core (1.2) schema, leaving word-form booleans (`no`/`yes`/`on`/`off`) bare; a YAML 1.1 reader (e.g. Galaxy's PyYAML) then coerced them to booleans, corrupting string tool_state values like a select's `"no"`. Real numbers and booleans are unaffected.
+
 ## 1.7.0
 
 ### Minor Changes
