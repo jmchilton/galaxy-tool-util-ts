@@ -62,4 +62,32 @@ describe("galaxyWorkflowDraftJsonSchema", () => {
     const bad = { class: "NotADraft", steps: [] };
     expect(validate(bad)).toBe(false);
   });
+
+  it("hoists repeated subschemas into $defs with only resolvable $refs", () => {
+    const schema = galaxyWorkflowDraftJsonSchema as Record<string, unknown>;
+    const defs = (schema.$defs ?? {}) as Record<string, unknown>;
+    const names = new Set(Object.keys(defs));
+    expect(names.size).toBeGreaterThan(0);
+    let refs = 0;
+    const walk = (n: unknown): void => {
+      if (!n || typeof n !== "object") return;
+      const ref = (n as Record<string, unknown>).$ref;
+      if (typeof ref === "string") {
+        refs++;
+        const m = ref.match(/^#\/\$defs\/(.+)$/);
+        expect(m, `unexpected $ref form: ${ref}`).not.toBeNull();
+        expect(names.has(m![1]), `dangling $ref: ${ref}`).toBe(true);
+      }
+      for (const v of Object.values(n as Record<string, unknown>)) walk(v);
+    };
+    walk(schema);
+    expect(refs).toBeGreaterThan(0);
+  });
+
+  it("stays compact so downstream packagers can vendor it verbatim", () => {
+    // Pre-dedup the inlined draft schema was ~580 KB pretty-printed; the $ref
+    // dedup brings it to well under 100 KB. Guard against re-bloat regressions.
+    const pretty = JSON.stringify(galaxyWorkflowDraftJsonSchema, null, 2).length;
+    expect(pretty).toBeLessThan(200_000);
+  });
 });
