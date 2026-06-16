@@ -492,6 +492,76 @@ function collectSteps(
   return { tools, subworkflows };
 }
 
+/**
+ * Map original tool-step ids onto their counterparts in the reimported workflow.
+ *
+ * format2 stores inputs separately from `steps`, so the reverse (format2→native)
+ * pass front-loads input steps and renumbers tools — a native step's numeric id
+ * is not stable across a roundtrip. Matching purely by id then compares unrelated
+ * steps. Mirrors Python's `_build_step_id_mapping` (`roundtrip.py`): match by
+ * label+type first, then same-id when the type matches, then a unique tool_id+type
+ * fallback for unlabeled steps that shifted position. Matching is scoped per
+ * nesting level (collected ids are parent-prefixed) so a subworkflow tool can't
+ * match a same-labeled top-level tool. Unmatched original steps map to `null`.
+ */
+function buildStepIdMapping(
+  origSteps: Map<string, CollectedStep>,
+  afterSteps: Map<string, CollectedStep>,
+): Map<string, string | null> {
+  const mapping = new Map<string, string | null>();
+  const usedAfter = new Set<string>();
+  const parentPrefix = (id: string): string =>
+    id.includes(".") ? id.slice(0, id.lastIndexOf(".")) : "";
+
+  // Pass 1: label + type (strongest signal)
+  for (const [origId, { step: orig }] of origSteps) {
+    if (!orig.label) continue;
+    for (const [afterId, { step: after }] of afterSteps) {
+      if (usedAfter.has(afterId)) continue;
+      if (parentPrefix(afterId) !== parentPrefix(origId)) continue;
+      if (after.label === orig.label && after.type === orig.type) {
+        mapping.set(origId, afterId);
+        usedAfter.add(afterId);
+        break;
+      }
+    }
+  }
+
+  // Pass 2: same id when the step type matches
+  for (const [origId, { step: orig }] of origSteps) {
+    if (mapping.has(origId)) continue;
+    const after = afterSteps.get(origId);
+    if (after && !usedAfter.has(origId) && after.step.type === orig.type) {
+      mapping.set(origId, origId);
+      usedAfter.add(origId);
+    }
+  }
+
+  // Pass 3: unique tool_id + type (unlabeled steps that shifted position)
+  for (const [origId, { step: orig }] of origSteps) {
+    if (mapping.has(origId)) continue;
+    if (!orig.tool_id) continue;
+    const candidates: string[] = [];
+    for (const [afterId, { step: after }] of afterSteps) {
+      if (usedAfter.has(afterId)) continue;
+      if (parentPrefix(afterId) !== parentPrefix(origId)) continue;
+      if (after.tool_id === orig.tool_id && after.type === orig.type) {
+        candidates.push(afterId);
+      }
+    }
+    if (candidates.length === 1) {
+      mapping.set(origId, candidates[0]);
+      usedAfter.add(candidates[0]);
+    }
+  }
+
+  // Unmatched → null
+  for (const [origId] of origSteps) {
+    if (!mapping.has(origId)) mapping.set(origId, null);
+  }
+  return mapping;
+}
+
 // --- Public entry point ---
 
 /**
@@ -646,10 +716,12 @@ export function roundtripValidate(
   }
 
   const { tools: reimportedSteps } = collectSteps(reimported);
+  const stepMapping = buildStepIdMapping(originalSteps, reimportedSteps);
 
   // Per-step comparison (top-level + recursively-collected nested tools)
   for (const [stepId, { step: origStep, depth }] of originalSteps) {
-    const afterEntry = reimportedSteps.get(stepId);
+    const afterId = stepMapping.get(stepId);
+    const afterEntry = afterId != null ? reimportedSteps.get(afterId) : undefined;
     if (!afterEntry) {
       stepResults.push({
         stepId,
