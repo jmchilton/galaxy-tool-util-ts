@@ -160,7 +160,7 @@ Summary: {{ report.summary }}
 ## Survey
 
 - Draft: {% if report.survey.is_draft %}yes{% else %}no{% endif %}
-- TODO sentinels: {{ report.survey.todo_count }} across {{ report.survey.todo_paths | length }} step path(s)
+- TODO sentinels: {{ report.survey.todo_count }} across {{ report.survey.todo_paths | length }} step path(s) and {{ report.survey.todo_output_paths | length }} output path(s)
 - Steps with \`_plan_*\` fields: {{ report.survey.plan_step_paths | length }}
 
 {% if report.structure_errors | length > 0 %}

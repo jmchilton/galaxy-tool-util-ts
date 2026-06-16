@@ -265,7 +265,8 @@ function printTextReport(report: SingleDraftValidationReport, result: DraftValid
   const survey = report.survey;
   console.log(
     `  Survey: ${survey.todo_count} TODO sentinel${survey.todo_count === 1 ? "" : "s"}` +
-      ` across ${survey.todo_paths.length} step path${survey.todo_paths.length === 1 ? "" : "s"};` +
+      ` across ${survey.todo_paths.length} step path${survey.todo_paths.length === 1 ? "" : "s"}` +
+      ` and ${survey.todo_output_paths.length} output path${survey.todo_output_paths.length === 1 ? "" : "s"};` +
       ` ${survey.plan_step_paths.length} step${survey.plan_step_paths.length === 1 ? "" : "s"} with _plan_* fields`,
   );
   if (report.concrete) printConcrete(report.concrete);

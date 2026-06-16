@@ -157,6 +157,13 @@ export interface DraftSurveyReport {
   todo_count: number;
   /** Distinct step paths carrying at least one TODO sentinel, in walk order. */
   todo_paths: string[][];
+  /**
+   * Distinct workflow-output locations carrying a TODO sentinel in their
+   * `outputSource`, in walk order. Each entry is `[...workflowPath, outputLabel]`
+   * — `["trimmed"]` for a root output, `["sub", "trimmed"]` for a subworkflow
+   * output. Kept separate from `todo_paths`: an output sentinel is not a step.
+   */
+  todo_output_paths: string[][];
   /** Distinct step paths carrying at least one `_plan_*` field, in walk order. */
   plan_step_paths: string[][];
 }
@@ -715,7 +722,17 @@ export function buildSingleDraftExtractReport(
 function buildDraftSurveyReport(survey: DraftSurvey): DraftSurveyReport {
   const todoSeen = new Set<string>();
   const todoPaths: string[][] = [];
+  const outputSeen = new Set<string>();
+  const todoOutputPaths: string[][] = [];
   for (const hit of survey.todos) {
+    if (hit.location.kind === "output_source") {
+      const outputPath = [...hit.path, hit.location.output_label];
+      const key = outputPath.join("/");
+      if (outputSeen.has(key)) continue;
+      outputSeen.add(key);
+      todoOutputPaths.push(outputPath);
+      continue;
+    }
     const key = hit.path.join("/");
     if (todoSeen.has(key)) continue;
     todoSeen.add(key);
@@ -733,6 +750,7 @@ function buildDraftSurveyReport(survey: DraftSurvey): DraftSurveyReport {
     is_draft: survey.isDraft,
     todo_count: survey.todos.length,
     todo_paths: todoPaths,
+    todo_output_paths: todoOutputPaths,
     plan_step_paths: planStepPaths,
   };
 }
