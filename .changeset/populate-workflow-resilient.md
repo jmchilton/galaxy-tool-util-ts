@@ -12,8 +12,8 @@ throw escaped `populate-workflow`'s per-tool loop, aborting the whole run and
 caching nothing — even tools already processed.
 
 `getToolInfo` now returns `null` on an unresolvable version, matching the
-existing all-sources-failed path and its declared contract (this also fixes
-`add` and the proxy `getTool`/`toolSchema` routes, which already handled
-`null`). `populate-workflow` additionally wraps each lookup in try/catch so any
-unexpected error downgrades to a per-tool failure and the batch still reports
-`N/M cached, K failed`.
+existing all-sources-failed path and its declared contract. Every helper it
+calls already swallows its own errors and returns `null`, so the
+`populate-workflow` loop counts the failure and keeps caching the rest,
+reporting `N/M cached, K failed`. This also fixes `add` and the proxy
+`getTool`/`toolSchema` routes, which already handled `null`.
