@@ -261,9 +261,15 @@ describe("ToolCache", () => {
     expect(result).toBeNull();
   });
 
-  it("returns null version for stock tool without version", () => {
+  it("defaults stock tool without version to the _default_ sentinel", () => {
     const coords = cache.resolveToolCoordinates("cat1");
-    expect(coords.version).toBeNull();
+    expect(coords.version).toBe("_default_");
+  });
+
+  it("defaults built-in (__*__) tool without version to the _default_ sentinel", () => {
+    const coords = cache.resolveToolCoordinates("__APPLY_RULES__");
+    expect(coords.trsToolId).toBe("__APPLY_RULES__");
+    expect(coords.version).toBe("_default_");
   });
 
   it("removeCached deletes one entry by cache key", async () => {
