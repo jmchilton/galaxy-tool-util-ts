@@ -36,6 +36,7 @@ describe("buildSingleDraftValidationReport", () => {
       is_draft: true,
       todo_count: 0,
       todo_paths: [],
+      todo_output_paths: [],
       plan_step_paths: [],
     });
   });
@@ -79,8 +80,35 @@ describe("buildSingleDraftValidationReport", () => {
     };
     const r = buildSingleDraftValidationReport("dedup.gxwf.yml", validateDraft(wf));
     expect(r.survey.todo_paths).toEqual([["fastp"], ["chain"]]);
+    expect(r.survey.todo_output_paths).toEqual([]);
     expect(r.survey.plan_step_paths).toEqual([["fastp"]]);
     expect(r.survey.todo_count).toBeGreaterThan(2);
+  });
+
+  it("buckets output-source sentinels separately from step paths (issue #126)", () => {
+    // 1 tool step + 2 outputs whose outputSource ports are TODO sentinels.
+    // Output sentinels live at the workflow root (path []); they must NOT be
+    // counted as step paths, and must surface as distinct output paths keyed
+    // by output label — not collapsed into a single empty `[]` bucket.
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {
+        trimmed: { outputSource: "fastp/TODO_trimmed" },
+        report: { outputSource: "fastp/TODO_report" },
+      },
+      steps: {
+        fastp: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { input1: "reads" },
+          out: [{ id: "TODO_trimmed" }, { id: "TODO_report" }],
+        },
+      },
+    };
+    const r = buildSingleDraftValidationReport("outputs.gxwf.yml", validateDraft(wf));
+    expect(r.survey.todo_paths).toEqual([["fastp"]]);
+    expect(r.survey.todo_output_paths).toEqual([["trimmed"], ["report"]]);
   });
 
   it("summarizes warnings without errors as 'draft valid (N warnings)'", () => {

@@ -41,9 +41,10 @@ describe("draft-validate (text mode)", () => {
     expect(out).not.toContain("Structure errors");
     expect(out).not.toContain("Topology errors");
     expect(out).not.toContain("Semantic errors");
-    // Survey line: plural sentinels + paths (fixture has 6 across 2), singular step with _plan_*.
+    // Survey line: 6 sentinels — 5 on the single step path, 1 on the single
+    // output path (fixture's outputSource port). Singular step with _plan_*.
     expect(out).toMatch(
-      /Survey: 6 TODO sentinels across 2 step paths; 1 step with _plan_\* fields/,
+      /Survey: 6 TODO sentinels across 1 step path and 1 output path; 1 step with _plan_\* fields/,
     );
     expect(process.exitCode).toBe(0);
   });
@@ -68,7 +69,7 @@ steps:
     await runDraftValidate(wfPath, {});
     const out = joined(ctx.logSpy);
     expect(out).toMatch(
-      /Survey: 0 TODO sentinels across 0 step paths; 0 steps with _plan_\* fields/,
+      /Survey: 0 TODO sentinels across 0 step paths and 0 output paths; 0 steps with _plan_\* fields/,
     );
   });
 
