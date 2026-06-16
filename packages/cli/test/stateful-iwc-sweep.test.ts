@@ -53,11 +53,7 @@ function workflowId(path: string): string {
 // Workflows with known error-severity roundtrip diffs, excluded so the sweep
 // flags only NEW regressions. Python's reference roundtrip_validate also fails
 // these (not a TS-only issue). Prune as the upstream conversion bugs are fixed.
-const KNOWN_ROUNDTRIP_FAILURES: ReadonlySet<string> = new Set([
-  // jmchilton/galaxy-tool-util-ts#117 — peptideshaker step drop + dbbuilder
-  // `source` conditional mis-selection on the reverse pass.
-  "proteomics/clinicalmp/clinicalmp-discovery/iwc-clinicalmp-discovery-workflow.ga",
-]);
+const KNOWN_ROUNDTRIP_FAILURES: ReadonlySet<string> = new Set([]);
 
 interface WorkflowOutcome {
   workflow: string;

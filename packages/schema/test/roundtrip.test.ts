@@ -729,4 +729,80 @@ describe("roundtripValidate", () => {
     expect(result.forwardSteps[0].failureClass).toBe("unknown_tool");
     expect(result.forwardSteps[0].toolVersion).toBe("2.0");
   });
+
+  it("aligns steps by label+type when the reverse pass renumbers them (issue #117)", () => {
+    // format2 stores inputs separately, so the reverse (format2→native) pass
+    // front-loads input steps and renumbers tools. Here inputs sit at ids 0 and
+    // 4 (one before, one *after* the tools); on reimport both move ahead of the
+    // tools, shifting tool ids. Matching by numeric id would (a) compare the
+    // tool at orig id 1 against an input and (b) compare the two same-tool steps
+    // (distinct labels, distinct `count`) against each other → bogus errors.
+    // Label+type matching keeps each step paired with its real counterpart.
+    const toolInputs: ToolParameterModel[] = [dataParam("in", false), intParam("count")];
+    const connected = { __class__: "ConnectedValue" };
+    const dataInput = (id: number, label: string) => ({
+      id,
+      type: "data_input",
+      label,
+      name: label,
+      annotation: "",
+      tool_state: { name: label, optional: false },
+      input_connections: {},
+      inputs: [{ name: label, description: "" }],
+      outputs: [{ name: "output", type: "data" }],
+      workflow_outputs: [],
+      position: { left: 0, top: id * 100 },
+    });
+    const toolStep = (
+      id: number,
+      label: string,
+      toolId: string,
+      count: number,
+      connectTo: number,
+    ) => ({
+      id,
+      type: "tool",
+      label,
+      name: toolId,
+      annotation: "",
+      tool_id: toolId,
+      tool_version: "1.0",
+      tool_state: { in: connected, count },
+      input_connections: { in: [{ id: connectTo, output_name: "output" }] },
+      inputs: [],
+      outputs: [{ name: "out", type: "data" }],
+      workflow_outputs: [],
+      post_job_actions: {},
+      position: { left: 200, top: id * 100 },
+    });
+    const wf: Record<string, unknown> = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      name: "renumber",
+      annotation: "",
+      tags: [],
+      steps: {
+        "0": dataInput(0, "in_a"),
+        "1": toolStep(1, "alpha", "single_tool", 1, 0),
+        "2": toolStep(2, "beta-first", "multi_tool", 10, 0),
+        "3": toolStep(3, "beta-second", "multi_tool", 20, 4),
+        "4": dataInput(4, "in_b"),
+      },
+    };
+    const result = roundtripValidate(
+      wf,
+      mapResolver({ single_tool: toolInputs, multi_tool: toolInputs }),
+    );
+
+    // Every tool step found its counterpart — no drops, no cross-step errors.
+    expect(result.stepResults.every((s) => s.success)).toBe(true);
+    expect(
+      result.stepResults.flatMap((s) => s.diffs).filter((d) => d.severity === "error"),
+    ).toEqual([]);
+    // Sanity: the renumbering really happened (beta-second's `count: 20`
+    // survived, not overwritten by beta-first's `count: 10` via a bad match).
+    const betaSecond = result.stepResults.find((s) => s.stepId === "3");
+    expect(betaSecond?.toolId).toBe("multi_tool");
+    expect(betaSecond?.success).toBe(true);
+  });
 });
