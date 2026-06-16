@@ -129,14 +129,13 @@ describe("ToolInfoService", () => {
     expect(fetchCount).toBe(0);
   });
 
-  it("throws when no version is available and TRS returns none", async () => {
+  it("returns null when no version is available and TRS returns none", async () => {
     const service = makeNodeToolInfoService({
       cacheDir: tmpDir,
       fetcher: mockFetch([]),
     });
-    await expect(
-      service.getToolInfo("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc"),
-    ).rejects.toThrow("No version");
+    const result = await service.getToolInfo("toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc");
+    expect(result).toBeNull();
   });
 
   it("resolves the latest TRS version when the caller omits one", async () => {

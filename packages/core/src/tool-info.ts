@@ -60,7 +60,8 @@ export class ToolInfoService {
     if (resolvedVersion === null) {
       resolvedVersion = await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId);
       if (resolvedVersion === null) {
-        throw new Error(`No version available for tool: ${toolId}`);
+        console.debug(`No version available for tool: ${toolId}`);
+        return null;
       }
     }
     const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion);

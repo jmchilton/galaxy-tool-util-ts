@@ -82,6 +82,55 @@ describe("galaxy-tool-cache populate-workflow", () => {
     expect(output).toContain("1/1");
   });
 
+  it("keeps caching after an unresolvable tool instead of aborting (issue #127)", async () => {
+    // Mix a pre-cached resolvable tool with a short/unversioned tool whose
+    // latest-version lookup can't resolve. The unresolvable one must not abort
+    // the batch — the resolvable tool still gets cached.
+    await seedSimpleTool(ctx.tmpDir);
+    const workflow = {
+      a_galaxy_workflow: "true",
+      "format-version": "0.1",
+      steps: {
+        "0": {
+          id: 0,
+          type: "tool",
+          tool_id: "ucsc_axtomaf", // short, unversioned → no TRS entry
+          tool_version: null,
+          tool_state: "{}",
+          input_connections: {},
+        },
+        "1": {
+          id: 1,
+          type: "tool",
+          tool_id: SIMPLE_TOOL_ID,
+          tool_version: "1.0",
+          tool_state: "{}",
+          input_connections: {},
+        },
+      },
+    };
+    const wfPath = join(ctx.tmpDir, "mixed.ga");
+    await writeFile(wfPath, JSON.stringify(workflow));
+
+    // TRS latest-version lookup fails (500) → version cannot resolve.
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response("Internal Server Error", { status: 500 })) as typeof fetch;
+    try {
+      await runPopulateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+    const warnings = ctx.warnSpy.mock.calls.map((c) => c[0]).join("\n");
+    // Resolvable tool still cached despite the earlier failure.
+    expect(output).toContain(`Cached: ${SIMPLE_TOOL_ID}`);
+    expect(output).toContain("1/2");
+    expect(warnings).toContain("Failed: ucsc_axtomaf");
+    expect(process.exitCode).toBe(1);
+  });
+
   it("reports failures for uncached tools", async () => {
     const workflow = {
       a_galaxy_workflow: "true",
