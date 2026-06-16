@@ -55,13 +55,14 @@ export async function runPopulateWorkflow(
   const total = tools.size;
 
   for (const ref of tools) {
+    const label = `${ref.tool_id} v${ref.tool_version ?? "latest"}`;
     const result = await service.getToolInfo(ref.tool_id, ref.tool_version);
     if (result) {
       cached++;
-      console.log(`  Cached: ${ref.tool_id} v${ref.tool_version ?? "latest"}`);
+      console.log(`  Cached: ${label}`);
     } else {
       failed++;
-      console.warn(`  Failed: ${ref.tool_id} v${ref.tool_version ?? "latest"}`);
+      console.warn(`  Failed: ${label}`);
     }
   }
 
