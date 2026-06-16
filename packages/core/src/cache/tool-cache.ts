@@ -5,9 +5,13 @@ import { CacheIndex } from "./cache-index.js";
 import { cacheKey } from "./cache-key.js";
 import { normalizeShortTrsToolId, parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
 import type { CacheStorage } from "./storage/interface.js";
-import { DEFAULT_TOOLSHED_URL, TOOLSHED_URL_ENV_VAR } from "./tool-cache-defaults.js";
+import {
+  DEFAULT_TOOL_VERSION,
+  DEFAULT_TOOLSHED_URL,
+  TOOLSHED_URL_ENV_VAR,
+} from "./tool-cache-defaults.js";
 
-export { DEFAULT_TOOLSHED_URL, TOOLSHED_URL_ENV_VAR };
+export { DEFAULT_TOOL_VERSION, DEFAULT_TOOLSHED_URL, TOOLSHED_URL_ENV_VAR };
 
 function envToolshedUrl(): string | undefined {
   if (typeof process !== "undefined" && process.env) {
@@ -68,7 +72,7 @@ export class ToolCache {
     return {
       toolshedUrl: this.defaultToolshedUrl,
       trsToolId,
-      version: toolVersion ?? null,
+      version: toolVersion ?? DEFAULT_TOOL_VERSION,
       readableId: toolIdFromTrs(this.defaultToolshedUrl, trsToolId),
     };
   }
