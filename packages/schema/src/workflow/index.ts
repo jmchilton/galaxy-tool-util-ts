@@ -19,6 +19,8 @@ export { galaxyWorkflowDraftJsonSchema } from "./json-schemas.js";
 // Normalized workflow types + normalizers
 export {
   normalizedFormat2,
+  normalizeStepIn,
+  normalizeStepOut,
   NormalizedFormat2WorkflowSchema,
   NormalizedFormat2StepSchema,
   NormalizedFormat2InputSchema,

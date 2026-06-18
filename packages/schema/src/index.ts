@@ -100,6 +100,10 @@ export {
   NativeGalaxyWorkflowSchema,
   /** Normalize a raw format2 workflow — fills defaults, resolves implicit fields. */
   normalizedFormat2,
+  /** Expand a step's raw `in` shorthand into normalized {id, source} entries. */
+  normalizeStepIn,
+  /** Expand a step's raw `out` shorthand into normalized {id} entries. */
+  normalizeStepOut,
   NormalizedFormat2WorkflowSchema,
   NormalizedFormat2StepSchema,
   NormalizedFormat2InputSchema,
