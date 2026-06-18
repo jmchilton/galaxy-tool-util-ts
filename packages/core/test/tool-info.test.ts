@@ -138,6 +138,91 @@ describe("ToolInfoService", () => {
     expect(result).toBeNull();
   });
 
+  it("resolves a concrete version for an unversioned stock id but keys the entry under _default_", async () => {
+    const stockBody = {
+      ...(fastqcFixture as any),
+      id: "Filter1",
+      name: "Filter",
+      version: "1.1.1",
+    };
+    let versionsFetched = 0;
+    let toolFetched = 0;
+    let toolFetchUrl = "";
+    const fetcher: typeof fetch = async (input) => {
+      const url = typeof input === "string" ? input : (input as URL).toString();
+      if (url.includes("/api/ga4gh/trs/v2/tools/")) {
+        versionsFetched++;
+        return new Response(
+          JSON.stringify([
+            {
+              id: "1.1.0",
+              name: null,
+              url: "https://example/tool",
+              descriptor_type: ["GALAXY"],
+              author: [],
+            },
+            {
+              id: "1.1.1",
+              name: null,
+              url: "https://example/tool",
+              descriptor_type: ["GALAXY"],
+              author: [],
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+      toolFetched++;
+      toolFetchUrl = url;
+      return new Response(JSON.stringify(stockBody), { status: 200 });
+    };
+    const service = makeNodeToolInfoService({ cacheDir: tmpDir, fetcher });
+
+    const result = await service.getToolInfo("Filter1");
+    expect(result).not.toBeNull();
+    expect(result!.version).toBe("1.1.1");
+    // fetched the concrete version, not the `_default_` sentinel
+    expect(toolFetchUrl).toContain("/versions/1.1.1");
+    expect(versionsFetched).toBe(1);
+    expect(toolFetched).toBe(1);
+
+    // keyed under `_default_`: a no-version lookup is a cache hit with no extra fetch
+    const cached = await service.getToolInfo("Filter1");
+    expect(cached).not.toBeNull();
+    expect(versionsFetched).toBe(1);
+    expect(toolFetched).toBe(1);
+    expect(await service.cache.hasCached("Filter1")).toBe(true);
+
+    // index/display version is the concrete one so `list` surfaces it
+    const entries = await service.cache.index.listAll();
+    expect(entries).toHaveLength(1);
+    expect(entries[0].tool_version).toBe("1.1.1");
+  });
+
+  it("falls back to the _default_ sentinel for the fetch when the shed lists no versions", async () => {
+    const builtinBody = {
+      ...(fastqcFixture as any),
+      id: "__APPLY_RULES__",
+      name: "Apply rules",
+      version: null,
+    };
+    let toolFetchUrl = "";
+    const fetcher: typeof fetch = async (input) => {
+      const url = typeof input === "string" ? input : (input as URL).toString();
+      if (url.includes("/api/ga4gh/trs/v2/tools/")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      toolFetchUrl = url;
+      return new Response(JSON.stringify(builtinBody), { status: 200 });
+    };
+    const service = makeNodeToolInfoService({ cacheDir: tmpDir, fetcher });
+
+    const result = await service.getToolInfo("__APPLY_RULES__");
+    expect(result).not.toBeNull();
+    expect(toolFetchUrl).toContain("/versions/_default_");
+    expect(await service.cache.hasCached("__APPLY_RULES__")).toBe(true);
+  });
+
   it("resolves the latest TRS version when the caller omits one", async () => {
     let versionsFetched = 0;
     let toolFetched = 0;

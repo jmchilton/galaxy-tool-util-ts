@@ -47,6 +47,23 @@ galaxy-tool-cache clear
 galaxy-tool-cache clear fastqc
 ```
 
+## Stock and Built-in Tools
+
+Galaxy's stock/built-in tools — `Filter1`, `sort1`, `Cut1`, `Show beginning1`, collection
+operations like `__APPLY_RULES__`, datatype converters — use **bare tool IDs** (no
+`owner/repo/tool` ToolShed path). The ToolShed serves these too, so they resolve with the
+bare ID:
+
+```bash
+# Stock tools resolve by bare ID against the ToolShed (not just shed-path tools)
+galaxy-tool-cache add Filter1 --tool-version 1.1.1
+galaxy-tool-cache summarize "Show beginning1" --tool-version 1.0.2
+```
+
+Pass `--tool-version` for stock tools while the shed's TRS version-list endpoint is
+unavailable; once a stock tool is cached, `summarize`/`info`/`schema` resolve it from the
+bare ID. Unversioned built-ins (`__APPLY_RULES__`) are keyed under a `_default_` sentinel.
+
 ## Pre-Populating for CI
 
 For CI environments, pre-populate the cache with all tools referenced by your workflows:

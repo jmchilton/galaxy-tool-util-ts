@@ -15,13 +15,15 @@ Fetch a tool from [ToolShed](https://toolshed.g2.bx.psu.edu) or Galaxy and cache
 ```bash
 galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc --tool-version 0.74+galaxy0
 galaxy-tool-cache add toolshed.g2.bx.psu.edu/repos/iuc/bcftools_norm/bcftools_norm --tool-version 1.15.1+galaxy3
+# Stock/built-in tools resolve by bare ID against the ToolShed too
+galaxy-tool-cache add Filter1 --tool-version 1.1.1
 ```
 
 | Option | Description |
 |---|---|
-| `--tool-version <ver>` | Tool version (required for ToolShed tools) |
+| `--tool-version <ver>` | Tool version (required for ToolShed tools; pass for stock tools too while the shed version-list endpoint is down) |
 | `--cache-dir <dir>` | Override cache directory |
-| `--galaxy-url <url>` | Galaxy instance URL for fallback fetching |
+| `--galaxy-url <url>` | Alternate Galaxy source, tried after the ToolShed |
 
 ### `list`
 
@@ -96,14 +98,14 @@ Scan a workflow file, extract all tool references, and cache each one.
 # Cache all tools referenced in a workflow
 galaxy-tool-cache populate-workflow my-workflow.ga
 
-# With Galaxy fallback for tools not on ToolShed
+# With an extra Galaxy source (e.g. an instance-local tool absent from the ToolShed)
 galaxy-tool-cache populate-workflow my-workflow.gxwf.yml --galaxy-url https://usegalaxy.org
 ```
 
 | Option | Description |
 |---|---|
 | `--cache-dir <dir>` | Cache directory |
-| `--galaxy-url <url>` | Galaxy instance URL for fallback fetching |
+| `--galaxy-url <url>` | Alternate Galaxy source, tried after the ToolShed |
 
 ## gxwf
 

@@ -16,7 +16,7 @@ All commands accept `--cache-dir <dir>` to override the cache directory.
 | Command | Flag | Default | Description |
 |---|---|---|---|
 | `add` | `--tool-version <ver>` | — | Tool version |
-| `add` | `--galaxy-url <url>` | — | Galaxy instance URL for fallback |
+| `add` | `--galaxy-url <url>` | — | Alternate Galaxy source, tried after the ToolShed |
 | `list` | `--json` | `false` | JSON output |
 | `info` | `--tool-version <ver>` | — | Tool version |
 | `schema` | `--tool-version <ver>` | — | Tool version |
