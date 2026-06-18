@@ -1,5 +1,13 @@
 # @galaxy-tool-util/tool-cache-proxy
 
+## 1.8.0
+
+### Patch Changes
+
+- Updated dependencies [[`c427e62`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c427e6272bc92230d0c9c1b6bf3d076d5ea57846), [`e7b6af5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/e7b6af5e700bc8438690131ec75cb1a070650601), [`5a97723`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5a9772309b463c88f7f7576f5a7de1eca2a8f0f0), [`5b4baec`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5b4baec639e619db741a9084d21124b8c37a1684), [`d11e393`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d11e3932c509f53efeeed69853f486cf36693785)]:
+  - @galaxy-tool-util/core@1.8.0
+  - @galaxy-tool-util/schema@1.8.0
+
 ## 1.7.2
 
 ### Patch Changes
