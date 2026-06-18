@@ -1,5 +1,5 @@
 import type { ParsedTool } from "@galaxy-tool-util/schema";
-import { ToolCache } from "./cache/tool-cache.js";
+import { DEFAULT_TOOL_VERSION, ToolCache } from "./cache/tool-cache.js";
 import { cacheKey } from "./cache/cache-key.js";
 import { fetchFromToolShed, fetchFromGalaxy } from "./client/toolshed.js";
 import { getLatestTRSToolVersion } from "./client/trs.js";
@@ -56,19 +56,35 @@ export class ToolInfoService {
 
   async getToolInfo(toolId: string, toolVersion?: string | null): Promise<ParsedTool | null> {
     const coords = this.cache.resolveToolCoordinates(toolId, toolVersion);
-    let resolvedVersion = coords.version;
-    if (resolvedVersion === null) {
-      resolvedVersion = await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId);
-      if (resolvedVersion === null) {
+    // `keyVersion` keys the cache entry. The `_default_` sentinel is a stable handle
+    // for an unversioned stock/built-in request and must survive as the key so the
+    // offline json-schema validate path (which keys by `_default_`) gets cache hits.
+    let keyVersion = coords.version;
+    if (keyVersion === null) {
+      // ToolShed tool without a pin — must resolve a concrete version before we can key it.
+      const resolved = await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId);
+      if (resolved === null) {
         console.debug(`No version available for tool: ${toolId}`);
         return null;
       }
+      keyVersion = resolved;
     }
-    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion);
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, keyVersion);
 
-    // Check storage cache (ToolCache checks memory first internally)
+    // Check storage cache (ToolCache checks memory first internally). Done before any
+    // `_default_` version discovery so cache hits stay network-free.
     const cached = await this.cache.loadCached(key);
     if (cached !== null) return cached;
+
+    // Cache miss — pick the concrete version actually requested from the remote. For a
+    // `_default_` request, resolve one now while keeping the key as `_default_`; fall back
+    // to the sentinel when the shed can't list versions (genuinely versionless built-ins
+    // like __APPLY_RULES__).
+    let fetchVersion = keyVersion;
+    if (keyVersion === DEFAULT_TOOL_VERSION) {
+      const resolved = await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId);
+      fetchVersion = resolved ?? DEFAULT_TOOL_VERSION;
+    }
 
     // Try each source in order
     for (const source of this.sources) {
@@ -81,22 +97,26 @@ export class ToolInfoService {
           parsedTool = await fetchFromToolShed(
             source.url,
             coords.trsToolId,
-            resolvedVersion,
+            fetchVersion,
             this.fetcher,
           );
           sourceLabel = "api";
-          sourceUrl = `${source.url}/api/tools/${coords.trsToolId}/versions/${resolvedVersion}`;
+          sourceUrl = `${source.url}/api/tools/${coords.trsToolId}/versions/${fetchVersion}`;
         } else {
-          parsedTool = await fetchFromGalaxy(source.url, toolId, resolvedVersion, this.fetcher);
+          parsedTool = await fetchFromGalaxy(source.url, toolId, fetchVersion, this.fetcher);
           sourceLabel = "galaxy";
           sourceUrl = `${source.url}/api/tools/${encodeURIComponent(toolId)}/parsed`;
         }
 
+        // Key under `keyVersion` (may be `_default_`); record the concrete version the
+        // body reports (falling back to `fetchVersion`) as the index/display version so
+        // `list` surfaces it.
+        const indexVersion = parsedTool.version ?? fetchVersion;
         await this.cache.saveTool(
           key,
           parsedTool,
           coords.readableId,
-          resolvedVersion,
+          indexVersion,
           sourceLabel,
           sourceUrl,
         );
@@ -143,7 +163,7 @@ export class ToolInfoService {
     opts?: { force?: boolean },
   ): Promise<{ cacheKey: string; fetched: boolean; alreadyCached: boolean }> {
     const coords = this.cache.resolveToolCoordinates(toolId, toolVersion ?? null);
-    let resolvedVersion = coords.version;
+    const resolvedVersion = coords.version;
     let alreadyCached = false;
     if (resolvedVersion !== null) {
       alreadyCached = await this.cache.hasCached(toolId, resolvedVersion);
@@ -160,8 +180,18 @@ export class ToolInfoService {
     if (tool === null) {
       throw new Error(`Failed to fetch tool: ${toolId}`);
     }
-    resolvedVersion = tool.version ?? resolvedVersion ?? "unknown";
-    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion);
+    // Mirror getToolInfo's keying: `_default_` and explicit pins key as-is
+    // (coords.version); an unpinned ToolShed tool (coords.version === null) keys by the
+    // resolved version. Must not key a stock tool by tool.version — its entry lives under
+    // the `_default_` key, not `~<version>`.
+    //
+    // Known edge (tracked): a stock entry is keyed under `_default_` but its index/display
+    // version is the concrete one (e.g. `1.1.1`). A caller that refetches by the *display*
+    // version (gxwf-web inspector does) passes `1.1.1`, misses the `_default_` key, and
+    // writes a duplicate sibling instead of refreshing. Unreachable until the shed's TRS
+    // version-list endpoint is healthy; fix needs the request version persisted in the index.
+    const keyVersion = coords.version ?? tool.version ?? "unknown";
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, keyVersion);
     return { cacheKey: key, fetched: true, alreadyCached };
   }
 
