@@ -262,8 +262,8 @@ function _normalizeStep(
   id: string,
   subworkflows: Map<string, Record<string, unknown>>,
 ): NormalizedFormat2Step {
-  const stepIn = _normalizeStepIn(raw.in);
-  const stepOut = _normalizeStepOut(raw.out);
+  const stepIn = normalizeStepIn(raw.in);
+  const stepOut = normalizeStepOut(raw.out);
   const run = _resolveRun(raw.run, subworkflows);
 
   // Resolve $link references in state: replace with ConnectedValue and
@@ -312,7 +312,22 @@ function _normalizeStep(
   };
 }
 
-function _normalizeStepIn(raw: unknown): NormalizedFormat2StepInput[] {
+/**
+ * Expand a step's raw `in` value into normalized `{id, source, ...}` entries,
+ * covering every gxformat2 shorthand:
+ *   - list of strings:   in: [query]                 → {id: "query"}
+ *   - list of objects:   in: [{id: query, source}]   → {id: "query", source}
+ *   - map to string:     in: {query: step/out}        → {id: "query", source}
+ *   - map to list:       in: {query: [a, b]}          → {id: "query", source: [a, b]}
+ *   - map to object:     in: {query: {source, ...}}   → {id: "query", source, ...}
+ *
+ * Pure and value-based (no AST/position awareness) so callers that hold a raw
+ * step dict — e.g. an editor walking a parsed document — can reuse the same
+ * shorthand rules instead of re-deriving them. Note that connections declared
+ * via `{$link: ...}` inside `state` are resolved separately during full step
+ * normalization, not here.
+ */
+export function normalizeStepIn(raw: unknown): NormalizedFormat2StepInput[] {
   if (!raw) return [];
   if (Array.isArray(raw)) {
     return raw.map((item) => {
@@ -341,7 +356,16 @@ function _normalizeStepIn(raw: unknown): NormalizedFormat2StepInput[] {
   return result;
 }
 
-function _normalizeStepOut(raw: unknown): NormalizedFormat2StepOutput[] {
+/**
+ * Expand a step's raw `out` value into normalized `{id, ...}` entries, covering
+ * every gxformat2 shorthand:
+ *   - list of strings:   out: [out_file1]             → {id: "out_file1"}
+ *   - list of objects:   out: [{id: out_file1, ...}]  → {id: "out_file1", ...}
+ *   - map:               out: {out_file1: {...}}      → {id: "out_file1", ...}
+ *
+ * Pure and value-based — see {@link normalizeStepIn}.
+ */
+export function normalizeStepOut(raw: unknown): NormalizedFormat2StepOutput[] {
   if (!raw) return [];
   if (Array.isArray(raw)) {
     return raw.map((item) => {

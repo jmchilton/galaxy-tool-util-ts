@@ -1,5 +1,7 @@
 export {
   normalizedFormat2,
+  normalizeStepIn,
+  normalizeStepOut,
   NormalizedFormat2WorkflowSchema,
   NormalizedFormat2StepSchema,
   NormalizedFormat2InputSchema,
