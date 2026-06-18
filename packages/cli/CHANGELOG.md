@@ -1,5 +1,70 @@
 # @galaxy-tool-util/cli
 
+## 1.8.0
+
+### Patch Changes
+
+- [#132](https://github.com/jmchilton/galaxy-tool-util-ts/pull/132) [`c427e62`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c427e6272bc92230d0c9c1b6bf3d076d5ea57846) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(cache): default unversioned stock/built-in tools to the `_default_` sentinel
+
+  `resolveToolCoordinates` returned `version: null` for non-ToolShed tool ids
+  (stock tools like `cat1`/`Cut1` and built-in collection ops like
+  `__APPLY_RULES__`/`__CROSS_PRODUCT_FLAT__`) that carry no explicit version. That
+  null short-circuited resolution, so these steps were reported as "no version
+  for …" and skipped — even though the json-schema validation path already used
+  the `_default_` convention, leaving the resolver internally inconsistent.
+
+  The stock-tool branch now mirrors the Python reference
+  (`ToolShedGetToolInfo._resolve_tool_coordinates`) and defaults the version to
+  `_default_`, so a cache key / schema-cache entry can be formed and the tool
+  resolves through the normal cache/fetch path instead of being skipped. Closes [#128](https://github.com/jmchilton/galaxy-tool-util-ts/issues/128).
+
+- [#129](https://github.com/jmchilton/galaxy-tool-util-ts/pull/129) [`e7b6af5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/e7b6af5e700bc8438690131ec75cb1a070650601) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(draft-validate): stop counting output-source sentinels as step paths
+
+  `buildDraftSurveyReport` deduped every TODO sentinel by step path, so
+  workflow-output `outputSource` sentinels — all carrying the workflow-root
+  path `[]` — collapsed into a single empty bucket and were surfaced as one
+  extra "step path" (off-by-one). Output sentinels now get their own
+  `DraftSurveyReport.todo_output_paths` bucket, keyed by `[...path, outputLabel]`,
+  and the `gxwf draft-validate` survey line / report template report them as
+  "N step path(s) and M output path(s)".
+
+- [#131](https://github.com/jmchilton/galaxy-tool-util-ts/pull/131) [`5b4baec`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5b4baec639e619db741a9084d21124b8c37a1684) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(populate-workflow): don't abort the batch on the first unresolvable tool
+
+  `ToolInfoService.getToolInfo` threw `No version available for tool: …` when a
+  tool's version couldn't be resolved (short/unversioned ids, local tools, TRS
+  errors), violating its `Promise<ParsedTool | null>` contract. The uncaught
+  throw escaped `populate-workflow`'s per-tool loop, aborting the whole run and
+  caching nothing — even tools already processed.
+
+  `getToolInfo` now returns `null` on an unresolvable version, matching the
+  existing all-sources-failed path and its declared contract. Every helper it
+  calls already swallows its own errors and returns `null`, so the
+  `populate-workflow` loop counts the failure and keeps caching the rest,
+  reporting `N/M cached, K failed`. This also fixes `add` and the proxy
+  `getTool`/`toolSchema` routes, which already handled `null`.
+
+- [#133](https://github.com/jmchilton/galaxy-tool-util-ts/pull/133) [`d11e393`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d11e3932c509f53efeeed69853f486cf36693785) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(roundtrip): match steps by label+type so reverse-pass renumbering doesn't misalign diffs
+
+  `roundtripValidate` matched original and reimported steps by numeric `id`. But
+  format2 stores inputs separately from `steps`, so the reverse (format2→native)
+  pass front-loads input steps and renumbers tools — a native step's id is not
+  stable across a roundtrip. When inputs were interleaved with tools, the diff
+  compared unrelated steps, producing phantom "step missing after roundtrip" and
+  value-mismatch errors (e.g. a tool's state diffed against an input, or two
+  same-tool steps diffed against each other).
+
+  Port Python's `_build_step_id_mapping` (`roundtrip.py`): match by label+type,
+  then same-id when the type matches, then a unique tool_id+type fallback for
+  unlabeled steps that shifted position, scoped per nesting level. Fixes [#117](https://github.com/jmchilton/galaxy-tool-util-ts/issues/117)
+  (clinicalmp-discovery's apparent peptideshaker step drop + dbbuilder `source`
+  mis-selection were both artifacts of this misalignment, not conversion bugs).
+
+- Updated dependencies [[`c427e62`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c427e6272bc92230d0c9c1b6bf3d076d5ea57846), [`e7b6af5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/e7b6af5e700bc8438690131ec75cb1a070650601), [`5a97723`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5a9772309b463c88f7f7576f5a7de1eca2a8f0f0), [`5b4baec`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5b4baec639e619db741a9084d21124b8c37a1684), [`d11e393`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d11e3932c509f53efeeed69853f486cf36693785)]:
+  - @galaxy-tool-util/core@1.8.0
+  - @galaxy-tool-util/schema@1.8.0
+  - @galaxy-tool-util/search@1.8.0
+  - @galaxy-tool-util/connection-validation@1.8.0
+
 ## 1.7.2
 
 ### Patch Changes

@@ -1,5 +1,41 @@
 # @galaxy-tool-util/core
 
+## 1.8.0
+
+### Patch Changes
+
+- [#132](https://github.com/jmchilton/galaxy-tool-util-ts/pull/132) [`c427e62`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c427e6272bc92230d0c9c1b6bf3d076d5ea57846) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(cache): default unversioned stock/built-in tools to the `_default_` sentinel
+
+  `resolveToolCoordinates` returned `version: null` for non-ToolShed tool ids
+  (stock tools like `cat1`/`Cut1` and built-in collection ops like
+  `__APPLY_RULES__`/`__CROSS_PRODUCT_FLAT__`) that carry no explicit version. That
+  null short-circuited resolution, so these steps were reported as "no version
+  for …" and skipped — even though the json-schema validation path already used
+  the `_default_` convention, leaving the resolver internally inconsistent.
+
+  The stock-tool branch now mirrors the Python reference
+  (`ToolShedGetToolInfo._resolve_tool_coordinates`) and defaults the version to
+  `_default_`, so a cache key / schema-cache entry can be formed and the tool
+  resolves through the normal cache/fetch path instead of being skipped. Closes [#128](https://github.com/jmchilton/galaxy-tool-util-ts/issues/128).
+
+- [#131](https://github.com/jmchilton/galaxy-tool-util-ts/pull/131) [`5b4baec`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5b4baec639e619db741a9084d21124b8c37a1684) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(populate-workflow): don't abort the batch on the first unresolvable tool
+
+  `ToolInfoService.getToolInfo` threw `No version available for tool: …` when a
+  tool's version couldn't be resolved (short/unversioned ids, local tools, TRS
+  errors), violating its `Promise<ParsedTool | null>` contract. The uncaught
+  throw escaped `populate-workflow`'s per-tool loop, aborting the whole run and
+  caching nothing — even tools already processed.
+
+  `getToolInfo` now returns `null` on an unresolvable version, matching the
+  existing all-sources-failed path and its declared contract. Every helper it
+  calls already swallows its own errors and returns `null`, so the
+  `populate-workflow` loop counts the failure and keeps caching the rest,
+  reporting `N/M cached, K failed`. This also fixes `add` and the proxy
+  `getTool`/`toolSchema` routes, which already handled `null`.
+
+- Updated dependencies [[`e7b6af5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/e7b6af5e700bc8438690131ec75cb1a070650601), [`5a97723`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5a9772309b463c88f7f7576f5a7de1eca2a8f0f0), [`d11e393`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d11e3932c509f53efeeed69853f486cf36693785)]:
+  - @galaxy-tool-util/schema@1.8.0
+
 ## 1.7.2
 
 ### Patch Changes

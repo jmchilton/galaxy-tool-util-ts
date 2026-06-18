@@ -1,5 +1,50 @@
 # @galaxy-tool-util/schema
 
+## 1.8.0
+
+### Minor Changes
+
+- [#134](https://github.com/jmchilton/galaxy-tool-util-ts/pull/134) [`5a97723`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5a9772309b463c88f7f7576f5a7de1eca2a8f0f0) Thanks [@jmchilton](https://github.com/jmchilton)! - feat(schema): export `normalizeStepIn` / `normalizeStepOut` step shorthand expanders
+
+  The per-step `in:` / `out:` shorthand expansion logic used internally by
+  `normalizedFormat2` is now public. Both are pure and value-based (no AST
+  awareness), so consumers holding a raw gxformat2 step dict — e.g. the
+  VS Code language server walking a parsed document — can reuse the canonical
+  shorthand rules instead of re-deriving them.
+
+  `normalizeStepIn` covers every form: list-of-strings, list-of-objects,
+  map-to-string, map-to-object, and the map-to-list (multi-source) shorthand.
+  Pairs with the existing `nativeConnectionsFromFormat2In` to build a native
+  connections map from a raw step's `in:` block.
+
+### Patch Changes
+
+- [#129](https://github.com/jmchilton/galaxy-tool-util-ts/pull/129) [`e7b6af5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/e7b6af5e700bc8438690131ec75cb1a070650601) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(draft-validate): stop counting output-source sentinels as step paths
+
+  `buildDraftSurveyReport` deduped every TODO sentinel by step path, so
+  workflow-output `outputSource` sentinels — all carrying the workflow-root
+  path `[]` — collapsed into a single empty bucket and were surfaced as one
+  extra "step path" (off-by-one). Output sentinels now get their own
+  `DraftSurveyReport.todo_output_paths` bucket, keyed by `[...path, outputLabel]`,
+  and the `gxwf draft-validate` survey line / report template report them as
+  "N step path(s) and M output path(s)".
+
+- [#133](https://github.com/jmchilton/galaxy-tool-util-ts/pull/133) [`d11e393`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d11e3932c509f53efeeed69853f486cf36693785) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(roundtrip): match steps by label+type so reverse-pass renumbering doesn't misalign diffs
+
+  `roundtripValidate` matched original and reimported steps by numeric `id`. But
+  format2 stores inputs separately from `steps`, so the reverse (format2→native)
+  pass front-loads input steps and renumbers tools — a native step's id is not
+  stable across a roundtrip. When inputs were interleaved with tools, the diff
+  compared unrelated steps, producing phantom "step missing after roundtrip" and
+  value-mismatch errors (e.g. a tool's state diffed against an input, or two
+  same-tool steps diffed against each other).
+
+  Port Python's `_build_step_id_mapping` (`roundtrip.py`): match by label+type,
+  then same-id when the type matches, then a unique tool_id+type fallback for
+  unlabeled steps that shifted position, scoped per nesting level. Fixes [#117](https://github.com/jmchilton/galaxy-tool-util-ts/issues/117)
+  (clinicalmp-discovery's apparent peptideshaker step drop + dbbuilder `source`
+  mis-selection were both artifacts of this misalignment, not conversion bugs).
+
 ## 1.7.2
 
 ### Patch Changes
