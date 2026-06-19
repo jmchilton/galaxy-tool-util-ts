@@ -1,5 +1,51 @@
 # @galaxy-tool-util/cli
 
+## 1.9.0
+
+### Minor Changes
+
+- [#146](https://github.com/jmchilton/galaxy-tool-util-ts/pull/146) [`d0f0cac`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d0f0cac5235a10de6b7da822137dd48af1fb71c3) Thanks [@jmchilton](https://github.com/jmchilton)! - feat(cytoscape): render draft workflows with a planned/concrete visual distinction
+
+  `cytoscapeElements` now accepts `GalaxyWorkflowDraft` documents first-class,
+  the cytoscape sibling of the mermaid draft support. It consumes the shared
+  `resolveDraftOverlay` / `DraftOverlay` / `PLANNED_CLASS` / `stepRenderIdentity`
+  abstractions: planned nodes gain a `planned` class (appended after
+  `type_*`/`runnable`) plus `data.planned` and structured `data.plan_reason`
+  (`{ todos, plan_fields }`) for viewer tooltips; edges touching a planned step
+  or a `TODO_*` port gain `planned`, coexisting with any `mapover_*`/`reduction`
+  class. Concrete workflows render byte-for-byte as before. Detection is
+  automatic — a draft "just works"; pass `draftOverlay: null` (CLI
+  `gxwf cytoscapejs --no-draft-overlay`) to force plain output.
+
+  New export: `CytoscapePlanReason`. The bundled HTML stylesheet is unchanged
+  (it syncs from upstream gxformat2); the `planned` CSS treatment lands there
+  once the upstream template gains it.
+
+- [#146](https://github.com/jmchilton/galaxy-tool-util-ts/pull/146) [`df26076`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/df26076daa7c44ed223a98856b8d0eca04471901) Thanks [@jmchilton](https://github.com/jmchilton)! - feat(mermaid): render draft workflows with a planned/concrete visual distinction
+
+  `workflowToMermaid` now accepts `GalaxyWorkflowDraft` documents first-class.
+  A new pure `resolveDraftOverlay(raw)` classifies each step as planned (it
+  carries a TODO sentinel or a `_plan_*` field) and the builder marks planned
+  nodes with a dashed/muted `planned` class and dashes edges that touch a
+  planned step or a `TODO_*` port. Concrete workflows render byte-for-byte as
+  before. Detection is automatic — a draft "just works"; pass `draftOverlay:
+null` (CLI `gxwf mermaid --no-draft-overlay`) to force plain output.
+
+  New exports from `@galaxy-tool-util/schema`: `resolveDraftOverlay`,
+  `DraftOverlay`, `DraftPlannedReason`, `PLANNED_CLASS`, and the shared
+  `stepRenderIdentity` / `rawStepRenderIdentity` helpers (the single identity
+  both the draft classifier and the visualizers key off, so overlay keys always
+  match the builders' node lookups). The structured `plannedReason` is carried
+  for the upcoming cytoscape consumer.
+
+### Patch Changes
+
+- Updated dependencies [[`d0f0cac`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d0f0cac5235a10de6b7da822137dd48af1fb71c3), [`df26076`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/df26076daa7c44ed223a98856b8d0eca04471901), [`ce78ceb`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ce78ceb24b05b26d506d2a642a8fc6b08bbc770c)]:
+  - @galaxy-tool-util/schema@1.9.0
+  - @galaxy-tool-util/connection-validation@1.9.0
+  - @galaxy-tool-util/core@1.9.0
+  - @galaxy-tool-util/search@1.9.0
+
 ## 1.8.2
 
 ### Patch Changes
