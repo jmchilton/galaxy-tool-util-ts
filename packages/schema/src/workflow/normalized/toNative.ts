@@ -378,7 +378,9 @@ function _buildToolStep(
     tool_state: toolState,
     tool_representation: toolRepresentation,
     in: _extractStepInDefaults(step),
-    tool_uuid: isUserDefinedTool ? null : (step.uuid ?? undefined),
+    tool_uuid: isUserDefinedTool
+      ? ((toolRepresentation?.uuid as string | undefined) ?? null)
+      : undefined,
     input_connections: inputConnections,
     post_job_actions: postJobActions,
     position: _defaultPosition(step.position, orderIndex),
