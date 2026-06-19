@@ -107,6 +107,7 @@ export {
   walkFormat2State,
   SKIP_VALUE,
   UnknownKeyError,
+  StringContainerError,
   type LeafCallback,
   type WalkNativeOptions,
 } from "./walker.js";

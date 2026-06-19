@@ -86,7 +86,7 @@ export function walkNativeState(
       const conditional = toolInput as ConditionalParameterModel;
       const conditionalState = state[name];
 
-      _assertNotStringContainer(name, parameterType, conditionalState);
+      _assertNotStringContainer(statePath, parameterType, conditionalState);
       const stateDict = (conditionalState as Record<string, unknown>) ?? {};
 
       const when = selectWhichWhen(conditional, stateDict);
@@ -108,7 +108,7 @@ export function walkNativeState(
       const repeat = toolInput as RepeatParameterModel;
       const repeatState = state[name];
 
-      _assertNotStringContainer(name, parameterType, repeatState);
+      _assertNotStringContainer(statePath, parameterType, repeatState);
 
       // Determine instance count from state array or input connections
       const stateArray = Array.isArray(repeatState)
@@ -146,7 +146,7 @@ export function walkNativeState(
       const section = toolInput as SectionParameterModel;
       const sectionState = state[name];
 
-      _assertNotStringContainer(name, parameterType, sectionState);
+      _assertNotStringContainer(statePath, parameterType, sectionState);
       const stateDict = (sectionState as Record<string, unknown>) ?? {};
 
       const innerResult = walkNativeState(
@@ -213,7 +213,7 @@ export function walkFormat2State(
       const conditional = toolInput as ConditionalParameterModel;
       const conditionalState = state[name];
 
-      _assertNotStringContainer(name, parameterType, conditionalState);
+      _assertNotStringContainer(statePath, parameterType, conditionalState);
       const stateDict = (conditionalState as Record<string, unknown>) ?? {};
 
       const when = selectWhichWhen(conditional, stateDict);
@@ -233,7 +233,7 @@ export function walkFormat2State(
       const repeat = toolInput as RepeatParameterModel;
       const repeatState = state[name];
 
-      _assertNotStringContainer(name, parameterType, repeatState);
+      _assertNotStringContainer(statePath, parameterType, repeatState);
       const stateArray = Array.isArray(repeatState)
         ? (repeatState as Record<string, unknown>[])
         : [];
@@ -258,7 +258,7 @@ export function walkFormat2State(
       const section = toolInput as SectionParameterModel;
       const sectionState = state[name];
 
-      _assertNotStringContainer(name, parameterType, sectionState);
+      _assertNotStringContainer(statePath, parameterType, sectionState);
       const stateDict = (sectionState as Record<string, unknown>) ?? {};
 
       const innerResult = walkFormat2State(section.parameters, stateDict, leafCallback, statePath);
@@ -291,13 +291,32 @@ export class UnknownKeyError extends Error {
   }
 }
 
-/** Assert that a container parameter value is not a string (legacy encoding). */
-function _assertNotStringContainer(name: string, parameterType: string, value: unknown): void {
-  if (typeof value === "string") {
-    throw new Error(
-      `Container parameter "${name}" (${parameterType}) has string value — ` +
+/**
+ * Error thrown when a container parameter (section/repeat/conditional) is given
+ * a scalar string value instead of the expected nested dict/list — a sign of
+ * legacy parameter encoding the schema-aware walkers don't accept.
+ *
+ * Mirrors {@link UnknownKeyError}: carries the offending parameter's flat state
+ * path and container type as structured fields so callers can map it to a
+ * located diagnostic instead of parsing the message text.
+ */
+export class StringContainerError extends Error {
+  constructor(
+    public readonly path: string,
+    public readonly parameterType: string,
+  ) {
+    super(
+      `Container parameter "${path}" (${parameterType}) has string value — ` +
         `expected dict/list. This indicates legacy parameter encoding which is not supported. ` +
         `Decode the workflow first.`,
     );
+    this.name = "StringContainerError";
+  }
+}
+
+/** Assert that a container parameter value is not a string (legacy encoding). */
+function _assertNotStringContainer(path: string, parameterType: string, value: unknown): void {
+  if (typeof value === "string") {
+    throw new StringContainerError(path, parameterType);
   }
 }
