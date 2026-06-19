@@ -30,3 +30,42 @@ describe("serializeWorkflow format2 YAML", () => {
     expect(out).toContain("label: hello");
   });
 });
+
+describe("serializeWorkflow strips derived in-memory fields", () => {
+  it("drops workflow-level unique_tools and step-level connected_paths", () => {
+    const data = {
+      steps: {
+        "0": { tool_id: "cat", connected_paths: new Set(["input"]) },
+      },
+      unique_tools: new Set([{ tool_id: "cat", tool_version: null }]),
+    };
+    const out = serializeWorkflow(data, "native", { json: true });
+    expect(out).not.toContain("unique_tools");
+    expect(out).not.toContain("connected_paths");
+  });
+
+  it("recurses into native subworkflow and format2 run embeds", () => {
+    const data = {
+      steps: {
+        "0": {
+          connected_paths: new Set(),
+          subworkflow: { steps: { "0": { connected_paths: new Set() } }, unique_tools: new Set() },
+        },
+        "1": {
+          run: { steps: [{ connected_paths: new Set() }], unique_tools: new Set() },
+        },
+      },
+      unique_tools: new Set(),
+    };
+    const out = serializeWorkflow(data, "format2");
+    expect(out).not.toContain("unique_tools");
+    expect(out).not.toContain("connected_paths");
+  });
+
+  it("preserves a tool_state param literally named unique_tools", () => {
+    const data = { steps: { "0": { tool_state: { unique_tools: "keep-me" } } } };
+    const out = serializeWorkflow(data, "native", { json: true });
+    expect(out).toContain("unique_tools");
+    expect(out).toContain("keep-me");
+  });
+});
