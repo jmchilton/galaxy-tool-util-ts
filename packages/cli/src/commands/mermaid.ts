@@ -11,6 +11,8 @@ export interface MermaidCommandOptions {
   comments?: boolean;
   annotateConnections?: boolean;
   cacheDir?: string;
+  /** Force plain rendering for a draft workflow (skip planned/concrete styling). */
+  draftOverlay?: boolean;
 }
 
 export async function runMermaid(filePath: string, opts: MermaidCommandOptions): Promise<void> {
@@ -21,7 +23,12 @@ export async function runMermaid(filePath: string, opts: MermaidCommandOptions):
     ? await resolveEdgeAnnotations(data, { cacheDir: opts.cacheDir })
     : undefined;
 
-  const diagram = workflowToMermaid(data, { comments: opts.comments, edgeAnnotations });
+  // Drafts auto-detect planned styling; `--no-draft-overlay` forces plain output.
+  const diagram = workflowToMermaid(data, {
+    comments: opts.comments,
+    edgeAnnotations,
+    draftOverlay: opts.draftOverlay === false ? null : undefined,
+  });
 
   if (!opts.output) {
     process.stdout.write(diagram + "\n");

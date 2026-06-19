@@ -194,6 +194,7 @@ Render a Galaxy workflow as a Mermaid flowchart diagram
 | `--comments` | Render frame comments as Mermaid subgraphs |
 | `--annotate-connections` | Encode map-over depth and reductions on edges (runs the connection validator) |
 | `--cache-dir <dir>` | Tool cache directory (used by --annotate-connections) |
+| `--no-draft-overlay` | Disable planned/concrete styling for draft workflows (render as plain) |
 
 ### `cytoscapejs <file> [output]`
 
@@ -210,6 +211,7 @@ Render a Galaxy workflow as Cytoscape.js elements (JSON or standalone HTML)
 | `--json` | Force JSON output regardless of file extension |
 | `--annotate-connections` | Encode map-over depth and reductions on edges (runs the connection validator) |
 | `--cache-dir <dir>` | Tool cache directory (used by --annotate-connections) |
+| `--no-draft-overlay` | Disable planned/concrete styling for draft workflows (render as plain) |
 
 ### `validate-tree <dir>`
 
@@ -437,21 +439,21 @@ Cache and inspect Galaxy tool metadata
 
 ### `add <tool_id>`
 
-Fetch a tool from ToolShed/Galaxy and cache it
+Fetch a tool from the ToolShed (shed-path or bare/stock ID) and cache it
 
 **Arguments:**
 
-- `<tool_id>` — Tool ID (full toolshed path or TRS ID)
+- `<tool_id>` — Tool ID: shed path (owner/repo/tool), TRS ID, or bare/stock ID (e.g. Filter1)
 
 | Option | Description |
 |---|---|
 | `--tool-version <ver>` | Tool version |
 | `--cache-dir <dir>` | Cache directory |
-| `--galaxy-url <url>` | Galaxy instance URL for fallback |
+| `--galaxy-url <url>` | Alternate Galaxy source, tried after the ToolShed |
 
 ### `list`
 
-List cached tools
+List cached tools with their resolved versions
 
 | Option | Description |
 |---|---|
@@ -523,4 +525,4 @@ Scan a workflow and cache all referenced tools
 | Option | Description |
 |---|---|
 | `--cache-dir <dir>` | Cache directory |
-| `--galaxy-url <url>` | Galaxy instance URL for fallback |
+| `--galaxy-url <url>` | Alternate Galaxy source, tried after the ToolShed |

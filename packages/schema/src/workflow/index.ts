@@ -67,6 +67,8 @@ export {
   flattenCommentData,
   unflattenCommentData,
   resolveSourceReference,
+  stepRenderIdentity,
+  rawStepRenderIdentity,
   UNLABELED_INPUT_PREFIX,
   UNLABELED_STEP_PREFIX,
 } from "./normalized/index.js";
@@ -163,6 +165,7 @@ export {
   type CytoscapeListItem,
   type CytoscapeNode,
   type CytoscapeNodeData,
+  type CytoscapePlanReason,
   type CytoscapePosition,
 } from "./cytoscape-models.js";
 export {
@@ -187,6 +190,10 @@ export {
   validateDraft,
   nextDraftStep,
   extractConcreteSubset,
+  resolveDraftOverlay,
+  PLANNED_CLASS,
+  type DraftOverlay,
+  type DraftPlannedReason,
   type PlanField,
   type StepPath,
   type TodoLocation,

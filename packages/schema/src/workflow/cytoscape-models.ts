@@ -5,9 +5,23 @@
  * emitted JSON is byte-identical to the Python builder.
  */
 
+import type { PlanField } from "./draft-checks.js";
+
 export interface CytoscapePosition {
   x: number;
   y: number;
+}
+
+/**
+ * Per-node planning context surfaced for draft (planned) nodes — the structured
+ * twin of `DraftPlannedReason`, snake_cased for cytoscape JSON parity. Absent on
+ * concrete nodes so default emit stays byte-identical.
+ */
+export interface CytoscapePlanReason {
+  /** Formatted TODO sentinel locations on (or under) this step, in survey order. */
+  todos: string[];
+  /** Non-empty `_plan_*` fields on this step, kept structured. */
+  plan_fields: Partial<Record<PlanField, string>>;
 }
 
 export interface CytoscapeNodeData {
@@ -17,6 +31,14 @@ export interface CytoscapeNodeData {
   tool_id: string | null;
   step_type: string;
   repo_link: string | null;
+  /**
+   * True on planned (draft) step nodes. Optional so concrete emit stays
+   * byte-identical with the Python builder; the HTML viewer can key a
+   * dashed/muted treatment off it.
+   */
+  planned?: boolean;
+  /** Planning context for planned nodes; absent on concrete nodes. */
+  plan_reason?: CytoscapePlanReason;
 }
 
 export interface CytoscapeEdgeData {
@@ -34,6 +56,12 @@ export interface CytoscapeEdgeData {
   reduction?: boolean;
   /** Textual mapping (e.g. "list", "list:paired"); mirrors `ConnectionResult.mapping`. */
   mapping?: string | null;
+  /**
+   * True when this connection touches a planned step or a surviving `TODO_*`
+   * port. Optional so default emit stays byte-identical; coexists with
+   * `map_depth`/`reduction`/`mapping`.
+   */
+  planned?: boolean;
 }
 
 export interface CytoscapeNode {

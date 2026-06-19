@@ -12,6 +12,7 @@
 import { Either, ParseResult, Schema } from "effect";
 
 import { GalaxyWorkflowDraftSchema } from "./raw/gxformat2-draft.effect.js";
+import { rawStepRenderIdentity } from "./normalized/labels.js";
 
 export const TODO_SENTINEL_PATTERN = /^TODO(_[a-zA-Z0-9_]+)?$/;
 // Heuristic for TODO-shaped strings — flags malformed sentinels (TODO-foo,
@@ -87,6 +88,95 @@ export function detectDraft(workflow: unknown): DraftSurvey {
   }
   walkDraftSteps(workflow, [], todos, planFields);
   return { isDraft: true, todos, planFields };
+}
+
+// -----------------------------------------------------------------------------
+// resolveDraftOverlay — classification surface consumed by visualizers
+// -----------------------------------------------------------------------------
+
+/** CSS/class-name token marking a planned (draft) node or edge. Shared by every
+ * builder so `planned`/`draft`/`plan` can't drift apart across mermaid + cytoscape. */
+export const PLANNED_CLASS = "planned";
+
+export interface DraftPlannedReason {
+  /** Formatted TODO sentinel locations on (or under) this step, in survey order. */
+  todos: string[];
+  /** Non-empty `_plan_*` fields on this step, kept structured (not flattened). */
+  planFields: Partial<Record<PlanField, string>>;
+}
+
+/**
+ * Overlay describing which rendered nodes are *planned* (draft) and why.
+ * Keyed by step render identity (see {@link rawStepRenderIdentity}) so the keys
+ * line up with the node lookups mermaid/cytoscape perform on normalized steps.
+ *
+ * Edge planned-ness is intentionally NOT carried here — a builder computes it
+ * inline from `plannedSteps` plus the TODO-sentinel ports it already resolves,
+ * so there is one predicate, no port set to keep in sync.
+ */
+export interface DraftOverlay {
+  /** Render identities of planned steps. */
+  plannedSteps: Set<string>;
+  /** Per-identity planning context for label/tooltip enrichment. */
+  plannedReason: Map<string, DraftPlannedReason>;
+}
+
+/**
+ * Build a {@link DraftOverlay} from a RAW draft workflow (before normalization
+ * strips `_plan_*`). Returns `undefined` for non-draft input so callers treat
+ * "no overlay" uniformly.
+ *
+ * A step is planned iff it carries any TODO sentinel or any non-empty `_plan_*`
+ * field. A top-level subworkflow node is planned if it OR any descendant has a
+ * hit — each survey hit's `path[0]` maps back to the top-level node's render
+ * identity. Workflow-level hits (e.g. a TODO `outputSource` on the outermost
+ * document) have an empty path and mark no node.
+ */
+export function resolveDraftOverlay(workflow: unknown): DraftOverlay | undefined {
+  const survey = detectDraft(workflow);
+  if (!survey.isDraft) return undefined;
+
+  // Map each top-level step's iterator key (the space detectDraft paths live
+  // in) to the render identity the visualizers key off.
+  const identityByIterKey = new Map<string, string>();
+  if (isRecord(workflow)) {
+    for (const [key, step] of iterateSteps(workflow.steps)) {
+      identityByIterKey.set(key, rawStepRenderIdentity(step, key));
+    }
+  }
+
+  const plannedSteps = new Set<string>();
+  const plannedReason = new Map<string, DraftPlannedReason>();
+
+  const reasonFor = (identity: string): DraftPlannedReason => {
+    let reason = plannedReason.get(identity);
+    if (reason == null) {
+      reason = { todos: [], planFields: {} };
+      plannedReason.set(identity, reason);
+    }
+    return reason;
+  };
+
+  const identityForPath = (path: StepPath): string | null => {
+    const top = path[0];
+    if (top == null) return null; // workflow-level hit — not a step node
+    return identityByIterKey.get(top) ?? top;
+  };
+
+  for (const todo of survey.todos) {
+    const identity = identityForPath(todo.path);
+    if (identity == null) continue;
+    plannedSteps.add(identity);
+    reasonFor(identity).todos.push(formatTodoLocation(todo.location));
+  }
+  for (const plan of survey.planFields) {
+    const identity = identityForPath(plan.path);
+    if (identity == null) continue;
+    plannedSteps.add(identity);
+    reasonFor(identity).planFields[plan.field] = plan.value;
+  }
+
+  return { plannedSteps, plannedReason };
 }
 
 function walkDraftSteps(
