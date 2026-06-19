@@ -4,7 +4,7 @@ End-to-end guide for validating, cleaning, linting, and converting [Galaxy](http
 
 ## Overview
 
-The `gxwf` CLI provides five operations on workflow files, each available in single-file and batch (tree) modes:
+The `gxwf` CLI groups its operations into families. The five core state operations have single-file and batch (tree) modes:
 
 | Operation | Single-file | Batch | Purpose |
 |---|---|---|---|
@@ -13,6 +13,19 @@ The `gxwf` CLI provides five operations on workflow files, each available in sin
 | **Lint** | `gxwf lint` | `gxwf lint-tree` | Structural checks + best practices + state validation |
 | **Convert** | `gxwf convert` | `gxwf convert-tree` | Native <-> format2 conversion (schema-free or `--stateful`) |
 | **Roundtrip** | `gxwf roundtrip` | `gxwf roundtrip-tree` | Native → format2 → native fidelity check |
+
+Beyond the core five, `gxwf` also provides:
+
+| Operation | Commands | Purpose |
+|---|---|---|
+| **Draft workflows** | `gxwf draft-validate` · `draft-extract` · `draft-next-step` | Validate, extract, and drive `class: GalaxyWorkflowDraft` (planned/incomplete) workflows |
+| **Visualization** | `gxwf mermaid` · `gxwf cytoscapejs` | Render a workflow as a Mermaid flowchart or Cytoscape.js graph (JSON/HTML) |
+| **Test-file validation** | `gxwf validate-tests` · `validate-tests-tree` | Check `*-tests.yml` against the Galaxy `Tests` schema (no tool cache needed) |
+| **Tool-source validation** | `gxwf validate-tool-source` · `validate-tool-source-tree` | Validate user-defined tool YAML (`class: GalaxyUserTool` / `GalaxyTool`) |
+| **Tool Shed discovery** | `gxwf tool-search` · `tool-versions` · `tool-revisions` · `repo-search` | Find tools/repos and resolve installable versions/changesets |
+| **Schema export** | `gxwf structural-schema` | Emit the structural workflow JSON Schema for external validators |
+
+> There is no `gxwf verify` command. "Verification" is split across `validate` (does the state type-check?), `lint` (is it valid *and* good practice?), and `roundtrip` (does it survive native → format2 → native?).
 
 ## Validation
 
@@ -29,6 +42,9 @@ gxwf validate my-workflow.ga
 
 # Structure only
 gxwf validate my-workflow.ga --no-tool-state
+
+# Also validate inter-step connection types (collection algebra, map-over)
+gxwf validate my-workflow.ga --connections
 ```
 
 ### Format Detection
@@ -97,7 +113,12 @@ gxwf clean my-workflow.ga --output cleaned.ga
 
 # Show diff of changes
 gxwf clean my-workflow.ga --diff
+
+# Preserve step uuids (stripped by default)
+gxwf clean my-workflow.ga --skip-uuid
 ```
+
+By default `clean` also strips step `uuid` fields (they are bookkeeping, not behaviour); pass `--skip-uuid` to keep them.
 
 Clean before validating — stale keys can cause spurious validation failures. The typical CI workflow is:
 
@@ -106,7 +127,7 @@ gxwf clean-tree ./workflows/ --output-dir ./workflows/  # in-place clean
 gxwf validate-tree ./workflows/                          # validate cleaned workflows
 ```
 
-> **Note:** The current cleaning implementation strips a hardcoded set of known stale keys. The Python version also supports schema-aware key classification (keys not in the tool definition). This is a known gap.
+> **Note:** The `gxwf clean` command strips a fixed set of bookkeeping/runtime keys (`__page__`, `__rerun_remap_job_id__`, `chromInfo`, `__input_ext`, …) and decodes legacy JSON-encoded state — it does **not** consult tool definitions (the command has no `--cache-dir`). A tool-definition-aware stale-key strip (`stripStaleKeysToolAware`, keys not present in the tool's parameter tree) exists in `@galaxy-tool-util/schema` and backs schema-aware conversion, but is not yet wired into the `clean` CLI. Python's `gxwf clean` is tool-definition-aware (it takes a tool source); this is a known parity gap.
 
 ## Linting
 
@@ -157,6 +178,9 @@ gxwf convert my-workflow.ga --to format2
 
 # Compact format2 (strip position info)
 gxwf convert my-workflow.ga --to format2 --compact --output my-workflow.gxwf.yml
+
+# Force output encoding (default: YAML for format2, JSON for native)
+gxwf convert my-workflow.ga --to format2 --json   # or --yaml
 ```
 
 By default this is the schema-free conversion path — it mirrors Python's `gxwf-to-format2` / `gxwf-to-native`. It does not use tool definitions for state conversion.
@@ -200,6 +224,11 @@ gxwf roundtrip-tree ./workflows/ --cache-dir ~/.cache/galaxy-tools
 
 # Structured JSON report
 gxwf roundtrip my-workflow.ga --json
+
+# Focus the text output
+gxwf roundtrip my-workflow.ga --errors-only    # only steps with real diffs
+gxwf roundtrip my-workflow.ga --benign-only    # only steps with benign diffs
+gxwf roundtrip my-workflow.ga --brief          # one-line summary, no per-diff list
 ```
 
 ### Diff Classification
@@ -226,16 +255,86 @@ Roundtrip requires a populated tool cache — an empty cache emits a warning and
 | 1 | Benign diffs only (type coercions, stale keys, connection moves) |
 | 2 | Real diffs, conversion failures, or a non-native source file |
 
+### Step ID Mapping
+
+format2 stores inputs separately from `steps` and renumbers tool steps on the way back to native, so a step's numeric id is not stable across a roundtrip. The diff therefore maps original step ids onto their reimported counterparts before comparing (mirrors Python's `_build_step_id_mapping`): match by `label`+type first, then same-id when the type matches, then a unique `tool_id`+type fallback for unlabeled steps that shifted position. Matching is scoped per nesting level so a subworkflow tool can't match a same-labeled top-level tool. Unmatched original steps are reported rather than silently compared against the wrong step.
+
 ### Limitations
 
 - Source must be a native (`.ga`) workflow — format2 inputs are rejected.
-- Subworkflow steps are listed in the result but their nested `tool_state` is not recursively diffed. Corrupt nested state is not caught.
-- No step ID remapping (relies on ID stability across the normalized conversion pipeline).
-- No label/annotation/position/tool_version diffing — only `tool_state`.
+- **Inline** subworkflows *are* recursed and their nested `tool_state` diffed (with depth-tracked, parent-prefixed step ids). **External** subworkflow references (URL/TRS `run` strings) cannot be inlined, so their steps are reported as `subworkflow_external_ref` and not diffed.
+- The diff focuses on `tool_state`; structural metadata (label/annotation/position/tool_version) is not the primary subject of the comparison.
+
+## Draft Workflows
+
+Draft workflows (`class: GalaxyWorkflowDraft`) describe a workflow that is still being planned — some steps may be placeholders carrying `_plan_*` annotations instead of concrete tool state. `gxwf` has three operations for working with them. Drafts are format2 only; native (`.ga`) inputs are rejected.
+
+```bash
+# Validate a draft (structure of drafty + concrete steps)
+gxwf draft-validate my-workflow.gxwf.yml
+
+# Also extract the concrete subset and run the normal validate checks on it
+gxwf draft-validate my-workflow.gxwf.yml --concrete --cache-dir ~/.cache/galaxy-tools
+
+# Extract the executable subset: drop drafty steps, strip _plan_* fields,
+# and promote `class: GalaxyWorkflow` when nothing drafty remains
+gxwf draft-extract my-workflow.gxwf.yml --output concrete.gxwf.yml
+gxwf draft-extract my-workflow.gxwf.yml --report-json   # report drops/rewrites/class-flip
+
+# Pick the next step a downstream agent should work on (or report none remain)
+gxwf draft-next-step my-workflow.gxwf.yml
+gxwf draft-next-step my-workflow.gxwf.yml --output-format markdown
+```
+
+`draft-validate` shares the `--strict*` flags and `--report-{html,markdown}` outputs with `validate`. The `--concrete` pass accepts `--no-tool-state` (skip state validation) and `--connections` (validate connection types on the extracted subset). `draft-next-step` exits non-zero (2) only on load/parse errors — "no remaining work" is a normal exit 0 with a structured result.
+
+## Visualization
+
+Render a workflow as a diagram. Both commands take an optional output path and write to stdout otherwise; both can overlay planned/concrete styling for draft workflows (on by default, disable with `--no-draft-overlay`).
+
+```bash
+# Mermaid flowchart (.mmd raw, .md fenced code block, stdout if omitted)
+gxwf mermaid my-workflow.ga diagram.mmd
+gxwf mermaid my-workflow.ga --comments              # render frame comments as subgraphs
+
+# Cytoscape.js elements (JSON, or a standalone HTML page)
+gxwf cytoscapejs my-workflow.ga elements.json
+gxwf cytoscapejs my-workflow.ga page.html --html
+
+# Annotate edges with map-over depth + reductions (runs the connection validator)
+gxwf mermaid my-workflow.ga --annotate-connections --cache-dir ~/.cache/galaxy-tools
+```
+
+`--annotate-connections` resolves collection algebra across edges and needs a populated tool cache.
+
+## Workflow-Test Validation
+
+Validate workflow-test files (`*-tests.yml`, `*.gxwf-tests.yml`) against the Galaxy `Tests` schema. This is schema-only — no tool cache required.
+
+```bash
+gxwf validate-tests my-workflow-tests.yml
+gxwf validate-tests my-workflow-tests.yml --json
+
+# Cross-check the test's job inputs and output assertions against a workflow
+gxwf validate-tests my-workflow-tests.yml --workflow my-workflow.ga
+
+# Batch — auto-pair each tests file with its sibling workflow by naming convention
+gxwf validate-tests-tree ./workflows/ --auto-workflow
+```
+
+## Tool-Source Validation
+
+Validate a user-defined Galaxy tool source YAML (`class: GalaxyUserTool` / `GalaxyTool`) against the Galaxy `DynamicToolSources` schema plus the [#22615](https://github.com/galaxyproject/galaxy/pull/22615) semantic checks.
+
+```bash
+gxwf validate-tool-source my-tool.yml
+gxwf validate-tool-source my-tool.yml --schema-only   # structural JSON Schema only, skip semantic checks
+gxwf validate-tool-source-tree ./tools/               # auto-discovered by class:
+```
 
 ## Batch Processing
 
-All five operations have tree variants that recursively discover and process workflows under a directory.
+Seven operations have tree variants that recursively discover and process workflows under a directory: `validate`, `lint`, `clean`, `convert`, `roundtrip`, `validate-tests`, and `validate-tool-source`. The visualization and draft commands are single-file only.
 
 ```bash
 gxwf validate-tree ./workflows/
@@ -261,7 +360,7 @@ Tree commands load shared resources once (e.g. tool cache) and reuse them across
 - **Text mode** (default): per-file status lines + summary
 - **JSON mode** (`--json` or `--report-json`): structured report with per-file results and aggregate summary, suitable for CI integration
 - **Markdown report** (`--report-markdown [file]`): human-readable Markdown report (Nunjucks-rendered from bundled templates). Pass a file path to write to disk, or omit the path to write to stdout. Available on `validate-tree`, `lint-tree`, `clean-tree`, and `roundtrip-tree`.
-- **HTML report** (`--report-html [file]`): same content as Markdown but rendered as HTML. Available on single-file commands (`validate`, `lint`, `clean`) and all four tree commands.
+- **HTML report** (`--report-html [file]`): same content as Markdown but rendered as HTML. Available on single-file commands (`validate`, `lint`, `clean`, `draft-validate`) and the four tree commands above.
 
 ```bash
 # Write an HTML report to a file
@@ -461,9 +560,16 @@ Mapping between Python CLI commands and their TypeScript equivalents:
 | `gxwf-roundtrip-validate-tree` | `gxwf roundtrip-tree` | Done |
 | `galaxy-tool-cache populate-workflow` | `galaxy-tool-cache populate-workflow` | Done |
 | `galaxy-tool-cache structural-schema` | `gxwf structural-schema` | Done |
+| `gxwf viz` (Cytoscape, gxformat2 passthrough) | `gxwf cytoscapejs` | Done (TS renders natively, not via gxformat2) |
+| `gxwf mermaid` (gxformat2 passthrough) | `gxwf mermaid` | Done (TS renders natively) |
+| `gxwf abstract-export` | — | Out of scope (no abstract CWL export on TS) |
 | `galaxy-tool-cache add-local` | — | Out of scope (no local XML parsing) |
-| `gxwf-viz` | — | Out of scope |
-| `gxwf-abstract-export` | — | Out of scope |
+| `galaxy-tool-cache list-inline-tools` / `embedded-schema` | — | Not yet ported |
+
+The two CLIs are intentionally not identical and are converging over time. Some operations exist only on one side today:
+
+- **TypeScript-only:** draft workflows (`draft-validate` / `draft-extract` / `draft-next-step`), `cytoscapejs` HTML/JSON rendering, `validate-tool-source`.
+- **Python-only:** `abstract-export`, `add-local` (local tool XML), and `list-inline-tools` / `embedded-schema` (inline / user-defined tool inventory). The `--mode json-schema` / `--tool-schema-dir` offline backend exists on both sides (TS exposes it on `validate` / `validate-tree`; see [Offline Validation](#offline-validation)).
 
 ## Common Validation Errors
 
