@@ -6,12 +6,27 @@ import {
   ConversionValidationFailure,
   validateNativeStepState,
   validateFormat2StepState,
+  validateFormat2StepStateStrict,
 } from "../src/workflow/stateful-validate.js";
 import type {
   IntegerParameterModel,
+  SectionParameterModel,
   TextParameterModel,
   ToolParameterModel,
 } from "../src/schema/bundle-types.js";
+
+function sectionParam(name: string, parameters: ToolParameterModel[]): SectionParameterModel {
+  return {
+    name,
+    parameter_type: "gx_section",
+    hidden: false,
+    label: null,
+    help: null,
+    argument: null,
+    is_dynamic: false,
+    parameters,
+  };
+}
 
 function intParam(name: string, optional = false): IntegerParameterModel {
   return {
@@ -106,5 +121,18 @@ describe("validateFormat2StepState", () => {
       expect(err).toBeInstanceOf(ConversionValidationFailure);
       expect((err as ConversionValidationFailure).phase).toBe("post");
     }
+  });
+});
+
+describe("validateFormat2StepStateStrict", () => {
+  it("returns a located diagnostic (does not throw) for a scalar in a section", () => {
+    const inputs: ToolParameterModel[] = [sectionParam("advanced", [textParam("opt")])];
+    const diags = validateFormat2StepStateStrict(inputs, { advanced: "not_a_dict" });
+
+    expect(diags).toHaveLength(1);
+    expect(diags[0].severity).toBe("error");
+    expect(diags[0].path).toBe("advanced");
+    expect(diags[0].message).toContain("expected a nested object or list");
+    expect(diags[0].message).not.toContain("legacy parameter encoding"); // walker jargon dropped
   });
 });

@@ -20,6 +20,7 @@ import "../schema/parameters/index.js";
 import { createFieldModel } from "../schema/model-factory.js";
 import type { ToolParameterBundleModel, ToolParameterModel } from "../schema/bundle-types.js";
 import { injectConnectionsIntoState, stripConnectedValues } from "./state-merge.js";
+import { StringContainerError } from "./walker.js";
 
 export type ValidationPhase = "pre" | "post";
 
@@ -126,6 +127,20 @@ export interface ToolStateDiagnostic {
 }
 
 /**
+ * Map a {@link StringContainerError} thrown by the walker into a located
+ * diagnostic. The walker joins nested paths with `|`; diagnostics use `.` to
+ * match the Effect Schema issue paths, so normalize the separator here.
+ */
+export function stringContainerDiagnostic(error: StringContainerError): ToolStateDiagnostic {
+  const path = error.path.split("|").join(".");
+  return {
+    path,
+    message: `Invalid value for "${path}": expected a nested object or list, not a plain value.`,
+    severity: "error",
+  };
+}
+
+/**
  * Strict variant of {@link validateFormat2StepState}: reports unknown keys as
  * diagnostics rather than silently ignoring them.
  *
@@ -142,7 +157,17 @@ export function validateFormat2StepStateStrict(
   if (!model) return [];
 
   const state = deepClone(format2State);
-  stripConnectedValues(inputs, state);
+  // The walker rejects a scalar where a container is expected by throwing; the
+  // strict validator's contract is to *return* diagnostics, so map it instead
+  // of letting it crash the whole validation pass.
+  try {
+    stripConnectedValues(inputs, state);
+  } catch (error) {
+    if (error instanceof StringContainerError) {
+      return [stringContainerDiagnostic(error)];
+    }
+    throw error;
+  }
 
   const decode = S.decodeUnknownEither(model as S.Schema<unknown>, { onExcessProperty: "error" });
   const result = decode(state);

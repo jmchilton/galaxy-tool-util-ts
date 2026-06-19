@@ -2,11 +2,13 @@ import type { ParsedTool } from "./schema/parsed-tool.js";
 import type { ToolParameterModel } from "./schema/bundle-types.js";
 import {
   ConversionValidationFailure,
+  stringContainerDiagnostic,
   validateFormat2StepState,
   validateFormat2StepStateStrict,
   validateNativeStepState,
   type ToolStateDiagnostic,
 } from "./workflow/stateful-validate.js";
+import { StringContainerError } from "./workflow/walker.js";
 
 // Re-export so consumers can import the type from this module without
 // needing to know its definition lives in stateful-validate.
@@ -43,6 +45,9 @@ export class ToolStateValidator {
       if (e instanceof ConversionValidationFailure) {
         return e.issues.map((msg) => ({ path: "", message: msg, severity: "error" as const }));
       }
+      if (e instanceof StringContainerError) {
+        return [stringContainerDiagnostic(e)];
+      }
       throw e;
     }
   }
@@ -61,6 +66,9 @@ export class ToolStateValidator {
     } catch (e) {
       if (e instanceof ConversionValidationFailure) {
         return e.issues.map((msg) => ({ path: "", message: msg, severity: "error" as const }));
+      }
+      if (e instanceof StringContainerError) {
+        return [stringContainerDiagnostic(e)];
       }
       throw e;
     }

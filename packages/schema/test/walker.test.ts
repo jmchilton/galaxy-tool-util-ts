@@ -4,6 +4,7 @@ import {
   walkFormat2State,
   SKIP_VALUE,
   UnknownKeyError,
+  StringContainerError,
 } from "../src/workflow/walker.js";
 import type {
   ToolParameterModel,
@@ -466,6 +467,33 @@ describe("walkNativeState", () => {
       expect(() => walkNativeState({}, [section], state, identity)).toThrow(
         /legacy parameter encoding/,
       );
+    });
+
+    it("throws a typed StringContainerError carrying param path and type", () => {
+      const section = sectionParam("advanced", [textParam("opt")]);
+      const state = { advanced: "oops" };
+      try {
+        walkNativeState({}, [section], state, identity);
+        expect.fail("should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(StringContainerError);
+        const e = err as StringContainerError;
+        expect(e.path).toBe("advanced");
+        expect(e.parameterType).toBe("gx_section");
+      }
+    });
+
+    it("includes the nested prefix in the path for a string container inside a section", () => {
+      const inner = sectionParam("inner", [textParam("opt")]);
+      const outer = sectionParam("outer", [inner]);
+      const state = { outer: { inner: "oops" } };
+      try {
+        walkNativeState({}, [outer], state, identity);
+        expect.fail("should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(StringContainerError);
+        expect((err as StringContainerError).path).toBe("outer|inner");
+      }
     });
   });
 });
