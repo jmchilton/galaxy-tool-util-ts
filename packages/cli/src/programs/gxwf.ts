@@ -45,13 +45,19 @@ const handlers: HandlerRegistry = {
   mermaid: (
     file: string,
     output: string | undefined,
-    opts: { comments?: boolean; annotateConnections?: boolean; cacheDir?: string },
+    opts: {
+      comments?: boolean;
+      annotateConnections?: boolean;
+      cacheDir?: string;
+      draftOverlay?: boolean;
+    },
   ) =>
     runMermaid(file, {
       output,
       comments: opts.comments,
       annotateConnections: opts.annotateConnections,
       cacheDir: opts.cacheDir,
+      draftOverlay: opts.draftOverlay,
     }),
   cytoscapeJs: (
     file: string,

@@ -369,6 +369,10 @@
         {
           "flags": "--cache-dir <dir>",
           "description": "Tool cache directory (used by --annotate-connections)"
+        },
+        {
+          "flags": "--no-draft-overlay",
+          "description": "Disable planned/concrete styling for draft workflows (render as plain)"
         }
       ]
     },

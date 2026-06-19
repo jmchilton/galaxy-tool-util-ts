@@ -50,4 +50,10 @@ export {
   type ExpansionOptions,
 } from "./expanded.js";
 export { flattenCommentData, unflattenCommentData } from "./comments.js";
-export { resolveSourceReference, UNLABELED_INPUT_PREFIX, UNLABELED_STEP_PREFIX } from "./labels.js";
+export {
+  resolveSourceReference,
+  stepRenderIdentity,
+  rawStepRenderIdentity,
+  UNLABELED_INPUT_PREFIX,
+  UNLABELED_STEP_PREFIX,
+} from "./labels.js";

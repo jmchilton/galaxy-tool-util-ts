@@ -41,6 +41,41 @@ export class Labels {
 }
 
 /**
+ * Render identity of a normalized step — the key visualizers (mermaid,
+ * cytoscape) use to address a step's node and to resolve edge endpoints.
+ *
+ * This is `label || id`, mirroring how the format2 dict-step key flows into
+ * the normalized model (`_normalizeSteps` sets `label = key` when no explicit
+ * label is present, so `label || id` collapses to the dict key in the common
+ * case). The raw-side counterpart `rawStepRenderIdentity` derives the SAME
+ * identity from an un-normalized step dict, so a classifier walking the raw
+ * draft (e.g. `resolveDraftOverlay`) keys its overlay the same way the
+ * builders look nodes up.
+ */
+export function stepRenderIdentity(step: { label?: string | null; id: string }): string {
+  return step.label || step.id;
+}
+
+/**
+ * Raw-side counterpart of {@link stepRenderIdentity}. `iterKey` is the key the
+ * raw-step iterator yielded (the dict map key for dict-form steps, or
+ * `label || id` for list-form steps). An explicit `label:` on the step dict
+ * overrides it — matching what normalization keeps and what the builders key
+ * off.
+ */
+export function rawStepRenderIdentity(step: unknown, iterKey: string): string {
+  if (
+    typeof step === "object" &&
+    step !== null &&
+    typeof (step as Record<string, unknown>).label === "string" &&
+    ((step as Record<string, unknown>).label as string).length > 0
+  ) {
+    return (step as Record<string, unknown>).label as string;
+  }
+  return iterKey;
+}
+
+/**
  * Parse a source reference into [step_label_or_id, output_name].
  *
  * Tries matching known labels first to handle labels containing '/'.

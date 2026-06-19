@@ -251,6 +251,15 @@ export {
   type NextStepResult,
   /** Trim a draft workflow to its concrete subset; cascade drops + multi-source rewrites. */
   extractConcreteSubset,
+  /** Build a planned/concrete overlay from a raw draft for visualizers (mermaid/cytoscape). */
+  resolveDraftOverlay,
+  /** Shared class-name token marking planned (draft) nodes/edges. */
+  PLANNED_CLASS,
+  type DraftOverlay,
+  type DraftPlannedReason,
+  /** Render identity of a step (`label || id`), shared by detectDraft overlay + visualizers. */
+  stepRenderIdentity,
+  rawStepRenderIdentity,
   type DropReason,
   type DroppedStep,
   type DroppedOutput,

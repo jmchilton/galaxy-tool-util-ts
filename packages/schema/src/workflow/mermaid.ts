@@ -4,11 +4,22 @@
  * Port of gxformat2/mermaid/_builder.py.
  */
 
+import type { DraftOverlay } from "./draft-checks.js";
+import {
+  isDraftWorkflow,
+  isTodoSentinel,
+  PLANNED_CLASS,
+  resolveDraftOverlay,
+} from "./draft-checks.js";
 import type { EdgeAnnotation } from "./edge-annotation.js";
 import { edgeAnnotationKey } from "./edge-annotation.js";
 import { ensureFormat2 } from "./normalized/ensure.js";
 import type { NormalizedFormat2Workflow } from "./normalized/format2.js";
-import { isUnlabeledStep, resolveSourceReference } from "./normalized/labels.js";
+import {
+  isUnlabeledStep,
+  resolveSourceReference,
+  stepRenderIdentity,
+} from "./normalized/labels.js";
 
 type Shape = readonly [string, string];
 
@@ -39,6 +50,14 @@ export interface MermaidOptions {
    * provided, edges with map-over depth or reductions are styled distinctly.
    */
   edgeAnnotations?: Map<string, EdgeAnnotation>;
+  /**
+   * Overlay marking planned (draft) nodes/edges for distinct styling.
+   *   - omitted (`undefined`): auto-detect — a `GalaxyWorkflowDraft` input
+   *     resolves its own overlay, a concrete workflow renders unchanged.
+   *   - a `DraftOverlay`: use it verbatim.
+   *   - `null`: force plain rendering even for a draft (the CLI escape hatch).
+   */
+  draftOverlay?: DraftOverlay | null;
 }
 
 function sanitizeLabel(label: string): string {
@@ -99,6 +118,16 @@ export function workflowToMermaid(
       ? (workflow as NormalizedFormat2Workflow)
       : ensureFormat2(workflow);
 
+  // Resolve the draft overlay from the RAW input (normalization above strips
+  // `_plan_*` and rewrites the class). `undefined` → auto-detect; `null` →
+  // caller forced plain rendering.
+  const overlay =
+    opts.draftOverlay === undefined
+      ? isDraftWorkflow(workflow)
+        ? resolveDraftOverlay(workflow)
+        : undefined
+      : (opts.draftOverlay ?? undefined);
+
   const lines: string[] = ["graph LR"];
 
   const inputIds = new Map<string, string>();
@@ -115,10 +144,12 @@ export function workflowToMermaid(
 
   const stepIds = new Map<string, string>();
   const stepLines = new Map<string, string>();
+  const plannedNodeIds: string[] = [];
   wf.steps.forEach((step, i) => {
     const nodeId = `step_${i}`;
-    const stepLabel = step.label || step.id;
+    const stepLabel = stepRenderIdentity(step);
     stepIds.set(stepLabel, nodeId);
+    if (overlay?.plannedSteps.has(stepLabel)) plannedNodeIds.push(nodeId);
 
     let toolId = step.tool_id ?? null;
     if (toolId && toolId.startsWith(MAIN_TS_PREFIX)) {
@@ -170,7 +201,7 @@ export function workflowToMermaid(
   let edgeIndex = 0;
   wf.steps.forEach((step, i) => {
     const nodeId = `step_${i}`;
-    const targetLabel = step.label || step.id;
+    const targetLabel = stepRenderIdentity(step);
     for (const stepInput of step.in) {
       if (stepInput.source == null) continue;
       const inputId = stepInput.id || "";
@@ -186,7 +217,16 @@ export function workflowToMermaid(
         const annotation = opts.edgeAnnotations?.get(
           edgeAnnotationKey(sourceLabel, outputName, targetLabel, inputId),
         );
-        const { line, linkStyle } = _renderEdge(sourceId, nodeId, annotation, edgeIndex);
+        // An edge is planned when either endpoint step is planned, or a port it
+        // touches is still a TODO sentinel. Gated on overlay presence so
+        // concrete workflows render byte-identically.
+        const planned =
+          overlay != null &&
+          (overlay.plannedSteps.has(sourceLabel) ||
+            overlay.plannedSteps.has(targetLabel) ||
+            isTodoSentinel(outputName) ||
+            isTodoSentinel(inputId));
+        const { line, linkStyle } = _renderEdge(sourceId, nodeId, annotation, planned, edgeIndex);
         lines.push(`    ${line}`);
         if (linkStyle) linkStyles.push(linkStyle);
         edgeIndex++;
@@ -198,30 +238,72 @@ export function workflowToMermaid(
     lines.push(`    ${ls}`);
   }
 
+  if (overlay != null && plannedNodeIds.length > 0) {
+    lines.push(`    classDef ${PLANNED_CLASS} ${PLANNED_NODE_STYLE};`);
+    lines.push(`    class ${plannedNodeIds.join(",")} ${PLANNED_CLASS};`);
+  }
+
   return lines.join("\n");
 }
 
+const PLANNED_NODE_STYLE = "fill:#fafafa,stroke:#b0b0b0,stroke-dasharray:5 5,color:#777";
+const PLANNED_EDGE_STROKE = "#b0b0b0";
+const PLANNED_EDGE_DASH = "5 5";
+
+interface EdgeStyle {
+  stroke?: string;
+  strokeWidth?: number;
+  dashArray?: string;
+}
+
+/**
+ * Render one edge as a line plus an optional `linkStyle`. The line shape
+ * encodes annotation semantics (map-over `==>`, reduction `-.->`); planned-ness
+ * folds into a SINGLE merged `linkStyle` (mermaid permits only one per index).
+ * A planned-but-unannotated edge becomes a neutral grey dashed link.
+ */
 function _renderEdge(
   sourceId: string,
   targetId: string,
   annotation: EdgeAnnotation | undefined,
+  planned: boolean,
   edgeIndex: number,
 ): { line: string; linkStyle: string | null } {
-  if (!annotation || (annotation.mapDepth === 0 && !annotation.reduction)) {
+  const annotated = annotation != null && (annotation.mapDepth > 0 || annotation.reduction);
+
+  let line: string;
+  const style: EdgeStyle = {};
+  if (annotated && annotation!.reduction) {
+    const label = annotation!.mapping ? sanitizeLabel(`reduce ${annotation!.mapping}`) : "reduce";
+    line = `${sourceId} -. "${label}" .-> ${targetId}`;
+    style.stroke = "#a55";
+    style.dashArray = "6 4";
+  } else if (annotated) {
+    const label = sanitizeLabel(annotation!.mapping ?? "map");
+    line = `${sourceId} ==>|"${label}"| ${targetId}`;
+    style.stroke = "#5a8";
+    style.strokeWidth = 2 + annotation!.mapDepth;
+  } else if (planned) {
+    line = `${sourceId} -.-> ${targetId}`;
+  } else {
     return { line: `${sourceId} --> ${targetId}`, linkStyle: null };
   }
-  if (annotation.reduction) {
-    const label = annotation.mapping ? sanitizeLabel(`reduce ${annotation.mapping}`) : "reduce";
-    return {
-      line: `${sourceId} -. "${label}" .-> ${targetId}`,
-      linkStyle: `linkStyle ${edgeIndex} stroke:#a55,stroke-dasharray:6 4`,
-    };
+
+  if (planned) {
+    // Mark planned-ness without clobbering an annotation's hue: only fill in
+    // stroke/dash that the annotation left unset.
+    style.stroke ??= PLANNED_EDGE_STROKE;
+    style.dashArray ??= PLANNED_EDGE_DASH;
   }
-  const labelText = annotation.mapping ?? "map";
-  const label = sanitizeLabel(labelText);
-  const width = 2 + annotation.mapDepth;
-  return {
-    line: `${sourceId} ==>|"${label}"| ${targetId}`,
-    linkStyle: `linkStyle ${edgeIndex} stroke:#5a8,stroke-width:${width}px`,
-  };
+
+  return { line, linkStyle: formatLinkStyle(edgeIndex, style) };
+}
+
+function formatLinkStyle(edgeIndex: number, style: EdgeStyle): string | null {
+  const props: string[] = [];
+  if (style.stroke != null) props.push(`stroke:${style.stroke}`);
+  if (style.strokeWidth != null) props.push(`stroke-width:${style.strokeWidth}px`);
+  if (style.dashArray != null) props.push(`stroke-dasharray:${style.dashArray}`);
+  if (props.length === 0) return null;
+  return `linkStyle ${edgeIndex} ${props.join(",")}`;
 }
