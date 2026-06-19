@@ -68,6 +68,7 @@ const handlers: HandlerRegistry = {
       annotateConnections?: boolean;
       cacheDir?: string;
       layout?: string;
+      draftOverlay?: boolean;
     },
   ) =>
     runCytoscapeJs(file, {
@@ -77,6 +78,7 @@ const handlers: HandlerRegistry = {
       annotateConnections: opts.annotateConnections,
       cacheDir: opts.cacheDir,
       layout: opts.layout,
+      draftOverlay: opts.draftOverlay,
     }),
   validateTree: runValidateTree,
   lintTree: runLintTree,

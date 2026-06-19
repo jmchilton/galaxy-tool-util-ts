@@ -164,6 +164,7 @@ export {
   type CytoscapeListItem,
   type CytoscapeNode,
   type CytoscapeNodeData,
+  type CytoscapePlanReason,
   type CytoscapePosition,
 } from "./cytoscape-models.js";
 export {

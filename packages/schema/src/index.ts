@@ -223,6 +223,7 @@ export {
   type CytoscapeListItem,
   type CytoscapeNode,
   type CytoscapeNodeData,
+  type CytoscapePlanReason,
   type CytoscapePosition,
   /** Cross-language layout names + topological position computation. */
   COL_STRIDE,

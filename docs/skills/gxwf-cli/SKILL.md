@@ -211,6 +211,7 @@ Render a Galaxy workflow as Cytoscape.js elements (JSON or standalone HTML)
 | `--json` | Force JSON output regardless of file extension |
 | `--annotate-connections` | Encode map-over depth and reductions on edges (runs the connection validator) |
 | `--cache-dir <dir>` | Tool cache directory (used by --annotate-connections) |
+| `--no-draft-overlay` | Disable planned/concrete styling for draft workflows (render as plain) |
 
 ### `validate-tree <dir>`
 

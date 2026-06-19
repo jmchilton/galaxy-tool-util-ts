@@ -21,6 +21,8 @@ export interface CytoscapeJsCommandOptions {
   annotateConnections?: boolean;
   cacheDir?: string;
   layout?: string;
+  /** When false, force plain rendering for draft workflows (no planned styling). */
+  draftOverlay?: boolean;
 }
 
 export function renderHtml(elements: CytoscapeElements, layout: LayoutName = "preset"): string {
@@ -63,7 +65,10 @@ export async function runCytoscapeJs(
     ? await resolveEdgeAnnotations(data, { cacheDir: opts.cacheDir })
     : undefined;
 
-  const elements = cytoscapeElements(data, { edgeAnnotations, layout });
+  // Drafts auto-detect planned styling; `--no-draft-overlay` (draftOverlay ===
+  // false) forces plain. Concrete workflows are unaffected either way.
+  const draftOverlay = opts.draftOverlay === false ? null : undefined;
+  const elements = cytoscapeElements(data, { edgeAnnotations, layout, draftOverlay });
   const format = chooseFormat(opts);
 
   // JSON shape: bare list when layout=preset (Python parity), wrapped
