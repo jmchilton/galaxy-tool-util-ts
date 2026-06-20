@@ -1,7 +1,7 @@
 /**
  * Parity coverage for the lifted preloader. `resolveEdgeAnnotationsWithCache`
  * goes through `@galaxy-tool-util/connection-validation::buildGetToolInfo` via
- * the CLI's `loadCachedTool` adapter — this asserts the wired path produces
+ * the CLI's `resolveTool` adapter — this asserts the wired path produces
  * the EdgeAnnotation map we expect for a workflow with a known data edge.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";

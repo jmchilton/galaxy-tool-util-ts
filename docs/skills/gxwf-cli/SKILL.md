@@ -25,6 +25,8 @@ Validate Galaxy workflow files (structure + optional tool state)
 | `--format <fmt>` | Force format: native or format2 (auto-detected by default) |
 | `--no-tool-state` | Skip tool state validation |
 | `--cache-dir <dir>` | Tool cache directory |
+| `--offline` | Do not fetch uncached tools; read only the local cache (uncached tools are skipped) |
+| `--galaxy-url <url>` | Galaxy instance to try as a tool source after the ToolShed when fetching uncached tools |
 | `--mode <mode>` | Validation backend: effect (default) or json-schema (default: `effect`) |
 | `--tool-schema-dir <dir>` | Directory of pre-exported per-tool JSON Schemas (for offline json-schema mode) |
 | `--json` | Output structured JSON report |
@@ -64,6 +66,8 @@ Validate a draft Galaxy workflow (class: GalaxyWorkflowDraft)
 | `--report-markdown [file]` | Write Markdown report to file (or stdout if omitted) |
 | `--concrete` | Additionally extract the concrete subset and run the regular `gxwf validate` checks on it |
 | `--cache-dir <dir>` | Tool cache directory (for --concrete tool-state validation) |
+| `--offline` | Do not fetch uncached tools; read only the local cache (uncached tools are skipped) |
+| `--galaxy-url <url>` | Galaxy instance to try as a tool source after the ToolShed when fetching uncached tools |
 | `--no-tool-state` | Skip tool-state validation in the --concrete pass (default: enabled when --concrete is set) |
 | `--connections` | Validate connection-type compatibility on the --concrete subset (collection algebra, map-over) |
 | `--strict` | Shorthand for --strict-structure --strict-encoding --strict-state |

@@ -110,6 +110,24 @@ export class ToolCache {
   }
 
   /**
+   * Network-free lookup by tool id + version. Resolves coordinates, computes the
+   * cache key, and returns the cached tool alongside the key it lives under, or
+   * null on a miss (including an unpinned id that can't be keyed offline). The
+   * canonical "is this tool already cached?" read — callers must not re-derive
+   * the key themselves.
+   */
+  async loadByToolId(
+    toolId: string,
+    toolVersion?: string | null,
+  ): Promise<{ tool: ParsedTool; key: string } | null> {
+    const coords = this.resolveToolCoordinates(toolId, toolVersion);
+    if (coords.version === null) return null;
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, coords.version);
+    const tool = await this.loadCached(key);
+    return tool === null ? null : { tool, key };
+  }
+
+  /**
    * Load the raw cached payload without ParsedTool decoding.
    * Returns null only if the key is missing — surfaces stale or malformed entries
    * the inspector needs to render explicitly.

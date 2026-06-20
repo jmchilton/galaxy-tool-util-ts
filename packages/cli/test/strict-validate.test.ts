@@ -162,7 +162,7 @@ describe("validate --strict-state", () => {
     };
     const wfPath = join(ctx.tmpDir, "missing.ga");
     await writeFile(wfPath, JSON.stringify(workflow));
-    await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, strictState: true });
+    await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, strictState: true, offline: true });
 
     expect(process.exitCode).toBe(2);
     const errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");

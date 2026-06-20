@@ -6,7 +6,13 @@ import * as YAML from "yaml";
 import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
 import type { SingleValidationReport } from "@galaxy-tool-util/schema";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
-import { seedAllTools, SIMPLE_TOOL_ID, DATA_TOOL_ID, COND_TOOL_ID } from "./helpers/fixtures.js";
+import {
+  seedAllTools,
+  textOnlyTool,
+  SIMPLE_TOOL_ID,
+  DATA_TOOL_ID,
+  COND_TOOL_ID,
+} from "./helpers/fixtures.js";
 
 describe("validate-workflow (connection-aware)", () => {
   let ctx: CliTestContext;
@@ -369,7 +375,7 @@ describe("validate-workflow (connection-aware)", () => {
       };
       const wfPath = join(ctx.tmpDir, "missing.ga");
       await writeFile(wfPath, JSON.stringify(workflow));
-      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, offline: true });
 
       const output = ctx.warnSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("skipped");
@@ -598,6 +604,92 @@ describe("validate-workflow (connection-aware)", () => {
       expect(report.encoding_errors.length).toBeGreaterThan(0);
       expect(report.encoding_errors[0]).toContain("legacy parameter encoding");
       expect(report.encoding_errors[0]).toContain("mode");
+    });
+  });
+
+  describe("tool fetching (default online, --offline opts out)", () => {
+    let originalFetch: typeof fetch;
+    beforeEach(() => {
+      originalFetch = globalThis.fetch;
+    });
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    // A tool the seeded cache never holds → resolved only by fetching.
+    const FETCH_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/fetched/fetched_tool";
+    function fetchToolWorkflow() {
+      return {
+        a_galaxy_workflow: "true",
+        "format-version": "0.1",
+        steps: {
+          "0": {
+            id: 0,
+            type: "tool",
+            label: "Fetched",
+            tool_id: FETCH_TOOL_ID,
+            tool_version: "1.0",
+            tool_state: JSON.stringify({ input_text: "hi" }),
+            input_connections: {},
+          },
+        },
+      };
+    }
+    function parse(): SingleValidationReport {
+      return JSON.parse(ctx.logSpy.mock.calls.map((c) => c[0]).join("\n"));
+    }
+
+    it("fetches an uncached tool from the ToolShed and validates it", async () => {
+      let calls = 0;
+      let requested = "";
+      globalThis.fetch = (async (url: string | URL) => {
+        calls++;
+        requested = String(url);
+        return new Response(JSON.stringify(textOnlyTool), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }) as typeof fetch;
+
+      const wfPath = join(ctx.tmpDir, "fetched.ga");
+      await writeFile(wfPath, JSON.stringify(fetchToolWorkflow()));
+      await runValidateWorkflow(wfPath, { json: true, cacheDir: join(ctx.tmpDir, "empty") });
+
+      const report = parse();
+      expect(calls).toBeGreaterThan(0);
+      expect(requested).toContain("/api/tools/test~fetched~fetched_tool/versions/1.0");
+      expect(report.results[0].status).toBe("ok");
+    });
+
+    it("--offline never fetches; the uncached tool is skipped", async () => {
+      let calls = 0;
+      globalThis.fetch = (async () => {
+        calls++;
+        return new Response(JSON.stringify(textOnlyTool), { status: 200 });
+      }) as typeof fetch;
+
+      const wfPath = join(ctx.tmpDir, "offline.ga");
+      await writeFile(wfPath, JSON.stringify(fetchToolWorkflow()));
+      await runValidateWorkflow(wfPath, {
+        json: true,
+        offline: true,
+        cacheDir: join(ctx.tmpDir, "empty2"),
+      });
+
+      const report = parse();
+      expect(calls).toBe(0);
+      expect(report.results[0].status).toBe("skip_tool_not_found");
+    });
+
+    it("a fetch failure leaves the step skipped (graceful, not a crash)", async () => {
+      globalThis.fetch = (async () => new Response("not found", { status: 404 })) as typeof fetch;
+
+      const wfPath = join(ctx.tmpDir, "fetchfail.ga");
+      await writeFile(wfPath, JSON.stringify(fetchToolWorkflow()));
+      await runValidateWorkflow(wfPath, { json: true, cacheDir: join(ctx.tmpDir, "empty3") });
+
+      const report = parse();
+      expect(report.results[0].status).toBe("skip_tool_not_found");
     });
   });
 

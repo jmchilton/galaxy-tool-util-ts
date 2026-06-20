@@ -47,6 +47,14 @@
           "description": "Tool cache directory"
         },
         {
+          "flags": "--offline",
+          "description": "Do not fetch uncached tools; read only the local cache (uncached tools are skipped)"
+        },
+        {
+          "flags": "--galaxy-url <url>",
+          "description": "Galaxy instance to try as a tool source after the ToolShed when fetching uncached tools"
+        },
+        {
           "flags": "--mode <mode>",
           "description": "Validation backend: effect (default) or json-schema",
           "default": "effect"
@@ -125,6 +133,14 @@
         {
           "flags": "--cache-dir <dir>",
           "description": "Tool cache directory (for --concrete tool-state validation)"
+        },
+        {
+          "flags": "--offline",
+          "description": "Do not fetch uncached tools; read only the local cache (uncached tools are skipped)"
+        },
+        {
+          "flags": "--galaxy-url <url>",
+          "description": "Galaxy instance to try as a tool source after the ToolShed when fetching uncached tools"
         },
         {
           "flags": "--no-tool-state",

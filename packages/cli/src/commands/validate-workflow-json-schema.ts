@@ -43,7 +43,7 @@ import type {
   StepValidationResult,
 } from "./validate-workflow.js";
 import { isEmptyState } from "./validate-workflow.js";
-import { isResolveError, loadCachedTool } from "./resolve-tool.js";
+import { isResolveError, resolveTool } from "./resolve-tool.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
 
@@ -383,7 +383,7 @@ async function _validateNativeStepJsonSchema(
   cache: ToolCache,
   toolSchemaDir?: string,
 ): Promise<StepValidationResult> {
-  const resolved = await loadCachedTool(cache, toolId, toolVersion);
+  const resolved = await resolveTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
@@ -538,7 +538,7 @@ async function _validateFormat2StepJsonSchema(
   cache: ToolCache,
   toolSchemaDir?: string,
 ): Promise<StepValidationResult> {
-  const resolved = await loadCachedTool(cache, toolId, toolVersion);
+  const resolved = await resolveTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
     const reason =
       resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;

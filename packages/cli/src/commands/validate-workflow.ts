@@ -1,5 +1,4 @@
-import type { ToolCache } from "@galaxy-tool-util/core";
-import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
+import type { ToolCache, ToolInfoService } from "@galaxy-tool-util/core";
 import {
   createFieldModel,
   GalaxyWorkflowSchema,
@@ -26,7 +25,12 @@ import {
 import * as ParseResult from "effect/ParseResult";
 import * as S from "effect/Schema";
 import { dirname } from "node:path";
-import { isResolveError, loadCachedTool } from "./resolve-tool.js";
+import {
+  isResolveError,
+  resolveTool,
+  describeResolveError,
+  makeValidationResolver,
+} from "./resolve-tool.js";
 import { createDefaultResolver } from "./url-resolver.js";
 import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
@@ -43,6 +47,8 @@ export interface ValidateWorkflowOptions extends StrictOptions {
   format?: string;
   toolState?: boolean;
   cacheDir?: string;
+  offline?: boolean;
+  galaxyUrl?: string;
   mode?: ValidationMode;
   toolSchemaDir?: string;
   json?: boolean;
@@ -168,7 +174,7 @@ export async function runValidateWorkflow(
     return;
   }
 
-  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
+  const { cache, service } = makeValidationResolver(opts);
   await cache.index.load();
 
   let results: StepValidationResult[] = [];
@@ -176,9 +182,9 @@ export async function runValidateWorkflow(
 
   try {
     if (format === "native") {
-      results = await validateNativeSteps(data, cache, "", expansionOpts);
+      results = await validateNativeSteps(data, cache, "", expansionOpts, service);
     } else {
-      results = await validateFormat2Steps(data, cache, "", expansionOpts);
+      results = await validateFormat2Steps(data, cache, "", expansionOpts, service);
     }
   } catch (error) {
     // Catch legacy encoding errors thrown by walker and capture them
@@ -263,15 +269,17 @@ export async function validateNativeSteps(
   cache: ToolCache,
   prefix = "",
   expansionOpts?: ExpansionOptions,
+  service?: ToolInfoService,
 ): Promise<StepValidationResult[]> {
   const expanded = await expandedNative(data, expansionOpts);
-  return _validateNativeWorkflow(expanded, cache, prefix);
+  return _validateNativeWorkflow(expanded, cache, prefix, service);
 }
 
 async function _validateNativeWorkflow(
   wf: NormalizedNativeWorkflow,
   cache: ToolCache,
   prefix: string,
+  service?: ToolInfoService,
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
@@ -280,7 +288,12 @@ async function _validateNativeWorkflow(
 
     // Recurse into subworkflows
     if (step.type === "subworkflow" && step.subworkflow) {
-      const subResults = await _validateNativeWorkflow(step.subworkflow, cache, `${stepLabel}.`);
+      const subResults = await _validateNativeWorkflow(
+        step.subworkflow,
+        cache,
+        `${stepLabel}.`,
+        service,
+      );
       results.push(...subResults);
       continue;
     }
@@ -289,7 +302,7 @@ async function _validateNativeWorkflow(
     if (!toolId) continue;
     const toolVersion = step.tool_version ?? null;
 
-    const result = await _validateNativeStep(step, stepLabel, toolId, toolVersion, cache);
+    const result = await _validateNativeStep(step, stepLabel, toolId, toolVersion, cache, service);
     results.push(result);
   }
 
@@ -302,11 +315,11 @@ async function _validateNativeStep(
   toolId: string,
   toolVersion: string | null,
   cache: ToolCache,
+  service?: ToolInfoService,
 ): Promise<StepValidationResult> {
-  const resolved = await loadCachedTool(cache, toolId, toolVersion);
+  const resolved = await resolveTool(cache, toolId, toolVersion, service);
   if (isResolveError(resolved)) {
-    const reason =
-      resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
+    const reason = describeResolveError(resolved);
     return {
       step: stepLabel,
       tool_id: toolId,
@@ -401,15 +414,17 @@ export async function validateFormat2Steps(
   cache: ToolCache,
   prefix = "",
   expansionOpts?: ExpansionOptions,
+  service?: ToolInfoService,
 ): Promise<StepValidationResult[]> {
   const expanded = await expandedFormat2(data, expansionOpts);
-  return _validateFormat2Workflow(expanded, cache, prefix);
+  return _validateFormat2Workflow(expanded, cache, prefix, service);
 }
 
 async function _validateFormat2Workflow(
   wf: NormalizedFormat2Workflow,
   cache: ToolCache,
   prefix: string,
+  service?: ToolInfoService,
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
@@ -423,6 +438,7 @@ async function _validateFormat2Workflow(
         step.run as NormalizedFormat2Workflow,
         cache,
         `${stepLabel}.`,
+        service,
       );
       results.push(...subResults);
       continue;
@@ -432,7 +448,7 @@ async function _validateFormat2Workflow(
     if (!toolId) continue;
     const toolVersion = step.tool_version ?? null;
 
-    const result = await _validateFormat2Step(step, stepLabel, toolId, toolVersion, cache);
+    const result = await _validateFormat2Step(step, stepLabel, toolId, toolVersion, cache, service);
     results.push(result);
   }
 
@@ -445,11 +461,11 @@ async function _validateFormat2Step(
   toolId: string,
   toolVersion: string | null,
   cache: ToolCache,
+  service?: ToolInfoService,
 ): Promise<StepValidationResult> {
-  const resolved = await loadCachedTool(cache, toolId, toolVersion);
+  const resolved = await resolveTool(cache, toolId, toolVersion, service);
   if (isResolveError(resolved)) {
-    const reason =
-      resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
+    const reason = describeResolveError(resolved);
     return {
       step: stepLabel,
       tool_id: toolId,
@@ -607,7 +623,7 @@ async function _detectNativeEncodingErrors(
     const toolId = step.tool_id;
     if (!toolId) continue;
 
-    const resolved = await loadCachedTool(cache, toolId, step.tool_version ?? null);
+    const resolved = await resolveTool(cache, toolId, step.tool_version ?? null);
     if (isResolveError(resolved)) continue;
 
     const inputs = resolved.tool.inputs as ToolParameterBundleModel["parameters"];
