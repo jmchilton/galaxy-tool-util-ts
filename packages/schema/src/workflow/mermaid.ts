@@ -144,11 +144,18 @@ export function workflowToMermaid(
 
   const stepIds = new Map<string, string>();
   const stepLines = new Map<string, string>();
+  // Maps a source-reference key (a step's dict `id` OR its render identity) to
+  // the render identity the node is keyed by. `in:` sources address steps by
+  // `id` (e.g. `meme/out`) even when the step carries a distinct `label:`, so
+  // resolution must fold the `id` back to the render identity.
+  const identityByKey = new Map<string, string>();
   const plannedNodeIds: string[] = [];
   wf.steps.forEach((step, i) => {
     const nodeId = `step_${i}`;
     const stepLabel = stepRenderIdentity(step);
     stepIds.set(stepLabel, nodeId);
+    identityByKey.set(stepLabel, stepLabel);
+    if (step.id) identityByKey.set(step.id, stepLabel);
     if (overlay?.plannedSteps.has(stepLabel)) plannedNodeIds.push(nodeId);
 
     let toolId = step.tool_id ?? null;
@@ -193,8 +200,13 @@ export function workflowToMermaid(
     lines.push("    end");
   });
 
-  // Build the set of known labels for source resolution: input ids + step labels/ids.
-  const knownLabels = new Set<string>([...inputIds.keys(), ...stepIds.keys()]);
+  // Build the set of known labels for source resolution: input ids + step
+  // render identities + step dict ids (so `id/out`-form sources split right).
+  const knownLabels = new Set<string>([
+    ...inputIds.keys(),
+    ...stepIds.keys(),
+    ...identityByKey.keys(),
+  ]);
 
   const seenEdges = new Set<string>();
   const linkStyles: string[] = [];
@@ -207,7 +219,10 @@ export function workflowToMermaid(
       const inputId = stepInput.id || "";
       const sources = Array.isArray(stepInput.source) ? stepInput.source : [stepInput.source];
       for (const source of sources) {
-        const [sourceLabel, outputName] = resolveSourceReference(source, knownLabels);
+        const [sourceRef, outputName] = resolveSourceReference(source, knownLabels);
+        // Fold a step `id` reference back to the render identity the node and
+        // overlay are keyed by; input refs (not in the map) pass through.
+        const sourceLabel = identityByKey.get(sourceRef) ?? sourceRef;
         const sourceId = inputIds.get(sourceLabel) ?? stepIds.get(sourceLabel);
         if (!sourceId) continue;
         const edgeKey = `${sourceId}->${nodeId}`;

@@ -98,11 +98,23 @@ export function cytoscapeElements(
   const inputsOffset = wf.inputs.length;
   const knownLabels = new Set<string>();
   for (const inp of wf.inputs) knownLabels.add(inp.id);
-  for (const step of wf.steps) knownLabels.add(stepRenderIdentity(step));
+  // Maps a source-reference key (a step's dict `id` OR its render identity) to
+  // the render identity the node id is keyed by. `in:` sources address steps by
+  // `id` (e.g. `meme/out`) even when the step has a distinct `label:`.
+  const identityByKey = new Map<string, string>();
+  for (const step of wf.steps) {
+    const identity = stepRenderIdentity(step);
+    knownLabels.add(identity);
+    identityByKey.set(identity, identity);
+    if (step.id) {
+      knownLabels.add(step.id);
+      identityByKey.set(step.id, identity);
+    }
+  }
 
   wf.steps.forEach((step, i) => {
     nodes.push(_stepNode(step, i + inputsOffset, overlay));
-    edges.push(..._stepEdges(step, knownLabels, opts.edgeAnnotations, overlay));
+    edges.push(..._stepEdges(step, knownLabels, identityByKey, opts.edgeAnnotations, overlay));
   });
 
   const elements: CytoscapeElements = { nodes, edges };
@@ -237,6 +249,7 @@ function _stepNode(
 function _stepEdges(
   step: NormalizedFormat2Step,
   knownLabels: Set<string>,
+  identityByKey: Map<string, string>,
   edgeAnnotations: Map<string, EdgeAnnotation> | undefined,
   overlay: DraftOverlay | undefined,
 ): CytoscapeEdge[] {
@@ -247,7 +260,10 @@ function _stepEdges(
     const inputId = stepInput.id || "unknown";
     const sources = Array.isArray(stepInput.source) ? stepInput.source : [stepInput.source];
     for (const source of sources) {
-      const [sourceLabel, outputName] = resolveSourceReference(source, knownLabels);
+      const [sourceRef, outputName] = resolveSourceReference(source, knownLabels);
+      // Fold a step `id` reference back to the render identity the node id is
+      // keyed by; input refs (not in the map) pass through unchanged.
+      const sourceLabel = identityByKey.get(sourceRef) ?? sourceRef;
       const output = outputName === "output" ? null : outputName;
       const edgeId = `${stepId}__${inputId}__from__${sourceLabel}`;
       const edge: CytoscapeEdge = {

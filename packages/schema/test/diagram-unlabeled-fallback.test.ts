@@ -56,3 +56,52 @@ describe("diagram unlabeled-step fallback", () => {
     expect(toolNode!.data.label).toBe("tool:devteam/cat1/cat1/1.0.0");
   });
 });
+
+// A format2 step references an upstream step by its dict `id` (`upstream/out`)
+// even when that upstream carries a distinct human `label:`. The builders key
+// nodes by render identity (`label || id`), so source resolution must fold the
+// `id` reference back to that identity — otherwise the step→step edge is
+// silently dropped and the downstream node renders orphaned.
+const FORMAT2_LABELED_REF = {
+  class: "GalaxyWorkflow",
+  inputs: { in_file: { type: "data" } },
+  outputs: {},
+  steps: {
+    upstream: {
+      label: "Upstream Tool With Label",
+      tool_id: "toolshed.g2.bx.psu.edu/repos/iuc/up/up/1.0",
+      tool_version: "1.0",
+      in: { input: "in_file" },
+      out: [{ id: "out" }],
+    },
+    downstream: {
+      label: "Downstream Tool With Label",
+      tool_id: "toolshed.g2.bx.psu.edu/repos/iuc/down/down/1.0",
+      tool_version: "1.0",
+      in: { data: "upstream/out" },
+      out: [{ id: "result" }],
+    },
+  },
+};
+
+describe("diagram source resolution by step id", () => {
+  it("mermaid: edge to a labeled step referenced by its dict id is rendered", () => {
+    const diagram = workflowToMermaid(FORMAT2_LABELED_REF);
+    // upstream → downstream is step_0 → step_1 (inputs are not steps here).
+    expect(diagram).toContain("step_0 --> step_1");
+  });
+
+  it("cytoscape: edge to a labeled step referenced by its dict id targets real nodes", () => {
+    const els = cytoscapeElements(FORMAT2_LABELED_REF);
+    const nodeIds = new Set(els.nodes.map((n) => n.data.id));
+    const edge = els.edges.find(
+      (e) => e.data.target === "Downstream Tool With Label" && e.data.input === "data",
+    );
+    expect(edge).toBeDefined();
+    // Source resolves to the upstream node's render identity, not the raw `id`.
+    expect(edge!.data.source).toBe("Upstream Tool With Label");
+    // No dangling endpoints — both ends are real nodes.
+    expect(nodeIds.has(edge!.data.source)).toBe(true);
+    expect(nodeIds.has(edge!.data.target as string)).toBe(true);
+  });
+});
