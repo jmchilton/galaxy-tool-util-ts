@@ -1,5 +1,37 @@
 # @galaxy-tool-util/schema
 
+## 1.10.0
+
+### Patch Changes
+
+- [#148](https://github.com/jmchilton/galaxy-tool-util-ts/pull/148) [`fdbed78`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/fdbed78dd2d47aca019f3ed967820c3cfe119f4a) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(toNative): stop emitting the workflow step uuid as `tool_uuid` on shed tool steps
+
+  `toNative` was assigning each shed tool step's workflow `uuid` to `tool_uuid`.
+  `tool_uuid` is a reference to a dynamic / inline-defined (user) tool, not a
+  workflow-step identifier, so Galaxy's importer tried to resolve a tool by that
+  uuid and aborted the whole import with `ObjectNotFound`. Every multi-shed-tool
+  workflow produced by `gxwf convert --to native` was un-importable.
+
+  `tool_uuid` is now omitted entirely for shed tools, and on the user-defined
+  branch carries the tool representation's `uuid` (or `null` when none is
+  provided). The step `uuid` is still emitted unchanged. Fixes [#147](https://github.com/jmchilton/galaxy-tool-util-ts/issues/147).
+
+- [#152](https://github.com/jmchilton/galaxy-tool-util-ts/pull/152) [`3999c83`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3999c83e7436f439da26c552b151ac839bdbf6a5) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(diagram): render step→step edges into steps that carry an explicit label
+
+  The mermaid and cytoscape builders key step nodes by render identity
+  (`label || id`) but format2 `in:` sources address upstream steps by their dict
+  `id` (e.g. `drhip.in.meme_files: meme/meme_output`). When a step had a distinct
+  human `label:`, source resolution could not match the `id` reference, so every
+  step→step edge into that step was silently dropped — `workflowToMermaid` left
+  the downstream node orphaned and `cytoscapeElements` emitted a dangling edge to
+  a non-existent node id. Input→step edges were unaffected (inputs are referenced
+  by id and keyed by id), so diagrams looked deceptively sparse.
+
+  Both builders now index steps by their dict `id` as well as their render
+  identity and fold an `id`-form source reference back to that identity before
+  node lookup, preserving the planned/concrete draft-overlay styling on the
+  recovered edges.
+
 ## 1.9.0
 
 ### Minor Changes
