@@ -33,7 +33,6 @@
  *       (class !== GalaxyWorkflowDraft, schema decode error)
  */
 import { dirname } from "node:path";
-import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   buildSingleDraftValidationReport,
   checkStrictEncoding,
@@ -51,6 +50,7 @@ import {
   type ValidationStepResult,
 } from "@galaxy-tool-util/schema";
 import { decodeStructureErrors, validateFormat2Steps } from "./validate-workflow.js";
+import { makeValidationResolver } from "./resolve-tool.js";
 import { readWorkflowFile } from "./workflow-io.js";
 import { findStdoutSinkConflict, writeReportHtml, writeReportOutput } from "./report-output.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
@@ -64,6 +64,8 @@ export interface DraftValidateOptions extends StrictOptions {
   reportMarkdown?: string | boolean;
   concrete?: boolean;
   cacheDir?: string;
+  offline?: boolean;
+  galaxyUrl?: string;
   toolState?: boolean;
   connections?: boolean;
 }
@@ -190,12 +192,12 @@ async function runConcretePass(
   // Tool-state defaults to ON (matches `gxwf validate`); --no-tool-state opts out.
   const toolStateEnabled = opts.toolState !== false;
   if (toolStateEnabled) {
-    const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
+    const { cache, service } = makeValidationResolver(opts);
     await cache.index.load();
     const expansionOpts: ExpansionOptions = {
       resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
     };
-    const stepResults = await validateFormat2Steps(trimmed, cache, "", expansionOpts);
+    const stepResults = await validateFormat2Steps(trimmed, cache, "", expansionOpts, service);
     report.tool_state = {
       results: stepResults,
       summary: summarize(stepResults),
@@ -212,7 +214,7 @@ async function runConcretePass(
     }
   } else if (opts.connections) {
     // --connections without tool-state still needs a cache to look up tools.
-    const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
+    const { cache } = makeValidationResolver(opts);
     await cache.index.load();
     report.connection_report = await buildConnectionReport(trimmed, cache);
   }

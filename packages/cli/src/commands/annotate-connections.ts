@@ -16,7 +16,7 @@ import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import type { ParsedTool } from "@galaxy-tool-util/schema";
 
 import { buildGetToolInfo } from "./connection-validation.js";
-import { isResolveError, loadCachedTool } from "./resolve-tool.js";
+import { isResolveError, resolveTool } from "./resolve-tool.js";
 
 export interface ResolveEdgeAnnotationsOptions {
   cacheDir?: string;
@@ -63,7 +63,7 @@ export async function resolveEdgeAnnotationsAndSpecsWithCache(
 }> {
   const specs = new Map<string, ResolvedToolSpec>();
   const getToolInfo = await _buildGetToolInfo(data, async (id, version) => {
-    const r = await loadCachedTool(cache, id, version);
+    const r = await resolveTool(cache, id, version);
     if (isResolveError(r)) return null;
     const ver = r.tool.version ?? version ?? "";
     specs.set(`${id}@${ver}`, { tool_id: id, tool_version: ver, parsed: r.tool });

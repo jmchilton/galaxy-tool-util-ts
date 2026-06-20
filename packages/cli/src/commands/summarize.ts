@@ -8,7 +8,7 @@ import {
   type ToolParameterBundleModel,
 } from "@galaxy-tool-util/schema";
 import * as JSONSchema from "effect/JSONSchema";
-import { isResolveError, loadCachedTool } from "./resolve-tool.js";
+import { isResolveError, resolveTool } from "./resolve-tool.js";
 
 export interface SummarizeOptions {
   toolVersion?: string;
@@ -75,7 +75,7 @@ export async function buildToolSummaryManifest(
   const cacheDir = getCacheDir(opts.cacheDir);
   const cache = makeNodeToolCache({ cacheDir });
   await cache.index.load();
-  const result = await loadCachedTool(cache, toolId, opts.toolVersion);
+  const result = await resolveTool(cache, toolId, opts.toolVersion);
   if (isResolveError(result)) {
     if (result.kind === "no_version") {
       console.error(`No version specified for tool: ${toolId}`);

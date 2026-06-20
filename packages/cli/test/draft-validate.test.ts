@@ -447,11 +447,12 @@ steps:
 `;
     const wfPath = join(ctx.tmpDir, "with-toolstate.gxwf.yml");
     await writeFile(wfPath, wf);
-    // Point at an empty cache dir so we exercise the tool-state loop without
-    // depending on a particular tool being cached locally.
+    // Point at an empty cache dir and stay offline so we exercise the tool-state
+    // loop without depending on a particular tool being cached or fetchable.
     await runDraftValidate(wfPath, {
       json: true,
       concrete: true,
+      offline: true,
       cacheDir: join(ctx.tmpDir, "empty-cache"),
     });
 
@@ -487,6 +488,7 @@ steps:
       json: true,
       concrete: true,
       strictState: true,
+      offline: true,
       cacheDir: join(ctx.tmpDir, "empty-cache"),
     });
 

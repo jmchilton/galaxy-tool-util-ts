@@ -55,6 +55,20 @@ export class ToolInfoService {
   }
 
   async getToolInfo(toolId: string, toolVersion?: string | null): Promise<ParsedTool | null> {
+    const resolved = await this.resolveTool(toolId, toolVersion);
+    return resolved === null ? null : resolved.tool;
+  }
+
+  /**
+   * Like {@link getToolInfo}, but also returns the cache key the tool lives under
+   * — the authoritative key this service caches with. Callers needing the key
+   * should use this rather than re-deriving it, so the subtle version-keying
+   * below stays owned in one place.
+   */
+  async resolveTool(
+    toolId: string,
+    toolVersion?: string | null,
+  ): Promise<{ tool: ParsedTool; key: string } | null> {
     const coords = this.cache.resolveToolCoordinates(toolId, toolVersion);
     // `keyVersion` keys the cache entry. The `_default_` sentinel is a stable handle
     // for an unversioned stock/built-in request and must survive as the key so the
@@ -74,7 +88,7 @@ export class ToolInfoService {
     // Check storage cache (ToolCache checks memory first internally). Done before any
     // `_default_` version discovery so cache hits stay network-free.
     const cached = await this.cache.loadCached(key);
-    if (cached !== null) return cached;
+    if (cached !== null) return { tool: cached, key };
 
     // Cache miss — pick the concrete version actually requested from the remote. For a
     // `_default_` request, resolve one now while keeping the key as `_default_`; fall back
@@ -120,7 +134,7 @@ export class ToolInfoService {
           sourceLabel,
           sourceUrl,
         );
-        return parsedTool;
+        return { tool: parsedTool, key };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.debug(
@@ -180,10 +194,12 @@ export class ToolInfoService {
     if (tool === null) {
       throw new Error(`Failed to fetch tool: ${toolId}`);
     }
-    // Mirror getToolInfo's keying: `_default_` and explicit pins key as-is
-    // (coords.version); an unpinned ToolShed tool (coords.version === null) keys by the
-    // resolved version. Must not key a stock tool by tool.version — its entry lives under
-    // the `_default_` key, not `~<version>`.
+    // Key derivation here is intentionally independent of getToolInfo's persistence
+    // (callers/tests treat getToolInfo as a mockable fetch seam that need not write
+    // the cache). Mirror its keying: `_default_` and explicit pins key as-is
+    // (coords.version); an unpinned ToolShed tool (coords.version === null) keys by
+    // the resolved version. Must not key a stock tool by tool.version — its entry
+    // lives under the `_default_` key, not `~<version>`.
     //
     // Known edge (tracked): a stock entry is keyed under `_default_` but its index/display
     // version is the concrete one (e.g. `1.1.1`). A caller that refetches by the *display*

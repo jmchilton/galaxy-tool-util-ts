@@ -20,7 +20,7 @@ import {
 import type { ToolCache } from "@galaxy-tool-util/core";
 import type { ConnectionValidationReport } from "@galaxy-tool-util/schema";
 
-import { isResolveError, loadCachedTool } from "./resolve-tool.js";
+import { isResolveError, resolveTool } from "./resolve-tool.js";
 
 export { collectToolRefs };
 export type { ToolRef } from "@galaxy-tool-util/connection-validation";
@@ -38,7 +38,7 @@ export async function buildGetToolInfo(
   cache: ToolCache,
 ): Promise<GetToolInfo> {
   return _buildGetToolInfo(data, async (id, version) => {
-    const r = await loadCachedTool(cache, id, version);
+    const r = await resolveTool(cache, id, version);
     return isResolveError(r) ? null : r.tool;
   });
 }

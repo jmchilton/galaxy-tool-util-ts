@@ -25,7 +25,7 @@ import {
   type ToolParameterBundleModel,
   type WorkflowFormat,
 } from "@galaxy-tool-util/schema";
-import { isResolveError, loadCachedTool } from "./resolve-tool.js";
+import { isResolveError, resolveTool } from "./resolve-tool.js";
 
 type ToolInputs = ToolParameterBundleModel["parameters"];
 
@@ -67,7 +67,7 @@ export async function loadToolInputsForWorkflow(
   for (const [toolId, version] of refs) {
     const key = toolKey(toolId, version);
     if (loaded.has(key)) continue;
-    const resolved = await loadCachedTool(cache, toolId, version);
+    const resolved = await resolveTool(cache, toolId, version);
     if (isResolveError(resolved)) {
       const reason =
         resolved.kind === "no_version" ? `no version for ${toolId}` : `${toolId} not in cache`;
