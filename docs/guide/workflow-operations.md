@@ -269,6 +269,8 @@ format2 stores inputs separately from `steps` and renumbers tool steps on the wa
 
 Draft workflows (`class: GalaxyWorkflowDraft`) describe a workflow that is still being planned — some steps may be placeholders carrying `_plan_*` annotations instead of concrete tool state. `gxwf` has three operations for working with them. Drafts are format2 only; native (`.ga`) inputs are rejected.
 
+> For what the draft format *is* — its concrete-topology rules, sentinels, planning fields, and the operation set that lets it plug into pipelines, IDEs, and agents — see [Draft Workflow Format](guide/draft-format.md). This section covers the CLI commands.
+
 ```bash
 # Validate a draft (structure of drafty + concrete steps)
 gxwf draft-validate my-workflow.gxwf.yml

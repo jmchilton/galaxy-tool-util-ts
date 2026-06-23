@@ -117,6 +117,8 @@ const expanded = await expandedNative(rawWorkflow, { resolver });
 
 A _draft workflow_ (`class: GalaxyWorkflowDraft`) is an in-progress Format2 workflow carrying `TODO_<hint>` sentinels in place of unresolved tool ids, ports, and edges, plus optional `_plan_*` planning fields on individual steps. Drafts are the substrate for the `gxwf draft-*` CLI commands and for autonomous agents iterating a workflow toward runnable.
 
+> For a format-level overview — concrete-topology rules, sentinel grammar, planning fields, and how the operation set plugs into pipelines, IDEs, and agents — see the [Draft Workflow Format](guide/draft-format.md) guide. This section documents the library functions.
+
 Schema definitions live in `raw/gxformat2-draft.{ts,effect.ts}`; pure-logic helpers live in `workflow/draft-checks.ts`.
 
 ### Sentinel constants
