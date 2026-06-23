@@ -13,6 +13,7 @@
 - **Guides**
   - [Workflow Operations](guide/workflow-operations.md)
   - [Workflow Validation](guide/workflow-validation.md)
+  - [Draft Workflow Format](guide/draft-format.md)
   - [Tool Caching](guide/tool-caching.md)
   - [Proxy Server Setup](guide/proxy-server.md)
   - [Configuration](guide/configuration.md)
