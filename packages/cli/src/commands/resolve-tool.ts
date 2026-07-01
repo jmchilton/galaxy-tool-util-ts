@@ -1,4 +1,10 @@
-import { type ToolCache, type ToolInfoService, cacheKey } from "@galaxy-tool-util/core";
+import {
+  type ToolCache,
+  type ToolInfoService,
+  cacheKey,
+  normalizeShortTrsToolId,
+  parseToolshedToolId,
+} from "@galaxy-tool-util/core";
 import { makeNodeToolCache, makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
 import type { ParsedTool } from "@galaxy-tool-util/schema";
 
@@ -9,18 +15,64 @@ export interface ResolvedTool {
 
 export type ResolveError =
   | { kind: "no_version"; toolId: string }
-  | { kind: "not_cached"; toolId: string; key: string; fetchAttempted?: boolean };
+  | { kind: "not_cached"; toolId: string; key: string; fetchAttempted?: boolean }
+  | {
+      kind: "stock_version_mismatch";
+      toolId: string;
+      pinnedVersion: string;
+      resolvedVersion: string;
+    };
 
 export function isResolveError(r: ResolvedTool | ResolveError): r is ResolveError {
   return "kind" in r;
 }
 
-/** Human-readable reason a tool failed to resolve, for skip messages. */
+/**
+ * Whether a resolve error should fail validation rather than skip it. A
+ * hallucinated stock-tool pin (`stock_version_mismatch`) is a hard error — the
+ * tool exists but not at the pinned version; every other miss is a skip.
+ */
+export function resolveErrorIsFailure(err: ResolveError): boolean {
+  return err.kind === "stock_version_mismatch";
+}
+
+/** Human-readable reason a tool failed to resolve, for skip/fail messages. */
 export function describeResolveError(err: ResolveError): string {
   if (err.kind === "no_version") return `no version for ${err.toolId}`;
+  if (err.kind === "stock_version_mismatch") {
+    return `${err.toolId} pinned version ${err.pinnedVersion} does not exist (resolves to ${err.resolvedVersion})`;
+  }
   return err.fetchAttempted
     ? `${err.toolId} not in cache (fetch failed)`
     : `${err.toolId} not in cache`;
+}
+
+/**
+ * A stock/built-in Galaxy tool id: a bare id carrying no owner/repo — `Cut1`,
+ * `Show beginning1`, collection ops, `__APPLY_RULES__`. Neither a full ToolShed
+ * id nor the `owner/repo/tool` short form. The ToolShed can still resolve these
+ * by bare id even though it doesn't host them as repos.
+ */
+function isStockToolId(toolId: string): boolean {
+  return parseToolshedToolId(toolId) === null && normalizeShortTrsToolId(toolId) === null;
+}
+
+/**
+ * A pinned stock version missed. Ask the shed for the tool version-agnostically:
+ * if it resolves to a *different* concrete version, the pin is a hallucination —
+ * flag it as a hard error. If the tool can't be resolved at all (offline, unknown
+ * to the shed) we can't prove the pin wrong, so return null and let it skip.
+ */
+async function detectStockVersionMismatch(
+  service: ToolInfoService,
+  toolId: string,
+  pinnedVersion: string,
+): Promise<ResolveError | null> {
+  const anyVersion = await service.resolveTool(toolId, null);
+  if (anyVersion === null) return null;
+  const resolvedVersion = anyVersion.tool.version;
+  if (resolvedVersion == null || resolvedVersion === pinnedVersion) return null;
+  return { kind: "stock_version_mismatch", toolId, pinnedVersion, resolvedVersion };
 }
 
 /**
@@ -39,6 +91,13 @@ export async function resolveTool(
   if (service) {
     const resolved = await service.resolveTool(toolId, version ?? null);
     if (resolved !== null) return resolved;
+    // A pinned stock version that missed may be a hallucinated guess. If the shed
+    // resolves the tool at a different version, treat the pin as a hard error
+    // rather than a silent skip (closes the #139 draft-validate loophole).
+    if (version != null && isStockToolId(toolId)) {
+      const mismatch = await detectStockVersionMismatch(service, toolId, version);
+      if (mismatch !== null) return mismatch;
+    }
     return notCached(cache, toolId, version, true);
   }
   const hit = await cache.loadByToolId(toolId, version ?? null);

@@ -29,6 +29,7 @@ import {
   isResolveError,
   resolveTool,
   describeResolveError,
+  resolveErrorIsFailure,
   makeValidationResolver,
 } from "./resolve-tool.js";
 import { createDefaultResolver } from "./url-resolver.js";
@@ -324,7 +325,7 @@ async function _validateNativeStep(
       step: stepLabel,
       tool_id: toolId,
       version: toolVersion,
-      status: "skip_tool_not_found",
+      status: resolveErrorIsFailure(resolved) ? "fail" : "skip_tool_not_found",
       errors: [reason],
     };
   }
@@ -470,7 +471,7 @@ async function _validateFormat2Step(
       step: stepLabel,
       tool_id: toolId,
       version: toolVersion,
-      status: "skip_tool_not_found",
+      status: resolveErrorIsFailure(resolved) ? "fail" : "skip_tool_not_found",
       errors: [reason],
     };
   }
