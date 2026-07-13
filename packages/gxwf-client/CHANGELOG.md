@@ -1,5 +1,12 @@
 # @galaxy-tool-util/gxwf-client
 
+## 1.10.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @galaxy-tool-util/gxwf-web@1.10.1
+
 ## 1.10.0
 
 ### Patch Changes
