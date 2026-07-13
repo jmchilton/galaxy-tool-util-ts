@@ -245,6 +245,70 @@ describe("validateDraft", () => {
     );
   });
 
+  it("accepts a bare step ref as `<step>/output` shorthand (matches validate/gxformat2)", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { in1: { type: "data" } },
+      outputs: { out1: { outputSource: "step1" } },
+      steps: {
+        step1: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "in1" },
+          out: [{ id: "output" }],
+        },
+        step2: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "step1" },
+          out: [{ id: "output" }],
+        },
+      },
+    });
+    expect(r.topologyErrors).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it("errors on a bare ref matching neither an input nor a step", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { in1: { type: "data" } },
+      outputs: { out1: { outputSource: "nope" } },
+      steps: {
+        step1: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "in1" },
+          out: [{ id: "output" }],
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.topologyErrors.map((e) => e.message)).toContain(
+      `workflow output "out1" source "nope" does not match any declared workflow input or step`,
+    );
+  });
+
+  it("errors on a bare step ref whose step has no `output` port", () => {
+    const r = validateDraft({
+      class: DRAFT_CLASS,
+      inputs: { in1: { type: "data" } },
+      outputs: { out1: { outputSource: "step1" } },
+      steps: {
+        step1: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "in1" },
+          out: [{ id: "renamed" }],
+        },
+      },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.topologyErrors.map((e) => e.message)).toContain(
+      `workflow output "out1" source "step1" references unknown port "output" on step "step1"`,
+    );
+  });
+
   it("allows TODO_<hint> ports as edge sources (drafts may reference unresolved ports)", () => {
     const r = validateDraft({
       class: DRAFT_CLASS,
@@ -620,6 +684,34 @@ describe("nextDraftStep", () => {
       "TODO[out.TODO]: assign the real wrapper output port name",
     ]);
   });
+
+  it("orders a bare-step dependency before its dependent (topological, not just alphabetical)", () => {
+    // `alpha` depends on `zebra` via the bare-step shorthand `zebra` (= zebra/output).
+    // Both need work; zebra must be surfaced first topologically even though alpha
+    // sorts earlier alphabetically. Pre-fix the bare dep wasn't recorded as an edge,
+    // so both landed at level 0 and alphabetical tie-break wrongly picked alpha.
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: {},
+      steps: {
+        alpha: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { x: "zebra" },
+          out: [{ id: "output" }],
+        },
+        zebra: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { x: "reads" },
+          out: [{ id: "output" }],
+        },
+      },
+    };
+    const result = nextDraftStep(wf);
+    expect(result).toMatchObject({ draft: true, step: ["zebra"] });
+  });
 });
 
 describe("fix-ups (review feedback)", () => {
@@ -877,6 +969,38 @@ describe("extractConcreteSubset", () => {
     ).c?.in as Record<string, unknown>;
     // 1 surviving ref collapses to string form on the source field.
     expect(cIn.joined).toEqual({ source: "b/out1" });
+  });
+
+  it("cascade-drops a step (and its output) sourced from a dropped step via a bare-step ref", () => {
+    // `keep`'s only source is the bare-step shorthand `bad` (= bad/output), and
+    // the workflow output is `outputSource: keep`. When the TODO step `bad` is
+    // dropped, `keep` must cascade-drop and the output must drop with it. Pre-fix
+    // the bare refs read as workflow-input refs (always alive), leaving `keep`
+    // and the output dangling on a removed step in the "concrete" subset.
+    const wf = {
+      class: DRAFT_CLASS,
+      inputs: { reads: { type: "data" } },
+      outputs: { out1: { outputSource: "keep" } },
+      steps: {
+        bad: {
+          tool_id: "TODO",
+          tool_version: "TODO",
+          in: { input1: "reads" },
+          out: [{ id: "output" }],
+        },
+        keep: {
+          tool_id: "cat1",
+          tool_version: "1.0.0",
+          in: { input1: "bad" },
+          out: [{ id: "output" }],
+        },
+      },
+    };
+    const r = extractConcreteSubset(wf);
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["bad"], ["keep"]]);
+    expect(r.dropped_outputs.map((o) => o.label)).toEqual(["out1"]);
+    const steps = (r.workflow as Record<string, unknown>).steps as Record<string, unknown>;
+    expect(Object.keys(steps)).toEqual([]);
   });
 
   it("rewrites multi-source inputs to the surviving ref subset (list carrier with 2 left)", () => {

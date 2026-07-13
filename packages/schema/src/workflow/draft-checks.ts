@@ -12,7 +12,7 @@
 import { Either, ParseResult, Schema } from "effect";
 
 import { GalaxyWorkflowDraftSchema } from "./raw/gxformat2-draft.effect.js";
-import { rawStepRenderIdentity } from "./normalized/labels.js";
+import { rawStepRenderIdentity, resolveSourceReference } from "./normalized/labels.js";
 
 export const TODO_SENTINEL_PATTERN = /^TODO(_[a-zA-Z0-9_]+)?$/;
 // Heuristic for TODO-shaped strings — flags malformed sentinels (TODO-foo,
@@ -203,10 +203,11 @@ function walkDraftSteps(
   // reach this workflow (i.e. the outer step's path); inner outputs collect
   // at that prefix. For the outermost call `prefix` is [], so outer outputs
   // collect at path [].
+  const stepLabels = collectStepLabels(workflow.steps);
   for (const [label, output] of iterateOutputs(workflow.outputs)) {
     const ref = readOutputSource(output);
     if (ref == null) continue;
-    const [, port] = splitSourceRef(ref);
+    const [, port] = splitSourceRef(ref, stepLabels);
     if (port != null && isTodoSentinel(port)) {
       todos.push({
         path: prefix,
@@ -293,10 +294,29 @@ function readOutputSource(output: unknown): string | null {
   return typeof src === "string" ? src : null;
 }
 
-function splitSourceRef(ref: string): [string, string | null] {
+/**
+ * Anything answering membership for a step label — a `Set` of labels or the
+ * `livePorts`/`stepIndex` maps keyed by label both qualify.
+ */
+type StepLabelSet = { has(label: string): boolean };
+
+function collectStepLabels(steps: unknown): Set<string> {
+  const labels = new Set<string>();
+  for (const [label] of iterateSteps(steps)) labels.add(label);
+  return labels;
+}
+
+/**
+ * Parse a source ref into `[label, port]`. A slash-less ref that names a step
+ * is gxformat2 shorthand for `<step>/output` (matching `resolveSourceReference`
+ * on the concrete path and `checkEdgeRef`); anything else is a workflow-input
+ * ref, reported port-less (`null`) so callers can treat it as a non-step edge.
+ */
+function splitSourceRef(ref: string, stepLabels: StepLabelSet): [string, string | null] {
   const slash = ref.indexOf("/");
-  if (slash < 0) return [ref, null];
-  return [ref.slice(0, slash), ref.slice(slash + 1)];
+  if (slash >= 0) return [ref.slice(0, slash), ref.slice(slash + 1)];
+  if (stepLabels.has(ref)) return [ref, "output"];
+  return [ref, null];
 }
 
 function* iterateStepOutIds(out: unknown): Iterable<string> {
@@ -452,6 +472,9 @@ function walkDraftValidation(
 
   // Workflow outputs: labels must be concrete; outputSource resolves.
   const stepIndex = buildStepIndex(workflow.steps);
+  // The label universe every edge ref resolves against — built once per level
+  // and shared by the output and step-input edge checks below.
+  const knownLabels = new Set<string>([...inputLabels, ...stepIndex.keys()]);
   for (const [label, output] of iterateMapOrArrayLabeled(workflow.outputs)) {
     if (isTodoSentinel(label)) {
       topologyErrors.push({
@@ -469,6 +492,7 @@ function walkDraftValidation(
         `workflow output "${label}"`,
         stepIndex,
         inputLabels,
+        knownLabels,
         topologyErrors,
         semanticErrors,
       );
@@ -525,6 +549,7 @@ function walkDraftValidation(
           `step input "${inKey}"`,
           stepIndex,
           inputLabels,
+          knownLabels,
           topologyErrors,
           semanticErrors,
         );
@@ -604,36 +629,39 @@ function checkEdgeRef(
   context: string,
   stepIndex: Map<string, StepIndexEntry>,
   inputLabels: Set<string>,
+  knownLabels: Set<string>,
   topologyErrors: DraftValidationDiagnostic[],
   semanticErrors: DraftValidationDiagnostic[],
 ): void {
   checkTodoLike(ref, path, `${context} source "${ref}"`, semanticErrors);
-  const slash = ref.indexOf("/");
-  if (slash < 0) {
-    if (!inputLabels.has(ref)) {
+  // Parse via the shared resolver so draft-validate agrees with the concrete
+  // conversion path on what a source string means. A bare ref that names a
+  // step is gxformat2 shorthand for `<step>/output`; the resolver returns
+  // `[step, "output"]`, and matching known labels longest-first also handles
+  // labels that contain a slash.
+  const [label, port] = resolveSourceReference(ref, knownLabels);
+  // Consult steps before inputs so a label shared by both resolves the same way
+  // the concrete conversion path does: `_registerLabels` registers inputs first
+  // then steps into one map, so a step overwrites a colliding input and wins.
+  const entry = stepIndex.get(label);
+  if (entry != null) {
+    if (!entry.outPorts.has(port)) {
       topologyErrors.push({
         path,
-        message: `${context} source "${ref}" does not match any declared workflow input`,
+        message: `${context} source "${ref}" references unknown port "${port}" on step "${label}"`,
       });
     }
     return;
   }
-  const stepLabel = ref.slice(0, slash);
-  const port = ref.slice(slash + 1);
-  const entry = stepIndex.get(stepLabel);
-  if (entry == null) {
-    topologyErrors.push({
-      path,
-      message: `${context} source "${ref}" references unknown step "${stepLabel}"`,
-    });
+  if (inputLabels.has(label)) {
     return;
   }
-  if (!entry.outPorts.has(port)) {
-    topologyErrors.push({
-      path,
-      message: `${context} source "${ref}" references unknown port "${port}" on step "${stepLabel}"`,
-    });
-  }
+  // An explicit `<step>/<port>` ref names a step; a bare ref could have meant
+  // either an input or a step — keep each message accurate to the input.
+  const message = ref.includes("/")
+    ? `${context} source "${ref}" references unknown step "${label}"`
+    : `${context} source "${ref}" does not match any declared workflow input or step`;
+  topologyErrors.push({ path, message });
 }
 
 function* iterateStepInputEntries(input: unknown): Iterable<[string, unknown]> {
@@ -709,7 +737,7 @@ export function nextDraftStep(workflow: unknown): NextStepResult {
 
 function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): NextStepResult {
   const ordered = topoOrderedSteps(workflow.steps);
-  const outputRefs = collectOutputRefs(workflow.outputs);
+  const outputRefs = collectOutputRefs(workflow.outputs, collectStepLabels(workflow.steps));
 
   for (const [label, step] of ordered) {
     if (!isRecord(step)) continue;
@@ -759,9 +787,8 @@ function topoOrderedSteps(steps: unknown): Array<[string, unknown]> {
     const seen = new Set<string>();
     for (const [, inValue] of iterateStepInputEntries(step.in)) {
       for (const ref of extractSourceRefs(inValue)) {
-        const slash = ref.indexOf("/");
-        if (slash < 0) continue;
-        const depLabel = ref.slice(0, slash);
+        const [depLabel, port] = splitSourceRef(ref, stepLabels);
+        if (port == null) continue; // workflow-input ref — not a step edge
         if (depLabel !== label && stepLabels.has(depLabel)) {
           seen.add(depLabel);
         }
@@ -805,12 +832,12 @@ interface OutputRefIndex {
   byStepPort: Map<string, Map<string, Set<string>>>;
 }
 
-function collectOutputRefs(outputs: unknown): OutputRefIndex {
+function collectOutputRefs(outputs: unknown, stepLabels: StepLabelSet): OutputRefIndex {
   const byStepPort = new Map<string, Map<string, Set<string>>>();
   for (const [label, output] of iterateOutputs(outputs)) {
     const ref = readOutputSource(output);
     if (ref == null) continue;
-    const [stepLabel, port] = splitSourceRef(ref);
+    const [stepLabel, port] = splitSourceRef(ref, stepLabels);
     if (port == null) continue;
     let perPort = byStepPort.get(stepLabel);
     if (perPort == null) {
@@ -1174,7 +1201,7 @@ function checkStepCascade(
     let anyAlive = false;
     const localDeps: Array<[string, StepPath]> = [];
     for (const ref of refs) {
-      const [refStep, refPort] = splitSourceRef(ref);
+      const [refStep, refPort] = splitSourceRef(ref, stepLabels);
       if (refPort == null) {
         // Workflow input ref — always alive (workflow inputs are preserved verbatim).
         anyAlive = true;
@@ -1298,7 +1325,9 @@ function refIsDead(
   drops: Map<string, InternalDroppedStep>,
   livePorts: Map<string, Set<string>>,
 ): boolean {
-  const [refStep, refPort] = splitSourceRef(ref);
+  // livePorts is keyed by every step label at this level (dropped steps get an
+  // empty set), so it doubles as the step-label universe for splitSourceRef.
+  const [refStep, refPort] = splitSourceRef(ref, livePorts);
   if (refPort == null) return false;
   if (drops.has(refStep)) return true;
   const ports = livePorts.get(refStep);
@@ -1520,7 +1549,7 @@ function trimOutputsContainer(
     const ref = readOutputSource(value);
     if (ref == null) return true;
     if (!refIsDead(ref, drops, livePorts)) return true;
-    const [refStep] = splitSourceRef(ref);
+    const [refStep] = splitSourceRef(ref, livePorts);
     const drop = drops.get(refStep);
     const reason: DropReason =
       drop != null
