@@ -400,6 +400,9 @@ importers:
 
   packages/tool-xml:
     dependencies:
+      '@galaxy-tool-util/schema':
+        specifier: workspace:*
+        version: link:../schema
       fast-xml-parser:
         specifier: ^5.10.1
         version: 5.10.1

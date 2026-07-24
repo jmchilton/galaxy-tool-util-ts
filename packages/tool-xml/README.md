@@ -27,5 +27,25 @@ Behavior is verified against golden macro-expansion fixtures synced from Galaxy
 (`test/fixtures/macro-expansion/cases/`), compared structurally rather than
 byte-for-byte so the port need not reproduce Galaxy's XML serializer.
 
-Building the full `XmlToolSource` → `ParsedTool` front end on top of this
-expander is planned; see the repository's tool-parsing issue.
+On top of the expander, `XmlToolSource` ports the metadata-reading half of
+Galaxy's `galaxy.tool_util.parser.xml.XmlToolSource` — the `parse_*` accessors
+that don't need the input-parameter tree (id, version, name, description,
+profile, license, edam operations/topics, xrefs, citations, help, command):
+
+```ts
+import { loadXmlToolSource } from "@galaxy-tool-util/tool-xml";
+
+const src = loadXmlToolSource("tool.xml");
+src.parseId(); // "cat1"
+src.parseCitations(); // [{ type: "doi", content: "..." }]
+```
+
+Extraction is raw. In particular `parseCitations` does not yet apply the
+model-level validation Galaxy's pydantic models run when the `ParsedTool` is
+assembled — DOI/BibTeX shape checks, `doi:`-prefix stripping, and the
+profile-gated skip of malformed citations. A `doi:`-prefixed or malformed
+citation is passed through here rather than normalized or dropped.
+
+Assembling these (plus inputs/outputs, behind the `InputSource` seam) into a
+full `ParsedTool`, with that validation, is the remaining work; see the
+repository's tool-parsing issue.
