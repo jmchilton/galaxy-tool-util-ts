@@ -17,7 +17,8 @@
       "@galaxy-tool-util/gxwf-report-shell",
       "@galaxy-tool-util/workflow-graph",
       "@galaxy-tool-util/search",
-      "@galaxy-tool-util/connection-validation"
+      "@galaxy-tool-util/connection-validation",
+      "@galaxy-tool-util/tool-xml"
     ]
   ],
   "access": "public",

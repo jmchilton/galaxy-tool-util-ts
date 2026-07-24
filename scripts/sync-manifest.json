@@ -141,6 +141,19 @@
       ]
     },
     {
+      "name": "macro-expansion",
+      "label": "XML macro-expansion golden cases (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "test/unit/tool_util/tool_parsing/macro_expansion/cases/",
+          "dst": "packages/tool-xml/test/fixtures/macro-expansion/cases/",
+          "patterns": ["*.xml", "error"],
+          "recursive": true
+        }
+      ]
+    },
+    {
       "name": "wfstate-templates",
       "label": "workflow-state report templates (Galaxy)",
       "src_root": "galaxy_root",

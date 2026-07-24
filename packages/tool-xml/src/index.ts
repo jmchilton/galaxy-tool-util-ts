@@ -1,0 +1,9 @@
+export {
+  XmlElement,
+  parseXmlToTree,
+  canonicalize,
+  xmlReplace,
+  type CanonicalElement,
+} from "./element.js";
+export { expandMacros, XmlMacroDef, type ImportResolver } from "./macros.js";
+export { loadTool } from "./loader.js";

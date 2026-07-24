@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-user-tool-source-schema verify-user-tool-source-schema sync-workflow-fixtures sync-workflow-expectations sync-cytoscape-template sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-cytoscape-template check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-connection-type-cases check-sync-connection-type-cases sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all check-sync-draft-sentinel push-toolshed-search-fixtures
+.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-user-tool-source-schema verify-user-tool-source-schema sync-workflow-fixtures sync-workflow-expectations sync-cytoscape-template sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-cytoscape-template check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-connection-type-cases check-sync-connection-type-cases sync-macro-expansion check-sync-macro-expansion sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all check-sync-draft-sentinel push-toolshed-search-fixtures
 
 all: check test
 
@@ -173,6 +173,9 @@ sync-connection-workflows:
 sync-connection-type-cases:
 	node scripts/sync-fixtures.mjs --sync --group connection-type-cases
 
+sync-macro-expansion:
+	node scripts/sync-fixtures.mjs --sync --group macro-expansion
+
 # Serialize ParsedTool JSON for every tool_id referenced in synced connection
 # workflow fixtures. Requires a Galaxy venv with the tool-parsing deps.
 #   GALAXY_ROOT=~/projects/worktrees/galaxy/branch/wf_tool_state make sync-parsed-tools
@@ -216,6 +219,9 @@ check-sync-connection-workflows:
 
 check-sync-connection-type-cases:
 	node scripts/sync-fixtures.mjs --check --group connection-type-cases
+
+check-sync-macro-expansion:
+	node scripts/sync-fixtures.mjs --check --group macro-expansion
 
 # Verify parsed-tool JSON cache matches its recorded sha256 manifest. The cache
 # is generated (not rsync'd), so content drift is detected against the manifest
@@ -282,7 +288,7 @@ endif
 ifndef GXFORMAT2_ROOT
 	$(error GXFORMAT2_ROOT is not set. Point it at your gxformat2 checkout.)
 endif
-	$(MAKE) sync-golden sync-param-spec sync-test-format-schema sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-cytoscape-template sync-schema-rules sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations sync-wfstate-templates sync-connection-workflows sync-connection-type-cases sync-parsed-tools sync-glossary
+	$(MAKE) sync-golden sync-param-spec sync-test-format-schema sync-schema-sources sync-workflow-fixtures sync-workflow-expectations sync-cytoscape-template sync-schema-rules sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations sync-wfstate-templates sync-connection-workflows sync-connection-type-cases sync-macro-expansion sync-parsed-tools sync-glossary
 	$(MAKE) generate-schemas build-glossary
 	$(MAKE) verify-golden
 

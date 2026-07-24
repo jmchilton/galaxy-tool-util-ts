@@ -1,0 +1,50 @@
+{
+  "name": "@galaxy-tool-util/tool-xml",
+  "version": "1.10.1",
+  "description": "XML tool-source layer for Galaxy tools — macro expansion (port of galaxy.util.xml_macros) and XML parsing into ParsedTool",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmchilton/galaxy-tool-util-ts",
+    "directory": "packages/tool-xml"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ test/",
+    "format": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "format-fix": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
+  },
+  "keywords": [
+    "galaxy",
+    "tool",
+    "xml",
+    "macros"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "fast-xml-parser": "^5.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0"
+  }
+}
