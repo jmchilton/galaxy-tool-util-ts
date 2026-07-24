@@ -13,3 +13,4 @@ export {
   xmlToolSourceFromString,
   xmlToolSourceFromStringNoImports,
 } from "./tool-source.js";
+export { parseOutputs } from "./outputs.js";

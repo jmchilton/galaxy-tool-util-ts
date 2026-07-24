@@ -195,6 +195,39 @@ export function canonicalize(el: XmlElement): CanonicalElement {
 }
 
 /**
+ * Attribute-first text lookup — tries ``root``'s ``name`` attribute, then the
+ * ``<name>`` child element's text with line breaks collapsed
+ * (``"".join(splitlines())``) and the result trimmed; ``null`` if neither is
+ * present. The shared core of ``galaxy.util.xml_text``.
+ */
+export function xmlTextOrNull(root: XmlElement, name: string): string | null {
+  const attr = root.attrs.get(name);
+  if (attr) return attr;
+  const elem = root.findChild(name);
+  if (elem !== null && elem.text) {
+    return elem.text
+      .split(/\r\n|\r|\n/)
+      .join("")
+      .trim();
+  }
+  return null;
+}
+
+/** Port of ``galaxy.util.xml_text`` — {@link xmlTextOrNull} with a string default. */
+export function xmlText(root: XmlElement, name: string, defaultValue = ""): string {
+  return xmlTextOrNull(root, name) ?? defaultValue;
+}
+
+/**
+ * Port of ``galaxy.util.string_as_bool`` — truthy for ``true``/``yes``/``on``/``1``
+ * (case-insensitive), false otherwise (including ``undefined``/empty string).
+ */
+export function stringAsBool(value: string | undefined): boolean {
+  if (value === undefined) return false;
+  return ["true", "yes", "on", "1"].includes(value.toLowerCase());
+}
+
+/**
  * Insert deep copies of ``targets`` where ``query`` sits among its parent's
  * children, then remove ``query`` — port of ``xml_macros._xml_replace``.
  */

@@ -27,10 +27,12 @@ Behavior is verified against golden macro-expansion fixtures synced from Galaxy
 (`test/fixtures/macro-expansion/cases/`), compared structurally rather than
 byte-for-byte so the port need not reproduce Galaxy's XML serializer.
 
-On top of the expander, `XmlToolSource` ports the metadata-reading half of
-Galaxy's `galaxy.tool_util.parser.xml.XmlToolSource` — the `parse_*` accessors
-that don't need the input-parameter tree (id, version, name, description,
-profile, license, edam operations/topics, xrefs, citations, help, command):
+On top of the expander, `XmlToolSource` ports the parse accessors from Galaxy's
+`galaxy.tool_util.parser.xml.XmlToolSource` that don't need the input-parameter
+tree — the tool metadata (id, version, name, description, profile, license,
+edam operations/topics, xrefs, citations, help, command) and the `<outputs>`
+tree (`parseOutputs()` → the `ToolOutput` union: data / collection / expression
+outputs, with `discover_datasets`):
 
 ```ts
 import { loadXmlToolSource } from "@galaxy-tool-util/tool-xml";
@@ -38,14 +40,16 @@ import { loadXmlToolSource } from "@galaxy-tool-util/tool-xml";
 const src = loadXmlToolSource("tool.xml");
 src.parseId(); // "cat1"
 src.parseCitations(); // [{ type: "doi", content: "..." }]
+src.parseOutputs(); // [{ type: "data", name: "out1", format: "bam", ... }]
 ```
 
-Extraction is raw. In particular `parseCitations` does not yet apply the
-model-level validation Galaxy's pydantic models run when the `ParsedTool` is
-assembled — DOI/BibTeX shape checks, `doi:`-prefix stripping, and the
-profile-gated skip of malformed citations. A `doi:`-prefixed or malformed
-citation is passed through here rather than normalized or dropped.
+Extraction is raw — the model-level validation Galaxy's pydantic models run
+when the `ParsedTool` is assembled is not applied yet. `parseCitations` passes
+`doi:`-prefixed or malformed citations through rather than normalizing/dropping
+them (DOI/BibTeX shape checks, profile-gated skips), and `parseOutputs` does not
+enforce the collection-structure invariants (e.g. both `type` and `type_source`
+set) that Galaxy raises on.
 
-Assembling these (plus inputs/outputs, behind the `InputSource` seam) into a
-full `ParsedTool`, with that validation, is the remaining work; see the
-repository's tool-parsing issue.
+Assembling these (plus inputs, behind the `InputSource` seam) into a full
+`ParsedTool`, with that validation, is the remaining work; see the repository's
+tool-parsing issue.

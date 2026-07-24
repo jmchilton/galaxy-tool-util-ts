@@ -456,4 +456,6 @@ export {
   /** Parse an inline GalaxyUserTool `tool_representation` dict into a ParsedTool. */
   parseInlineTool,
   type InlineRepresentation,
+  /** Parse a list/dict of `discover_datasets` descriptors into the collection model. */
+  parseDiscoverDatasets,
 } from "./user-tool-parse/index.js";

@@ -1,9 +1,10 @@
-import type { Citation, HelpContent, XrefDict } from "@galaxy-tool-util/schema";
+import type { Citation, HelpContent, ToolOutput, XrefDict } from "@galaxy-tool-util/schema";
 
-import { parseXmlToTree } from "./element.js";
+import { parseXmlToTree, xmlText } from "./element.js";
 import type { XmlElement } from "./element.js";
 import { expandMacros, type ImportResolver } from "./macros.js";
 import { loadTool } from "./loader.js";
+import { parseOutputs } from "./outputs.js";
 
 /**
  * Port of the metadata-reading half of ``galaxy.tool_util.parser.xml.XmlToolSource``.
@@ -112,24 +113,10 @@ export class XmlToolSource {
     const commandEl = this.root.findChild("command");
     return (commandEl && commandEl.text) || null;
   }
-}
 
-/**
- * ``galaxy.util.xml_text`` — attribute-first text lookup. Tries ``root``'s
- * ``name`` attribute, then the ``<name>`` child element's text with line
- * breaks collapsed and the result trimmed; ``default`` if neither is present.
- */
-function xmlText(root: XmlElement, name: string, defaultValue = ""): string {
-  const attr = root.attrs.get(name);
-  if (attr) return attr;
-  const elem = root.findChild(name);
-  if (elem !== null && elem.text) {
-    return elem.text
-      .split(/\r\n|\r|\n/)
-      .join("")
-      .trim();
+  parseOutputs(): ToolOutput[] {
+    return parseOutputs(this.root, this.parseProfile());
   }
-  return defaultValue;
 }
 
 /** Build an {@link XmlToolSource} from raw XML text with a caller-supplied import resolver. */

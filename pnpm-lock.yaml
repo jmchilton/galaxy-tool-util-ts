@@ -410,6 +410,9 @@ importers:
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
+      effect:
+        specifier: ^3.21.0
+        version: 3.21.0
 
   packages/workflow-graph:
     devDependencies:
