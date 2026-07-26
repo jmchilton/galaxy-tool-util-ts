@@ -44,6 +44,19 @@ export interface InputSource {
   parseHelp(): string | null;
   parseOptional(defaultValue?: boolean): boolean;
   parseExtensions(): string[];
+  /**
+   * True when a select's options are computed dynamically (e.g. a data table or
+   * `dynamic_options` code) rather than listed statically — the factory then
+   * emits `options: null`. Mirrors `parse_dynamic_options() is not None`; the
+   * inline/YAML source is always static (Galaxy's base returns `None`).
+   */
+  hasDynamicOptions(): boolean;
+  /**
+   * True when a drill-down's options come from `dynamic_options` code rather
+   * than a static `<options>` tree — the factory then emits `options: null`.
+   * Mirrors `parse_drill_down_dynamic_options() is not None`.
+   */
+  hasDrillDownDynamicOptions(): boolean;
   /** Static `<option>` list for selects, or `null` when none are defined. */
   parseStaticOptions(): LabelValue[] | null;
   parseDrillDownStaticOptions(): DrillDownOption[] | null;
@@ -117,6 +130,17 @@ export class DictInputSource implements InputSource {
       list = ["data"];
     }
     return list.map((v) => String(v).trim().toLowerCase()).filter((v) => v !== "");
+  }
+
+  hasDynamicOptions(): boolean {
+    // YAML/inline selects are always static (Galaxy's base `parse_dynamic_options`
+    // returns `None`; `YamlInputSource` does not override it).
+    return false;
+  }
+
+  hasDrillDownDynamicOptions(): boolean {
+    // As with `hasDynamicOptions`, the inline/YAML source is always static.
+    return false;
   }
 
   parseStaticOptions(): LabelValue[] | null {

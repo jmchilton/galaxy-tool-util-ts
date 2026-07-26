@@ -291,7 +291,8 @@ function buildLeafParam(source: InputSource): ToolParameterModel {
     case "select": {
       const multiple = source.getBool("multiple", false);
       const optional = base.optional;
-      const options = source.parseStaticOptions();
+      // Dynamic options (data table / code) → `null`; otherwise the static list.
+      const options = source.hasDynamicOptions() ? null : source.parseStaticOptions();
       const validators = filterValidators(source.parseValidators(), "select");
       // `no_options` doesn't apply if select is optional (mirrors Python).
       const filtered = optional ? validators.filter((v) => v.type !== "no_options") : validators;
@@ -311,7 +312,9 @@ function buildLeafParam(source: InputSource): ToolParameterModel {
         type: "drill_down",
         multiple: source.getBool("multiple", false),
         hierarchy: source.get("hierarchy") === "recurse" ? "recurse" : "exact",
-        options: source.parseDrillDownStaticOptions() ?? [],
+        options: source.hasDrillDownDynamicOptions()
+          ? null
+          : (source.parseDrillDownStaticOptions() ?? []),
       };
     }
     case "data_column": {

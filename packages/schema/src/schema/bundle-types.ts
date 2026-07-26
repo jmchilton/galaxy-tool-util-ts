@@ -164,7 +164,8 @@ export interface DrillDownParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_drill_down";
   type: "drill_down";
   multiple: boolean;
-  options: DrillDownOption[];
+  // `null` when options are computed dynamically (`dynamic_options` code).
+  options: DrillDownOption[] | null;
   hierarchy: "exact" | "recurse";
 }
 

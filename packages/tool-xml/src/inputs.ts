@@ -21,8 +21,10 @@ import type { XmlElement } from "./element.js";
  *
  * Coercion here is XML-native: attribute reads default to string, booleans go
  * through `string_as_bool`, and `parse_static_options` deduplicates `<option>`
- * children by `value` (mirroring the Python source). Accessors the current
- * factory does not consume yet (dynamic options, conversion tuples, sanitizers,
+ * children by `value` (mirroring the Python source). Dynamic-option detection
+ * nulls a select's / drill-down's options but the option source itself is not
+ * modeled.
+ * Accessors the factory does not consume yet (conversion tuples, sanitizers,
  * nested-collection `<default>` construction) are stubbed to their empty forms
  * and grow with the feature slices that need them.
  */
@@ -106,6 +108,14 @@ export class XmlInputSource implements InputSource {
       .filter((e) => e !== "");
   }
 
+  hasDynamicOptions(): boolean {
+    // Mirror `XmlInputSource.parse_dynamic_options`: dynamic when an <options>
+    // element is present or a `dynamic_options` code attribute is set.
+    return (
+      this.inputElem.findChild("options") !== null || this.inputElem.attrs.has("dynamic_options")
+    );
+  }
+
   parseStaticOptions(): LabelValue[] | null {
     // Deduplicate by `value` in document order (last wins) — matches Python.
     const deduped = new Map<string, LabelValue>();
@@ -116,6 +126,12 @@ export class XmlInputSource implements InputSource {
       deduped.set(value, { label, value, selected });
     }
     return [...deduped.values()];
+  }
+
+  hasDrillDownDynamicOptions(): boolean {
+    // Mirror `parse_drill_down_dynamic_options`: dynamic only via a
+    // `dynamic_options` code attribute (a static <options> tree is not dynamic).
+    return this.inputElem.attrs.has("dynamic_options");
   }
 
   parseDrillDownStaticOptions(): DrillDownOption[] | null {

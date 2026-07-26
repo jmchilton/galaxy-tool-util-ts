@@ -49,6 +49,7 @@ function selectedDrillDownOptions(options: DrillDownOption[]): string[] {
 }
 
 function drillDownDefaultSingle(param: DrillDownParameterModel): string | null {
+  if (!param.options) return null;
   const selected = selectedDrillDownOptions(param.options);
   return selected.length > 0 ? selected[0] : null;
 }
@@ -95,6 +96,7 @@ export function scalarParameterDefault(param: ToolParameterModel): unknown | typ
       return selectDefaultSingle(param);
     }
     case "gx_drill_down": {
+      if (param.options === null) return NO_DEFAULT; // dynamic
       if (param.multiple) {
         const opts = drillDownDefaultMultiple(param);
         return opts !== null ? opts : NO_DEFAULT;

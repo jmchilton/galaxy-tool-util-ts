@@ -108,6 +108,16 @@ describe("XmlInputSource — leaf params", () => {
     expect(model.options).toEqual([{ label: "a", value: "a", selected: false }]);
   });
 
+  it("nulls options for a dynamic select (<options from_data_table>)", () => {
+    const [p] = inputs(`<param name="s" type="select"><options from_data_table="idx"/></param>`);
+    expect((p as SelectParameterModel).options).toBeNull();
+  });
+
+  it("nulls options for a dynamic select (dynamic_options code attr)", () => {
+    const [p] = inputs(`<param name="s" type="select" dynamic_options="get_opts()"/>`);
+    expect((p as SelectParameterModel).options).toBeNull();
+  });
+
   it("parses integer validators, keeping only in_range", () => {
     const [p] = inputs(
       `<param name="n" type="integer" value="5">` +
@@ -174,6 +184,11 @@ describe("XmlInputSource — leaf params", () => {
         options: [{ value: "child", name: "Child", selected: true, options: [] }],
       },
     ]);
+  });
+
+  it("nulls options for a dynamic drill_down (dynamic_options code attr)", () => {
+    const [p] = inputs(`<param name="d" type="drill_down" dynamic_options="get_dd()"/>`);
+    expect((p as DrillDownParameterModel).options).toBeNull();
   });
 });
 
