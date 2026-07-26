@@ -458,4 +458,12 @@ export {
   type InlineRepresentation,
   /** Parse a list/dict of `discover_datasets` descriptors into the collection model. */
   parseDiscoverDatasets,
+  /** Parse a list/dict of inputs into the ToolParameterModel union. */
+  parseInputs,
+  /** InputSource / PageSource seam + the inline/YAML dict implementation. */
+  DictInputSource,
+  DictPageSource,
+  type InputSource,
+  type PageSource,
+  type InputType,
 } from "./user-tool-parse/index.js";
