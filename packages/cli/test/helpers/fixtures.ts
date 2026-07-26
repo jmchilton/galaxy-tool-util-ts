@@ -104,6 +104,9 @@ export const dataInputTool = {
       optional: false,
       multiple: false,
       extensions: ["data"],
+      min: null,
+      max: null,
+      url_default: null,
     },
     {
       name: "threshold",

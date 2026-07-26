@@ -153,6 +153,9 @@ describe("scanForReplacements", () => {
         optional: false,
         multiple: false,
         extensions: ["data"],
+        min: null,
+        max: null,
+        url_default: null,
       },
     ];
     const state = { input: "${input}" };

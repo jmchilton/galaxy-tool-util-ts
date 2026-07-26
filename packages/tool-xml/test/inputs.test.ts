@@ -84,6 +84,17 @@ describe("XmlInputSource — leaf params", () => {
     expect(model.parameter_type).toBe("gx_data");
     expect(model.extensions).toEqual(["fasta", "fastq"]);
     expect(model.multiple).toBe(true);
+    expect(model.url_default).toBeNull();
+    expect(model.min).toBeNull();
+    expect(model.max).toBeNull();
+  });
+
+  it("reads url_default from a data <default location> (min/max stay null)", () => {
+    const [p] = inputs(`<param name="i" type="data"><default location="http://x/d.txt"/></param>`);
+    const model = p as DataParameterModel;
+    expect(model.url_default).toBe("http://x/d.txt");
+    expect(model.min).toBeNull();
+    expect(model.max).toBeNull();
   });
 
   it("parses select static options, deduplicating by value (last wins)", () => {

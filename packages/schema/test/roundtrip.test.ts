@@ -98,6 +98,9 @@ function dataParam(name: string, optional: boolean): ToolParameterModel {
     optional,
     multiple: false,
     extensions: ["data"],
+    min: null,
+    max: null,
+    url_default: null,
   } as ToolParameterModel;
 }
 

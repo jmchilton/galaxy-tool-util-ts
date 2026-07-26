@@ -195,6 +195,11 @@ export interface DataParameterModel extends BaseGalaxyParameterModel {
   type: "data";
   multiple: boolean;
   extensions: string[];
+  // Present on Galaxy's model; the factory never populates them (always null).
+  min: number | null;
+  max: number | null;
+  // Location of a `<default>` dataset, when the param defines one.
+  url_default: string | null;
 }
 
 export interface DataCollectionParameterModel extends BaseGalaxyParameterModel {

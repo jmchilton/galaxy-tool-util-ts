@@ -29,6 +29,7 @@ import type { InputSource, PageSource } from "./input-source.js";
 import {
   DictPageSource,
   coerceBool,
+  isDict,
   readNullableString,
   readNullableInt,
   readNullableFloat,
@@ -269,6 +270,11 @@ function buildLeafParam(source: InputSource): ToolParameterModel {
       // hidden_data is broken without optional=true in Python; mirror the
       // override.
       const optional = paramType === "data" ? base.optional : true;
+      const defaultValue = source.parseDefault();
+      const urlDefault =
+        isDict(defaultValue) && defaultValue.location != null
+          ? String(defaultValue.location)
+          : null;
       return {
         ...base,
         optional,
@@ -276,6 +282,10 @@ function buildLeafParam(source: InputSource): ToolParameterModel {
         type: "data",
         multiple: source.getBool("multiple", false),
         extensions: source.parseExtensions(),
+        // The factory never reads min/max (mirrors Galaxy).
+        min: null,
+        max: null,
+        url_default: urlDefault,
       };
     }
     case "data_collection": {
