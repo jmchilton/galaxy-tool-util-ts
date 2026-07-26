@@ -23,10 +23,9 @@ import type { XmlElement } from "./element.js";
  * through `string_as_bool`, and `parse_static_options` deduplicates `<option>`
  * children by `value` (mirroring the Python source). Dynamic-option detection
  * nulls a select's / drill-down's options but the option source itself is not
- * modeled.
- * Accessors the factory does not consume yet (conversion tuples, sanitizers,
- * nested-collection `<default>` construction) are stubbed to their empty forms
- * and grow with the feature slices that need them.
+ * modeled. Accessors the factory does not consume yet (conversion tuples,
+ * sanitizers) are stubbed to their empty forms and grow with the feature slices
+ * that need them.
  */
 
 /** Port of `XmlToolSource.parse_inputs` entry — `<inputs>` tree → models. */
@@ -163,9 +162,44 @@ export class XmlInputSource implements InputSource {
   }
 
   parseDefault(): unknown {
-    // Nested-collection `<default>` construction lands with collection inputs.
-    return null;
+    // Port of `XmlInputSource.parse_default`: a `<default>` child becomes a
+    // File dict for `data`, or a nested Collection dict otherwise.
+    const elem = this.inputElem;
+    const defaultElem = elem.findChild("default");
+    if (defaultElem === null) return null;
+    if (elem.attrs.get("type") === "data") {
+      return fileDefaultFromElem(defaultElem);
+    }
+    return {
+      class: "Collection",
+      name: defaultElem.attrs.get("name") ?? elem.attrs.get("name") ?? null,
+      collection_type: defaultElem.attrs.get("collection_type") ?? null,
+      elements: readDefaultElements(defaultElem),
+    };
   }
+}
+
+function fileDefaultFromElem(elem: XmlElement): Record<string, unknown> {
+  return { class: "File", location: elem.attrs.get("location") ?? null };
+}
+
+function readDefaultElements(collectionElem: XmlElement): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const element of collectionElem.findChildren("element")) {
+    const identifier = element.attrs.get("name") ?? null;
+    const subcollection = element.findChild("collection");
+    if (subcollection !== null) {
+      out.push({
+        class: "Collection",
+        identifier,
+        collection_type: subcollection.attrs.get("collection_type") ?? null,
+        elements: readDefaultElements(subcollection),
+      });
+    } else {
+      out.push({ ...fileDefaultFromElem(element), identifier });
+    }
+  }
+  return out;
 }
 
 function recurseDrillDownElems(optionElems: XmlElement[]): DrillDownOption[] {

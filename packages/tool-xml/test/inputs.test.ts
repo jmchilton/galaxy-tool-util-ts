@@ -5,6 +5,7 @@ import type {
   BooleanParameterModel,
   DataParameterModel,
   DataColumnParameterModel,
+  DataCollectionParameterModel,
   SelectParameterModel,
   TextParameterModel,
   DrillDownParameterModel,
@@ -161,6 +162,7 @@ describe("XmlInputSource — leaf params", () => {
     expect(model.parameter_type).toBe("gx_data_column");
     expect(model.optional).toBe(true);
     expect(model.value).toBe(1);
+    expect(model.data_ref).toBe("i");
   });
 
   it("parses drill_down static options recursively", () => {
@@ -260,5 +262,44 @@ describe("XmlInputSource — section container", () => {
     expect(model.name).toBe("adv");
     expect(model.parameters).toHaveLength(1);
     expect(model.parameters[0].name).toBe("z");
+  });
+});
+
+describe("XmlInputSource — data_collection defaults", () => {
+  it("builds a nested Collection default from <default>/<element>/<collection>", () => {
+    const [p] = inputs(
+      `<param name="coll" type="data_collection" collection_type="list">` +
+        `<default collection_type="list">` +
+        `<element name="e1" location="http://x/1.txt"/>` +
+        `<element name="e2">` +
+        `<collection collection_type="list">` +
+        `<element name="inner" location="http://x/2.txt"/>` +
+        `</collection>` +
+        `</element>` +
+        `</default>` +
+        `</param>`,
+    );
+    const model = p as DataCollectionParameterModel;
+    expect(model.parameter_type).toBe("gx_data_collection");
+    expect(model.collection_type).toBe("list");
+    expect(model.value).toEqual({
+      class: "Collection",
+      name: "coll",
+      collection_type: "list",
+      elements: [
+        { class: "File", location: "http://x/1.txt", identifier: "e1" },
+        {
+          class: "Collection",
+          identifier: "e2",
+          collection_type: "list",
+          elements: [{ class: "File", location: "http://x/2.txt", identifier: "inner" }],
+        },
+      ],
+    });
+  });
+
+  it("leaves value null when there is no <default>", () => {
+    const [p] = inputs(`<param name="c" type="data_collection" collection_type="list"/>`);
+    expect((p as DataCollectionParameterModel).value).toBeNull();
   });
 });

@@ -343,6 +343,7 @@ function buildLeafParam(source: InputSource): ToolParameterModel {
         type: "data_column",
         multiple,
         value: coerced,
+        data_ref: readNullableString(source.get("data_ref")),
       };
     }
     case "group_tag": {

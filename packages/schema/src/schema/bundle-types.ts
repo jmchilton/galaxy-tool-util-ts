@@ -181,6 +181,7 @@ export interface DataColumnParameterModel extends BaseGalaxyParameterModel {
   type: "data_column";
   multiple: boolean;
   value: number | number[] | null;
+  data_ref: string | null;
 }
 
 export interface GroupTagParameterModel extends BaseGalaxyParameterModel {

@@ -160,6 +160,7 @@ function dataColumnParam(name: string, multiple = false): DataColumnParameterMod
     optional: false,
     multiple,
     value: null,
+    data_ref: null,
   };
 }
 
