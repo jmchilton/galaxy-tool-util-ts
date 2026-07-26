@@ -13,6 +13,7 @@ import type {
   ConditionalParameterModel,
   ConditionalWhen,
   RepeatParameterModel,
+  SectionParameterModel,
   ToolParameterModel,
   ValidatorModel,
   InRangeValidatorModel,
@@ -24,7 +25,7 @@ import type {
   SelectParameterModel,
 } from "../schema/bundle-types.js";
 
-import type { InputSource } from "./input-source.js";
+import type { InputSource, PageSource } from "./input-source.js";
 import {
   DictPageSource,
   coerceBool,
@@ -54,13 +55,23 @@ const DATA_PARAM_TYPES = new Set([
 ]);
 
 export function parseInputs(raw: unknown): ToolParameterModel[] {
-  return new DictPageSource(raw).parseInputSources().map(fromInputSource);
+  return inputModelsForPage(new DictPageSource(raw));
+}
+
+/**
+ * Mirror of `factory.input_models_for_page`: build the `ToolParameterModel`
+ * list for one `PageSource`, whatever backs it (the inline/YAML `DictPageSource`
+ * or an XML page source in `@galaxy-tool-util/tool-xml`).
+ */
+export function inputModelsForPage(page: PageSource): ToolParameterModel[] {
+  return page.parseInputSources().map(fromInputSource);
 }
 
 function fromInputSource(source: InputSource): ToolParameterModel {
   const inputType = source.parseInputType();
   if (inputType === "conditional") return buildConditional(source);
   if (inputType === "repeat") return buildRepeat(source);
+  if (inputType === "section") return buildSection(source);
   return buildLeafParam(source);
 }
 
@@ -117,7 +128,17 @@ function makeWhen(
 ): ConditionalWhen {
   let typed: string | boolean;
   if (testParam.parameter_type === "gx_boolean") {
-    typed = coerceBool(rawDiscriminator);
+    // Mirror Python: a `<when value="X">` string matching the test param's
+    // truevalue/falsevalue maps to that boolean before `string_as_bool`, so
+    // e.g. truevalue="--flag" with `<when value="--flag">` selects `true`.
+    const bp = testParam as BooleanParameterModel;
+    if (typeof rawDiscriminator === "string" && rawDiscriminator === bp.truevalue) {
+      typed = true;
+    } else if (typeof rawDiscriminator === "string" && rawDiscriminator === bp.falsevalue) {
+      typed = false;
+    } else {
+      typed = coerceBool(rawDiscriminator);
+    }
   } else {
     typed = rawDiscriminator == null ? "" : String(rawDiscriminator);
   }
@@ -138,6 +159,20 @@ function buildRepeat(source: InputSource): RepeatParameterModel {
     parameters,
     min: readNullableInt(source.get("min")),
     max: readNullableInt(source.get("max")),
+  };
+}
+
+function buildSection(source: InputSource): SectionParameterModel {
+  const parameters = source.parseNestedInputsSource().parseInputSources().map(fromInputSource);
+  return {
+    parameter_type: "gx_section",
+    name: source.parseName(),
+    hidden: source.getBool("hidden", false),
+    label: source.parseLabel(),
+    help: source.parseHelp(),
+    argument: readNullableString(source.get("argument")),
+    is_dynamic: false,
+    parameters,
   };
 }
 

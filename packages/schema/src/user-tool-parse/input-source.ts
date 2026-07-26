@@ -21,14 +21,13 @@
 import type { LabelValue, DrillDownOption, ValidatorModel } from "../schema/bundle-types.js";
 
 /**
- * Container discriminator returned by `parseInputType`. Mirrors
- * `YamlInputSource.parse_input_type`: only `repeat`/`conditional` are mapped,
- * everything else (including `section`) is `"param"`. Sections reach the
- * factory only from the XML source (`tag == "section"`), matching Python —
- * YAML sections are intentionally unsupported here until Galaxy's YAML path
- * supports them.
+ * Container discriminator returned by `parseInputType`. `"section"` is returned
+ * only by the XML source (`tag == "section"`). `DictInputSource` mirrors
+ * `YamlInputSource.parse_input_type`, which maps only `repeat`/`conditional` and
+ * treats everything else (including `section`) as `"param"` — YAML sections are
+ * intentionally unsupported until Galaxy's YAML path supports them.
  */
-export type InputType = "param" | "conditional" | "repeat";
+export type InputType = "param" | "conditional" | "repeat" | "section";
 
 export interface PageSource {
   parseInputSources(): InputSource[];

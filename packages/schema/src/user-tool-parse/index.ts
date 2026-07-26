@@ -9,7 +9,7 @@
  * `ParsedTool` shape consumers depend on.
  */
 export { parseInlineTool, type InlineRepresentation } from "./parse.js";
-export { parseInputs } from "./inputs.js";
+export { parseInputs, inputModelsForPage } from "./inputs.js";
 export { parseOutputs, parseDiscoverDatasets } from "./outputs.js";
 export {
   DictInputSource,

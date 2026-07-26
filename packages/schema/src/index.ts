@@ -39,6 +39,9 @@ export {
   type IntegerParameterModel,
   type FloatParameterModel,
   type TextParameterModel,
+  type DataParameterModel,
+  type DataColumnParameterModel,
+  type DataCollectionParameterModel,
   type SelectParameterModel,
   type GenomeBuildParameterModel,
   type DrillDownParameterModel,
@@ -50,6 +53,10 @@ export {
   type ConditionalWhen,
   /** A label/value pair used in select and genomebuild options. */
   type LabelValue,
+  /** A drill-down option node (nested value/name/options). */
+  type DrillDownOption,
+  /** Union of parameter validator models (in_range, regex, length, …). */
+  type ValidatorModel,
 } from "./schema/bundle-types.js";
 
 export {
@@ -460,6 +467,8 @@ export {
   parseDiscoverDatasets,
   /** Parse a list/dict of inputs into the ToolParameterModel union. */
   parseInputs,
+  /** Build ToolParameterModels for one PageSource (any backing source). */
+  inputModelsForPage,
   /** InputSource / PageSource seam + the inline/YAML dict implementation. */
   DictInputSource,
   DictPageSource,

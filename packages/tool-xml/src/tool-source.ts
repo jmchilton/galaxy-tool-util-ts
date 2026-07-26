@@ -1,9 +1,16 @@
-import type { Citation, HelpContent, ToolOutput, XrefDict } from "@galaxy-tool-util/schema";
+import type {
+  Citation,
+  HelpContent,
+  ToolOutput,
+  ToolParameterModel,
+  XrefDict,
+} from "@galaxy-tool-util/schema";
 
 import { parseXmlToTree, xmlText } from "./element.js";
 import type { XmlElement } from "./element.js";
 import { expandMacros, type ImportResolver } from "./macros.js";
 import { loadTool } from "./loader.js";
+import { parseInputs } from "./inputs.js";
 import { parseOutputs } from "./outputs.js";
 
 /**
@@ -116,6 +123,10 @@ export class XmlToolSource {
 
   parseOutputs(): ToolOutput[] {
     return parseOutputs(this.root, this.parseProfile());
+  }
+
+  parseInputs(): ToolParameterModel[] {
+    return parseInputs(this.root);
   }
 }
 
