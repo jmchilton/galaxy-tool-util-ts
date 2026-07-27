@@ -84,7 +84,7 @@ function textParam(name: string, value: string | null = null, optional = true): 
     is_dynamic: false,
     optional,
     area: false,
-    value,
+    default_value: value,
     default_options: [],
     validators: [],
   };

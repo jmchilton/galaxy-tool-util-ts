@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "effect": "^3.21.0"
+    "effect": "^3.21.0",
+    "yaml": "^2.8.3"
   }
 }

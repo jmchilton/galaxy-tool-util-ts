@@ -107,8 +107,8 @@ export function scalarParameterDefault(param: ToolParameterModel): unknown | typ
     case "gx_data_collection":
       return param.optional ? null : NO_DEFAULT;
     case "gx_text":
-      if (!param.optional) return param.value ?? "";
-      return param.value;
+      if (!param.optional) return param.default_value ?? "";
+      return param.default_value;
     default:
       // gx_data, gx_data_column, gx_baseurl, gx_color, gx_directory_uri,
       // gx_group_tag, gx_rules, cwl_*, and containers (which shouldn't reach
@@ -131,5 +131,5 @@ export function coerceTextNullIfNeeded(
   if (param.parameter_type !== "gx_text") return NO_DEFAULT;
   if (value !== null) return NO_DEFAULT;
   if (param.optional) return NO_DEFAULT;
-  return param.value ?? "";
+  return param.default_value ?? "";
 }

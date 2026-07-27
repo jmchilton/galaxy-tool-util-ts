@@ -70,12 +70,12 @@ describe("XmlInputSource — leaf params", () => {
     expect(model.falsevalue).toBe("");
   });
 
-  it("parses a text param, inferring optional from missing value", () => {
+  it("parses a text param, optional when the empty string validates", () => {
     const [p] = inputs(`<param name="t" type="text"/>`);
     const model = p as TextParameterModel;
     expect(model.parameter_type).toBe("gx_text");
     expect(model.optional).toBe(true);
-    expect(model.value).toBeNull();
+    expect(model.default_value).toBeNull();
   });
 
   it("parses a data param with comma-separated format → extensions", () => {

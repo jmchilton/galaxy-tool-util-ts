@@ -90,7 +90,7 @@ export interface TextParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_text";
   type: "text";
   area: boolean;
-  value: string | null;
+  default_value: string | null;
   default_options: LabelValue[];
   validators: (
     | RegexValidatorModel

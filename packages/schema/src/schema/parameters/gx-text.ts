@@ -29,8 +29,8 @@ function generateTextSchema(
     schema = S.NullOr(schema);
   }
 
-  // request_requires_value: !optional && value === null
-  const requestRequiresValue = !p.optional && p.value === null;
+  // request_requires_value: !optional && default_value === null
+  const requestRequiresValue = !p.optional && p.default_value === null;
   const isOptional = computeIsOptional(stateRep, requestRequiresValue);
 
   return { name, alias, schema, isOptional };

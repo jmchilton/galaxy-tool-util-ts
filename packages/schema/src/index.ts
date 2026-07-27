@@ -462,7 +462,10 @@ export {
 export {
   /** Parse an inline GalaxyUserTool `tool_representation` dict into a ParsedTool. */
   parseInlineTool,
+  /** Parse a decoded YAML tool document (GalaxyTool or GalaxyUserTool) into a ParsedTool. */
+  parseYamlTool,
   type InlineRepresentation,
+  type YamlToolRepresentation,
   /** Parse a list/dict of `discover_datasets` descriptors into the collection model. */
   parseDiscoverDatasets,
   /** Parse a list/dict of inputs into the ToolParameterModel union. */

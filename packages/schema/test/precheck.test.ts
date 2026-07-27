@@ -49,7 +49,7 @@ function textParam(name: string): TextParameterModel {
     is_dynamic: false,
     optional: true,
     area: false,
-    value: null,
+    default_value: null,
     default_options: [],
     validators: [],
   };

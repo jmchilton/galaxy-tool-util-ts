@@ -209,21 +209,22 @@ function buildLeafParam(source: InputSource): ToolParameterModel {
       };
     }
     case "text": {
-      const optional = textIsOptional(source);
+      const validators = filterValidators(source.parseValidators(), "text") as (
+        | RegexValidatorModel
+        | LengthValidatorModel
+        | ExpressionValidatorModel
+        | EmptyFieldValidatorModel
+      )[];
+      const optional = textIsOptional(source, validators);
       return {
         ...base,
         optional,
         parameter_type: "gx_text",
         type: "text",
         area: source.getBool("area", false),
-        value: textDefault(source.get("value"), optional),
+        default_value: textDefault(source.get("value"), optional),
         default_options: [],
-        validators: filterValidators(source.parseValidators(), "text") as (
-          | RegexValidatorModel
-          | LengthValidatorModel
-          | ExpressionValidatorModel
-          | EmptyFieldValidatorModel
-        )[],
+        validators,
       };
     }
     case "boolean": {
@@ -419,15 +420,62 @@ function readParamType(v: unknown): string {
   return typeof v === "string" ? v : v == null ? "" : String(v);
 }
 
-function textIsOptional(source: InputSource): boolean {
-  // Mirrors `text_input_is_optional`: explicit `optional:` wins, otherwise
-  // inferred from `value:` being present.
+type TextValidator =
+  | RegexValidatorModel
+  | LengthValidatorModel
+  | ExpressionValidatorModel
+  | EmptyFieldValidatorModel;
+
+function textIsOptional(source: InputSource, validators: readonly TextValidator[]): boolean {
+  // Mirrors `text_input_is_optional`: explicit `optional:` wins, otherwise a
+  // text param is optional when the empty string passes all its validators.
   const optional = source.get("optional");
   if (optional !== undefined && optional !== null) {
     return coerceBool(optional);
   }
-  const value = source.get("value");
-  return value === undefined || value === null || value === "";
+  return emptyStringValidates(validators);
+}
+
+/**
+ * Port of `statically_validates(validators, "")` for text params: the empty
+ * string is accepted when every static validator passes on it. A validator
+ * passes iff its base check differs from its `negate` flag (mirrors
+ * `raise_error_if_validation_fails`).
+ */
+function emptyStringValidates(validators: readonly TextValidator[]): boolean {
+  return validators.every((v) => {
+    const negate = "negate" in v && v.negate === true;
+    let passesRaw: boolean;
+    switch (v.type) {
+      case "empty_field":
+        passesRaw = false; // "" is empty
+        break;
+      case "length":
+        passesRaw = !(v.min != null && v.min > 0); // len("") === 0
+        break;
+      case "regex":
+        passesRaw = emptyMatchesRegex(v.expression);
+        break;
+      case "expression":
+        // Python evaluates the expression against value=""; TS can't, so treat
+        // it as not satisfying the empty string (conservative — matches the
+        // common truthy-`value` expression form, which is falsy for "").
+        passesRaw = false;
+        break;
+      default:
+        passesRaw = true; // non-text validators don't constrain ""
+    }
+    return passesRaw !== negate;
+  });
+}
+
+/** Whether `expression` matches the empty string anchored at the start (re.match). */
+function emptyMatchesRegex(expression: string): boolean {
+  try {
+    return new RegExp(`^(?:${expression})`, "u").test("");
+  } catch {
+    return false;
+  }
 }
 
 function textDefault(value: unknown, optional: boolean): string | null {

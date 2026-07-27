@@ -1,0 +1,37 @@
+# Repeat and section inputs: nesting + min/max.
+
+parse_repeat_with_data_child:
+  fixture: disambiguate_repeats
+  operation: parse
+  assertions:
+    - path: [inputs, {name: queries}, parameter_type]
+      value: gx_repeat
+    - path: [inputs, {name: queries}, parameters, {name: input}, parameter_type]
+      value: gx_data
+
+parse_repeat_min_and_section:
+  fixture: inputs_as_json
+  operation: parse
+  assertions:
+    - path: [inputs, {name: repeat}, parameter_type]
+      value: gx_repeat
+    - path: [inputs, {name: repeat}, min]
+      value: 1
+    - path: [inputs, {name: repeat}, parameters, {name: r}, parameter_type]
+      value: gx_color
+    - path: [inputs, {name: section_example}, parameter_type]
+      value: gx_section
+    - path: [inputs, {name: section_example}, parameters, {name: section_text}, parameter_type]
+      value: gx_text
+
+# The YAML corpus has no section input, so only repeat is locked from YAML here.
+parse_yaml_repeat_with_data_child:
+  fixture: simple_constructs.yml
+  operation: parse
+  assertions:
+    - path: [inputs, {name: more_files}, parameter_type]
+      value: gx_repeat
+    - path: [inputs, {name: more_files}, label]
+      value: More Files
+    - path: [inputs, {name: more_files}, parameters, {name: nestinput}, parameter_type]
+      value: gx_data

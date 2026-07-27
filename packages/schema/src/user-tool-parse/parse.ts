@@ -1,5 +1,5 @@
 /**
- * Inline GalaxyUserTool → ParsedTool conversion. Mirrors
+ * YAML tool → ParsedTool conversion. Mirrors
  * `galaxy.tool_util.model_factory.parse_tool(YamlToolSource(repr))` for the
  * fields surfaced on the TS `ParsedTool`. See `./inputs.ts` and `./outputs.ts`
  * for the parameter / output trees.
@@ -10,18 +10,23 @@ import type { ParsedTool, Citation, XrefDict, HelpContent } from "../schema/pars
 import { parseInputs } from "./inputs.js";
 import { parseOutputs } from "./outputs.js";
 
-export type InlineRepresentation = Record<string, unknown>;
+/** A decoded YAML tool document (`class: GalaxyTool` or `GalaxyUserTool`). */
+export type YamlToolRepresentation = Record<string, unknown>;
+
+/** The inline-tool API's `tool_representation` (always `class: GalaxyUserTool`). */
+export type InlineRepresentation = YamlToolRepresentation;
 
 export class InlineToolParseError extends Error {}
 
-export function parseInlineTool(repr: InlineRepresentation): ParsedTool {
+/**
+ * Parse a decoded YAML tool document into a `ParsedTool`. Handles both the
+ * legacy `GalaxyTool` and the user-facing `GalaxyUserTool` classes — the input
+ * and output trees already cover the block/when-map inputs and map-form outputs
+ * the `GalaxyTool` format uses, so a single field layout serves both.
+ */
+export function parseYamlTool(repr: YamlToolRepresentation): ParsedTool {
   if (!repr || typeof repr !== "object" || Array.isArray(repr)) {
-    throw new InlineToolParseError("inline tool representation must be an object");
-  }
-  if (repr.class !== "GalaxyUserTool") {
-    throw new InlineToolParseError(
-      `inline tool representation must have class 'GalaxyUserTool' (got ${JSON.stringify(repr.class)})`,
-    );
+    throw new InlineToolParseError("tool representation must be an object");
   }
 
   const id = typeof repr.id === "string" ? repr.id : "";
@@ -44,6 +49,23 @@ export function parseInlineTool(repr: InlineRepresentation): ParsedTool {
     xrefs: parseXrefs(repr.xrefs),
     help: parseHelp(repr.help),
   };
+}
+
+/**
+ * Parse an inline `GalaxyUserTool` representation. Enforces the `GalaxyUserTool`
+ * class the inline-tool API contract requires, then delegates to
+ * {@link parseYamlTool}.
+ */
+export function parseInlineTool(repr: InlineRepresentation): ParsedTool {
+  if (!repr || typeof repr !== "object" || Array.isArray(repr)) {
+    throw new InlineToolParseError("inline tool representation must be an object");
+  }
+  if (repr.class !== "GalaxyUserTool") {
+    throw new InlineToolParseError(
+      `inline tool representation must have class 'GalaxyUserTool' (got ${JSON.stringify(repr.class)})`,
+    );
+  }
+  return parseYamlTool(repr);
 }
 
 function parseStringList(raw: unknown): string[] {

@@ -32,7 +32,7 @@ function textParam(name: string): ToolParameterModel {
     is_dynamic: false,
     optional: true,
     area: false,
-    value: null,
+    default_value: null,
     default_options: [],
     validators: [],
   };

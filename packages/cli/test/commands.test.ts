@@ -31,7 +31,7 @@ const simpleTool = {
       is_dynamic: false,
       optional: false,
       area: false,
-      value: "default",
+      default_value: "default",
       default_options: [],
       validators: [],
     },
