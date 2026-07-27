@@ -79,11 +79,72 @@ export const ToolOutputCollectionStructure = S.Struct({
   discover_datasets: S.NullOr(S.Array(DatasetCollectionDescription)),
 });
 
-export const ToolOutputCollection = S.Struct({
+/**
+ * Canonical (flat) collection-output shape — Galaxy's tool_parsing_abstraction
+ * model and the TS parsers carry the structure fields at the output's top level.
+ * `ToolOutputCollectionStructure` stays the shared building block the parsers
+ * assemble before spreading it flat.
+ */
+const ToolOutputCollectionFlat = S.Struct({
   ...ToolOutputBase.fields,
   type: S.Literal("collection"),
-  structure: ToolOutputCollectionStructure,
+  ...ToolOutputCollectionStructure.fields,
 });
+
+/**
+ * Decode input for a collection output. Accepts either the flat fields or a
+ * legacy nested `structure` wrapper (which current Galaxy releases still emit),
+ * so the port decodes `ParsedTool` JSON from any Galaxy version.
+ */
+const ToolOutputCollectionEncoded = S.Struct({
+  ...ToolOutputBase.fields,
+  type: S.Literal("collection"),
+  collection_type: S.optional(S.NullOr(S.String)),
+  collection_type_source: S.optional(S.NullOr(S.String)),
+  collection_type_from_rules: S.optional(S.NullOr(S.String)),
+  structured_like: S.optional(S.NullOr(S.String)),
+  discover_datasets: S.optional(S.NullOr(S.Array(DatasetCollectionDescription))),
+  structure: S.optional(ToolOutputCollectionStructure),
+});
+
+/**
+ * Decode-tolerant collection output: a nested `structure` is lifted to the top
+ * level, so both shapes decode to the flat form. Encode always emits flat — the
+ * canonical shape the parsers produce.
+ */
+export const ToolOutputCollection = S.transform(
+  ToolOutputCollectionEncoded,
+  ToolOutputCollectionFlat,
+  {
+    strict: false,
+    decode: (o) => {
+      const s = o.structure;
+      return {
+        name: o.name,
+        label: o.label,
+        hidden: o.hidden,
+        type: "collection" as const,
+        collection_type: o.collection_type ?? s?.collection_type ?? null,
+        collection_type_source: o.collection_type_source ?? s?.collection_type_source ?? null,
+        collection_type_from_rules:
+          o.collection_type_from_rules ?? s?.collection_type_from_rules ?? null,
+        structured_like: o.structured_like ?? s?.structured_like ?? null,
+        discover_datasets: o.discover_datasets ?? s?.discover_datasets ?? null,
+      };
+    },
+    encode: (o) => ({
+      name: o.name,
+      label: o.label,
+      hidden: o.hidden,
+      type: "collection" as const,
+      collection_type: o.collection_type,
+      collection_type_source: o.collection_type_source,
+      collection_type_from_rules: o.collection_type_from_rules,
+      structured_like: o.structured_like,
+      discover_datasets: o.discover_datasets,
+    }),
+  },
+);
 
 export const ToolOutputText = S.Struct({
   ...ToolOutputBase.fields,

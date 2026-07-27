@@ -25,7 +25,8 @@
       ],
       "multiple": false,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     },
     {
       "name": "input_collect",
@@ -50,27 +51,25 @@
       "label": "Duplicate List",
       "hidden": false,
       "type": "collection",
-      "structure": {
-        "collection_type": null,
-        "collection_type_source": "input_collect",
-        "collection_type_from_rules": null,
-        "structured_like": null,
-        "discover_datasets": [
-          {
-            "discover_via": "pattern",
-            "format": null,
-            "visible": true,
-            "assign_primary_output": false,
-            "directory": "output",
-            "recurse": false,
-            "match_relative_path": false,
-            "sort_key": "filename",
-            "sort_comp": "lexical",
-            "sort_reverse": false,
-            "pattern": "(?P<name>.*)"
-          }
-        ]
-      }
+      "collection_type": null,
+      "collection_type_source": "input_collect",
+      "collection_type_from_rules": null,
+      "structured_like": null,
+      "discover_datasets": [
+        {
+          "discover_via": "pattern",
+          "format": null,
+          "visible": true,
+          "assign_primary_output": false,
+          "directory": "output",
+          "recurse": false,
+          "match_relative_path": false,
+          "sort_key": "filename",
+          "sort_comp": "lexical",
+          "sort_reverse": false,
+          "pattern": "(?P<name>.*)"
+        }
+      ]
     }
   ],
   "citations": [],

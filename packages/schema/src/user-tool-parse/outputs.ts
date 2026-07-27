@@ -104,7 +104,7 @@ function parseOutputCollection(entry: Dict): ToolOutputCollection {
     label: readNullableString(entry.label),
     hidden: readBool(entry.hidden, false),
     type: "collection",
-    structure: parseStructure(entry),
+    ...parseStructure(entry),
   };
 }
 
@@ -130,7 +130,7 @@ function parseStructure(entry: Dict): ToolOutputCollectionStructure {
   };
 }
 
-function parseDiscoverDatasets(raw: unknown): DatasetCollectionDescription[] | null {
+export function parseDiscoverDatasets(raw: unknown): DatasetCollectionDescription[] | null {
   let list: unknown[];
   if (raw === undefined || raw === null) return null;
   if (Array.isArray(raw)) list = raw;
@@ -157,7 +157,8 @@ function parseDiscoverDataset(entry: Dict): DatasetCollectionDescription {
         : "pattern";
 
   const base = {
-    format: readNullableString(entry.format ?? entry.ext),
+    // ext-first, matching Galaxy's DatasetCollectionDescription (ext, then format).
+    format: readNullableString(entry.ext ?? entry.format),
     visible: readBool(entry.visible, false),
     assign_primary_output: readBool(entry.assign_primary_output, false),
     directory: readNullableString(entry.directory),

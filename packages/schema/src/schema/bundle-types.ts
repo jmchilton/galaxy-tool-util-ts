@@ -90,7 +90,7 @@ export interface TextParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_text";
   type: "text";
   area: boolean;
-  value: string | null;
+  default_value: string | null;
   default_options: LabelValue[];
   validators: (
     | RegexValidatorModel
@@ -164,7 +164,8 @@ export interface DrillDownParameterModel extends BaseGalaxyParameterModel {
   parameter_type: "gx_drill_down";
   type: "drill_down";
   multiple: boolean;
-  options: DrillDownOption[];
+  // `null` when options are computed dynamically (`dynamic_options` code).
+  options: DrillDownOption[] | null;
   hierarchy: "exact" | "recurse";
 }
 
@@ -180,6 +181,7 @@ export interface DataColumnParameterModel extends BaseGalaxyParameterModel {
   type: "data_column";
   multiple: boolean;
   value: number | number[] | null;
+  data_ref: string | null;
 }
 
 export interface GroupTagParameterModel extends BaseGalaxyParameterModel {
@@ -193,6 +195,11 @@ export interface DataParameterModel extends BaseGalaxyParameterModel {
   type: "data";
   multiple: boolean;
   extensions: string[];
+  // Present on Galaxy's model; the factory never populates them (always null).
+  min: number | null;
+  max: number | null;
+  // Location of a `<default>` dataset, when the param defines one.
+  url_default: string | null;
 }
 
 export interface DataCollectionParameterModel extends BaseGalaxyParameterModel {

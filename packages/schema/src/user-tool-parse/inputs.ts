@@ -1,12 +1,12 @@
 /**
- * Inline tool input parser. Mirrors
- * `galaxy.tool_util.parameters.factory._from_input_source_galaxy`, normalized
- * to the YAML pathway only (no XML). Produces the Galaxy `ToolParameterModel`
- * union from `bundle-types.ts`. Validator handling is best-effort: we read
- * `validators: [{type, ...}]` entries verbatim, mirroring
- * `static_validators(parse_dict_validators(...))` once you've stripped the XML
- * shorthand handling and the `in_range` synthesis from `min`/`max` (which is
- * what Python does too).
+ * Tool input factory. Mirrors
+ * `galaxy.tool_util.parameters.factory._from_input_source_galaxy` +
+ * `input_models_for_page`: it consumes an `InputSource` (see `./input-source.ts`)
+ * rather than a raw dict, so both the inline/YAML source and an XML source in
+ * `@galaxy-tool-util/tool-xml` build the same `ToolParameterModel` union from
+ * `bundle-types.ts`. Validator handling is best-effort: `parse_validators`
+ * returns every parsed validator and the factory keeps the ones valid for the
+ * parameter type (mirrors `static_validators(...)`).
  */
 
 import type {
@@ -15,8 +15,6 @@ import type {
   RepeatParameterModel,
   SectionParameterModel,
   ToolParameterModel,
-  LabelValue,
-  DrillDownOption,
   ValidatorModel,
   InRangeValidatorModel,
   RegexValidatorModel,
@@ -27,7 +25,15 @@ import type {
   SelectParameterModel,
 } from "../schema/bundle-types.js";
 
-type Dict = Record<string, unknown>;
+import type { InputSource, PageSource } from "./input-source.js";
+import {
+  DictPageSource,
+  coerceBool,
+  isDict,
+  readNullableString,
+  readNullableInt,
+  readNullableFloat,
+} from "./input-source.js";
 
 const DATA_PARAM_TYPES = new Set([
   "integer",
@@ -50,90 +56,61 @@ const DATA_PARAM_TYPES = new Set([
 ]);
 
 export function parseInputs(raw: unknown): ToolParameterModel[] {
-  const list = normalizeInputList(raw);
-  return list.map(parseInput);
+  return inputModelsForPage(new DictPageSource(raw));
 }
 
-function normalizeInputList(raw: unknown): Dict[] {
-  if (Array.isArray(raw)) {
-    return raw.filter(isDict);
+/**
+ * Mirror of `factory.input_models_for_page`: build the `ToolParameterModel`
+ * list for one `PageSource`, whatever backs it (the inline/YAML `DictPageSource`
+ * or an XML page source in `@galaxy-tool-util/tool-xml`).
+ */
+export function inputModelsForPage(page: PageSource): ToolParameterModel[] {
+  const models: ToolParameterModel[] = [];
+  for (const source of page.parseInputSources()) {
+    // `<display>` is not a real input (data_source tools carry one); skip it,
+    // matching `factory.input_models_for_page`.
+    if (source.parseInputType() === "display") continue;
+    models.push(fromInputSource(source));
   }
-  if (raw && typeof raw === "object") {
-    const out: Dict[] = [];
-    for (const [k, v] of Object.entries(raw as Dict)) {
-      if (isDict(v)) {
-        const merged = { ...(v as Dict) };
-        if (merged.name == null) merged.name = k;
-        out.push(merged);
-      }
-    }
-    return out;
-  }
-  return [];
+  return models;
 }
 
-function parseInput(input: Dict): ToolParameterModel {
-  const containerType = readContainerType(input);
-  if (containerType === "conditional") return parseConditional(input);
-  if (containerType === "repeat") return parseRepeat(input);
-  if (containerType === "section") return parseSection(input);
-  return parseLeafParam(input);
+function fromInputSource(source: InputSource): ToolParameterModel {
+  const inputType = source.parseInputType();
+  if (inputType === "conditional") return buildConditional(source);
+  if (inputType === "repeat") return buildRepeat(source);
+  if (inputType === "section") return buildSection(source);
+  return buildLeafParam(source);
 }
 
-function readContainerType(input: Dict): "conditional" | "repeat" | "section" | null {
-  const t = input.type;
-  if (t === "conditional") return "conditional";
-  if (t === "repeat") return "repeat";
-  if (t === "section") return "section";
-  return null;
-}
-
-function parseConditional(input: Dict): ConditionalParameterModel {
-  const name = readString(input.name);
-  const testRaw = input.test_parameter;
-  if (!isDict(testRaw)) {
-    throw new Error(`conditional '${name}' must define a 'test_parameter'`);
-  }
-  const testParam = parseLeafParam(testRaw);
+function buildConditional(source: InputSource): ConditionalParameterModel {
+  const name = source.parseName();
+  const testParam = fromInputSource(source.parseTestInputSource());
   if (testParam.parameter_type !== "gx_boolean" && testParam.parameter_type !== "gx_select") {
     throw new Error(
       `conditional '${name}' test_parameter must be boolean or select (got ${testParam.parameter_type})`,
     );
   }
-  const whens = parseWhens(input, testParam);
+  const whens = buildWhens(source, testParam);
   return {
     parameter_type: "gx_conditional",
     name,
-    hidden: readBool(input.hidden, false),
-    label: readNullableString(input.label),
-    help: readNullableString(input.help),
-    argument: readNullableString(input.argument),
+    hidden: source.getBool("hidden", false),
+    label: source.parseLabel(),
+    help: source.parseHelp(),
+    argument: readNullableString(source.get("argument")),
     is_dynamic: false,
     test_parameter: testParam as BooleanParameterModel | SelectParameterModel,
     whens,
   };
 }
 
-function parseWhens(input: Dict, testParam: ToolParameterModel): ConditionalWhen[] {
+function buildWhens(source: InputSource, testParam: ToolParameterModel): ConditionalWhen[] {
   const defaultDiscriminator = defaultTestDiscriminator(testParam);
   const result: ConditionalWhen[] = [];
-
-  // YAML supports two shapes: `when: {key: [params], ...}` (map) and `whens:
-  // [{discriminator, parameters: [...]}]` (list).
-  const whenMap = input.when;
-  const whenList = input.whens;
-  if (isDict(whenMap)) {
-    for (const [key, value] of Object.entries(whenMap as Dict)) {
-      const params = Array.isArray(value) ? value.filter(isDict) : [];
-      result.push(makeWhen(key, parseInputs(params), defaultDiscriminator, testParam));
-    }
-  } else if (Array.isArray(whenList)) {
-    for (const item of whenList) {
-      if (!isDict(item)) continue;
-      const disc = (item as Dict).discriminator;
-      const params = (item as Dict).parameters;
-      result.push(makeWhen(disc, parseInputs(params), defaultDiscriminator, testParam));
-    }
+  for (const [rawDiscriminator, page] of source.parseWhenInputSources()) {
+    const parameters = inputModelsForPage(page);
+    result.push(makeWhen(rawDiscriminator, parameters, defaultDiscriminator, testParam));
   }
   return result;
 }
@@ -159,7 +136,17 @@ function makeWhen(
 ): ConditionalWhen {
   let typed: string | boolean;
   if (testParam.parameter_type === "gx_boolean") {
-    typed = coerceBool(rawDiscriminator);
+    // Mirror Python: a `<when value="X">` string matching the test param's
+    // truevalue/falsevalue maps to that boolean before `string_as_bool`, so
+    // e.g. truevalue="--flag" with `<when value="--flag">` selects `true`.
+    const bp = testParam as BooleanParameterModel;
+    if (typeof rawDiscriminator === "string" && rawDiscriminator === bp.truevalue) {
+      typed = true;
+    } else if (typeof rawDiscriminator === "string" && rawDiscriminator === bp.falsevalue) {
+      typed = false;
+    } else {
+      typed = coerceBool(rawDiscriminator);
+    }
   } else {
     typed = rawDiscriminator == null ? "" : String(rawDiscriminator);
   }
@@ -167,112 +154,96 @@ function makeWhen(
   return { discriminator: typed, parameters, is_default_when: isDefault };
 }
 
-function coerceBool(v: unknown): boolean {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") {
-    const lower = v.toLowerCase();
-    if (lower === "true" || lower === "yes" || lower === "1") return true;
-    return false;
-  }
-  return Boolean(v);
-}
-
-function parseRepeat(input: Dict): RepeatParameterModel {
-  const name = readString(input.name);
-  const innerRaw = input.blocks ?? input.parameters ?? input.inputs;
-  const parameters = parseInputs(innerRaw);
+function buildRepeat(source: InputSource): RepeatParameterModel {
+  const parameters = inputModelsForPage(source.parseNestedInputsSource());
   return {
     parameter_type: "gx_repeat",
-    name,
-    hidden: readBool(input.hidden, false),
-    label: readNullableString(input.label),
-    help: readNullableString(input.help),
-    argument: readNullableString(input.argument),
+    name: source.parseName(),
+    hidden: source.getBool("hidden", false),
+    label: source.parseLabel(),
+    help: source.parseHelp(),
+    argument: readNullableString(source.get("argument")),
     is_dynamic: false,
     parameters,
-    min: readNullableInt(input.min),
-    max: readNullableInt(input.max),
+    min: readNullableInt(source.get("min")),
+    max: readNullableInt(source.get("max")),
   };
 }
 
-function parseSection(input: Dict): SectionParameterModel {
-  const name = readString(input.name);
-  const innerRaw = input.parameters ?? input.inputs;
-  const parameters = parseInputs(innerRaw);
+function buildSection(source: InputSource): SectionParameterModel {
+  const parameters = inputModelsForPage(source.parseNestedInputsSource());
   return {
     parameter_type: "gx_section",
-    name,
-    hidden: readBool(input.hidden, false),
-    label: readNullableString(input.label),
-    help: readNullableString(input.help),
-    argument: readNullableString(input.argument),
+    name: source.parseName(),
+    hidden: source.getBool("hidden", false),
+    label: source.parseLabel(),
+    help: source.parseHelp(),
+    argument: readNullableString(source.get("argument")),
     is_dynamic: false,
     parameters,
   };
 }
 
-function parseLeafParam(input: Dict): ToolParameterModel {
-  const paramType = readString(input.type);
+function buildLeafParam(source: InputSource): ToolParameterModel {
+  const paramType = readParamType(source.get("type"));
   if (!DATA_PARAM_TYPES.has(paramType)) {
     throw new Error(`Unknown Galaxy parameter type '${paramType}'`);
   }
-  const base = baseFields(input);
+  const base = baseFields(source);
   switch (paramType) {
     case "integer": {
-      const optional = base.optional;
-      const value = parseOptionalNumber(input.value, optional, "integer");
+      const value = parseOptionalNumber(source.get("value"), base.optional, "integer");
       return {
         ...base,
         parameter_type: "gx_integer",
         type: "integer",
         value,
-        min: readNullableInt(input.min),
-        max: readNullableInt(input.max),
-        validators: collectValidators(input.validators, "number") as InRangeValidatorModel[],
+        min: readNullableInt(source.get("min")),
+        max: readNullableInt(source.get("max")),
+        validators: filterValidators(source.parseValidators(), "number") as InRangeValidatorModel[],
       };
     }
     case "float": {
-      const optional = base.optional;
-      const value = parseOptionalNumber(input.value, optional, "float");
+      const value = parseOptionalNumber(source.get("value"), base.optional, "float");
       return {
         ...base,
         parameter_type: "gx_float",
         type: "float",
         value,
-        min: readNullableFloat(input.min),
-        max: readNullableFloat(input.max),
-        validators: collectValidators(input.validators, "number") as InRangeValidatorModel[],
+        min: readNullableFloat(source.get("min")),
+        max: readNullableFloat(source.get("max")),
+        validators: filterValidators(source.parseValidators(), "number") as InRangeValidatorModel[],
       };
     }
     case "text": {
-      const optional = textIsOptional(input);
+      const validators = filterValidators(source.parseValidators(), "text") as (
+        | RegexValidatorModel
+        | LengthValidatorModel
+        | ExpressionValidatorModel
+        | EmptyFieldValidatorModel
+      )[];
+      const optional = textIsOptional(source, validators);
       return {
         ...base,
         optional,
         parameter_type: "gx_text",
         type: "text",
-        area: readBool(input.area, false),
-        value: textDefault(input.value, optional),
+        area: source.getBool("area", false),
+        default_value: textDefault(source.get("value"), optional),
         default_options: [],
-        validators: collectValidators(input.validators, "text") as (
-          | RegexValidatorModel
-          | LengthValidatorModel
-          | ExpressionValidatorModel
-          | EmptyFieldValidatorModel
-        )[],
+        validators,
       };
     }
     case "boolean": {
-      const optional = base.optional;
-      const rawChecked = input.checked;
-      const value = rawChecked == null ? (optional ? false : false) : coerceBool(rawChecked);
+      const rawChecked = source.get("checked");
+      const value = rawChecked == null ? false : coerceBool(rawChecked);
       return {
         ...base,
         parameter_type: "gx_boolean",
         type: "boolean",
         value,
-        truevalue: readNullableString(input.truevalue),
-        falsevalue: readNullableString(input.falsevalue),
+        truevalue: readNullableString(source.get("truevalue")),
+        falsevalue: readNullableString(source.get("falsevalue")),
       };
     }
     case "hidden": {
@@ -280,8 +251,8 @@ function parseLeafParam(input: Dict): ToolParameterModel {
         ...base,
         parameter_type: "gx_hidden",
         type: "hidden",
-        value: readNullableString(input.value),
-        validators: collectValidators(input.validators, "text") as (
+        value: readNullableString(source.get("value")),
+        validators: filterValidators(source.parseValidators(), "text") as (
           | RegexValidatorModel
           | LengthValidatorModel
           | ExpressionValidatorModel
@@ -290,7 +261,8 @@ function parseLeafParam(input: Dict): ToolParameterModel {
       };
     }
     case "color": {
-      const value = typeof input.value === "string" ? input.value : "#000000";
+      const rawValue = source.get("value");
+      const value = typeof rawValue === "string" ? rawValue : "#000000";
       return {
         ...base,
         parameter_type: "gx_color",
@@ -306,13 +278,22 @@ function parseLeafParam(input: Dict): ToolParameterModel {
       // hidden_data is broken without optional=true in Python; mirror the
       // override.
       const optional = paramType === "data" ? base.optional : true;
+      const defaultValue = source.parseDefault();
+      const urlDefault =
+        isDict(defaultValue) && defaultValue.location != null
+          ? String(defaultValue.location)
+          : null;
       return {
         ...base,
         optional,
         parameter_type: "gx_data",
         type: "data",
-        multiple: readBool(input.multiple, false),
-        extensions: parseExtensions(input),
+        multiple: source.getBool("multiple", false),
+        extensions: source.parseExtensions(),
+        // The factory never reads min/max (mirrors Galaxy).
+        min: null,
+        max: null,
+        url_default: urlDefault,
       };
     }
     case "data_collection": {
@@ -320,16 +301,17 @@ function parseLeafParam(input: Dict): ToolParameterModel {
         ...base,
         parameter_type: "gx_data_collection",
         type: "data_collection",
-        collection_type: readNullableString(input.collection_type),
-        extensions: parseExtensions(input),
-        value: input.default ?? input.value ?? null,
+        collection_type: readNullableString(source.get("collection_type")),
+        extensions: source.parseExtensions(),
+        value: source.parseDefault() ?? source.get("value") ?? null,
       };
     }
     case "select": {
-      const multiple = readBool(input.multiple, false);
+      const multiple = source.getBool("multiple", false);
       const optional = base.optional;
-      const options = parseStaticOptions(input);
-      const validators = collectValidators(input.validators, "select") as ValidatorModel[];
+      // Dynamic options (data table / code) → `null`; otherwise the static list.
+      const options = source.hasDynamicOptions() ? null : source.parseStaticOptions();
+      const validators = filterValidators(source.parseValidators(), "select");
       // `no_options` doesn't apply if select is optional (mirrors Python).
       const filtered = optional ? validators.filter((v) => v.type !== "no_options") : validators;
       return {
@@ -346,16 +328,18 @@ function parseLeafParam(input: Dict): ToolParameterModel {
         ...base,
         parameter_type: "gx_drill_down",
         type: "drill_down",
-        multiple: readBool(input.multiple, false),
-        hierarchy: (input.hierarchy as "exact" | "recurse") === "recurse" ? "recurse" : "exact",
-        options: parseDrillDownOptions(input.options) ?? [],
+        multiple: source.getBool("multiple", false),
+        hierarchy: source.get("hierarchy") === "recurse" ? "recurse" : "exact",
+        options: source.hasDrillDownDynamicOptions()
+          ? null
+          : (source.parseDrillDownStaticOptions() ?? []),
       };
     }
     case "data_column": {
-      const multiple = readBool(input.multiple, false);
-      const acceptDefault = readBool(input.accept_default, false);
+      const multiple = source.getBool("multiple", false);
+      const acceptDefault = source.getBool("accept_default", false);
       let optional = base.optional;
-      let value = input.value as number | string | (string | number)[] | null | undefined;
+      let value = source.get("value") as number | string | (string | number)[] | null | undefined;
       if (!optional && acceptDefault) optional = true;
       if (acceptDefault && (value === null || value === undefined)) {
         value = multiple ? [0] : 0;
@@ -377,6 +361,7 @@ function parseLeafParam(input: Dict): ToolParameterModel {
         type: "data_column",
         multiple,
         value: coerced,
+        data_ref: readNullableString(source.get("data_ref")),
       };
     }
     case "group_tag": {
@@ -384,7 +369,7 @@ function parseLeafParam(input: Dict): ToolParameterModel {
         ...base,
         parameter_type: "gx_group_tag",
         type: "group_tag",
-        multiple: readBool(input.multiple, false),
+        multiple: source.getBool("multiple", false),
       };
     }
     case "baseurl": {
@@ -392,7 +377,7 @@ function parseLeafParam(input: Dict): ToolParameterModel {
         ...base,
         parameter_type: "gx_baseurl",
         type: "baseurl",
-        value: readNullableString(input.value),
+        value: readNullableString(source.get("value")),
       };
     }
     case "genomebuild": {
@@ -400,7 +385,7 @@ function parseLeafParam(input: Dict): ToolParameterModel {
         ...base,
         parameter_type: "gx_genomebuild",
         type: "genomebuild",
-        multiple: readBool(input.multiple, false),
+        multiple: source.getBool("multiple", false),
         options: [],
       };
     }
@@ -409,8 +394,8 @@ function parseLeafParam(input: Dict): ToolParameterModel {
         ...base,
         parameter_type: "gx_directory_uri",
         type: "directory_uri",
-        value: readNullableString(input.value),
-        validators: collectValidators(input.validators, "text") as ValidatorModel[],
+        value: readNullableString(source.get("value")),
+        validators: filterValidators(source.parseValidators(), "text") as ValidatorModel[],
       };
     }
     default:
@@ -418,7 +403,7 @@ function parseLeafParam(input: Dict): ToolParameterModel {
   }
 }
 
-function baseFields(input: Dict): {
+function baseFields(source: InputSource): {
   name: string;
   hidden: boolean;
   label: string | null;
@@ -428,77 +413,82 @@ function baseFields(input: Dict): {
   optional: boolean;
 } {
   return {
-    name: readString(input.name),
-    hidden: readBool(input.hidden, false),
-    label: readNullableString(input.label),
-    help: readNullableString(input.help),
-    argument: readNullableString(input.argument),
+    name: source.parseName(),
+    hidden: source.getBool("hidden", false),
+    label: source.parseLabel(),
+    help: source.parseHelp(),
+    argument: readNullableString(source.get("argument")),
     is_dynamic: false,
-    optional: readBool(input.optional, false),
+    optional: source.parseOptional(),
   };
 }
 
-function textIsOptional(input: Dict): boolean {
-  // Mirrors `text_input_is_optional`: explicit `optional:` wins, otherwise
-  // inferred from `value:` being present.
-  if (input.optional !== undefined && input.optional !== null) {
-    return coerceBool(input.optional);
+function readParamType(v: unknown): string {
+  return typeof v === "string" ? v : v == null ? "" : String(v);
+}
+
+type TextValidator =
+  | RegexValidatorModel
+  | LengthValidatorModel
+  | ExpressionValidatorModel
+  | EmptyFieldValidatorModel;
+
+function textIsOptional(source: InputSource, validators: readonly TextValidator[]): boolean {
+  // Mirrors `text_input_is_optional`: explicit `optional:` wins, otherwise a
+  // text param is optional when the empty string passes all its validators.
+  const optional = source.get("optional");
+  if (optional !== undefined && optional !== null) {
+    return coerceBool(optional);
   }
-  return input.value === undefined || input.value === null || input.value === "";
+  return emptyStringValidates(validators);
+}
+
+/**
+ * Port of `statically_validates(validators, "")` for text params: the empty
+ * string is accepted when every static validator passes on it. A validator
+ * passes iff its base check differs from its `negate` flag (mirrors
+ * `raise_error_if_validation_fails`).
+ */
+function emptyStringValidates(validators: readonly TextValidator[]): boolean {
+  return validators.every((v) => {
+    const negate = "negate" in v && v.negate === true;
+    let passesRaw: boolean;
+    switch (v.type) {
+      case "empty_field":
+        passesRaw = false; // "" is empty
+        break;
+      case "length":
+        passesRaw = !(v.min != null && v.min > 0); // len("") === 0
+        break;
+      case "regex":
+        passesRaw = emptyMatchesRegex(v.expression);
+        break;
+      case "expression":
+        // Python evaluates the expression against value=""; TS can't, so treat
+        // it as not satisfying the empty string (conservative — matches the
+        // common truthy-`value` expression form, which is falsy for "").
+        passesRaw = false;
+        break;
+      default:
+        passesRaw = true; // non-text validators don't constrain ""
+    }
+    return passesRaw !== negate;
+  });
+}
+
+/** Whether `expression` matches the empty string anchored at the start (re.match). */
+function emptyMatchesRegex(expression: string): boolean {
+  try {
+    return new RegExp(`^(?:${expression})`, "u").test("");
+  } catch {
+    return false;
+  }
 }
 
 function textDefault(value: unknown, optional: boolean): string | null {
   if (typeof value === "string") return value;
   if (value === undefined || value === null) return optional ? null : "";
   return String(value);
-}
-
-function parseExtensions(input: Dict): string[] {
-  const explicit = input.extensions;
-  let raw: unknown = explicit;
-  if (raw === undefined || raw === null || (Array.isArray(raw) && raw.length === 0)) {
-    raw = input.format ?? "data";
-  }
-  let list: unknown[];
-  if (Array.isArray(raw)) {
-    list = raw;
-  } else if (typeof raw === "string") {
-    list = raw.split(",");
-  } else {
-    list = ["data"];
-  }
-  return list.map((v) => String(v).trim().toLowerCase()).filter((v) => v !== "");
-}
-
-function parseStaticOptions(input: Dict): LabelValue[] | null {
-  const opts = input.options;
-  if (!Array.isArray(opts)) return null;
-  const out: LabelValue[] = [];
-  for (const item of opts) {
-    if (!isDict(item)) continue;
-    const value = (item as Dict).value;
-    if (value === undefined) continue;
-    const valueStr = String(value);
-    const label =
-      typeof (item as Dict).label === "string" ? ((item as Dict).label as string) : valueStr;
-    const selected = readBool((item as Dict).selected, false);
-    out.push({ label, value: valueStr, selected });
-  }
-  return out;
-}
-
-function parseDrillDownOptions(raw: unknown): DrillDownOption[] | null {
-  if (!Array.isArray(raw)) return null;
-  return raw.filter(isDict).map(parseDrillDownOption);
-}
-
-function parseDrillDownOption(entry: Dict): DrillDownOption {
-  return {
-    value: String(entry.value ?? ""),
-    name: String(entry.name ?? entry.value ?? ""),
-    options: parseDrillDownOptions(entry.options) ?? [],
-    selected: readBool(entry.selected, false),
-  };
 }
 
 function parseOptionalNumber(
@@ -517,14 +507,10 @@ function parseOptionalNumber(
   return n;
 }
 
-function collectValidators(raw: unknown, kind: "number" | "text" | "select"): ValidatorModel[] {
-  if (!Array.isArray(raw)) return [];
-  const all: ValidatorModel[] = [];
-  for (const entry of raw) {
-    if (!isDict(entry)) continue;
-    const v = parseValidatorDict(entry as Dict);
-    if (v) all.push(v);
-  }
+function filterValidators(
+  all: ValidatorModel[],
+  kind: "number" | "text" | "select",
+): ValidatorModel[] {
   if (kind === "number") {
     return all.filter((v) => v.type === "in_range");
   }
@@ -539,74 +525,4 @@ function collectValidators(raw: unknown, kind: "number" | "text" | "select"): Va
   }
   // select
   return all.filter((v) => v.type === "no_options");
-}
-
-function parseValidatorDict(entry: Dict): ValidatorModel | null {
-  const type = readString(entry.type);
-  const negate = readBool(entry.negate, false);
-  switch (type) {
-    case "in_range":
-      return {
-        type: "in_range",
-        min: readNullableFloat(entry.min),
-        max: readNullableFloat(entry.max),
-        exclude_min: readBool(entry.exclude_min, false),
-        exclude_max: readBool(entry.exclude_max, false),
-        negate,
-        message: readNullableString(entry.message),
-      };
-    case "regex":
-      return { type: "regex", expression: readString(entry.expression), negate };
-    case "length":
-      return {
-        type: "length",
-        min: readNullableInt(entry.min),
-        max: readNullableInt(entry.max),
-        negate,
-      };
-    case "expression":
-      return { type: "expression", expression: readString(entry.expression), negate };
-    case "empty_field":
-      return { type: "empty_field", negate };
-    case "no_options":
-      return { type: "no_options", negate };
-    default:
-      return null;
-  }
-}
-
-function isDict(v: unknown): v is Dict {
-  return v != null && typeof v === "object" && !Array.isArray(v);
-}
-
-function readString(v: unknown): string {
-  return typeof v === "string" ? v : v == null ? "" : String(v);
-}
-
-function readNullableString(v: unknown): string | null {
-  if (v === undefined || v === null) return null;
-  if (typeof v === "string") return v;
-  return String(v);
-}
-
-function readBool(v: unknown, fallback: boolean): boolean {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") {
-    const lower = v.toLowerCase();
-    if (lower === "true" || lower === "yes" || lower === "1") return true;
-    if (lower === "false" || lower === "no" || lower === "0") return false;
-  }
-  return fallback;
-}
-
-function readNullableInt(v: unknown): number | null {
-  if (v === undefined || v === null || v === "") return null;
-  const n = parseInt(String(v), 10);
-  return Number.isNaN(n) ? null : n;
-}
-
-function readNullableFloat(v: unknown): number | null {
-  if (v === undefined || v === null || v === "") return null;
-  const n = Number(v);
-  return Number.isNaN(n) ? null : n;
 }

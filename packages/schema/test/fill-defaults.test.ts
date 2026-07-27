@@ -84,7 +84,7 @@ function textParam(name: string, value: string | null = null, optional = true): 
     is_dynamic: false,
     optional,
     area: false,
-    value,
+    default_value: value,
     default_options: [],
     validators: [],
   };
@@ -182,6 +182,9 @@ function dataParam(name: string): DataParameterModel {
     optional: false,
     multiple: false,
     extensions: ["data"],
+    min: null,
+    max: null,
+    url_default: null,
   };
 }
 

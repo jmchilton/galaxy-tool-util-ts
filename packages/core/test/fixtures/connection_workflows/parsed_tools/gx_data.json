@@ -25,7 +25,8 @@
       ],
       "multiple": false,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     }
   ],
   "outputs": [

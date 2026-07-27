@@ -141,6 +141,19 @@
       ]
     },
     {
+      "name": "macro-expansion",
+      "label": "XML macro-expansion golden cases (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "test/unit/tool_util/tool_parsing/macro_expansion/cases/",
+          "dst": "packages/tool-xml/test/fixtures/macro-expansion/cases/",
+          "patterns": ["*.xml", "error"],
+          "recursive": true
+        }
+      ]
+    },
+    {
       "name": "wfstate-templates",
       "label": "workflow-state report templates (Galaxy)",
       "src_root": "galaxy_root",
@@ -149,6 +162,49 @@
           "src": "lib/galaxy/tool_util/workflow_state/templates/reports/",
           "dst": "packages/cli/src/workflow/templates/reports/",
           "patterns": ["*.md.j2"]
+        }
+      ]
+    },
+    {
+      "name": "tool-parsing",
+      "label": "declarative tool-parsing corpus (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "test/functional/tools/",
+          "dst": "packages/tool-xml/test/fixtures/tool_parsing/tools/",
+          "files": [
+            "catDocker.xml",
+            "bibtex.xml",
+            "inputs_as_json.xml",
+            "column_param.xml",
+            "collection_creates_list.xml",
+            "disambiguate_cond.xml",
+            "disambiguate_repeats.xml",
+            "all_output_types.xml",
+            "output_format.xml",
+            "cat_user_defined.yml",
+            "cat_multiple_user_defined.yml",
+            "configfile_user_defined.yml",
+            "simple_constructs.yml",
+            "collection_creates_pair_y.yml",
+            "collection_paired_test_y.yml",
+            "sample_tool_conf.xml"
+          ]
+        },
+        {
+          "src": "test/unit/tool_util/tool_parsing/expectations/",
+          "dst": "packages/tool-xml/test/fixtures/tool_parsing/expectations/",
+          "files": [
+            "metadata.yml",
+            "inputs_primitives.yml",
+            "inputs_data.yml",
+            "inputs_conditional.yml",
+            "inputs_selects.yml",
+            "inputs_repeat_section.yml",
+            "outputs.yml",
+            "errors.yml"
+          ]
         }
       ]
     }

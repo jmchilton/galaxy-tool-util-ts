@@ -79,7 +79,7 @@ function textParam(name: string): TextParameterModel {
     is_dynamic: false,
     optional: true,
     area: false,
-    value: null,
+    default_value: null,
     default_options: [],
     validators: [],
   };
@@ -98,6 +98,9 @@ function dataParam(name: string, optional: boolean): ToolParameterModel {
     optional,
     multiple: false,
     extensions: ["data"],
+    min: null,
+    max: null,
+    url_default: null,
   } as ToolParameterModel;
 }
 

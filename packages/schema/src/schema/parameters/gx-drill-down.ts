@@ -31,7 +31,8 @@ function generateDrillDownSchema(
 
   // "exact" mode: all nodes selectable. "recurse" single: leaf-only. "recurse" multiple: all nodes.
   const leafOnly = p.hierarchy === "recurse" && !p.multiple;
-  const validValues = collectValues(p.options, leafOnly);
+  // Dynamic options (`options === null`) accept any string.
+  const validValues = p.options ? collectValues(p.options, leafOnly) : [];
 
   let valueSchema: S.Schema.Any;
   if (validValues.length > 0) {

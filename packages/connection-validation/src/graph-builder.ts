@@ -403,16 +403,14 @@ function _collectOutputs(rawOutputs: readonly unknown[]): Record<string, Resolve
         formatSource: (o.format_source as string | null | undefined) ?? null,
       };
     } else if (type === "collection") {
-      const structure = (o.structure ?? {}) as Record<string, unknown>;
       result[name] = {
         name,
         type: "collection",
-        collectionType: (structure.collection_type as string | null | undefined) ?? null,
-        collectionTypeSource:
-          (structure.collection_type_source as string | null | undefined) ?? null,
+        collectionType: (o.collection_type as string | null | undefined) ?? null,
+        collectionTypeSource: (o.collection_type_source as string | null | undefined) ?? null,
         collectionTypeFromRules:
-          (structure.collection_type_from_rules as string | null | undefined) ?? null,
-        structuredLike: (structure.structured_like as string | null | undefined) ?? null,
+          (o.collection_type_from_rules as string | null | undefined) ?? null,
+        structuredLike: (o.structured_like as string | null | undefined) ?? null,
       };
     } else if (type === "text" || type === "integer" || type === "float" || type === "boolean") {
       result[name] = { name, type };

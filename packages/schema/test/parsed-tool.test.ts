@@ -70,23 +70,21 @@ describe("ParsedTool", () => {
           label: "scores",
           hidden: false,
           type: "collection",
-          structure: {
-            collection_type: "list",
-            collection_type_source: null,
-            collection_type_from_rules: null,
-            structured_like: null,
-            discover_datasets: [
-              {
-                discover_via: "tool_provided_metadata",
-                format: "txt",
-                visible: true,
-                assign_primary_output: false,
-                directory: null,
-                recurse: false,
-                match_relative_path: false,
-              },
-            ],
-          },
+          collection_type: "list",
+          collection_type_source: null,
+          collection_type_from_rules: null,
+          structured_like: null,
+          discover_datasets: [
+            {
+              discover_via: "tool_provided_metadata",
+              format: "txt",
+              visible: true,
+              assign_primary_output: false,
+              directory: null,
+              recurse: false,
+              match_relative_path: false,
+            },
+          ],
         },
       ],
       citations: [],
@@ -104,10 +102,8 @@ describe("ParsedTool", () => {
     if (!collection || collection.type !== "collection") {
       throw new Error("expected third output to be a collection output");
     }
-    expect(collection.structure.collection_type).toBe("list");
-    expect(collection.structure.discover_datasets?.[0]?.discover_via).toBe(
-      "tool_provided_metadata",
-    );
+    expect(collection.collection_type).toBe("list");
+    expect(collection.discover_datasets?.[0]?.discover_via).toBe("tool_provided_metadata");
   });
 
   it("exports a JSON Schema that validates FastQC parsed tool fixtures", () => {

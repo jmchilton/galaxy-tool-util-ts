@@ -22,7 +22,7 @@
       "type": "data_collection",
       "collection_type": "paired",
       "extensions": [
-        "data"
+        "txt"
       ],
       "value": null
     }
@@ -33,13 +33,11 @@
       "label": "Duplicate List",
       "hidden": false,
       "type": "collection",
-      "structure": {
-        "collection_type": "paired",
-        "collection_type_source": null,
-        "collection_type_from_rules": null,
-        "structured_like": "input1",
-        "discover_datasets": []
-      }
+      "collection_type": "paired",
+      "collection_type_source": null,
+      "collection_type_from_rules": null,
+      "structured_like": "input1",
+      "discover_datasets": []
     }
   ],
   "citations": [],

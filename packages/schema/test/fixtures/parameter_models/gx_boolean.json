@@ -11,8 +11,8 @@
       "optional": false,
       "type": "boolean",
       "value": false,
-      "truevalue": null,
-      "falsevalue": null
+      "truevalue": "mytrue",
+      "falsevalue": "myfalse"
     }
   ]
 }

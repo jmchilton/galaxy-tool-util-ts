@@ -37,11 +37,12 @@
       "optional": false,
       "type": "data",
       "extensions": [
-        "data"
+        "txt"
       ],
       "multiple": false,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     },
     {
       "name": "advanced",

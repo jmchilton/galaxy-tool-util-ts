@@ -59,7 +59,7 @@ const UPSTREAM_LABELS = {
 // ---------------------------------------------------------------------------
 
 /**
- * @typedef {{ src: string, dst: string, patterns?: string[], files?: string[] }} Entry
+ * @typedef {{ src: string, dst: string, patterns?: string[], files?: string[], recursive?: boolean }} Entry
  * @typedef {{ name: string, label: string, src_root: string, entries: Entry[] }} Group
  * @typedef {{ groups: Group[] }} Manifest
  */
@@ -106,7 +106,14 @@ function runRsync(entry, srcDir, dstDir, { dryRun }) {
   } else {
     // Sync files matching the given patterns; exclude everything else.
     const patterns = entry.patterns ?? [];
-    extraArgs = [...patterns.flatMap((p) => ["--include", p]), "--exclude", "*"];
+    const includes = patterns.flatMap((p) => ["--include", p]);
+    if (entry.recursive) {
+      // Descend into subdirectories: include dirs first, then matching files,
+      // then exclude the rest; prune empties so no bare dir trees are synced.
+      extraArgs = ["--prune-empty-dirs", "--include", "*/", ...includes, "--exclude", "*"];
+    } else {
+      extraArgs = [...includes, "--exclude", "*"];
+    }
   }
 
   const allArgs = [...baseArgs, ...extraArgs, srcDir + "/", dstDir + "/"];
@@ -167,9 +174,20 @@ function parseItemizeOutput(stdout, dstDir) {
  * @param {string[]} patterns
  * @returns {string[]}
  */
-function findExtras(srcDir, dstDir, patterns) {
+function findExtras(srcDir, dstDir, patterns, recursive = false) {
   if (!existsSync(dstDir)) return [];
   const extras = [];
+  if (recursive) {
+    const walk = (relDir) => {
+      for (const ent of readdirSync(join(dstDir, relDir), { withFileTypes: true })) {
+        const rel = relDir ? join(relDir, ent.name) : ent.name;
+        if (ent.isDirectory()) walk(rel);
+        else if (matchesAny(ent.name, patterns) && !existsSync(join(srcDir, rel))) extras.push(rel);
+      }
+    };
+    walk("");
+    return extras;
+  }
   for (const filename of readdirSync(dstDir)) {
     if (!matchesAny(filename, patterns)) continue;
     if (!existsSync(join(srcDir, filename))) extras.push(filename);
@@ -240,7 +258,7 @@ for (const group of groups) {
 
     if (mode === "check") {
       const issues = parseItemizeOutput(result.stdout, dstDir);
-      const extras = patterns ? findExtras(srcDir, dstDir, patterns) : [];
+      const extras = patterns ? findExtras(srcDir, dstDir, patterns, entry.recursive) : [];
 
       if (issues.length === 0 && extras.length === 0) {
         console.log(`  OK        ${entry.src}`);

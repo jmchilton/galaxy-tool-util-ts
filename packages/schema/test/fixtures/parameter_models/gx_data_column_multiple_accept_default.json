@@ -11,11 +11,12 @@
       "optional": false,
       "type": "data",
       "extensions": [
-        "data"
+        "tabular"
       ],
       "multiple": false,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     },
     {
       "name": "parameter",
@@ -30,7 +31,8 @@
       "multiple": true,
       "value": [
         0
-      ]
+      ],
+      "data_ref": "ref_parameter"
     }
   ]
 }

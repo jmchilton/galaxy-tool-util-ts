@@ -38,7 +38,7 @@ function textParam(name: string): TextParameterModel {
     is_dynamic: false,
     optional: true,
     area: false,
-    value: null,
+    default_value: null,
     default_options: [],
     validators: [],
   };
@@ -127,6 +127,9 @@ function dataParam(name: string): DataParameterModel {
     optional: false,
     multiple: false,
     extensions: ["data"],
+    min: null,
+    max: null,
+    url_default: null,
   };
 }
 
@@ -160,6 +163,7 @@ function dataColumnParam(name: string, multiple = false): DataColumnParameterMod
     optional: false,
     multiple,
     value: null,
+    data_ref: null,
   };
 }
 

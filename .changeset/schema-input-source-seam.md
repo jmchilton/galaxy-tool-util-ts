@@ -1,0 +1,5 @@
+---
+"@galaxy-tool-util/schema": minor
+---
+
+Introduce the `InputSource` / `PageSource` seam — the TS mirror of Galaxy's `parser.interface.InputSource` / `PageSource`. The input factory (`parseInputs`, formerly reaching into a raw dict) now consumes an `InputSource`, so an XML-backed source in `@galaxy-tool-util/tool-xml` can feed the same `_from_input_source_galaxy`-equivalent factory. Ships the dependency-free interfaces plus the inline/YAML dict implementation (`DictInputSource` / `DictPageSource`, mirroring `YamlInputSource` / `YamlPageSource`), all newly exported. Pure restructure — the produced `ToolParameterModel` output is unchanged (the full schema suite passes before and after). One deliberate behavior alignment: a YAML `type: section` is now rejected (`Unknown Galaxy parameter type 'section'`), matching `YamlInputSource.parse_input_type`, which never returns `"section"`; sections remain reachable only from the XML path (where `tag == "section"`), landing with the `tool-xml` input work.

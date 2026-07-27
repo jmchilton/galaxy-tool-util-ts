@@ -30,7 +30,7 @@ function textParam(name: string): ToolParameterModel {
     is_dynamic: false,
     optional: true,
     area: false,
-    value: null,
+    default_value: null,
     default_options: [],
     validators: [],
   };
@@ -49,6 +49,9 @@ function dataParam(name: string): ToolParameterModel {
     optional: false,
     multiple: false,
     extensions: ["data"],
+    min: null,
+    max: null,
+    url_default: null,
   };
 }
 
