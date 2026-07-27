@@ -12,7 +12,7 @@
       "type": "data_collection",
       "collection_type": null,
       "extensions": [
-        "data"
+        "tabular"
       ],
       "value": null
     },
