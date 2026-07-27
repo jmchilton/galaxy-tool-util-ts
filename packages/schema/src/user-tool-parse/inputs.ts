@@ -65,7 +65,14 @@ export function parseInputs(raw: unknown): ToolParameterModel[] {
  * or an XML page source in `@galaxy-tool-util/tool-xml`).
  */
 export function inputModelsForPage(page: PageSource): ToolParameterModel[] {
-  return page.parseInputSources().map(fromInputSource);
+  const models: ToolParameterModel[] = [];
+  for (const source of page.parseInputSources()) {
+    // `<display>` is not a real input (data_source tools carry one); skip it,
+    // matching `factory.input_models_for_page`.
+    if (source.parseInputType() === "display") continue;
+    models.push(fromInputSource(source));
+  }
+  return models;
 }
 
 function fromInputSource(source: InputSource): ToolParameterModel {
@@ -102,7 +109,7 @@ function buildWhens(source: InputSource, testParam: ToolParameterModel): Conditi
   const defaultDiscriminator = defaultTestDiscriminator(testParam);
   const result: ConditionalWhen[] = [];
   for (const [rawDiscriminator, page] of source.parseWhenInputSources()) {
-    const parameters = page.parseInputSources().map(fromInputSource);
+    const parameters = inputModelsForPage(page);
     result.push(makeWhen(rawDiscriminator, parameters, defaultDiscriminator, testParam));
   }
   return result;
@@ -148,7 +155,7 @@ function makeWhen(
 }
 
 function buildRepeat(source: InputSource): RepeatParameterModel {
-  const parameters = source.parseNestedInputsSource().parseInputSources().map(fromInputSource);
+  const parameters = inputModelsForPage(source.parseNestedInputsSource());
   return {
     parameter_type: "gx_repeat",
     name: source.parseName(),
@@ -164,7 +171,7 @@ function buildRepeat(source: InputSource): RepeatParameterModel {
 }
 
 function buildSection(source: InputSource): SectionParameterModel {
-  const parameters = source.parseNestedInputsSource().parseInputSources().map(fromInputSource);
+  const parameters = inputModelsForPage(source.parseNestedInputsSource());
   return {
     parameter_type: "gx_section",
     name: source.parseName(),

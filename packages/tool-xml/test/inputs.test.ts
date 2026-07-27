@@ -314,3 +314,17 @@ describe("XmlInputSource — data_collection defaults", () => {
     expect((p as DataCollectionParameterModel).value).toBeNull();
   });
 });
+
+describe("XmlInputSource — non-input children", () => {
+  // data_source tools carry a <display> alongside their params; it is not a
+  // real input and is skipped, matching factory.input_models_for_page.
+  it("skips <display> and parses the baseurl param (test_data_source)", () => {
+    const models = inputs(
+      `<display>go to server $GALAXY_URL</display>` +
+        `<param name="GALAXY_URL" type="baseurl" value="/tool_runner"/>`,
+    );
+    expect(models).toHaveLength(1);
+    expect(models[0].name).toBe("GALAXY_URL");
+    expect(models[0].parameter_type).toBe("gx_baseurl");
+  });
+});

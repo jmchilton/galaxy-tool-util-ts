@@ -63,6 +63,7 @@ export class XmlInputSource implements InputSource {
     if (tag === "conditional") return "conditional";
     if (tag === "repeat") return "repeat";
     if (tag === "section") return "section";
+    if (tag === "display") return "display";
     return "param";
   }
 
