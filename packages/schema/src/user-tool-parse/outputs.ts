@@ -104,7 +104,7 @@ function parseOutputCollection(entry: Dict): ToolOutputCollection {
     label: readNullableString(entry.label),
     hidden: readBool(entry.hidden, false),
     type: "collection",
-    structure: parseStructure(entry),
+    ...parseStructure(entry),
   };
 }
 

@@ -128,21 +128,21 @@ describe("parseInlineTool", () => {
     );
     const typed = parsedTyped.outputs[0];
     if (typed.type !== "collection") throw new Error("expected collection");
-    expect(typed.structure.collection_type).toBe("list");
+    expect(typed.collection_type).toBe("list");
 
     const parsedSrc = parseInlineTool(
       repr({ outputs: [{ type: "collection", name: "c", type_source: "in1" }] }),
     );
     const fromSrc = parsedSrc.outputs[0];
     if (fromSrc.type !== "collection") throw new Error("expected collection");
-    expect(fromSrc.structure.collection_type_source).toBe("in1");
+    expect(fromSrc.collection_type_source).toBe("in1");
 
     const parsedLike = parseInlineTool(
       repr({ outputs: [{ type: "collection", name: "c", structured_like: "in1" }] }),
     );
     const like = parsedLike.outputs[0];
     if (like.type !== "collection") throw new Error("expected collection");
-    expect(like.structure.structured_like).toBe("in1");
+    expect(like.structured_like).toBe("in1");
   });
 
   it("translates string help to markdown HelpContent", () => {

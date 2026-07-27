@@ -130,7 +130,7 @@ function parseOutputCollection(
     // Python's _parse_collection never reads a hidden attribute on collections.
     hidden: false,
     type: "collection",
-    structure,
+    ...structure,
   };
 }
 

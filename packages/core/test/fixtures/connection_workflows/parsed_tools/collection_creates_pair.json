@@ -25,7 +25,8 @@
       ],
       "multiple": false,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     }
   ],
   "outputs": [
@@ -34,13 +35,11 @@
       "label": "Split Pair",
       "hidden": false,
       "type": "collection",
-      "structure": {
-        "collection_type": "paired",
-        "collection_type_source": null,
-        "collection_type_from_rules": null,
-        "structured_like": null,
-        "discover_datasets": []
-      }
+      "collection_type": "paired",
+      "collection_type_source": null,
+      "collection_type_from_rules": null,
+      "structured_like": null,
+      "discover_datasets": []
     }
   ],
   "citations": [],

@@ -33,15 +33,7 @@ const TOOLS_DIR = path.join(FIXTURES_DIR, "tools");
 
 // Cases whose expectation reflects Python behavior the TS port hasn't mirrored
 // yet — skip locally rather than editing the shared golden expectation file.
-// These three assert a flattened collection-output shape (top-level
-// `collection_type`) that Galaxy's tool_parsing_abstraction branch adopted but
-// the TS `ToolOutputCollection` model still nests under `structure`. Cleared
-// when the collection-output flatten + golden regen slice lands.
-const KNOWN_BEHAVIOR_DIVERGENCES = new Set<string>([
-  "parse_all_output_types_paired_collection",
-  "parse_all_output_types_list_collection_discovered",
-  "parse_yaml_paired_collection_output",
-]);
+const KNOWN_BEHAVIOR_DIVERGENCES = new Set<string>([]);
 
 /** Resolve a fixture basename to its on-disk path (see file header). */
 function resolveFixturePath(name: string): string {

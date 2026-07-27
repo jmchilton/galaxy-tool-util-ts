@@ -79,22 +79,22 @@ describe("XmlToolSource.parseOutputs", () => {
 
   it("parses a collection with type / type_source / structured_like; label defaults to ''", () => {
     const [typed] = outputs(`<collection name="c" type="list"/>`);
-    expect((typed as ToolOutputCollection).structure.collection_type).toBe("list");
+    expect((typed as ToolOutputCollection).collection_type).toBe("list");
     // Collections default label to "" (xml_text default), unlike data's null.
     expect((typed as ToolOutputCollection).label).toBe("");
 
     const [src] = outputs(`<collection name="c" type_source="in1"/>`);
-    expect((src as ToolOutputCollection).structure.collection_type_source).toBe("in1");
+    expect((src as ToolOutputCollection).collection_type_source).toBe("in1");
 
     const [like] = outputs(`<collection name="c" structured_like="in1"/>`);
-    expect((like as ToolOutputCollection).structure.structured_like).toBe("in1");
+    expect((like as ToolOutputCollection).structured_like).toBe("in1");
   });
 
   it("parses discover_datasets on a collection, inheriting the collection format", () => {
     const [o] = outputs(
       `<collection name="c" type="list" format="fasta"><discover_datasets pattern="__name__" directory="out" visible="true"/></collection>`,
     );
-    const dd = (o as ToolOutputCollection).structure.discover_datasets;
+    const dd = (o as ToolOutputCollection).discover_datasets;
     expect(dd).toHaveLength(1);
     const first = dd![0] as FilePatternDatasetCollectionDescription;
     expect(first.discover_via).toBe("pattern");

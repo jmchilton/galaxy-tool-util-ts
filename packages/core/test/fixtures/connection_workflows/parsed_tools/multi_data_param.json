@@ -21,11 +21,12 @@
       "optional": false,
       "type": "data",
       "extensions": [
-        "data"
+        "txt"
       ],
       "multiple": true,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     },
     {
       "name": "f2",
@@ -38,11 +39,12 @@
       "optional": false,
       "type": "data",
       "extensions": [
-        "data"
+        "txt"
       ],
       "multiple": true,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     },
     {
       "name": "advanced",

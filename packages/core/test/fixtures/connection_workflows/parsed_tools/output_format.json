@@ -25,7 +25,8 @@
       ],
       "multiple": false,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     },
     {
       "name": "input_data_2",
@@ -42,7 +43,8 @@
       ],
       "multiple": false,
       "min": null,
-      "max": null
+      "max": null,
+      "url_default": null
     },
     {
       "name": "input_text",
