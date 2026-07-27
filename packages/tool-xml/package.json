@@ -43,11 +43,11 @@
   "license": "MIT",
   "dependencies": {
     "@galaxy-tool-util/schema": "workspace:*",
-    "fast-xml-parser": "^5.10.1"
+    "fast-xml-parser": "^5.10.1",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "effect": "^3.21.0",
-    "yaml": "^2.8.3"
+    "effect": "^3.21.0"
   }
 }
