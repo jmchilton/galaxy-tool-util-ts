@@ -25,7 +25,7 @@ import { parseYamlTool } from "@galaxy-tool-util/schema";
 
 import { loadExpectations, runAssertions } from "../../schema/test/declarative-test-utils.js";
 
-import { loadXmlToolSource } from "../src/index.js";
+import { loadXmlTool } from "../src/index.js";
 
 const FIXTURES_DIR = path.join(import.meta.dirname, "fixtures", "tool_parsing");
 const EXPECTATIONS_DIR = path.join(FIXTURES_DIR, "expectations");
@@ -48,24 +48,9 @@ function resolveFixturePath(name: string): string {
   return path.join(TOOLS_DIR, file);
 }
 
-/** Assemble the `ParsedTool`-shaped fields an XML tool source exposes. */
+/** Parse an XML tool file into a validated `ParsedTool` (mirrors Python `parse_tool`). */
 function parseXmlFixture(filePath: string): unknown {
-  const src = loadXmlToolSource(filePath);
-  return {
-    id: src.parseId(),
-    version: src.parseVersion(),
-    name: src.parseName(),
-    description: src.parseDescription() || null,
-    profile: src.parseProfile(),
-    license: src.parseLicense(),
-    edam_operations: src.parseEdamOperations(),
-    edam_topics: src.parseEdamTopics(),
-    xrefs: src.parseXrefs(),
-    citations: src.parseCitations(),
-    help: src.parseHelp(),
-    inputs: src.parseInputs(),
-    outputs: src.parseOutputs(),
-  };
+  return loadXmlTool(filePath);
 }
 
 /** Parse a YAML tool document, preserving the declared version's source token. */

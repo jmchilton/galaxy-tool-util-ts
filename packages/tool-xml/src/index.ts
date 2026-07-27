@@ -15,3 +15,4 @@ export {
 } from "./tool-source.js";
 export { parseOutputs } from "./outputs.js";
 export { parseInputs, XmlPageSource, XmlInputSource } from "./inputs.js";
+export { parseXmlTool, loadXmlTool, parsedToolFromSource } from "./parse.js";

@@ -188,7 +188,8 @@
             "configfile_user_defined.yml",
             "simple_constructs.yml",
             "collection_creates_pair_y.yml",
-            "collection_paired_test_y.yml"
+            "collection_paired_test_y.yml",
+            "sample_tool_conf.xml"
           ]
         },
         {
@@ -201,7 +202,8 @@
             "inputs_conditional.yml",
             "inputs_selects.yml",
             "inputs_repeat_section.yml",
-            "outputs.yml"
+            "outputs.yml",
+            "errors.yml"
           ]
         }
       ]
