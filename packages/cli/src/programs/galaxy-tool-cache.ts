@@ -4,6 +4,7 @@
  */
 import type { Command } from "commander";
 import { runAdd } from "../commands/add.js";
+import { runAddLocal } from "../commands/add-local.js";
 import { runList } from "../commands/list.js";
 import { runInfo } from "../commands/info.js";
 import { runClear } from "../commands/clear.js";
@@ -15,6 +16,7 @@ import { galaxyToolCacheSpec } from "../meta/specs.js";
 
 const handlers: HandlerRegistry = {
   add: runAdd,
+  addLocal: runAddLocal,
   list: runList,
   info: runInfo,
   clear: runClear,

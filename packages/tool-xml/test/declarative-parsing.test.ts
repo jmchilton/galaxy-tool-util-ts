@@ -10,22 +10,21 @@
  *   - explicit `.xml`/`.yml` suffix → that file
  *   - trailing `_y` → `<stem>.yml`
  *   - otherwise → `<name>.xml`
- * XML fixtures parse via `loadXmlToolSource`; YAML tools via `parseYamlTool`.
+ * `loadToolFile` then dispatches on extension (XML vs YAML) — the same loader the
+ * `galaxy-tool-cache add-local` command uses, so the CLI and this parity suite
+ * cannot drift on how a tool file becomes a `ParsedTool`.
  *
  * The assertion engine is shared with the workflow declarative suites — imported
  * from the schema package's test helpers rather than duplicated. `parse_tool`
  * already emits snake_case (`ParsedTool`), so results feed the runner directly.
  */
 import { describe, expect, it } from "vitest";
-import * as yaml from "yaml";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { parseYamlTool } from "@galaxy-tool-util/schema";
-
 import { loadExpectations, runAssertions } from "../../schema/test/declarative-test-utils.js";
 
-import { loadXmlTool } from "../src/index.js";
+import { loadToolFile } from "../src/index.js";
 
 const FIXTURES_DIR = path.join(import.meta.dirname, "fixtures", "tool_parsing");
 const EXPECTATIONS_DIR = path.join(FIXTURES_DIR, "expectations");
@@ -48,27 +47,9 @@ function resolveFixturePath(name: string): string {
   return path.join(TOOLS_DIR, file);
 }
 
-/** Parse an XML tool file into a validated `ParsedTool` (mirrors Python `parse_tool`). */
-function parseXmlFixture(filePath: string): unknown {
-  return loadXmlTool(filePath);
-}
-
-/** Parse a YAML tool document, preserving the declared version's source token. */
-function parseYamlFixture(filePath: string): unknown {
-  const text = fs.readFileSync(filePath, "utf-8");
-  const repr = yaml.parse(text) as Record<string, unknown>;
-  // PyYAML renders a float version (`1.0`) as "1.0"; JS collapses it to the
-  // number 1, so `String(version)` would yield "1". Recover the written token.
-  if (repr && typeof repr === "object" && typeof repr.version === "number") {
-    const node = yaml.parseDocument(text).get("version", true) as { source?: unknown } | undefined;
-    if (node && typeof node.source === "string") repr.version = node.source;
-  }
-  return parseYamlTool(repr);
-}
-
+/** Parse a fixture (XML or YAML) into a validated `ParsedTool` (mirrors Python `parse_tool`). */
 function parseFixture(name: string): unknown {
-  const filePath = resolveFixturePath(name);
-  return filePath.endsWith(".yml") ? parseYamlFixture(filePath) : parseXmlFixture(filePath);
+  return loadToolFile(resolveFixturePath(name));
 }
 
 const ALL_CASES = loadExpectations(EXPECTATIONS_DIR);

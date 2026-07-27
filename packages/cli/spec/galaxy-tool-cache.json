@@ -29,6 +29,31 @@
       ]
     },
     {
+      "name": "add-local",
+      "description": "Parse a local tool file (XML or YAML) and cache it (source: local)",
+      "handler": "addLocal",
+      "args": [
+        {
+          "raw": "<tool_path>",
+          "description": "Path to a tool file (.xml or .yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--tool-id <id>",
+          "description": "Full toolshed tool_id for cache keying (required; the bare XML id is not a valid key)"
+        },
+        {
+          "flags": "--tool-version <ver>",
+          "description": "Tool version (overrides the parsed version)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Cache directory"
+        }
+      ]
+    },
+    {
       "name": "list",
       "description": "List cached tools with their resolved versions",
       "handler": "list",
