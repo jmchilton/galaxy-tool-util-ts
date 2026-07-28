@@ -1,0 +1,32 @@
+name: GitHub Actions Security Analysis (zizmor)
+
+on:
+  pull_request:
+    paths:
+      - ".github/actions/**"
+      - ".github/dependabot.yml"
+      - ".github/workflows/**"
+      - "zizmor.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/actions/**"
+      - ".github/dependabot.yml"
+      - ".github/workflows/**"
+      - "zizmor.yml"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: zizmorcore/zizmor-action@v0.6.1

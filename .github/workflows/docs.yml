@@ -1,30 +1,72 @@
 name: Generate Docs
 
 on:
+  pull_request:
+    paths:
+      - "packages/**"
+      - "docs/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "typedoc.json"
+      - ".github/actions/setup/**"
+      - ".github/workflows/docs.yml"
   push:
     branches: [main]
     paths:
-      - 'packages/**'
-      - 'docs/**'
-      - 'package.json'
-      - 'typedoc.json'
-      - '.github/workflows/docs.yml'
+      - "packages/**"
+      - "docs/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "typedoc.json"
+      - ".github/actions/setup/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
-  generate:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - run: pnpm docs:build
+
+      - uses: actions/upload-artifact@v7
+        if: github.event_name != 'pull_request'
+        with:
+          name: docs-site
+          path: docs
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
         with:
-          node-version: '22'
-          cache: 'pnpm'
-      - run: pnpm install
-      - run: pnpm run docs:build
-      - uses: peaceiris/actions-gh-pages@v3
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: docs-site
+          path: site
+
+      - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
+          publish_dir: ./site

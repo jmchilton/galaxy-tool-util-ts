@@ -1,35 +1,69 @@
 name: Release
+
 on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+permissions: {}
 
 jobs:
-  release:
+  validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - run: pnpm build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-build
+          path: |
+            packages/*/dist
+            packages/gxwf-web/public
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
     environment: npm-publish
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Build
-        run: pnpm build
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-build
+          path: packages
 
       - name: Create Release PR or Publish
         uses: changesets/action@v1.7.0
         with:
-          publish: pnpm release
+          publish: pnpm changeset publish
           title: "chore: version packages"
           commit: "chore: version packages"
           createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_IGNORE_SCRIPTS: true
           NPM_CONFIG_PROVENANCE: true
