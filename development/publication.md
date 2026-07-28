@@ -10,6 +10,14 @@ Releases are fully automated via the [changesets/action](https://github.com/chan
 2. On merge to `main`, the Action collects all pending `.changeset/*.md` files and opens a "Version Packages" PR that bumps versions and updates changelogs.
 3. When that PR is merged, the Action publishes all changed packages to npm using OIDC trusted publishing (no stored npm token — provenance is attached automatically via `NPM_CONFIG_PROVENANCE=true`).
 
+The release workflow separates compilation from publishing. An unprivileged `validate` job
+builds the packages and uploads only generated `dist` directories plus the bundled
+`gxwf-web` public assets. The dependent `release` job downloads that immutable artifact and
+is the only job with repository-write and OIDC permissions. It installs locked dependencies
+with lifecycle scripts disabled so Changesets can update the release PR or publish, but it
+does not execute repository build or package lifecycle scripts while holding privileged
+credentials.
+
 ### Linked Versioning
 
 All published packages are in one linked group in `.changeset/config.json`:
