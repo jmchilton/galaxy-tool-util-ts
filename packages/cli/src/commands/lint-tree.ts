@@ -77,7 +77,8 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
   // Text output
   for (const wf of report.workflows) {
     if (wf.error) {
-      console.error(`  ${wf.path}: ERROR (${wf.error})`);
+      const firstLine = wf.error.split("\n", 1)[0];
+      console.error(`  ${wf.path}: ERROR (${firstLine})`);
       continue;
     }
     if (wf.skipped_reason) {
@@ -102,8 +103,9 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
 
   const s = report.summary;
   const total = report.workflows.length;
+  const loadErrorSuffix = s.errors > 0 ? `, ${s.errors} load errors` : "";
   console.log(
-    `\nSummary: ${total} workflows | ${s.lint_errors} errors, ${s.lint_warnings} warnings, ${s.state_fail} state failures`,
+    `\nSummary: ${total} workflows | ${s.lint_errors} errors, ${s.lint_warnings} warnings, ${s.state_fail} state failures${loadErrorSuffix}`,
   );
   process.exitCode = computeLintExitCode(report);
 }

@@ -55,9 +55,13 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
   if (mode === "json-schema") {
     const mod = await import("./validate-workflow-json-schema.js");
     validateNativeStepsJsonSchema = (data, cache, prefix, expansionOpts) =>
-      mod.validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts);
+      cache
+        ? mod.validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts)
+        : Promise.resolve([]);
     validateFormat2StepsJsonSchema = (data, cache, prefix, expansionOpts) =>
-      mod.validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts);
+      cache
+        ? mod.validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts)
+        : Promise.resolve([]);
   }
 
   const strict = resolveStrictOptions(opts);
@@ -83,7 +87,7 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
       resolver: createDefaultResolver({ workflowDirectory: dirname(info.path) }),
     };
 
-    let stepResults: ValidationStepResult[] = [];
+    let stepResults: ValidationStepResult[];
     if (cache && opts.toolState !== false) {
       const validateNative = validateNativeStepsJsonSchema ?? validateNativeSteps;
       const validateF2 = validateFormat2StepsJsonSchema ?? validateFormat2Steps;
@@ -91,6 +95,13 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
         format === "native"
           ? await validateNative(data, cache, "", expansionOpts)
           : await validateF2(data, cache, "", expansionOpts);
+    } else {
+      // Tool-state validation disabled (or no cache): still enumerate tool
+      // steps so the step count is reported, marking each as skipped.
+      stepResults =
+        format === "native"
+          ? await validateNativeSteps(data, null, "", expansionOpts)
+          : await validateFormat2Steps(data, null, "", expansionOpts);
     }
 
     // --strict-state: promote skips to failures
@@ -115,7 +126,7 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
   // Text output
   for (const wf of report.workflows) {
     if (wf.error) {
-      console.error(`  ${wf.path}: ERROR (${wf.error})`);
+      console.error(`  ${wf.path}: ERROR (${firstLine(wf.error)})`);
       continue;
     }
     if (wf.skipped_reason) {
@@ -137,8 +148,17 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
 
   const s = report.summary;
   const total = report.workflows.length;
-  console.log(`\nSummary: ${total} workflows | ${s.ok} OK, ${s.fail} FAIL, ${s.skip} SKIP`);
+  const errorSuffix = s.error > 0 ? `, ${s.error} ERROR` : "";
+  console.log(
+    `\nSummary: ${total} workflows | ${s.ok} OK, ${s.fail} FAIL, ${s.skip} SKIP${errorSuffix}`,
+  );
   process.exitCode = computeValidateExitCode(report);
+}
+
+/** Collapse a multi-line error message to its first line for compact listings. */
+function firstLine(msg: string): string {
+  const idx = msg.indexOf("\n");
+  return idx === -1 ? msg : msg.slice(0, idx);
 }
 
 function buildReport(treeResult: TreeResult<WorkflowValidationResult>): TreeValidationReport {

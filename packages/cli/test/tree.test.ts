@@ -38,6 +38,15 @@ steps: []
 const NOT_A_WF_JSON = JSON.stringify({ some: "data" });
 const NOT_A_WF_YAML = "some: data\n";
 
+// Duplicate top-level mapping key — YAML.parse rejects this (mirrors the real
+// consensus.gxwf.yml bug where every step carried two `doc:` keys).
+const MALFORMED_FORMAT2 = `class: GalaxyWorkflow
+doc: first
+doc: second
+`;
+// Truncated JSON — JSON.parse throws.
+const MALFORMED_NATIVE = `{"a_galaxy_workflow": "true",`;
+
 async function writeFixture(dir: string, name: string, content: string): Promise<string> {
   const p = join(dir, name);
   await writeFile(p, content, "utf-8");
@@ -95,6 +104,33 @@ describe("discoverWorkflows", () => {
     const nm = join(ctx.tmpDir, "node_modules");
     await mkdir(nm);
     await writeFixture(nm, "wf.ga", NATIVE_WF);
+    const found = await discoverWorkflows(ctx.tmpDir);
+    expect(found).toHaveLength(0);
+  });
+
+  it("reports a malformed .gxwf.yml as a load error (not silently dropped)", async () => {
+    await writeFixture(ctx.tmpDir, "broken.gxwf.yml", MALFORMED_FORMAT2);
+    const found = await discoverWorkflows(ctx.tmpDir);
+    expect(found).toHaveLength(1);
+    expect(found[0].relativePath).toBe("broken.gxwf.yml");
+    expect(found[0].loadError).toBeTruthy();
+  });
+
+  it("reports a malformed .ga as a load error (not silently dropped)", async () => {
+    await writeFixture(ctx.tmpDir, "broken.ga", MALFORMED_NATIVE);
+    const found = await discoverWorkflows(ctx.tmpDir);
+    expect(found).toHaveLength(1);
+    expect(found[0].loadError).toBeTruthy();
+  });
+
+  it("silently skips a malformed plain .yml (ambiguous extension)", async () => {
+    await writeFixture(ctx.tmpDir, "config.yml", MALFORMED_FORMAT2);
+    const found = await discoverWorkflows(ctx.tmpDir);
+    expect(found).toHaveLength(0);
+  });
+
+  it("silently skips a malformed plain .json (ambiguous extension)", async () => {
+    await writeFixture(ctx.tmpDir, "data.json", MALFORMED_NATIVE);
     const found = await discoverWorkflows(ctx.tmpDir);
     expect(found).toHaveLength(0);
   });
@@ -187,6 +223,18 @@ describe("collectTree", () => {
 
     expect(result.outcomes).toHaveLength(1);
     expect(result.outcomes[0].error).toBe("boom");
+  });
+
+  it("emits an error outcome for a malformed definite-extension workflow", async () => {
+    await writeFixture(ctx.tmpDir, "ok.gxwf.yml", FORMAT2_WF);
+    await writeFixture(ctx.tmpDir, "broken.gxwf.yml", MALFORMED_FORMAT2);
+
+    const result = await collectTree(ctx.tmpDir, (info) => ({ file: info.relativePath }));
+
+    expect(result.outcomes).toHaveLength(2);
+    const broken = result.outcomes.find((o) => o.info.relativePath === "broken.gxwf.yml");
+    expect(broken?.error).toBeTruthy();
+    expect(broken?.result).toBeUndefined();
   });
 
   it("captures skips via skipWorkflow()", async () => {

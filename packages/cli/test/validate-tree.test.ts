@@ -152,4 +152,43 @@ describe("validate-tree", () => {
     expect(report.summary.ok).toBe(0);
     expect(report.summary.fail).toBe(0);
   });
+
+  it("still enumerates tool steps as skipped under --no-tool-state", async () => {
+    const wfDir = join(ctx.tmpDir, "wfs");
+    await mkdir(wfDir);
+    await writeFile(
+      join(wfDir, "f2.gxwf.yml"),
+      format2Wf([
+        { tool_id: SIMPLE_TOOL_ID, tool_version: "1.0", state: { input_text: "hi" }, in: [] },
+      ]),
+    );
+
+    await runValidateTree(wfDir, { toolState: false, json: true });
+
+    const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("");
+    const report = JSON.parse(output);
+    // The tool step is counted (as a skip), not collapsed to "0 steps".
+    expect(report.summary.ok).toBe(0);
+    expect(report.summary.fail).toBe(0);
+    expect(report.summary.skip).toBe(1);
+    expect(report.workflows[0].results[0].status).toBe("skip_no_tool_state");
+  });
+
+  it("reports a malformed workflow as an error instead of dropping it", async () => {
+    const wfDir = join(ctx.tmpDir, "wfs");
+    await mkdir(wfDir);
+    await writeFile(join(wfDir, "good.ga"), nativeWf({}));
+    // Duplicate top-level key — invalid YAML (the consensus.gxwf.yml bug).
+    await writeFile(join(wfDir, "broken.gxwf.yml"), "class: GalaxyWorkflow\ndoc: a\ndoc: b\n");
+
+    await runValidateTree(wfDir, { toolState: false, json: true });
+
+    const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("");
+    const report = JSON.parse(output);
+    expect(report.workflows).toHaveLength(2);
+    expect(report.summary.error).toBe(1);
+    const broken = report.workflows.find((w: any) => w.path === "broken.gxwf.yml");
+    expect(broken.error).toBeTruthy();
+    expect(process.exitCode).toBe(1);
+  });
 });

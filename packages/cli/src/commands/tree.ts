@@ -18,6 +18,12 @@ export interface WorkflowInfo {
   path: string;
   relativePath: string;
   format: WorkflowFormat;
+  /**
+   * Set when a file with an unambiguous workflow extension (.ga, .gxwf.yml,
+   * .gxwf.yaml) failed to parse during discovery. Such files are still
+   * reported (as an error outcome) rather than silently dropped.
+   */
+  loadError?: string;
 }
 
 export interface WorkflowOutcome<T> {
@@ -68,6 +74,17 @@ function classifyFile(filename: string): WorkflowFormat | null {
   return null;
 }
 
+/**
+ * True for extensions that unambiguously denote a Galaxy workflow (.ga,
+ * .gxwf.yml, .gxwf.yaml). A parse failure on one of these is a real error to
+ * surface; a parse failure on a plain .yml/.json could be any unrelated file
+ * and is skipped silently.
+ */
+function isDefiniteWorkflowExtension(filename: string): boolean {
+  if (FORMAT2_SUFFIXES.some((suffix) => filename.endsWith(suffix))) return true;
+  return NATIVE_EXTENSIONS.has(extname(filename));
+}
+
 function isWorkflowContent(data: Record<string, unknown>, format: WorkflowFormat): boolean {
   if (format === "native") {
     return data.a_galaxy_workflow === "true";
@@ -75,14 +92,18 @@ function isWorkflowContent(data: Record<string, unknown>, format: WorkflowFormat
   return data.class === "GalaxyWorkflow";
 }
 
+/** Parse raw workflow content; throws on malformed JSON/YAML. */
+function parseFileContentOrThrow(
+  raw: string,
+  format: WorkflowFormat,
+): Record<string, unknown> | null {
+  const parsed = format === "native" ? JSON.parse(raw) : YAML.parse(raw);
+  return typeof parsed === "object" && parsed !== null ? parsed : null;
+}
+
 function parseFileContent(raw: string, format: WorkflowFormat): Record<string, unknown> | null {
   try {
-    if (format === "native") {
-      const parsed = JSON.parse(raw);
-      return typeof parsed === "object" && parsed !== null ? parsed : null;
-    }
-    const parsed = YAML.parse(raw);
-    return typeof parsed === "object" && parsed !== null ? parsed : null;
+    return parseFileContentOrThrow(raw, format);
   } catch {
     return null;
   }
@@ -134,7 +155,22 @@ async function _walkDir(
       continue;
     }
 
-    const data = parseFileContent(raw, format);
+    let data: Record<string, unknown> | null;
+    try {
+      data = parseFileContentOrThrow(raw, format);
+    } catch (e) {
+      // A malformed file with an unambiguous workflow extension is a real
+      // error to report; a malformed plain .yml/.json is some other file.
+      if (isDefiniteWorkflowExtension(entry.name)) {
+        out.push({
+          path: filePath,
+          relativePath: relative(root, filePath),
+          format,
+          loadError: e instanceof Error ? e.message : String(e),
+        });
+      }
+      continue;
+    }
     if (!data || !isWorkflowContent(data, format)) continue;
 
     out.push({
@@ -173,6 +209,10 @@ export async function collectTree<T>(
   const outcomes: WorkflowOutcome<T>[] = [];
 
   for (const info of workflows) {
+    if (info.loadError) {
+      outcomes.push({ info, error: info.loadError });
+      continue;
+    }
     const data = await loadWorkflowSafe(info);
     if (!data) {
       outcomes.push({ info, error: "Failed to load workflow" });

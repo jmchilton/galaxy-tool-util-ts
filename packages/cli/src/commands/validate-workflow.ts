@@ -264,9 +264,15 @@ function printConnectionReport(report: ConnectionValidationReport): void {
 
 // --- Native validation ---
 
+/**
+ * Validate (or, when `cache` is null, merely enumerate) the tool steps of a
+ * native workflow. Passing `cache: null` skips tool resolution entirely and
+ * returns one `skip_no_tool_state` result per tool step — used by
+ * `validate-tree --no-tool-state` so the step count is still reported.
+ */
 export async function validateNativeSteps(
   data: Record<string, unknown>,
-  cache: ToolCache,
+  cache: ToolCache | null,
   prefix = "",
   expansionOpts?: ExpansionOptions,
   service?: ToolInfoService,
@@ -277,7 +283,7 @@ export async function validateNativeSteps(
 
 async function _validateNativeWorkflow(
   wf: NormalizedNativeWorkflow,
-  cache: ToolCache,
+  cache: ToolCache | null,
   prefix: string,
   service?: ToolInfoService,
 ): Promise<StepValidationResult[]> {
@@ -314,9 +320,18 @@ async function _validateNativeStep(
   stepLabel: string,
   toolId: string,
   toolVersion: string | null,
-  cache: ToolCache,
+  cache: ToolCache | null,
   service?: ToolInfoService,
 ): Promise<StepValidationResult> {
+  if (!cache) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_no_tool_state",
+      errors: ["tool state validation disabled"],
+    };
+  }
   const resolved = await resolveTool(cache, toolId, toolVersion, service);
   if (isResolveError(resolved)) {
     const reason = describeResolveError(resolved);
@@ -409,9 +424,13 @@ function _validateNativeState(
 
 // --- Format2 validation ---
 
+/**
+ * Validate (or, when `cache` is null, merely enumerate) the tool steps of a
+ * format2 workflow. See {@link validateNativeSteps} for the null-cache behavior.
+ */
 export async function validateFormat2Steps(
   data: Record<string, unknown>,
-  cache: ToolCache,
+  cache: ToolCache | null,
   prefix = "",
   expansionOpts?: ExpansionOptions,
   service?: ToolInfoService,
@@ -422,7 +441,7 @@ export async function validateFormat2Steps(
 
 async function _validateFormat2Workflow(
   wf: NormalizedFormat2Workflow,
-  cache: ToolCache,
+  cache: ToolCache | null,
   prefix: string,
   service?: ToolInfoService,
 ): Promise<StepValidationResult[]> {
@@ -460,9 +479,18 @@ async function _validateFormat2Step(
   stepLabel: string,
   toolId: string,
   toolVersion: string | null,
-  cache: ToolCache,
+  cache: ToolCache | null,
   service?: ToolInfoService,
 ): Promise<StepValidationResult> {
+  if (!cache) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_no_tool_state",
+      errors: ["tool state validation disabled"],
+    };
+  }
   const resolved = await resolveTool(cache, toolId, toolVersion, service);
   if (isResolveError(resolved)) {
     const reason = describeResolveError(resolved);
