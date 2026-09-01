@@ -77,8 +77,7 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
   // Text output
   for (const wf of report.workflows) {
     if (wf.error) {
-      const firstLine = wf.error.split("\n", 1)[0];
-      console.error(`  ${wf.path}: ERROR (${firstLine})`);
+      console.error(`  ${wf.path}: ERROR (${wf.error})`);
       continue;
     }
     if (wf.skipped_reason) {

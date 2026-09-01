@@ -75,6 +75,16 @@ function classifyFile(filename: string): WorkflowFormat | null {
 }
 
 /**
+ * Collapse a multi-line message to its first line. Tree outcome errors land in
+ * the per-workflow console listing and in `|`-delimited Markdown report table
+ * cells, both of which a raw multi-line YAML parse error would wreck.
+ */
+export function firstLine(msg: string): string {
+  const idx = msg.indexOf("\n");
+  return idx === -1 ? msg : msg.slice(0, idx);
+}
+
+/**
  * True for extensions that unambiguously denote a Galaxy workflow (.ga,
  * .gxwf.yml, .gxwf.yaml). A parse failure on one of these is a real error to
  * surface; a parse failure on a plain .yml/.json could be any unrelated file
@@ -210,7 +220,7 @@ export async function collectTree<T>(
 
   for (const info of workflows) {
     if (info.loadError) {
-      outcomes.push({ info, error: info.loadError });
+      outcomes.push({ info, error: firstLine(info.loadError) });
       continue;
     }
     const data = await loadWorkflowSafe(info);
@@ -226,7 +236,7 @@ export async function collectTree<T>(
       if (e instanceof SkipWorkflow) {
         outcomes.push({ info, skipped: true, skipReason: e.message });
       } else {
-        outcomes.push({ info, error: e instanceof Error ? e.message : String(e) });
+        outcomes.push({ info, error: firstLine(e instanceof Error ? e.message : String(e)) });
       }
     }
   }

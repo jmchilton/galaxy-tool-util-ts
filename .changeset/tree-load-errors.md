@@ -20,5 +20,13 @@ could be any unrelated file.
 
 Also: `validate-tree --no-tool-state` (and the no-cache path) now enumerates
 tool steps and marks each with the new `skip_no_tool_state` status rather than
-reporting zero steps, and multi-line error messages are collapsed to their
-first line in the per-workflow listing.
+reporting zero steps. That enumeration stays offline — no resolver is passed,
+so subworkflow expansion is inline-only and an unreachable external reference
+can no longer fail an otherwise-clean `--no-tool-state` run — and
+`--strict-state` treats `skip_no_tool_state` as exempt, matching how the
+single-file `gxwf validate` handles the same flag combination.
+
+Tree outcome errors are collapsed to their first line where they are recorded,
+so every consumer benefits: the per-workflow console listing in all five tree
+commands, and the `|`-delimited Markdown report tables that a raw multi-line
+YAML parse error would otherwise wreck.

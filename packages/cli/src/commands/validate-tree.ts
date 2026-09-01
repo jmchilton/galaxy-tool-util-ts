@@ -97,15 +97,24 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
           : await validateF2(data, cache, "", expansionOpts);
     } else {
       // Tool-state validation disabled (or no cache): still enumerate tool
-      // steps so the step count is reported, marking each as skipped.
+      // steps so the step count is reported, marking each as skipped. No
+      // resolver is passed — enumeration must stay offline, so subworkflow
+      // expansion is inline-only rather than fetching external references.
       stepResults =
         format === "native"
-          ? await validateNativeSteps(data, null, "", expansionOpts)
-          : await validateFormat2Steps(data, null, "", expansionOpts);
+          ? await validateNativeSteps(data, null)
+          : await validateFormat2Steps(data, null);
     }
 
-    // --strict-state: promote skips to failures
-    if (strict.strictState && stepResults.some((s) => s.status !== "ok" && s.status !== "fail")) {
+    // --strict-state: promote skips to failures. `skip_no_tool_state` is
+    // exempt — it means the user turned tool-state validation off, not that a
+    // step could not be checked, and `gxwf validate` treats it the same way.
+    if (
+      strict.strictState &&
+      stepResults.some(
+        (s) => s.status !== "ok" && s.status !== "fail" && s.status !== "skip_no_tool_state",
+      )
+    ) {
       throw new Error("Strict state: skipped steps not allowed");
     }
 
@@ -126,7 +135,7 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
   // Text output
   for (const wf of report.workflows) {
     if (wf.error) {
-      console.error(`  ${wf.path}: ERROR (${firstLine(wf.error)})`);
+      console.error(`  ${wf.path}: ERROR (${wf.error})`);
       continue;
     }
     if (wf.skipped_reason) {
@@ -153,12 +162,6 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
     `\nSummary: ${total} workflows | ${s.ok} OK, ${s.fail} FAIL, ${s.skip} SKIP${errorSuffix}`,
   );
   process.exitCode = computeValidateExitCode(report);
-}
-
-/** Collapse a multi-line error message to its first line for compact listings. */
-function firstLine(msg: string): string {
-  const idx = msg.indexOf("\n");
-  return idx === -1 ? msg : msg.slice(0, idx);
 }
 
 function buildReport(treeResult: TreeResult<WorkflowValidationResult>): TreeValidationReport {
