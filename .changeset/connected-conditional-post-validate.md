@@ -19,3 +19,13 @@ unaffected — a bad value on a non-connected parameter still fails.
 
 `StepRunnerConfig.postValidate` gains the original `args` so the converted
 result can be checked against the step's `input_connections`.
+
+The same correction is applied everywhere the pattern appeared, so the workflow
+actually round-trips end to end:
+
+- `toNativeStateful` passes `nativeConnectionsFromFormat2In(step.in)` to both
+  its pre- and post-validation hooks (the reverse leg previously failed
+  `pre_validation` and fell back to schema-free passthrough).
+- `gxwf validate` on format2 skips its bare `workflow_step` pass for steps that
+  have connections, judging them on the connection-injected `workflow_step_linked`
+  pass alone.

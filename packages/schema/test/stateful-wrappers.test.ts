@@ -18,6 +18,8 @@ import type {
   ToolParameterModel,
   IntegerParameterModel,
   BooleanParameterModel,
+  ConditionalParameterModel,
+  FloatParameterModel,
   SelectParameterModel,
   TextParameterModel,
 } from "../src/schema/bundle-types.js";
@@ -176,6 +178,118 @@ function coolToolInputs(): ToolParameterModel[] {
   ];
 }
 
+// --- Fixture: connected leaf inside a conditional (iuc/compose_text_param) ---
+
+/** A float with no default — genuinely required by the `workflow_step` model. */
+function requiredFloatParam(name: string): FloatParameterModel {
+  return {
+    name,
+    parameter_type: "gx_float",
+    type: "float",
+    hidden: false,
+    label: null,
+    help: null,
+    argument: null,
+    is_dynamic: false,
+    optional: false,
+    value: null,
+    min: null,
+    max: null,
+    validators: [],
+  };
+}
+
+function selectParam(name: string, options: string[]): SelectParameterModel {
+  return {
+    name,
+    parameter_type: "gx_select",
+    type: "select",
+    hidden: false,
+    label: null,
+    help: null,
+    argument: null,
+    is_dynamic: false,
+    optional: false,
+    multiple: false,
+    options: options.map((v, i) => ({ label: v, value: v, selected: i === 0 })),
+    validators: [],
+  };
+}
+
+/** `param_type` conditional whose `float` branch requires `component_value`. */
+function composeToolInputs(): ToolParameterModel[] {
+  const conditional: ConditionalParameterModel = {
+    name: "param_type",
+    parameter_type: "gx_conditional",
+    hidden: false,
+    label: null,
+    help: null,
+    argument: null,
+    is_dynamic: false,
+    test_parameter: selectParam("select_param_type", ["text", "float"]),
+    whens: [
+      {
+        discriminator: "text",
+        parameters: [textParam("component_value")],
+        is_default_when: true,
+      },
+      {
+        discriminator: "float",
+        parameters: [requiredFloatParam("component_value")],
+        is_default_when: false,
+      },
+    ],
+  };
+  return [conditional];
+}
+
+/** Native workflow whose conditional leaf is supplied by a connection. */
+function buildConnectedConditionalWorkflow(): Record<string, unknown> {
+  return {
+    a_galaxy_workflow: "true",
+    "format-version": "0.1",
+    name: "connected-conditional-wf",
+    annotation: "",
+    tags: [],
+    uuid: "00000000-0000-4000-8000-000000000001",
+    steps: {
+      "0": {
+        id: 0,
+        type: "parameter_input",
+        label: "a_number",
+        name: "a_number",
+        annotation: "",
+        tool_state: { parameter_type: "float", optional: false },
+        position: { left: 0, top: 0 },
+        input_connections: {},
+        inputs: [{ name: "a_number", description: "" }],
+        outputs: [],
+        workflow_outputs: [],
+      },
+      "1": {
+        id: 1,
+        type: "tool",
+        label: "compose",
+        name: "compose",
+        annotation: "",
+        tool_id: "compose_text_param",
+        tool_version: "0.1.1",
+        tool_state: {
+          param_type: { select_param_type: "float", __current_case__: 1 },
+          __page__: 0,
+          __rerun_remap_job_id__: null,
+        },
+        input_connections: { "param_type|component_value": { id: 0, output_name: "output" } },
+        inputs: [],
+        outputs: [],
+        workflow_outputs: [],
+        post_job_actions: {},
+        position: { left: 100, top: 0 },
+      },
+    },
+  };
+}
+
 describe("toFormat2Stateful", () => {
   it("converts cached tools and flags uncached ones", () => {
     const resolver = mapResolver({ cool_tool: coolToolInputs() });
@@ -283,6 +397,39 @@ describe("toNativeStateful", () => {
         expect(v.startsWith("{") || v.startsWith("[")).toBe(false);
       }
     }
+  });
+
+  // Regression: a connection-supplied leaf is stripped out of the converted
+  // state (it lives in `in` / `input_connections`, not `state`). When that leaf
+  // is REQUIRED — a typed parameter with no default inside a conditional branch,
+  // as in iuc/compose_text_param's `float` case — both legs must credit the
+  // connection instead of reporting `component_value: is missing`.
+  it("round-trips a connection-supplied required conditional leaf", () => {
+    const resolver = mapResolver({ compose_text_param: composeToolInputs() });
+
+    const fmt2Result = toFormat2Stateful(buildConnectedConditionalWorkflow(), resolver);
+    const forward = fmt2Result.steps.find((s) => s.toolId === "compose_text_param");
+    expect(forward?.converted).toBe(true);
+    expect(forward?.error).toBeUndefined();
+
+    const nativeResult = toNativeStateful(fmt2Result.workflow, resolver);
+    const reverse = nativeResult.steps.find((s) => s.toolId === "compose_text_param");
+    expect(reverse?.converted).toBe(true);
+    expect(reverse?.failureClass).toBeUndefined();
+    expect(reverse?.error).toBeUndefined();
+
+    // The connection still drives the leaf — it must not be materialized into
+    // tool_state as a literal value by the reverse conversion.
+    const steps = nativeResult.workflow.steps as Record<string, Record<string, unknown>>;
+    const composeStep = Object.values(steps).find(
+      (st) => (st.tool_id as string | undefined) === "compose_text_param",
+    );
+    expect(composeStep).toBeDefined();
+    const cond = (composeStep!.tool_state as Record<string, unknown>).param_type as Record<
+      string,
+      unknown
+    >;
+    expect(cond.select_param_type).toBe("float");
   });
 
   it("flags uncached tools and falls back", () => {

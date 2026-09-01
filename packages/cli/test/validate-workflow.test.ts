@@ -12,6 +12,7 @@ import {
   SIMPLE_TOOL_ID,
   DATA_TOOL_ID,
   COND_TOOL_ID,
+  COMPOSE_TOOL_ID,
 } from "./helpers/fixtures.js";
 
 describe("validate-workflow (connection-aware)", () => {
@@ -153,6 +154,39 @@ describe("validate-workflow (connection-aware)", () => {
 
       const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("tool_state: OK");
+      expect(process.exitCode).toBe(0);
+    });
+
+    // Regression: a connection-supplied leaf lives in `in`, not in `state`.
+    // When that leaf is REQUIRED — a typed parameter with no default inside a
+    // conditional branch — the bare `workflow_step` pass reads it as missing.
+    // Steps with connections must be judged on the linked pass alone.
+    it("accepts a required conditional leaf supplied by a connection", async () => {
+      await seedAllTools(ctx.tmpDir);
+      const workflow = {
+        class: "GalaxyWorkflow",
+        label: "Connected Conditional",
+        inputs: [{ id: "a_number", type: "float" }],
+        outputs: [],
+        steps: [
+          {
+            id: "compose",
+            tool_id: COMPOSE_TOOL_ID,
+            tool_version: "1.0",
+            state: { param_type: { select_param_type: "float" } },
+            in: [{ id: "param_type|component_value", source: "a_number" }],
+            out: [],
+          },
+        ],
+      };
+      const wfPath = join(ctx.tmpDir, "connected-cond.gxwf.yml");
+      await writeFile(wfPath, YAML.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
+
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).not.toContain("component_value");
+      expect(output).toContain("Tool state: 1 validated, 0 skipped");
+      expect(ctx.errSpy.mock.calls.map((c) => c[0]).join("\n")).toBe("");
       expect(process.exitCode).toBe(0);
     });
 

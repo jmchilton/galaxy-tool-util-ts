@@ -348,15 +348,10 @@ async function _validateNativeStep(
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  const connections: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(step.input_connections)) {
-    connections[key] = val;
-  }
-
   return _validateNativeState(
     bundle,
     step.tool_state as Record<string, unknown>,
-    connections,
+    step.input_connections,
     stepLabel,
     toolId,
     toolVersion,
@@ -528,38 +523,37 @@ async function _validateFormat2Step(
   const state = structuredClone((step.state ?? {}) as Record<string, unknown>);
   stripConnectedValues(bundle.parameters, state);
 
-  // Level 1: Validate base state against workflow_step
-  const baseModel = createFieldModel(bundle, "workflow_step");
-  if (!baseModel) {
-    return {
-      step: stepLabel,
-      tool_id: toolId,
-      version: toolVersion,
-      status: "skip_tool_not_found",
-      errors: ["unsupported parameter types"],
-    };
-  }
+  const connections = nativeConnectionsFromFormat2In(step.in);
 
-  const baseValidate = S.decodeUnknownEither(baseModel as S.Schema<any>, {
-    onExcessProperty: "ignore",
-  });
-  const baseResult = baseValidate(state);
-  if (baseResult._tag === "Left") {
-    return {
-      step: stepLabel,
-      tool_id: toolId,
-      version: toolVersion,
-      status: "fail",
-      errors: formatIssues(baseResult.left),
-    };
-  }
+  // Level 1: Validate base state against workflow_step. Skipped when the step
+  // has connections: a connection-supplied leaf lives in `step.in`, not in
+  // `state`, so a *required* leaf (a typed parameter with no default, e.g.
+  // inside a conditional branch) reads as missing here. Such steps are covered
+  // by the linked pass below, which re-injects the markers.
+  if (Object.keys(connections).length === 0) {
+    const baseModel = createFieldModel(bundle, "workflow_step");
+    if (!baseModel) {
+      return {
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
+        status: "skip_tool_not_found",
+        errors: ["unsupported parameter types"],
+      };
+    }
 
-  // Build connections dict from step.in entries
-  const connections: Record<string, unknown> = {};
-  for (const stepInput of step.in) {
-    if (stepInput.id && stepInput.source) {
-      const src = stepInput.source;
-      connections[stepInput.id] = Array.isArray(src) ? src : [src];
+    const baseValidate = S.decodeUnknownEither(baseModel as S.Schema<any>, {
+      onExcessProperty: "ignore",
+    });
+    const baseResult = baseValidate(state);
+    if (baseResult._tag === "Left") {
+      return {
+        step: stepLabel,
+        tool_id: toolId,
+        version: toolVersion,
+        status: "fail",
+        errors: formatIssues(baseResult.left),
+      };
     }
   }
 
