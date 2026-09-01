@@ -45,6 +45,18 @@ function formatIssues(error: ParseResult.ParseError): string[] {
   return issues.map((i) => (i.path.length ? `${i.path.join(".")}: ${i.message}` : i.message));
 }
 
+/** Decode `state` against `model`, throwing a phase-tagged failure on mismatch. */
+function decodeOrThrow(
+  model: S.Schema<unknown>,
+  state: Record<string, unknown>,
+  phase: ValidationPhase,
+): void {
+  const result = S.decodeUnknownEither(model, { onExcessProperty: "ignore" })(state);
+  if (result._tag === "Left") {
+    throw new ConversionValidationFailure(phase, formatIssues(result.left));
+  }
+}
+
 function buildBundle(inputs: ToolParameterModel[]): ToolParameterBundleModel {
   return { parameters: inputs };
 }
@@ -80,17 +92,20 @@ export function validateNativeStepState(
     injectConnectionsIntoState(inputs, state, inputConnections);
   }
 
-  const decode = S.decodeUnknownEither(model as S.Schema<unknown>, { onExcessProperty: "ignore" });
-  const result = decode(state);
-  if (result._tag === "Left") {
-    throw new ConversionValidationFailure("pre", formatIssues(result.left));
-  }
+  decodeOrThrow(model as S.Schema<unknown>, state, "pre");
 }
 
 /**
- * Validate format2 tool_state against `workflow_step`. Any stray
- * `ConnectedValue` markers left over from normalization are stripped
- * before validation (they belong in the `in` block, not the state).
+ * Validate format2 tool_state after stateful conversion.
+ *
+ * A connection-supplied leaf is stripped out of the converted state entirely
+ * (it moves to the `in` block, not the `state`). If that leaf is *required* by
+ * its parameter schema — e.g. a typed leaf inside a conditional branch — the
+ * bare `workflow_step` model rejects it as "missing". So when the step has
+ * connections we mirror the forward native path ({@link validateNativeStepState}):
+ * re-inject ConnectedValue markers and validate against `workflow_step_linked`,
+ * whose leaves union `ConnectedValue`. Connection-free steps keep the simpler
+ * `workflow_step` path (stray markers stripped first).
  *
  * Returns silently on success or if the schema cannot be built. Throws
  * `ConversionValidationFailure` with phase="post" on validation failure.
@@ -98,19 +113,22 @@ export function validateNativeStepState(
 export function validateFormat2StepState(
   inputs: ToolParameterModel[],
   format2State: Record<string, unknown>,
+  inputConnections: Record<string, unknown> = {},
 ): void {
   const bundle = buildBundle(inputs);
-  const model = createFieldModel(bundle, "workflow_step");
+  const hasConnections = Object.keys(inputConnections).length > 0;
+
+  const model = createFieldModel(bundle, hasConnections ? "workflow_step_linked" : "workflow_step");
   if (!model) return;
 
   const state = deepClone(format2State);
-  stripConnectedValues(inputs, state);
-
-  const decode = S.decodeUnknownEither(model as S.Schema<unknown>, { onExcessProperty: "ignore" });
-  const result = decode(state);
-  if (result._tag === "Left") {
-    throw new ConversionValidationFailure("post", formatIssues(result.left));
+  if (hasConnections) {
+    injectConnectionsIntoState(inputs, state, inputConnections, { linked: true });
+  } else {
+    stripConnectedValues(inputs, state);
   }
+
+  decodeOrThrow(model as S.Schema<unknown>, state, "post");
 }
 
 /**
