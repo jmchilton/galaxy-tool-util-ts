@@ -199,6 +199,11 @@ export function encodeStateToNative(
   state: Record<string, unknown>,
 ): Record<string, unknown> {
   const leafCallback: LeafCallback = (toolInput, value) => {
+    // A leaf absent from format2 state stays absent in native state. The walker
+    // visits every parameter in the selected branch, so without this the
+    // callback would write back `undefined` for keys the source never had —
+    // symmetric with the forward direction, which skips undefined.
+    if (value === undefined) return SKIP_VALUE;
     return reverseScalarValue(toolInput, value);
   };
 

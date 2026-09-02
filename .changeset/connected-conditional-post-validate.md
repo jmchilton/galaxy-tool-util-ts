@@ -1,5 +1,6 @@
 ---
 "@galaxy-tool-util/schema": patch
+"@galaxy-tool-util/cli": patch
 ---
 
 fix(schema): credit connections in post-conversion format2 state validation
@@ -29,3 +30,13 @@ actually round-trips end to end:
 - `gxwf validate` on format2 skips its bare `workflow_step` pass for steps that
   have connections, judging them on the connection-injected `workflow_step_linked`
   pass alone.
+- `gxwf validate --mode json-schema` does the same: its Level-1 `workflow_step`
+  pass is skipped for connected steps, so Level-2 linked validation is reached
+  instead of being short-circuited by a spurious `must have required property`
+  failure.
+
+Turning the reverse leg back on exposed a second defect it had been masking:
+`encodeStateToNative` wrote `undefined` back for every branch leaf the format2
+state did not contain, so a leaf absent from an under-specified source workflow
+reappeared as a key after a round-trip. Absent leaves are now skipped, matching
+the forward direction.
