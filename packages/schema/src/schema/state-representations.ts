@@ -57,7 +57,7 @@ export function allowsConnectedOrRuntimeValue(rep: StateRepresentation): boolean
 }
 
 export function allOptional(rep: StateRepresentation): boolean {
-  return rep === "landing_request" || rep === "landing_request_internal";
+  return rep === "landing_request" || rep === "landing_request_internal" || rep === "workflow_step";
 }
 
 export function isWorkflowStep(rep: StateRepresentation): boolean {

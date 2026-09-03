@@ -157,10 +157,9 @@ describe("validate-workflow (connection-aware)", () => {
       expect(process.exitCode).toBe(0);
     });
 
-    // Regression: a connection-supplied leaf lives in `in`, not in `state`.
-    // When that leaf is REQUIRED — a typed parameter with no default inside a
-    // conditional branch — the bare `workflow_step` pass reads it as missing.
-    // Steps with connections must be judged on the linked pass alone.
+    // Regression: unlinked workflow_step state permits the connection-supplied
+    // leaf to be absent; the linked pass then restores requiredness and credits
+    // the matching connection.
     it("accepts a required conditional leaf supplied by a connection", async () => {
       await seedAllTools(ctx.tmpDir);
       const workflow = {
@@ -218,6 +217,35 @@ describe("validate-workflow (connection-aware)", () => {
       expect(ctx.errSpy.mock.calls.map((c) => c[0]).join("\n")).toBe("");
       expect(process.exitCode).toBe(0);
     });
+
+    it.each(["effect", "json-schema"] as const)(
+      "rejects a required conditional leaf missing from state and connections (%s)",
+      async (mode) => {
+        await seedAllTools(ctx.tmpDir);
+        const workflow = {
+          class: "GalaxyWorkflow",
+          label: "Missing Conditional Value",
+          inputs: [],
+          outputs: [],
+          steps: [
+            {
+              id: "compose",
+              tool_id: COMPOSE_TOOL_ID,
+              tool_version: "1.0",
+              state: { param_type: { select_param_type: "float" } },
+              in: [],
+              out: [],
+            },
+          ],
+        };
+        const wfPath = join(ctx.tmpDir, `missing-cond-${mode}.gxwf.yml`);
+        await writeFile(wfPath, YAML.stringify(workflow));
+        await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, mode });
+
+        expect(ctx.errSpy.mock.calls.map((c) => c[0]).join("\n")).toContain("component_value");
+        expect(process.exitCode).toBe(1);
+      },
+    );
 
     it("validates format2 workflow with no connections", async () => {
       await seedAllTools(ctx.tmpDir);

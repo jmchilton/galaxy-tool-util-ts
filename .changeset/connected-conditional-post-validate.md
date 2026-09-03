@@ -3,20 +3,15 @@
 "@galaxy-tool-util/cli": patch
 ---
 
-fix(schema): credit connections in post-conversion format2 state validation
+fix(schema): align format2 state validation with Python's linked-state pipeline
 
-A connection-supplied leaf is stripped out of the converted format2 state
-entirely — it moves to the `in` block, not `state`. When that leaf is
-*required* by its parameter schema (a typed leaf with no default inside a
-conditional branch, as in `iuc/compose_text_param`'s `float` case), the bare
-`workflow_step` model rejected it as `component_value: is missing`, failing
-round-trip conversion for the whole workflow with a misleading diagnostic.
-
-`validateFormat2StepState` now mirrors the forward native path: when the step
-has input connections it re-injects `ConnectedValue` markers and validates
-against `workflow_step_linked`, whose leaves union `ConnectedValue`.
-Connection-free steps keep the simpler `workflow_step` path. Type checking is
-unaffected — a bad value on a non-connected parameter still fails.
+A connection-supplied leaf lives in the format2 `in` block rather than `state`.
+Validation now mirrors Galaxy's upstream Python pipeline: first validate the
+stored state against `workflow_step`, where all fields are optional but present
+values remain typed; then inject actual connections and always validate the
+effective state against `workflow_step_linked`, which restores requiredness and
+allows `ConnectedValue` to satisfy a required leaf. Unmatched connection paths
+are rejected instead of silently discarded.
 
 `StepRunnerConfig.postValidate` gains the original `args` so the converted
 result can be checked against the step's `input_connections`.
@@ -27,13 +22,12 @@ actually round-trips end to end:
 - `toNativeStateful` passes `nativeConnectionsFromFormat2In(step.in)` to both
   its pre- and post-validation hooks (the reverse leg previously failed
   `pre_validation` and fell back to schema-free passthrough).
-- `gxwf validate` on format2 skips its bare `workflow_step` pass for steps that
-  have connections, judging them on the connection-injected `workflow_step_linked`
-  pass alone.
-- `gxwf validate --mode json-schema` does the same: its Level-1 `workflow_step`
-  pass is skipped for connected steps, so Level-2 linked validation is reached
-  instead of being short-circuited by a spurious `must have required property`
-  failure.
+- `toFormat2Stateful` credits required runtime placeholders lifted into its
+  synthetic `in` entries during the linked validation pass.
+- `gxwf validate` and `gxwf validate --mode json-schema` both run the same
+  unlinked-then-linked sequence, including for steps with zero connections.
+- `ToolStateValidator` accepts a connection map for regular and strict format2
+  validation, so API consumers get the same semantics as the CLI.
 
 Turning the reverse leg back on exposed a second defect it had been masking:
 `encodeStateToNative` wrote `undefined` back for every branch leaf the format2

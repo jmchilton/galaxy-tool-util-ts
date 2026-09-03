@@ -64,7 +64,13 @@ export function toFormat2Stateful(
         return { state: result.state, in: result.in };
       },
       postValidate: (result, inputs, step) =>
-        validateFormat2StepState(inputs, result.state, step.input_connections),
+        validateFormat2StepState(inputs, result.state, {
+          ...step.input_connections,
+          // Required RuntimeValue markers are lifted into synthetic `in`
+          // entries by convertStateToFormat2. They satisfy linked requiredness
+          // just like ordinary workflow connections.
+          ...result.in,
+        }),
     },
   );
 

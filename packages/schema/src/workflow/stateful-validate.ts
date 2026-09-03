@@ -98,14 +98,14 @@ export function validateNativeStepState(
 /**
  * Validate format2 tool_state after stateful conversion.
  *
- * A connection-supplied leaf is stripped out of the converted state entirely
- * (it moves to the `in` block, not the `state`). If that leaf is *required* by
- * its parameter schema — e.g. a typed leaf inside a conditional branch — the
- * bare `workflow_step` model rejects it as "missing". So when the step has
- * connections we mirror the forward native path ({@link validateNativeStepState}):
- * re-inject ConnectedValue markers and validate against `workflow_step_linked`,
- * whose leaves union `ConnectedValue`. Connection-free steps keep the simpler
- * `workflow_step` path (stray markers stripped first).
+ * Validation follows the upstream Python two-model pipeline:
+ *
+ * 1. Strip any serialized ConnectedValue markers and validate the stored state
+ *    against `workflow_step`. Every field is optional in this unlinked editor
+ *    representation, but values that are present must still have the right type.
+ * 2. Inject the step's actual `in` connections and validate the effective state
+ *    against `workflow_step_linked`. This restores requiredness while allowing a
+ *    connection marker to satisfy a required leaf.
  *
  * Returns silently on success or if the schema cannot be built. Throws
  * `ConversionValidationFailure` with phase="post" on validation failure.
@@ -116,19 +116,26 @@ export function validateFormat2StepState(
   inputConnections: Record<string, unknown> = {},
 ): void {
   const bundle = buildBundle(inputs);
-  const hasConnections = Object.keys(inputConnections).length > 0;
-
-  const model = createFieldModel(bundle, hasConnections ? "workflow_step_linked" : "workflow_step");
-  if (!model) return;
+  const unlinkedModel = createFieldModel(bundle, "workflow_step");
+  const linkedModel = createFieldModel(bundle, "workflow_step_linked");
+  if (!unlinkedModel || !linkedModel) return;
 
   const state = deepClone(format2State);
-  if (hasConnections) {
-    injectConnectionsIntoState(inputs, state, inputConnections, { linked: true });
-  } else {
-    stripConnectedValues(inputs, state);
-  }
+  stripConnectedValues(inputs, state);
+  decodeOrThrow(unlinkedModel as S.Schema<unknown>, state, "post");
 
-  decodeOrThrow(model as S.Schema<unknown>, state, "post");
+  const linkedState = deepClone(state);
+  const remaining = injectConnectionsIntoState(inputs, linkedState, inputConnections, {
+    linked: true,
+  });
+  const unmatched = Object.keys(remaining);
+  if (unmatched.length > 0) {
+    throw new ConversionValidationFailure(
+      "post",
+      unmatched.map((path) => `${path}: input connection does not match a tool parameter`),
+    );
+  }
+  decodeOrThrow(linkedModel as S.Schema<unknown>, linkedState, "post");
 }
 
 /**
@@ -169,10 +176,12 @@ export function stringContainerDiagnostic(error: StringContainerError): ToolStat
 export function validateFormat2StepStateStrict(
   inputs: ToolParameterModel[],
   format2State: Record<string, unknown>,
+  inputConnections: Record<string, unknown> = {},
 ): ToolStateDiagnostic[] {
   const bundle = buildBundle(inputs);
-  const model = createFieldModel(bundle, "workflow_step");
-  if (!model) return [];
+  const unlinkedModel = createFieldModel(bundle, "workflow_step");
+  const linkedModel = createFieldModel(bundle, "workflow_step_linked");
+  if (!unlinkedModel || !linkedModel) return [];
 
   const state = deepClone(format2State);
   // The walker rejects a scalar where a container is expected by throwing; the
@@ -187,17 +196,39 @@ export function validateFormat2StepStateStrict(
     throw error;
   }
 
-  const decode = S.decodeUnknownEither(model as S.Schema<unknown>, { onExcessProperty: "error" });
-  const result = decode(state);
-  if (result._tag === "Left") {
-    const issues = ParseResult.ArrayFormatter.formatErrorSync(result.left);
-    return issues.map(
+  const decodeStrict = (model: S.Schema<unknown>, value: Record<string, unknown>) => {
+    const result = S.decodeUnknownEither(model, { onExcessProperty: "error" })(value);
+    if (result._tag === "Right") return [];
+    return ParseResult.ArrayFormatter.formatErrorSync(result.left).map(
       (i): ToolStateDiagnostic => ({
         path: i.path.map(String).join("."),
         message: i.message,
         severity: "error",
       }),
     );
+  };
+
+  const unlinkedDiagnostics = decodeStrict(unlinkedModel as S.Schema<unknown>, state);
+  if (unlinkedDiagnostics.length > 0) return unlinkedDiagnostics;
+
+  const linkedState = deepClone(state);
+  let remaining: Record<string, unknown>;
+  try {
+    remaining = injectConnectionsIntoState(inputs, linkedState, inputConnections, { linked: true });
+  } catch (error) {
+    if (error instanceof StringContainerError) {
+      return [stringContainerDiagnostic(error)];
+    }
+    throw error;
   }
-  return [];
+  const unmatchedDiagnostics = Object.keys(remaining).map(
+    (path): ToolStateDiagnostic => ({
+      path: path.split("|").join("."),
+      message: "Input connection does not match a tool parameter.",
+      severity: "error",
+    }),
+  );
+  if (unmatchedDiagnostics.length > 0) return unmatchedDiagnostics;
+
+  return decodeStrict(linkedModel as S.Schema<unknown>, linkedState);
 }

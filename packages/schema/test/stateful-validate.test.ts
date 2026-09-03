@@ -78,8 +78,8 @@ function floatParam(name: string): FloatParameterModel {
     argument: null,
     is_dynamic: false,
     optional: false,
-    // No default: makes the leaf genuinely required in the `workflow_step`
-    // representation, which is what the connection-aware path must satisfy.
+    // No default: makes the leaf genuinely required in the linked effective
+    // state, which is what the connection-aware pass must satisfy.
     value: null,
     min: null,
     max: null,
@@ -211,10 +211,28 @@ describe("validateFormat2StepState", () => {
     expect(() => validateFormat2StepState(inputs, state, connections)).not.toThrow();
   });
 
+  it("rejects a missing required leaf when no connection supplies it", () => {
+    const inputs = connectedConditionalInputs();
+    const state = { param_type: { select_param_type: "float", __current_case__: 1 } };
+    expect(() => validateFormat2StepState(inputs, state)).toThrow(ConversionValidationFailure);
+  });
+
+  it("rejects a connection path that does not match a tool parameter", () => {
+    const inputs: ToolParameterModel[] = [intParam("count")];
+    expect(() => validateFormat2StepState(inputs, { count: 1 }, { missing: { id: 1 } })).toThrow(
+      /missing: input connection does not match a tool parameter/,
+    );
+  });
+
+  it("does not let a stale ConnectedValue marker satisfy requiredness", () => {
+    const inputs: ToolParameterModel[] = [floatParam("value")];
+    const state = { value: { __class__: "ConnectedValue" } };
+    expect(() => validateFormat2StepState(inputs, state)).toThrow(ConversionValidationFailure);
+  });
+
   it("connection-aware path still rejects an invalid non-connected value", () => {
-    // A connection is present (so we take the linked path), but an unrelated,
-    // non-connected integer carries a bad value — validation must still fail,
-    // confirming the fix credits connections without disabling type checks.
+    // A connection is present, but an unrelated non-connected integer carries
+    // a bad value. The unlinked pass must catch it before linked validation.
     const inputs: ToolParameterModel[] = [intParam("count"), ...connectedConditionalInputs()];
     const state = {
       count: "not-a-number",
@@ -237,5 +255,16 @@ describe("validateFormat2StepStateStrict", () => {
     expect(diags[0].path).toBe("advanced");
     expect(diags[0].message).toContain("expected a nested object or list");
     expect(diags[0].message).not.toContain("legacy parameter encoding"); // walker jargon dropped
+  });
+
+  it("accepts a required leaf when its connection is supplied", () => {
+    const inputs: ToolParameterModel[] = [floatParam("value")];
+    expect(validateFormat2StepStateStrict(inputs, {}, { value: true })).toEqual([]);
+  });
+
+  it("reports a missing required leaf without a connection", () => {
+    const inputs: ToolParameterModel[] = [floatParam("value")];
+    const diags = validateFormat2StepStateStrict(inputs, {});
+    expect(diags.some((diag) => diag.path.includes("value"))).toBe(true);
   });
 });

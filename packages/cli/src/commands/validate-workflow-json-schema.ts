@@ -17,6 +17,7 @@ import {
   expandedNative,
   expandedFormat2,
   injectConnectionsIntoState,
+  stripConnectedValues,
   scanForReplacements,
   withClass,
   type NormalizedNativeStep,
@@ -570,7 +571,8 @@ async function _validateFormat2StepJsonSchema(
     );
   }
 
-  const state = (step.state ?? {}) as Record<string, unknown>;
+  const state = structuredClone((step.state ?? {}) as Record<string, unknown>);
+  stripConnectedValues(bundle.parameters, state);
 
   // Build connections dict from step.in
   const connections: Record<string, unknown> = {};
@@ -581,78 +583,78 @@ async function _validateFormat2StepJsonSchema(
     }
   }
 
-  // Level 1: base validation against workflow_step. Skipped when the step has
-  // connections: a connection-supplied leaf lives in `step.in`, not in `state`,
-  // so a *required* leaf (a typed parameter with no default, e.g. inside a
-  // conditional branch) reads as missing here. Such steps are covered by the
-  // linked pass below, which re-injects the markers.
-  if (Object.keys(connections).length === 0) {
-    const baseValidate = getOrBuildValidator(
-      toolId,
-      toolVersion,
-      bundle,
-      "workflow_step",
-      toolSchemaDir,
-    );
-    if (!baseValidate) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "skip_tool_not_found",
-        errors: ["unsupported parameter types"],
-      };
-    }
-
-    const baseValid = baseValidate(state);
-    if (!baseValid) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: formatAjvErrors(baseValidate),
-      };
-    }
+  // Level 1: validate the stored, unlinked editor state.
+  const baseValidate = getOrBuildValidator(
+    toolId,
+    toolVersion,
+    bundle,
+    "workflow_step",
+    toolSchemaDir,
+  );
+  if (!baseValidate) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
   }
 
-  // Level 2: linked validation with connections injected
-  if (Object.keys(connections).length > 0) {
-    const linkedState = structuredClone(state);
-    // Unmatched connection keys (e.g. the synthetic `when` gate on conditional
-    // steps) are discarded, not failed — mirrors Python's
-    // validate_workflow_json_schema, which injects connections and ignores the
-    // returned unmatched paths. (The Pydantic path raises on unmatched; the
-    // JSON Schema path is intentionally lenient.)
-    injectConnectionsIntoState(bundle.parameters, linkedState, connections, { linked: true });
+  const baseValid = baseValidate(state);
+  if (!baseValid) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatAjvErrors(baseValidate),
+    };
+  }
 
-    const linkedValidate = getOrBuildValidator(
-      toolId,
-      toolVersion,
-      bundle,
-      "workflow_step_linked",
-      toolSchemaDir,
-    );
-    if (!linkedValidate) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "skip_tool_not_found",
-        errors: ["unsupported parameter types"],
-      };
-    }
+  // Level 2: validate effective state after connection injection. Always run
+  // this pass so missing, unconnected required values are rejected.
+  const linkedState = structuredClone(state);
+  const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
+    linked: true,
+  });
+  const unmatchedKeys = Object.keys(remaining);
+  if (unmatchedKeys.length > 0) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+    };
+  }
 
-    const linkedValid = linkedValidate(linkedState);
-    if (!linkedValid) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: formatAjvErrors(linkedValidate),
-      };
-    }
+  const linkedValidate = getOrBuildValidator(
+    toolId,
+    toolVersion,
+    bundle,
+    "workflow_step_linked",
+    toolSchemaDir,
+  );
+  if (!linkedValidate) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
+  }
+
+  const linkedValid = linkedValidate(linkedState);
+  if (!linkedValid) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatAjvErrors(linkedValidate),
+    };
   }
 
   return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };

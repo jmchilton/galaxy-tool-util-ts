@@ -525,80 +525,74 @@ async function _validateFormat2Step(
 
   const connections = nativeConnectionsFromFormat2In(step.in);
 
-  // Level 1: Validate base state against workflow_step. Skipped when the step
-  // has connections: a connection-supplied leaf lives in `step.in`, not in
-  // `state`, so a *required* leaf (a typed parameter with no default, e.g.
-  // inside a conditional branch) reads as missing here. Such steps are covered
-  // by the linked pass below, which re-injects the markers.
-  if (Object.keys(connections).length === 0) {
-    const baseModel = createFieldModel(bundle, "workflow_step");
-    if (!baseModel) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "skip_tool_not_found",
-        errors: ["unsupported parameter types"],
-      };
-    }
-
-    const baseValidate = S.decodeUnknownEither(baseModel as S.Schema<any>, {
-      onExcessProperty: "ignore",
-    });
-    const baseResult = baseValidate(state);
-    if (baseResult._tag === "Left") {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: formatIssues(baseResult.left),
-      };
-    }
+  // Level 1: validate the stored, unlinked editor state. All fields are
+  // optional in workflow_step, but present values must still be well typed.
+  const baseModel = createFieldModel(bundle, "workflow_step");
+  if (!baseModel) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
   }
 
-  // Level 2: Validate with connections injected against workflow_step_linked
-  if (Object.keys(connections).length > 0) {
-    const linkedState = structuredClone(state);
-    const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
-      linked: true,
-    });
+  const baseValidate = S.decodeUnknownEither(baseModel as S.Schema<any>, {
+    onExcessProperty: "ignore",
+  });
+  const baseResult = baseValidate(state);
+  if (baseResult._tag === "Left") {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatIssues(baseResult.left),
+    };
+  }
 
-    const unmatchedKeys = Object.keys(remaining);
-    if (unmatchedKeys.length > 0) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
-      };
-    }
+  // Level 2: validate effective state after connection injection. This pass is
+  // required even with no connections because it restores required fields.
+  const linkedState = structuredClone(state);
+  const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
+    linked: true,
+  });
 
-    const linkedModel = createFieldModel(bundle, "workflow_step_linked");
-    if (!linkedModel) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "skip_tool_not_found",
-        errors: ["unsupported parameter types"],
-      };
-    }
+  const unmatchedKeys = Object.keys(remaining);
+  if (unmatchedKeys.length > 0) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+    };
+  }
 
-    const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
-      onExcessProperty: "ignore",
-    });
-    const linkedResult = linkedValidate(linkedState);
-    if (linkedResult._tag === "Left") {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: formatIssues(linkedResult.left),
-      };
-    }
+  const linkedModel = createFieldModel(bundle, "workflow_step_linked");
+  if (!linkedModel) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
+  }
+
+  const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
+    onExcessProperty: "ignore",
+  });
+  const linkedResult = linkedValidate(linkedState);
+  if (linkedResult._tag === "Left") {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatIssues(linkedResult.left),
+    };
   }
 
   return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };

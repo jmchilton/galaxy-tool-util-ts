@@ -4397,11 +4397,11 @@ gx_rules:
     - rules: {rules: [], mapping: [{type: list_identifiers}]}
   workflow_step_valid:
     - rules: {rules: [{type: add_column_metadata, value: identifier0}], mapping: [{type: list_identifiers, columns: [0]}]}
+    - {}
   workflow_step_invalid:
     - rules: null
     - rules: "not a rules object"
     - rules: 5
-    - {}
   workflow_step_linked_valid:
     - rules: {rules: [{type: add_column_metadata, value: identifier0}], mapping: [{type: list_identifiers, columns: [0]}]}
   workflow_step_linked_invalid:

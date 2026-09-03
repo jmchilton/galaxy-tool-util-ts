@@ -101,7 +101,9 @@ export function computeIsOptional(
     return false;
   }
   if (allOptional(stateRep)) {
-    // landing_request, landing_request_internal: all fields optional
+    // Landing requests and unlinked workflow-step state are incomplete by
+    // design, so every field may be absent. Linked workflow-step validation
+    // restores requiredness after connections have been injected.
     return true;
   }
   // request and friends: required only if requestRequiresValue

@@ -345,7 +345,8 @@ async function validateFormat2Step(
     };
   }
 
-  // Linked validation with connections
+  // Linked validation restores requiredness after connection injection and
+  // therefore runs even when the step has no connections.
   const connections: Record<string, unknown> = {};
   for (const stepInput of step.in) {
     if (stepInput.id && stepInput.source) {
@@ -354,32 +355,41 @@ async function validateFormat2Step(
         : [stepInput.source];
     }
   }
-  if (Object.keys(connections).length > 0) {
-    const linkedState = structuredClone(state);
-    injectConnectionsIntoState(bundle.parameters, linkedState, connections);
+  const linkedState = structuredClone(state);
+  const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
+    linked: true,
+  });
+  const unmatchedKeys = Object.keys(remaining);
+  if (unmatchedKeys.length > 0) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "fail",
+      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+    };
+  }
 
-    const linkedModel = createFieldModel(bundle, "workflow_step_linked");
-    if (!linkedModel) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        status: "skip_tool_not_found",
-        errors: ["unsupported parameter types"],
-      };
-    }
+  const linkedModel = createFieldModel(bundle, "workflow_step_linked");
+  if (!linkedModel) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
+  }
 
-    const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
-      onExcessProperty: "error",
-    });
-    const linkedResult = linkedValidate(linkedState);
-    if (linkedResult._tag === "Left") {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        status: "fail",
-        errors: formatIssues(linkedResult.left),
-      };
-    }
+  const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
+    onExcessProperty: "error",
+  });
+  const linkedResult = linkedValidate(linkedState);
+  if (linkedResult._tag === "Left") {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      status: "fail",
+      errors: formatIssues(linkedResult.left),
+    };
   }
 
   return { step: stepLabel, tool_id: toolId, status: "ok", errors: [] };
