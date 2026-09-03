@@ -20,11 +20,17 @@ import type { PromoteFullyConcreteDraftsResult } from "./promote-draft.js";
 
 // ── Status literals ──────────────────────────────────────────────────
 
-export type StepStatus = "ok" | "fail" | "skip_tool_not_found" | "skip_replacement_params";
+export type StepStatus =
+  | "ok"
+  | "fail"
+  | "skip_tool_not_found"
+  | "skip_replacement_params"
+  | "skip_no_tool_state";
 
 export const SKIP_STATUSES: ReadonlySet<StepStatus> = new Set([
   "skip_tool_not_found",
   "skip_replacement_params",
+  "skip_no_tool_state",
 ]);
 
 // ── Step-level results ───────────────────────────────────────────────

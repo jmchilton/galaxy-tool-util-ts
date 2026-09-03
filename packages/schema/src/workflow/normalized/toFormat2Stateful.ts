@@ -57,20 +57,20 @@ export function toFormat2Stateful(
         toolVersion: step.tool_version ?? null,
       }),
       precheck: (step, inputs) => precheckNativeStep(step, inputs).skipReasons,
-      preValidate: (step, inputs) => {
-        const connections: Record<string, unknown> = {};
-        for (const [key, val] of Object.entries(step.input_connections)) {
-          connections[key] = val;
-        }
-        validateNativeStepState(inputs, step.tool_state, connections);
-      },
+      preValidate: (step, inputs) =>
+        validateNativeStepState(inputs, step.tool_state, step.input_connections),
       convert: (step, inputs) => {
         const result = convertStateToFormat2(step, inputs);
         return { state: result.state, in: result.in };
       },
-      postValidate: (result, inputs) => {
-        validateFormat2StepState(inputs, result.state);
-      },
+      postValidate: (result, inputs, step) =>
+        validateFormat2StepState(inputs, result.state, {
+          ...step.input_connections,
+          // Required RuntimeValue markers are lifted into synthetic `in`
+          // entries by convertStateToFormat2. They satisfy linked requiredness
+          // just like ordinary workflow connections.
+          ...result.in,
+        }),
     },
   );
 

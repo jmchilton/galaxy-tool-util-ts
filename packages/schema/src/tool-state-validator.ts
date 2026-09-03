@@ -56,12 +56,13 @@ export class ToolStateValidator {
     toolId: string,
     toolVersion: string | null,
     format2State: Record<string, unknown>,
+    inputConnections: Record<string, unknown> = {},
   ): Promise<ToolStateDiagnostic[]> {
     const parsed = await this.toolInfo.getToolInfo(toolId, toolVersion).catch(() => null);
     if (!parsed) return [];
     const inputs = parsed.inputs as ToolParameterModel[];
     try {
-      validateFormat2StepState(inputs, format2State);
+      validateFormat2StepState(inputs, format2State, inputConnections);
       return [];
     } catch (e) {
       if (e instanceof ConversionValidationFailure) {
@@ -86,10 +87,11 @@ export class ToolStateValidator {
     toolId: string,
     toolVersion: string | null,
     format2State: Record<string, unknown>,
+    inputConnections: Record<string, unknown> = {},
   ): Promise<ToolStateDiagnostic[]> {
     const parsed = await this.toolInfo.getToolInfo(toolId, toolVersion).catch(() => null);
     if (!parsed) return [];
     const inputs = parsed.inputs as ToolParameterModel[];
-    return validateFormat2StepStateStrict(inputs, format2State);
+    return validateFormat2StepStateStrict(inputs, format2State, inputConnections);
   }
 }

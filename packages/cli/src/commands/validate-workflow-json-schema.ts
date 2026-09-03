@@ -17,6 +17,7 @@ import {
   expandedNative,
   expandedFormat2,
   injectConnectionsIntoState,
+  stripConnectedValues,
   scanForReplacements,
   withClass,
   type NormalizedNativeStep,
@@ -570,9 +571,19 @@ async function _validateFormat2StepJsonSchema(
     );
   }
 
-  const state = (step.state ?? {}) as Record<string, unknown>;
+  const state = structuredClone((step.state ?? {}) as Record<string, unknown>);
+  stripConnectedValues(bundle.parameters, state);
 
-  // Level 1: base validation against workflow_step
+  // Build connections dict from step.in
+  const connections: Record<string, unknown> = {};
+  for (const stepInput of step.in) {
+    if (stepInput.id && stepInput.source) {
+      const src = stepInput.source;
+      connections[stepInput.id] = Array.isArray(src) ? src : [src];
+    }
+  }
+
+  // Level 1: validate the stored, unlinked editor state.
   const baseValidate = getOrBuildValidator(
     toolId,
     toolVersion,
@@ -601,52 +612,49 @@ async function _validateFormat2StepJsonSchema(
     };
   }
 
-  // Build connections dict from step.in
-  const connections: Record<string, unknown> = {};
-  for (const stepInput of step.in) {
-    if (stepInput.id && stepInput.source) {
-      const src = stepInput.source;
-      connections[stepInput.id] = Array.isArray(src) ? src : [src];
-    }
+  // Level 2: validate effective state after connection injection. Always run
+  // this pass so missing, unconnected required values are rejected.
+  const linkedState = structuredClone(state);
+  const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
+    linked: true,
+  });
+  const unmatchedKeys = Object.keys(remaining);
+  if (unmatchedKeys.length > 0) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+    };
   }
 
-  // Level 2: linked validation with connections injected
-  if (Object.keys(connections).length > 0) {
-    const linkedState = structuredClone(state);
-    // Unmatched connection keys (e.g. the synthetic `when` gate on conditional
-    // steps) are discarded, not failed — mirrors Python's
-    // validate_workflow_json_schema, which injects connections and ignores the
-    // returned unmatched paths. (The Pydantic path raises on unmatched; the
-    // JSON Schema path is intentionally lenient.)
-    injectConnectionsIntoState(bundle.parameters, linkedState, connections, { linked: true });
+  const linkedValidate = getOrBuildValidator(
+    toolId,
+    toolVersion,
+    bundle,
+    "workflow_step_linked",
+    toolSchemaDir,
+  );
+  if (!linkedValidate) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
+  }
 
-    const linkedValidate = getOrBuildValidator(
-      toolId,
-      toolVersion,
-      bundle,
-      "workflow_step_linked",
-      toolSchemaDir,
-    );
-    if (!linkedValidate) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "skip_tool_not_found",
-        errors: ["unsupported parameter types"],
-      };
-    }
-
-    const linkedValid = linkedValidate(linkedState);
-    if (!linkedValid) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: formatAjvErrors(linkedValidate),
-      };
-    }
+  const linkedValid = linkedValidate(linkedState);
+  if (!linkedValid) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatAjvErrors(linkedValidate),
+    };
   }
 
   return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };

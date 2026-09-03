@@ -264,9 +264,15 @@ function printConnectionReport(report: ConnectionValidationReport): void {
 
 // --- Native validation ---
 
+/**
+ * Validate (or, when `cache` is null, merely enumerate) the tool steps of a
+ * native workflow. Passing `cache: null` skips tool resolution entirely and
+ * returns one `skip_no_tool_state` result per tool step — used by
+ * `validate-tree --no-tool-state` so the step count is still reported.
+ */
 export async function validateNativeSteps(
   data: Record<string, unknown>,
-  cache: ToolCache,
+  cache: ToolCache | null,
   prefix = "",
   expansionOpts?: ExpansionOptions,
   service?: ToolInfoService,
@@ -277,7 +283,7 @@ export async function validateNativeSteps(
 
 async function _validateNativeWorkflow(
   wf: NormalizedNativeWorkflow,
-  cache: ToolCache,
+  cache: ToolCache | null,
   prefix: string,
   service?: ToolInfoService,
 ): Promise<StepValidationResult[]> {
@@ -314,9 +320,18 @@ async function _validateNativeStep(
   stepLabel: string,
   toolId: string,
   toolVersion: string | null,
-  cache: ToolCache,
+  cache: ToolCache | null,
   service?: ToolInfoService,
 ): Promise<StepValidationResult> {
+  if (!cache) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_no_tool_state",
+      errors: ["tool state validation disabled"],
+    };
+  }
   const resolved = await resolveTool(cache, toolId, toolVersion, service);
   if (isResolveError(resolved)) {
     const reason = describeResolveError(resolved);
@@ -333,15 +348,10 @@ async function _validateNativeStep(
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
 
-  const connections: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(step.input_connections)) {
-    connections[key] = val;
-  }
-
   return _validateNativeState(
     bundle,
     step.tool_state as Record<string, unknown>,
-    connections,
+    step.input_connections,
     stepLabel,
     toolId,
     toolVersion,
@@ -409,9 +419,13 @@ function _validateNativeState(
 
 // --- Format2 validation ---
 
+/**
+ * Validate (or, when `cache` is null, merely enumerate) the tool steps of a
+ * format2 workflow. See {@link validateNativeSteps} for the null-cache behavior.
+ */
 export async function validateFormat2Steps(
   data: Record<string, unknown>,
-  cache: ToolCache,
+  cache: ToolCache | null,
   prefix = "",
   expansionOpts?: ExpansionOptions,
   service?: ToolInfoService,
@@ -422,7 +436,7 @@ export async function validateFormat2Steps(
 
 async function _validateFormat2Workflow(
   wf: NormalizedFormat2Workflow,
-  cache: ToolCache,
+  cache: ToolCache | null,
   prefix: string,
   service?: ToolInfoService,
 ): Promise<StepValidationResult[]> {
@@ -460,9 +474,18 @@ async function _validateFormat2Step(
   stepLabel: string,
   toolId: string,
   toolVersion: string | null,
-  cache: ToolCache,
+  cache: ToolCache | null,
   service?: ToolInfoService,
 ): Promise<StepValidationResult> {
+  if (!cache) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_no_tool_state",
+      errors: ["tool state validation disabled"],
+    };
+  }
   const resolved = await resolveTool(cache, toolId, toolVersion, service);
   if (isResolveError(resolved)) {
     const reason = describeResolveError(resolved);
@@ -500,7 +523,10 @@ async function _validateFormat2Step(
   const state = structuredClone((step.state ?? {}) as Record<string, unknown>);
   stripConnectedValues(bundle.parameters, state);
 
-  // Level 1: Validate base state against workflow_step
+  const connections = nativeConnectionsFromFormat2In(step.in);
+
+  // Level 1: validate the stored, unlinked editor state. All fields are
+  // optional in workflow_step, but present values must still be well typed.
   const baseModel = createFieldModel(bundle, "workflow_step");
   if (!baseModel) {
     return {
@@ -526,57 +552,47 @@ async function _validateFormat2Step(
     };
   }
 
-  // Build connections dict from step.in entries
-  const connections: Record<string, unknown> = {};
-  for (const stepInput of step.in) {
-    if (stepInput.id && stepInput.source) {
-      const src = stepInput.source;
-      connections[stepInput.id] = Array.isArray(src) ? src : [src];
-    }
+  // Level 2: validate effective state after connection injection. This pass is
+  // required even with no connections because it restores required fields.
+  const linkedState = structuredClone(state);
+  const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
+    linked: true,
+  });
+
+  const unmatchedKeys = Object.keys(remaining);
+  if (unmatchedKeys.length > 0) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+    };
   }
 
-  // Level 2: Validate with connections injected against workflow_step_linked
-  if (Object.keys(connections).length > 0) {
-    const linkedState = structuredClone(state);
-    const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
-      linked: true,
-    });
+  const linkedModel = createFieldModel(bundle, "workflow_step_linked");
+  if (!linkedModel) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "skip_tool_not_found",
+      errors: ["unsupported parameter types"],
+    };
+  }
 
-    const unmatchedKeys = Object.keys(remaining);
-    if (unmatchedKeys.length > 0) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
-      };
-    }
-
-    const linkedModel = createFieldModel(bundle, "workflow_step_linked");
-    if (!linkedModel) {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "skip_tool_not_found",
-        errors: ["unsupported parameter types"],
-      };
-    }
-
-    const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
-      onExcessProperty: "ignore",
-    });
-    const linkedResult = linkedValidate(linkedState);
-    if (linkedResult._tag === "Left") {
-      return {
-        step: stepLabel,
-        tool_id: toolId,
-        version: toolVersion,
-        status: "fail",
-        errors: formatIssues(linkedResult.left),
-      };
-    }
+  const linkedValidate = S.decodeUnknownEither(linkedModel as S.Schema<any>, {
+    onExcessProperty: "ignore",
+  });
+  const linkedResult = linkedValidate(linkedState);
+  if (linkedResult._tag === "Left") {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: formatIssues(linkedResult.left),
+    };
   }
 
   return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };

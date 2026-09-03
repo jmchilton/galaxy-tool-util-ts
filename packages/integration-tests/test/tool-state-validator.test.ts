@@ -41,6 +41,10 @@ function intParam(name: string, optional = false): IntegerParameterModel {
   };
 }
 
+function requiredIntParam(name: string): IntegerParameterModel {
+  return { ...intParam(name), value: null };
+}
+
 function makeParsedTool(inputs: ToolParameterModel[] = []): ParsedTool {
   return {
     id: "test_tool",
@@ -153,6 +157,23 @@ describe("ToolStateValidator", () => {
       });
       expect(result).toEqual([]);
     });
+
+    it("credits a connection that supplies a required value", async () => {
+      await toolInfo.addTool(TOOL_ID, TOOL_VERSION, makeParsedTool([requiredIntParam("count")]));
+      const result = await validator.validateFormat2Step(
+        TOOL_ID,
+        TOOL_VERSION,
+        {},
+        { count: true },
+      );
+      expect(result).toEqual([]);
+    });
+
+    it("reports a required value missing from both state and connections", async () => {
+      await toolInfo.addTool(TOOL_ID, TOOL_VERSION, makeParsedTool([requiredIntParam("count")]));
+      const result = await validator.validateFormat2Step(TOOL_ID, TOOL_VERSION, {});
+      expect(result.length).toBeGreaterThan(0);
+    });
   });
 
   describe("validateFormat2StepStrict", () => {
@@ -195,6 +216,17 @@ describe("ToolStateValidator", () => {
       const result = await validator.validateFormat2StepStrict(TOOL_ID, TOOL_VERSION, {
         any_key: "value",
       });
+      expect(result).toEqual([]);
+    });
+
+    it("credits connections before strict linked validation", async () => {
+      await toolInfo.addTool(TOOL_ID, TOOL_VERSION, makeParsedTool([requiredIntParam("count")]));
+      const result = await validator.validateFormat2StepStrict(
+        TOOL_ID,
+        TOOL_VERSION,
+        {},
+        { count: true },
+      );
       expect(result).toEqual([]);
     });
   });

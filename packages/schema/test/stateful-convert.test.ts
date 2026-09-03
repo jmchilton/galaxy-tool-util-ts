@@ -662,4 +662,22 @@ describe("encodeStateToNative", () => {
     const result = encodeStateToNative([section], state);
     expect(result).toEqual({ opts: { col: ["0", "1", "2"] } });
   });
+
+  it("leaves a branch leaf absent from format2 state absent in native state", () => {
+    // Under-specified sources are real: IWC's Genome_annotation_with_maker_short
+    // stores busco_mode.use_augustus without its aug_prediction leaf. The walker
+    // still visits that leaf, so the encoder must skip it rather than write back
+    // undefined and make the key appear after a roundtrip.
+    const cond = conditionalParam("cond", boolParam("advanced"), [
+      {
+        discriminator: true,
+        parameters: [textParam("present"), textParam("absent")],
+        is_default_when: false,
+      },
+      { discriminator: false, parameters: [], is_default_when: true },
+    ]);
+    const result = encodeStateToNative([cond], { cond: { advanced: true, present: "x" } });
+    expect(result).toEqual({ cond: { advanced: true, present: "x" } });
+    expect("absent" in (result.cond as Record<string, unknown>)).toBe(false);
+  });
 });

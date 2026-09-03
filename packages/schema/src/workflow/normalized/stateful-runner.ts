@@ -76,8 +76,10 @@ export interface StepRunnerConfig<Args, Result> {
   /**
    * Optional post-conversion validation on the converted result. Throw to
    * signal failure — classified as `post_validation`, result discarded.
+   * Receives the original `args` (the step) so validation can re-inject the
+   * connection markers that conversion strips out of the converted state.
    */
-  postValidate?: (result: Result, inputs: ToolParameterModel[]) => void;
+  postValidate?: (result: Result, inputs: ToolParameterModel[], args: Args) => void;
 }
 
 /**
@@ -174,7 +176,7 @@ export function makeStepConversionRunner<Args, Result>(
 
     if (postValidate) {
       try {
-        postValidate(result, inputs);
+        postValidate(result, inputs, args);
       } catch (err) {
         status.push({
           stepId,

@@ -55,9 +55,13 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
   if (mode === "json-schema") {
     const mod = await import("./validate-workflow-json-schema.js");
     validateNativeStepsJsonSchema = (data, cache, prefix, expansionOpts) =>
-      mod.validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts);
+      cache
+        ? mod.validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts)
+        : Promise.resolve([]);
     validateFormat2StepsJsonSchema = (data, cache, prefix, expansionOpts) =>
-      mod.validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts);
+      cache
+        ? mod.validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts)
+        : Promise.resolve([]);
   }
 
   const strict = resolveStrictOptions(opts);
@@ -83,7 +87,7 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
       resolver: createDefaultResolver({ workflowDirectory: dirname(info.path) }),
     };
 
-    let stepResults: ValidationStepResult[] = [];
+    let stepResults: ValidationStepResult[];
     if (cache && opts.toolState !== false) {
       const validateNative = validateNativeStepsJsonSchema ?? validateNativeSteps;
       const validateF2 = validateFormat2StepsJsonSchema ?? validateFormat2Steps;
@@ -91,10 +95,26 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
         format === "native"
           ? await validateNative(data, cache, "", expansionOpts)
           : await validateF2(data, cache, "", expansionOpts);
+    } else {
+      // Tool-state validation disabled (or no cache): still enumerate tool
+      // steps so the step count is reported, marking each as skipped. No
+      // resolver is passed — enumeration must stay offline, so subworkflow
+      // expansion is inline-only rather than fetching external references.
+      stepResults =
+        format === "native"
+          ? await validateNativeSteps(data, null)
+          : await validateFormat2Steps(data, null);
     }
 
-    // --strict-state: promote skips to failures
-    if (strict.strictState && stepResults.some((s) => s.status !== "ok" && s.status !== "fail")) {
+    // --strict-state: promote skips to failures. `skip_no_tool_state` is
+    // exempt — it means the user turned tool-state validation off, not that a
+    // step could not be checked, and `gxwf validate` treats it the same way.
+    if (
+      strict.strictState &&
+      stepResults.some(
+        (s) => s.status !== "ok" && s.status !== "fail" && s.status !== "skip_no_tool_state",
+      )
+    ) {
       throw new Error("Strict state: skipped steps not allowed");
     }
 
@@ -137,7 +157,10 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
 
   const s = report.summary;
   const total = report.workflows.length;
-  console.log(`\nSummary: ${total} workflows | ${s.ok} OK, ${s.fail} FAIL, ${s.skip} SKIP`);
+  const errorSuffix = s.error > 0 ? `, ${s.error} ERROR` : "";
+  console.log(
+    `\nSummary: ${total} workflows | ${s.ok} OK, ${s.fail} FAIL, ${s.skip} SKIP${errorSuffix}`,
+  );
   process.exitCode = computeValidateExitCode(report);
 }
 

@@ -19,6 +19,7 @@ import type { ToNativeOptions } from "./toNative.js";
 import type { NormalizedNativeWorkflow } from "./native.js";
 import type { NormalizedFormat2Step } from "./format2.js";
 import { encodeStateToNative } from "../stateful-convert.js";
+import { nativeConnectionsFromFormat2In } from "../state-merge.js";
 import { validateFormat2StepState, validateNativeStepState } from "../stateful-validate.js";
 import {
   makeStepConversionRunner,
@@ -59,17 +60,11 @@ export function toNativeStateful(
       toolId: step.tool_id ?? undefined,
       toolVersion: step.tool_version ?? null,
     }),
-    preValidate: ({ state }, inputs) => {
-      validateFormat2StepState(inputs, state);
-    },
+    preValidate: ({ step, state }, inputs) =>
+      validateFormat2StepState(inputs, state, nativeConnectionsFromFormat2In(step.in)),
     convert: ({ state }, inputs) => encodeStateToNative(inputs, state),
-    postValidate: (result, inputs) => {
-      // Reimported native state has no input_connections context here —
-      // the structural toNative pass will re-attach them. We validate the
-      // raw state dict without injected connections; ConnectedValue markers
-      // stripped in the format2 input won't reappear in the walker output.
-      validateNativeStepState(inputs, result);
-    },
+    postValidate: (result, inputs, { step }) =>
+      validateNativeStepState(inputs, result, nativeConnectionsFromFormat2In(step.in)),
   });
 
   const stateEncodeToNative = (step: NormalizedFormat2Step, state: Record<string, unknown>) =>

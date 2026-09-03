@@ -102,8 +102,9 @@ export async function runLintTree(dir: string, opts: LintTreeOptions): Promise<v
 
   const s = report.summary;
   const total = report.workflows.length;
+  const loadErrorSuffix = s.errors > 0 ? `, ${s.errors} load errors` : "";
   console.log(
-    `\nSummary: ${total} workflows | ${s.lint_errors} errors, ${s.lint_warnings} warnings, ${s.state_fail} state failures`,
+    `\nSummary: ${total} workflows | ${s.lint_errors} errors, ${s.lint_warnings} warnings, ${s.state_fail} state failures${loadErrorSuffix}`,
   );
   process.exitCode = computeLintExitCode(report);
 }

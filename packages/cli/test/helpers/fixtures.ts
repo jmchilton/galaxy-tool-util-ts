@@ -179,9 +179,103 @@ export const conditionalTool = {
   xrefs: [],
 };
 
+/**
+ * Conditional whose non-default branch carries a REQUIRED typed leaf (a float
+ * with no default). Shaped after iuc/compose_text_param: when that leaf is
+ * supplied by a connection it is absent from the state entirely, so validation
+ * must credit the connection rather than report it missing.
+ */
+export const requiredLeafConditionalTool = {
+  id: "compose_tool",
+  version: "1.0",
+  name: "Compose Tool",
+  description: null,
+  inputs: [
+    {
+      name: "param_type",
+      parameter_type: "gx_conditional",
+      type: "conditional",
+      hidden: false,
+      label: "Parameter type",
+      help: null,
+      argument: null,
+      is_dynamic: false,
+      test_parameter: {
+        name: "select_param_type",
+        parameter_type: "gx_select",
+        type: "select",
+        hidden: false,
+        label: "Type",
+        help: null,
+        argument: null,
+        is_dynamic: false,
+        optional: false,
+        multiple: false,
+        options: [
+          { label: "text", value: "text", selected: true },
+          { label: "float", value: "float", selected: false },
+        ],
+        validators: [],
+      },
+      whens: [
+        {
+          discriminator: "text",
+          is_default_when: true,
+          parameters: [
+            {
+              name: "component_value",
+              parameter_type: "gx_text",
+              type: "text",
+              hidden: false,
+              label: "Value",
+              help: null,
+              argument: null,
+              is_dynamic: false,
+              optional: false,
+              area: false,
+              default_value: null,
+              default_options: [],
+              validators: [],
+            },
+          ],
+        },
+        {
+          discriminator: "float",
+          is_default_when: false,
+          parameters: [
+            {
+              name: "component_value",
+              parameter_type: "gx_float",
+              type: "float",
+              hidden: false,
+              label: "Value",
+              help: null,
+              argument: null,
+              is_dynamic: false,
+              optional: false,
+              value: null,
+              min: null,
+              max: null,
+              validators: [],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  outputs: [],
+  citations: [],
+  license: null,
+  profile: null,
+  edam_operations: [],
+  edam_topics: [],
+  xrefs: [],
+};
+
 export const SIMPLE_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/simple/simple_tool";
 export const DATA_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/data/data_tool";
 export const COND_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/cond/cond_tool";
+export const COMPOSE_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/compose/compose_tool";
 
 /** Seed cache with the text-only simple tool. */
 export async function seedSimpleTool(cacheDir: string): Promise<void> {
@@ -224,6 +318,18 @@ export async function seedAllTools(cacheDir: string): Promise<void> {
     condKey,
     S.decodeUnknownSync(ParsedTool)(conditionalTool),
     COND_TOOL_ID,
+    "1.0",
+    "api",
+  );
+  const composeKey = await cacheKey(
+    "https://toolshed.g2.bx.psu.edu",
+    "test~compose~compose_tool",
+    "1.0",
+  );
+  await cache.saveTool(
+    composeKey,
+    S.decodeUnknownSync(ParsedTool)(requiredLeafConditionalTool),
+    COMPOSE_TOOL_ID,
     "1.0",
     "api",
   );

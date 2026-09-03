@@ -12,6 +12,7 @@ import {
   SIMPLE_TOOL_ID,
   DATA_TOOL_ID,
   COND_TOOL_ID,
+  COMPOSE_TOOL_ID,
 } from "./helpers/fixtures.js";
 
 describe("validate-workflow (connection-aware)", () => {
@@ -155,6 +156,96 @@ describe("validate-workflow (connection-aware)", () => {
       expect(output).toContain("tool_state: OK");
       expect(process.exitCode).toBe(0);
     });
+
+    // Regression: unlinked workflow_step state permits the connection-supplied
+    // leaf to be absent; the linked pass then restores requiredness and credits
+    // the matching connection.
+    it("accepts a required conditional leaf supplied by a connection", async () => {
+      await seedAllTools(ctx.tmpDir);
+      const workflow = {
+        class: "GalaxyWorkflow",
+        label: "Connected Conditional",
+        inputs: [{ id: "a_number", type: "float" }],
+        outputs: [],
+        steps: [
+          {
+            id: "compose",
+            tool_id: COMPOSE_TOOL_ID,
+            tool_version: "1.0",
+            state: { param_type: { select_param_type: "float" } },
+            in: [{ id: "param_type|component_value", source: "a_number" }],
+            out: [],
+          },
+        ],
+      };
+      const wfPath = join(ctx.tmpDir, "connected-cond.gxwf.yml");
+      await writeFile(wfPath, YAML.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir });
+
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).not.toContain("component_value");
+      expect(output).toContain("Tool state: 1 validated, 0 skipped");
+      expect(ctx.errSpy.mock.calls.map((c) => c[0]).join("\n")).toBe("");
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("accepts a connection-supplied required leaf in json-schema mode too", async () => {
+      await seedAllTools(ctx.tmpDir);
+      const workflow = {
+        class: "GalaxyWorkflow",
+        label: "Connected Conditional",
+        inputs: [{ id: "a_number", type: "float" }],
+        outputs: [],
+        steps: [
+          {
+            id: "compose",
+            tool_id: COMPOSE_TOOL_ID,
+            tool_version: "1.0",
+            state: { param_type: { select_param_type: "float" } },
+            in: [{ id: "param_type|component_value", source: "a_number" }],
+            out: [],
+          },
+        ],
+      };
+      const wfPath = join(ctx.tmpDir, "connected-cond-js.gxwf.yml");
+      await writeFile(wfPath, YAML.stringify(workflow));
+      await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, mode: "json-schema" });
+
+      const output = ctx.logSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).not.toContain("component_value");
+      expect(output).toContain("Tool state (json-schema): 1 validated, 0 skipped");
+      expect(ctx.errSpy.mock.calls.map((c) => c[0]).join("\n")).toBe("");
+      expect(process.exitCode).toBe(0);
+    });
+
+    it.each(["effect", "json-schema"] as const)(
+      "rejects a required conditional leaf missing from state and connections (%s)",
+      async (mode) => {
+        await seedAllTools(ctx.tmpDir);
+        const workflow = {
+          class: "GalaxyWorkflow",
+          label: "Missing Conditional Value",
+          inputs: [],
+          outputs: [],
+          steps: [
+            {
+              id: "compose",
+              tool_id: COMPOSE_TOOL_ID,
+              tool_version: "1.0",
+              state: { param_type: { select_param_type: "float" } },
+              in: [],
+              out: [],
+            },
+          ],
+        };
+        const wfPath = join(ctx.tmpDir, `missing-cond-${mode}.gxwf.yml`);
+        await writeFile(wfPath, YAML.stringify(workflow));
+        await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, mode });
+
+        expect(ctx.errSpy.mock.calls.map((c) => c[0]).join("\n")).toContain("component_value");
+        expect(process.exitCode).toBe(1);
+      },
+    );
 
     it("validates format2 workflow with no connections", async () => {
       await seedAllTools(ctx.tmpDir);
