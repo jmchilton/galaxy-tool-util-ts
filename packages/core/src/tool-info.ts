@@ -108,11 +108,10 @@ export class ToolInfoService {
 
     // Try each source in order
     for (const source of this.sources) {
+      let parsedTool: ParsedTool;
+      let sourceLabel: string;
+      let sourceUrl: string;
       try {
-        let parsedTool: ParsedTool;
-        let sourceLabel: string;
-        let sourceUrl: string;
-
         if (source.type === "toolshed") {
           parsedTool = await fetchFromToolShed(
             source.url,
@@ -127,11 +126,18 @@ export class ToolInfoService {
           sourceLabel = "galaxy";
           sourceUrl = `${source.url}/api/tools/${encodeURIComponent(toolId)}/parsed`;
         }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.onDiagnostic(
+          `${source.type} fetch failed (${source.url}) for ${coords.trsToolId}: ${msg}`,
+        );
+        continue;
+      }
 
-        // Key under `keyVersion` (may be `_default_`); record the concrete version the
-        // body reports (falling back to `fetchVersion`) as the index/display version so
-        // `list` surfaces it.
-        const indexVersion = parsedTool.version ?? fetchVersion;
+      // A cache failure must not discard an otherwise valid remote response.
+      // Report it separately and still return the fetched tool to the caller.
+      const indexVersion = parsedTool.version ?? fetchVersion;
+      try {
         await this.cache.saveTool(
           key,
           parsedTool,
@@ -140,13 +146,13 @@ export class ToolInfoService {
           sourceLabel,
           sourceUrl,
         );
-        return { tool: parsedTool, key };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.onDiagnostic(
-          `${source.type} fetch failed (${source.url}) for ${coords.trsToolId}: ${msg}`,
+          `Failed to cache fetched tool ${coords.trsToolId} version ${indexVersion}: ${msg}`,
         );
       }
+      return { tool: parsedTool, key };
     }
 
     return null;

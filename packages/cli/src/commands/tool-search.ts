@@ -59,10 +59,7 @@ export async function runToolSearch(query: string, opts: ToolSearchOptions): Pro
   hits.sort((a, b) => b.score - a.score);
 
   if (opts.enrich && hits.length > 0) {
-    const info = makeNodeToolInfoService({
-      cacheDir: opts.cacheDir,
-      onDiagnostic: (message) => console.error(message),
-    });
+    const info = makeNodeToolInfoService({ cacheDir: opts.cacheDir });
     await Promise.all(
       hits.map(async (hit) => {
         try {

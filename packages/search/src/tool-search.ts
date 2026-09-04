@@ -1,5 +1,10 @@
 import type { DiagnosticSink, ToolInfoService, ToolSource } from "@galaxy-tool-util/core";
-import { getLatestTRSToolVersion, getTRSToolVersions, toolIdFromTrs } from "@galaxy-tool-util/core";
+import {
+  getLatestTRSToolVersion,
+  getTRSToolVersions,
+  ignoreDiagnostic,
+  toolIdFromTrs,
+} from "@galaxy-tool-util/core";
 import type { ParsedTool } from "@galaxy-tool-util/schema";
 
 import type { ToolSearchHit } from "./models/toolshed-search.js";
@@ -54,7 +59,10 @@ export interface ToolSearchServiceOptions {
   /** Shared with `ToolInfoService` so enriched hits reuse its cache. */
   info: ToolInfoService;
   fetcher?: typeof fetch;
-  /** Receives recoverable per-source and enrichment diagnostics. Silent by default. */
+  /**
+   * Receives recoverable search-source and enrichment-callback diagnostics.
+   * Diagnostics produced inside `info` use that service's own sink.
+   */
   onDiagnostic?: DiagnosticSink;
 }
 
@@ -74,7 +82,7 @@ export class ToolSearchService {
     this.sources = opts.sources.filter((s) => s.type === "toolshed");
     this.info = opts.info;
     this.fetcher = opts.fetcher ?? globalThis.fetch;
-    this.onDiagnostic = opts.onDiagnostic ?? (() => {});
+    this.onDiagnostic = opts.onDiagnostic ?? ignoreDiagnostic;
   }
 
   async searchTools(

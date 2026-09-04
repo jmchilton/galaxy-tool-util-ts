@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { makeNodeToolInfoService } from "../src/cache/node.js";
+import { ToolInfoService } from "../src/tool-info.js";
+import type { CacheStorage } from "../src/cache/storage/interface.js";
 import fastqcFixture from "./fixtures/fastqc-parsed-tool.json" with { type: "json" };
 
 function mockFetch(responseBody: unknown, status = 200): typeof fetch {
@@ -61,6 +63,46 @@ describe("ToolInfoService", () => {
     expect(result).toBeNull();
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]).toContain("toolshed fetch failed");
+  });
+
+  it("writes recoverable diagnostics to stderr from the Node factory by default", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const service = makeNodeToolInfoService({
+        cacheDir: tmpDir,
+        fetcher: mockFetch({}, 404),
+      });
+      const result = await service.getToolInfo("cat1", "1.0.0");
+      expect(result).toBeNull();
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("toolshed fetch failed"));
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("returns a fetched tool when caching fails and reports the cache failure accurately", async () => {
+    const storage: CacheStorage = {
+      load: async () => null,
+      save: async () => {
+        throw new Error("storage unavailable");
+      },
+      delete: async () => {},
+      list: async () => [],
+    };
+    const diagnostics: string[] = [];
+    const service = new ToolInfoService({
+      storage,
+      fetcher: mockFetch(fastqcFixture),
+      onDiagnostic: (message) => diagnostics.push(message),
+    });
+
+    const result = await service.getToolInfo("devteam~fastqc~fastqc", "0.74+galaxy0");
+
+    expect(result?.name).toBe("FastQC");
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toContain("Failed to cache fetched tool devteam~fastqc~fastqc");
+    expect(diagnostics[0]).toContain("storage unavailable");
+    expect(diagnostics[0]).not.toContain("fetch failed");
   });
 
   it("does not fetch when sources are explicitly empty", async () => {

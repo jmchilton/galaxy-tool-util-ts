@@ -2,9 +2,9 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 
 import { FilesystemCacheStorage } from "./storage/filesystem.js";
-import { ToolCache } from "./tool-cache.js";
+import { ToolCache, type ToolCacheOptions } from "./tool-cache.js";
 import { CACHE_DIR_ENV_VAR } from "./tool-cache-defaults.js";
-import type { ToolInfoOptions, ToolSource } from "../tool-info.js";
+import type { ToolInfoOptions } from "../tool-info.js";
 import type { DiagnosticSink } from "../diagnostics.js";
 import { ToolInfoService } from "../tool-info.js";
 
@@ -19,41 +19,42 @@ export function getCacheDir(override?: string): string {
   return override ?? process.env[CACHE_DIR_ENV_VAR] ?? DEFAULT_CACHE_DIR;
 }
 
+const stderrDiagnostic: DiagnosticSink = (message) => console.error(message);
+
 /** Options for `makeNodeToolCache` — same as ToolCache minus `storage`, plus `cacheDir`. */
-export interface NodeToolCacheOptions {
+export interface NodeToolCacheOptions extends Omit<ToolCacheOptions, "storage"> {
   cacheDir?: string;
-  defaultToolshedUrl?: string;
-  /** Receives recoverable cache diagnostics. Silent by default. */
-  onDiagnostic?: DiagnosticSink;
 }
 
 /**
  * Construct a ToolCache backed by the default filesystem storage.
  * `cacheDir` resolves via {@link getCacheDir} (explicit > env var > default).
+ * Recoverable diagnostics go to stderr unless `onDiagnostic` overrides the sink.
  */
 export function makeNodeToolCache(opts?: NodeToolCacheOptions): ToolCache {
   const cacheDir = getCacheDir(opts?.cacheDir);
   return new ToolCache({
+    ...opts,
     storage: new FilesystemCacheStorage(cacheDir),
-    defaultToolshedUrl: opts?.defaultToolshedUrl,
-    onDiagnostic: opts?.onDiagnostic,
+    onDiagnostic: opts?.onDiagnostic ?? stderrDiagnostic,
   });
 }
 
 /** Options for `makeNodeToolInfoService` — ToolInfoOptions without `storage`, plus `cacheDir`. */
 export interface NodeToolInfoOptions extends Omit<ToolInfoOptions, "storage"> {
   cacheDir?: string;
-  sources?: ToolSource[];
 }
 
 /**
  * Construct a ToolInfoService backed by the default filesystem storage.
  * `cacheDir` resolves via {@link getCacheDir}.
+ * Recoverable diagnostics go to stderr unless `onDiagnostic` overrides the sink.
  */
 export function makeNodeToolInfoService(opts?: NodeToolInfoOptions): ToolInfoService {
   const cacheDir = getCacheDir(opts?.cacheDir);
   return new ToolInfoService({
     ...opts,
     storage: new FilesystemCacheStorage(cacheDir),
+    onDiagnostic: opts?.onDiagnostic ?? stderrDiagnostic,
   });
 }

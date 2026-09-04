@@ -42,12 +42,23 @@ describe("gxwf tool-search", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
   let errSpy: ReturnType<typeof vi.spyOn>;
   let debugSpy: ReturnType<typeof vi.spyOn>;
+  let infoSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let stdout: MemoryWritable;
+  let stderr: MemoryWritable;
   let originalFetch: typeof fetch;
 
   beforeEach(() => {
-    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+    stdout = new MemoryWritable();
+    stderr = new MemoryWritable();
+    const testConsole = new Console({ stdout, stderr });
+    logSpy = vi.spyOn(console, "log").mockImplementation((...args) => testConsole.log(...args));
+    errSpy = vi.spyOn(console, "error").mockImplementation((...args) => testConsole.error(...args));
+    debugSpy = vi
+      .spyOn(console, "debug")
+      .mockImplementation((...args) => testConsole.debug(...args));
+    infoSpy = vi.spyOn(console, "info").mockImplementation((...args) => testConsole.info(...args));
+    warnSpy = vi.spyOn(console, "warn").mockImplementation((...args) => testConsole.warn(...args));
     originalFetch = globalThis.fetch;
     process.exitCode = undefined;
   });
@@ -56,6 +67,8 @@ describe("gxwf tool-search", () => {
     logSpy.mockRestore();
     errSpy.mockRestore();
     debugSpy.mockRestore();
+    infoSpy.mockRestore();
+    warnSpy.mockRestore();
     globalThis.fetch = originalFetch;
     process.exitCode = undefined;
   });
@@ -64,8 +77,7 @@ describe("gxwf tool-search", () => {
     globalThis.fetch = (async () => fixtureResponse("fastqc-page1.json")) as typeof fetch;
     await runToolSearch("fastqc", { json: true, maxResults: 3 });
     expect(process.exitCode).toBeUndefined();
-    const output = logSpy.mock.calls[0][0] as string;
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(stdout.output);
     expect(parsed.query).toBe("fastqc");
     expect(parsed.hits).toHaveLength(3);
     expect(parsed.hits[0].toolId).toBe("fastqc");
@@ -76,7 +88,7 @@ describe("gxwf tool-search", () => {
     globalThis.fetch = (async () => fixtureResponse("fastqc-page1.json")) as typeof fetch;
     await runToolSearch("fastqc", { maxResults: 3 });
     expect(process.exitCode).toBeUndefined();
-    const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+    const output = stdout.output;
     expect(output).toContain("score");
     expect(output).toContain("devteam/fastqc");
     expect(output).toContain("FastQC");
@@ -86,15 +98,14 @@ describe("gxwf tool-search", () => {
     globalThis.fetch = (async () => fixtureResponse("empty.json")) as typeof fetch;
     await runToolSearch("nothingmatches", { json: true });
     expect(process.exitCode).toBe(2);
-    const output = logSpy.mock.calls[0][0] as string;
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(stdout.output);
     expect(parsed.hits).toEqual([]);
   });
 
   it("--owner filters hits client-side", async () => {
     globalThis.fetch = (async () => fixtureResponse("fastqc-page1.json")) as typeof fetch;
     await runToolSearch("fastqc", { json: true, owner: "devteam", maxResults: 10 });
-    const parsed = JSON.parse(logSpy.mock.calls[0][0] as string);
+    const parsed = JSON.parse(stdout.output);
     expect(
       parsed.hits.every((h: { repoOwnerUsername: string }) => h.repoOwnerUsername === "devteam"),
     ).toBe(true);
@@ -104,7 +115,7 @@ describe("gxwf tool-search", () => {
   it("--match-name drops hits where the query is not a tool-name token", async () => {
     globalThis.fetch = (async () => fixtureResponse("fastqc-page1.json")) as typeof fetch;
     await runToolSearch("fastqc", { json: true, matchName: true, maxResults: 10 });
-    const parsed = JSON.parse(logSpy.mock.calls[0][0] as string);
+    const parsed = JSON.parse(stdout.output);
     for (const hit of parsed.hits) {
       expect(hit.toolName.toLowerCase()).toContain("fastqc");
     }
@@ -119,20 +130,12 @@ describe("gxwf tool-search", () => {
     }) as typeof fetch;
     await runToolSearch("fastqc", { json: true, page: 3 });
     expect(new URL(observedUrl).searchParams.get("page")).toBe("3");
+    expect(JSON.parse(stdout.output).hits).toEqual([]);
   });
 
   it("--enrich attempts ParsedTool resolution and tolerates per-hit failures", async () => {
     const cacheDir = await mkdtemp(join(tmpdir(), "gxwf-enrich-"));
     try {
-      const stdout = new MemoryWritable();
-      const stderr = new MemoryWritable();
-      const testConsole = new Console({ stdout, stderr });
-      logSpy.mockImplementation((...args: unknown[]) => testConsole.log(...args));
-      errSpy.mockImplementation((...args: unknown[]) => testConsole.error(...args));
-      // Node's console.debug writes to stdout. Capturing it here makes this test
-      // fail if a recoverable diagnostic corrupts the JSON stream again.
-      debugSpy.mockImplementation((...args: unknown[]) => testConsole.debug(...args));
-
       const calls: string[] = [];
       globalThis.fetch = (async (input: RequestInfo | URL) => {
         const url =
@@ -155,6 +158,7 @@ describe("gxwf tool-search", () => {
       }
       expect(stderr.output).toContain("TRS latest-version lookup failed");
       expect(stdout.output).not.toContain("TRS latest-version lookup failed");
+      expect(debugSpy).not.toHaveBeenCalled();
     } finally {
       await rm(cacheDir, { recursive: true, force: true });
     }
