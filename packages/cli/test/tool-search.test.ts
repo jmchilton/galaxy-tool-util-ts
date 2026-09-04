@@ -25,6 +25,33 @@ function fixtureResponse(name: string): Response {
   });
 }
 
+function searchResponse(hits: unknown[], page: number, pageSize: number): Response {
+  return new Response(
+    JSON.stringify({
+      total_results: String(hits.length),
+      page: String(page),
+      page_size: String(pageSize),
+      hostname: "https://toolshed.g2.bx.psu.edu",
+      hits,
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+function rawHit(id: string, owner: string, score: number): unknown {
+  return {
+    tool: {
+      id,
+      name: id,
+      description: id,
+      repo_name: `${id}-repo`,
+      repo_owner_username: owner,
+    },
+    matched_terms: { name: id },
+    score,
+  };
+}
+
 class MemoryWritable extends Writable {
   output = "";
 
@@ -110,6 +137,34 @@ describe("gxwf tool-search", () => {
       parsed.hits.every((h: { repoOwnerUsername: string }) => h.repoOwnerUsername === "devteam"),
     ).toBe(true);
     expect(parsed.hits.length).toBeGreaterThan(0);
+  });
+
+  it("--owner filters before --max-results and continues onto later pages", async () => {
+    const pagesFetched: number[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = new URL(
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url,
+      );
+      const page = Number(url.searchParams.get("page"));
+      pagesFetched.push(page);
+      const hits =
+        page === 1
+          ? [rawHit("other-1", "other", 10), rawHit("other-2", "other", 9)]
+          : [rawHit("wanted", "devteam", 8), rawHit("other-3", "other", 7)];
+      return searchResponse(hits, page, 2);
+    }) as typeof fetch;
+
+    await runToolSearch("tool", {
+      json: true,
+      owner: "devteam",
+      pageSize: 2,
+      maxResults: 1,
+    });
+
+    expect(pagesFetched).toEqual([1, 2]);
+    expect(JSON.parse(stdout.output).hits.map((hit: { toolId: string }) => hit.toolId)).toEqual([
+      "wanted",
+    ]);
   });
 
   it("--match-name drops hits where the query is not a tool-name token", async () => {

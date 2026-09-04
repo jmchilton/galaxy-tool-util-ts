@@ -42,13 +42,31 @@ export interface NormalizedToolHit {
 }
 
 export interface SearchToolsServiceOptions {
+  /** Starting result page requested from each Tool Shed. Defaults to 1. */
+  page?: number;
   /** Server-side page size. Defaults to 20. */
   pageSize?: number;
   /** Hard cap on hits returned (after dedup). Defaults to 50. */
   maxResults?: number;
+  /** Keep only hits owned by this Tool Shed user (case-insensitive). */
+  owner?: string;
+  /** Keep only hits whose tool name contains at least one complete query token. */
+  matchName?: boolean;
   /** When true, resolve each hit's `ParsedTool` via the info service (and cache). */
   enrich?: boolean;
 }
+
+interface ResolvedSearchOptions {
+  page: number;
+  pageSize: number;
+  maxResults: number;
+  owner: string | undefined;
+  nameTokens: string[] | undefined;
+}
+
+type SourceSearchResult =
+  | { ok: true; hits: NormalizedToolHit[] }
+  | { ok: false; source: ToolSource; error: unknown };
 
 export interface ToolSearchServiceOptions {
   /**
@@ -70,7 +88,10 @@ export interface ToolSearchServiceOptions {
  * High-level tool discovery service. Fans a query out across configured
  * Tool Shed sources, dedupes hits that describe the same `(owner, repo,
  * toolId)` across mirrors (first source wins), sorts by server score, and
- * optionally enriches each hit with a full `ParsedTool`.
+ * optionally enriches each hit with a full `ParsedTool`. A failed source is
+ * tolerated when another source completes; if every searchable source fails,
+ * the first source error is rethrown so callers can distinguish failure from
+ * an empty result set.
  */
 export class ToolSearchService {
   private readonly sources: ToolSource[];
@@ -89,18 +110,34 @@ export class ToolSearchService {
     query: string,
     opts: SearchToolsServiceOptions = {},
   ): Promise<NormalizedToolHit[]> {
-    const pageSize = opts.pageSize ?? 20;
-    const maxResults = opts.maxResults ?? 50;
+    const resolvedOpts: ResolvedSearchOptions = {
+      page: opts.page ?? 1,
+      pageSize: opts.pageSize ?? 20,
+      maxResults: opts.maxResults ?? 50,
+      owner: opts.owner?.toLowerCase(),
+      nameTokens: opts.matchName ? tokenize(query) : undefined,
+    };
 
-    const perSource = await Promise.all(
-      this.sources.map((source) =>
-        this.collectFromSource(source, query, pageSize, maxResults).catch((err) => {
-          const msg = err instanceof Error ? err.message : String(err);
-          this.onDiagnostic(`Tool Shed search failed for ${source.url}: ${msg}`);
-          return [] as NormalizedToolHit[];
-        }),
-      ),
+    const sourceResults: SourceSearchResult[] = await Promise.all(
+      this.sources.map(async (source) => {
+        try {
+          const hits = await this.collectFromSource(source, query, resolvedOpts);
+          return { ok: true, hits };
+        } catch (error) {
+          return { ok: false, source, error };
+        }
+      }),
     );
+
+    const failures = sourceResults.filter((result) => !result.ok);
+    if (sourceResults.length > 0 && failures.length === sourceResults.length) {
+      throw failures[0].error;
+    }
+    for (const failure of failures) {
+      const msg = failure.error instanceof Error ? failure.error.message : String(failure.error);
+      this.onDiagnostic(`Tool Shed search failed for ${failure.source.url}: ${msg}`);
+    }
+    const perSource = sourceResults.map((result) => (result.ok ? result.hits : []));
 
     const dedupKey = (h: NormalizedToolHit) => `${h.repoOwnerUsername}~${h.repoName}~${h.toolId}`;
     const seen = new Map<string, NormalizedToolHit>();
@@ -111,7 +148,7 @@ export class ToolSearchService {
       }
     }
     const merged = Array.from(seen.values()).sort((a, b) => b.score - a.score);
-    const truncated = merged.slice(0, maxResults);
+    const truncated = merged.slice(0, resolvedOpts.maxResults);
 
     if (opts.enrich) {
       await Promise.all(truncated.map((hit) => this.enrich(hit)));
@@ -131,18 +168,20 @@ export class ToolSearchService {
   private async collectFromSource(
     source: ToolSource,
     query: string,
-    pageSize: number,
-    maxResults: number,
+    opts: ResolvedSearchOptions,
   ): Promise<NormalizedToolHit[]> {
     const out: NormalizedToolHit[] = [];
     for await (const page of iterateToolSearchPages(source.url, query, {
-      pageSize,
+      page: opts.page,
+      pageSize: opts.pageSize,
       fetcher: this.fetcher,
     })) {
-      for (const hit of page.hits) {
-        out.push(normalizeHit(hit, source));
+      for (const rawHit of page.hits) {
+        const hit = normalizeHit(rawHit, source);
+        if (!matchesFilters(hit, opts)) continue;
+        out.push(hit);
+        if (out.length >= opts.maxResults) return out;
       }
-      if (out.length >= maxResults) return out;
     }
     return out;
   }
@@ -156,6 +195,26 @@ export class ToolSearchService {
       this.onDiagnostic(`Enrichment failed for ${hit.trsToolId}: ${msg}`);
     }
   }
+}
+
+function matchesFilters(hit: NormalizedToolHit, opts: ResolvedSearchOptions): boolean {
+  if (opts.owner !== undefined && hit.repoOwnerUsername.toLowerCase() !== opts.owner) return false;
+  if (opts.nameTokens !== undefined && !nameMatchesQuery(hit.toolName, opts.nameTokens))
+    return false;
+  return true;
+}
+
+function tokenize(value: string): string[] {
+  return value
+    .toLowerCase()
+    .split(/[^a-z0-9+]+/)
+    .filter((token) => token.length > 0);
+}
+
+function nameMatchesQuery(name: string, queryTokens: string[]): boolean {
+  if (queryTokens.length === 0) return true;
+  const nameTokens = new Set(tokenize(name));
+  return queryTokens.some((token) => nameTokens.has(token));
 }
 
 export function normalizeHit(hit: ToolSearchHit, source: ToolSource): NormalizedToolHit {
