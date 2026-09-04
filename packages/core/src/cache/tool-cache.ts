@@ -1,6 +1,7 @@
 import * as S from "effect/Schema";
 
 import { ParsedTool } from "@galaxy-tool-util/schema";
+import { ignoreDiagnostic, type DiagnosticSink } from "../diagnostics.js";
 import { CacheIndex } from "./cache-index.js";
 import { cacheKey } from "./cache-key.js";
 import { normalizeShortTrsToolId, parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
@@ -38,6 +39,13 @@ export interface ResolvedCoordinates {
   readableId: string;
 }
 
+export interface ToolCacheOptions {
+  storage: CacheStorage;
+  defaultToolshedUrl?: string;
+  /** Receives recoverable cache diagnostics. Silent by default. */
+  onDiagnostic?: DiagnosticSink;
+}
+
 /**
  * Two-layer cache (memory + storage) for parsed Galaxy tool metadata.
  * Resolves tool IDs to cache keys, loads/saves tool JSON, and manages the cache index.
@@ -50,11 +58,13 @@ export class ToolCache {
   readonly defaultToolshedUrl: string;
   readonly index: CacheIndex;
   private readonly storage: CacheStorage;
+  private readonly onDiagnostic: DiagnosticSink;
   private memoryCache = new Map<string, ParsedTool>();
 
-  constructor(opts: { storage: CacheStorage; defaultToolshedUrl?: string }) {
+  constructor(opts: ToolCacheOptions) {
     this.defaultToolshedUrl = opts.defaultToolshedUrl ?? envToolshedUrl() ?? DEFAULT_TOOLSHED_URL;
     this.storage = opts.storage;
+    this.onDiagnostic = opts.onDiagnostic ?? ignoreDiagnostic;
     this.index = new CacheIndex(this.storage);
   }
 
@@ -104,7 +114,7 @@ export class ToolCache {
       this.memoryCache.set(key, parsedTool);
       return parsedTool;
     } catch (err) {
-      console.debug(`Failed to load cached tool ${key}: ${err}`);
+      this.onDiagnostic(`Failed to load cached tool ${key}: ${err}`);
       return null;
     }
   }

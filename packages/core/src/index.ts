@@ -31,6 +31,7 @@ export type {
   CacheStorage,
   ResolvedCoordinates,
   CacheStats,
+  ToolCacheOptions,
 } from "./cache/index.js";
 /** IndexedDB-backed cache storage for browser/Web Worker contexts. */
 export { IndexedDBCacheStorage } from "./cache/index.js";
@@ -42,6 +43,8 @@ export type { TRSToolVersion } from "./client/index.js";
 /** High-level service: fetch tools from multiple sources with automatic caching. */
 export { ToolInfoService } from "./tool-info.js";
 export type { ToolInfoOptions, ToolSource } from "./tool-info.js";
+export { ignoreDiagnostic } from "./diagnostics.js";
+export type { DiagnosticSink } from "./diagnostics.js";
 /** Shared YAML config schema for tool sources and cache settings. */
 export {
   WorkflowToolConfig,

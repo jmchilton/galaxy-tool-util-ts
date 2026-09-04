@@ -45,14 +45,22 @@ export async function searchTools(
   }
 
   if (response.status === 404) {
-    console.debug(`Tool Shed search: ${url} returned 404 — treating as empty page`);
-    return {
-      total_results: 0,
-      page: opts.page ?? 1,
-      page_size: opts.pageSize ?? 0,
-      hostname: toolshedUrl,
-      hits: [],
-    };
+    const body = await response.text().catch(() => "");
+    const page = opts.page ?? 1;
+    if (page > 1 && body.includes("ObjectNotFound")) {
+      return {
+        total_results: 0,
+        page,
+        page_size: opts.pageSize ?? 0,
+        hostname: toolshedUrl,
+        hits: [],
+      };
+    }
+    throw new ToolFetchError(
+      `Tool Shed search request to ${url} failed: 404 ${body.slice(0, 200)}`,
+      url,
+      response.status,
+    );
   }
 
   if (!response.ok) {

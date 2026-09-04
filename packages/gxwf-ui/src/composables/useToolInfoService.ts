@@ -57,8 +57,7 @@ export function useToolInfoService(opts: UseToolInfoServiceOptions = {}): ToolIn
 
   if (toolshedUrl !== DEFAULT_TOOLSHED_URL) {
     // Best-effort warning — silently ignored if the host CSP already lists the
-    // override. The actual failure surfaces as a fetch reject in
-    // `ToolInfoService` and gets logged to console.debug there.
+    // override. Actual fetch failures use the diagnostic sink configured below.
     console.info(
       `[gxwf-ui] VITE_GXWF_TOOLSHED_URL=${toolshedUrl} — ensure the page CSP connect-src includes this origin (gxwf-web: --csp-connect-src).`,
     );
@@ -68,6 +67,8 @@ export function useToolInfoService(opts: UseToolInfoServiceOptions = {}): ToolIn
     storage,
     sources,
     defaultToolshedUrl: toolshedUrl,
+    // Preserve browser developer-console diagnostics.
+    onDiagnostic: (message) => console.debug(message),
   });
   return _service;
 }

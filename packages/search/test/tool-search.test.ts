@@ -233,6 +233,7 @@ describe("ToolSearchService", () => {
   });
 
   it("tolerates a failing source without failing the whole search", async () => {
+    const diagnostics: string[] = [];
     const fetcher: typeof fetch = async (input) => {
       const url = typeof input === "string" ? input : (input as URL).toString();
       if (searchUrlMatches(url, PRIMARY.url)) {
@@ -247,9 +248,12 @@ describe("ToolSearchService", () => {
       sources: [PRIMARY, MIRROR],
       info: makeInfo(fetcher),
       fetcher,
+      onDiagnostic: (message) => diagnostics.push(message),
     });
     const hits = await svc.searchTools("q");
     expect(hits.map((h) => h.toolId)).toEqual(["b"]);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toContain("Tool Shed search failed for https://primary.shed");
   });
 
   it("ignores non-toolshed sources", async () => {

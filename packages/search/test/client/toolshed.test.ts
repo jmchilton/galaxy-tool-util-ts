@@ -76,7 +76,7 @@ describe("searchTools", () => {
     expect(url.searchParams.get("q")).toBe("fastqc");
   });
 
-  it("treats 404 as an empty page", async () => {
+  it("treats an ObjectNotFound 404 after page 1 as an empty page", async () => {
     const result = await searchTools(TOOLSHED, "x", {
       page: 9,
       pageSize: 10,
@@ -86,6 +86,24 @@ describe("searchTools", () => {
     expect(result.hits).toEqual([]);
     expect(result.page).toBe(9);
     expect(result.page_size).toBe(10);
+  });
+
+  it("throws ToolFetchError for an ObjectNotFound 404 on page 1", async () => {
+    await expect(
+      searchTools(TOOLSHED, "x", {
+        page: 1,
+        fetcher: mockFetchStatus(404, "ObjectNotFound"),
+      }),
+    ).rejects.toThrow(ToolFetchError);
+  });
+
+  it("throws ToolFetchError for an unrelated 404 on a later page", async () => {
+    await expect(
+      searchTools(TOOLSHED, "x", {
+        page: 9,
+        fetcher: mockFetchStatus(404, "route not found"),
+      }),
+    ).rejects.toThrow(ToolFetchError);
   });
 
   it("throws ToolFetchError on 500", async () => {

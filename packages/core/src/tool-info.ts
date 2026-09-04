@@ -4,6 +4,7 @@ import { cacheKey } from "./cache/cache-key.js";
 import { fetchFromToolShed, fetchFromGalaxy } from "./client/toolshed.js";
 import { getLatestTRSToolVersion } from "./client/trs.js";
 import type { CacheStorage } from "./cache/storage/interface.js";
+import { ignoreDiagnostic, type DiagnosticSink } from "./diagnostics.js";
 
 /** A remote source for fetching tool metadata. */
 export interface ToolSource {
@@ -21,6 +22,8 @@ export interface ToolInfoOptions {
   /** @deprecated Use sources instead. Kept for simple single-source usage. */
   galaxyUrl?: string;
   fetcher?: typeof fetch;
+  /** Receives recoverable fetch/cache diagnostics. Silent by default. */
+  onDiagnostic?: DiagnosticSink;
 }
 
 /**
@@ -31,13 +34,16 @@ export class ToolInfoService {
   readonly cache: ToolCache;
   private readonly sources: ToolSource[];
   private readonly fetcher: typeof fetch;
+  private readonly onDiagnostic: DiagnosticSink;
 
   constructor(opts: ToolInfoOptions) {
     this.cache = new ToolCache({
       storage: opts.storage,
       defaultToolshedUrl: opts.defaultToolshedUrl,
+      onDiagnostic: opts.onDiagnostic,
     });
     this.fetcher = opts.fetcher ?? globalThis.fetch;
+    this.onDiagnostic = opts.onDiagnostic ?? ignoreDiagnostic;
 
     if (opts.sources) {
       this.sources = opts.sources;
@@ -78,7 +84,7 @@ export class ToolInfoService {
       // ToolShed tool without a pin — must resolve a concrete version before we can key it.
       const resolved = await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId);
       if (resolved === null) {
-        console.debug(`No version available for tool: ${toolId}`);
+        this.onDiagnostic(`No version available for tool: ${toolId}`);
         return null;
       }
       keyVersion = resolved;
@@ -102,11 +108,10 @@ export class ToolInfoService {
 
     // Try each source in order
     for (const source of this.sources) {
+      let parsedTool: ParsedTool;
+      let sourceLabel: string;
+      let sourceUrl: string;
       try {
-        let parsedTool: ParsedTool;
-        let sourceLabel: string;
-        let sourceUrl: string;
-
         if (source.type === "toolshed") {
           parsedTool = await fetchFromToolShed(
             source.url,
@@ -121,11 +126,18 @@ export class ToolInfoService {
           sourceLabel = "galaxy";
           sourceUrl = `${source.url}/api/tools/${encodeURIComponent(toolId)}/parsed`;
         }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.onDiagnostic(
+          `${source.type} fetch failed (${source.url}) for ${coords.trsToolId}: ${msg}`,
+        );
+        continue;
+      }
 
-        // Key under `keyVersion` (may be `_default_`); record the concrete version the
-        // body reports (falling back to `fetchVersion`) as the index/display version so
-        // `list` surfaces it.
-        const indexVersion = parsedTool.version ?? fetchVersion;
+      // A cache failure must not discard an otherwise valid remote response.
+      // Report it separately and still return the fetched tool to the caller.
+      const indexVersion = parsedTool.version ?? fetchVersion;
+      try {
         await this.cache.saveTool(
           key,
           parsedTool,
@@ -134,13 +146,13 @@ export class ToolInfoService {
           sourceLabel,
           sourceUrl,
         );
-        return { tool: parsedTool, key };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.debug(
-          `${source.type} fetch failed (${source.url}) for ${coords.trsToolId}: ${msg}`,
+        this.onDiagnostic(
+          `Failed to cache fetched tool ${coords.trsToolId} version ${indexVersion}: ${msg}`,
         );
       }
+      return { tool: parsedTool, key };
     }
 
     return null;
@@ -158,7 +170,9 @@ export class ToolInfoService {
       return await getLatestTRSToolVersion(toolshedUrl, trsToolId, this.fetcher);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.debug(`TRS latest-version lookup failed for ${trsToolId} on ${toolshedUrl}: ${msg}`);
+      this.onDiagnostic(
+        `TRS latest-version lookup failed for ${trsToolId} on ${toolshedUrl}: ${msg}`,
+      );
       return null;
     }
   }
