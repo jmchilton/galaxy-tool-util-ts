@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { ToolSource } from "@galaxy-tool-util/core";
-import { ToolInfoService } from "@galaxy-tool-util/core";
+import { ToolFetchError, ToolInfoService } from "@galaxy-tool-util/core";
 import type { CacheStorage } from "@galaxy-tool-util/core";
 import type { ParsedTool } from "@galaxy-tool-util/schema";
 
@@ -232,6 +232,82 @@ describe("ToolSearchService", () => {
     expect(pagesFetched).toBe(2);
   });
 
+  it("starts pagination at the caller-supplied page", async () => {
+    const pagesFetched: number[] = [];
+    const fetcher: typeof fetch = async (input) => {
+      const url = new URL(typeof input === "string" ? input : (input as URL).toString());
+      const page = Number(url.searchParams.get("page"));
+      pagesFetched.push(page);
+      return makePageResponse(PRIMARY.url, [makeHit("found", "o", "r", 1)], page, 2);
+    };
+    const svc = new ToolSearchService({
+      sources: [PRIMARY],
+      info: makeInfo(fetcher),
+      fetcher,
+    });
+
+    const hits = await svc.searchTools("q", { page: 3, pageSize: 2 });
+
+    expect(pagesFetched).toEqual([3]);
+    expect(hits.map((hit) => hit.toolId)).toEqual(["found"]);
+  });
+
+  it("filters by owner before maxResults and continues paging for matches", async () => {
+    const pagesFetched: number[] = [];
+    const fetcher: typeof fetch = async (input) => {
+      const url = new URL(typeof input === "string" ? input : (input as URL).toString());
+      const page = Number(url.searchParams.get("page"));
+      pagesFetched.push(page);
+      const hits =
+        page === 1
+          ? [makeHit("other-1", "other", "r1", 10), makeHit("other-2", "other", "r2", 9)]
+          : [makeHit("wanted", "devteam", "r3", 8), makeHit("other-3", "other", "r4", 7)];
+      return makePageResponse(PRIMARY.url, hits, page, 2);
+    };
+    const svc = new ToolSearchService({
+      sources: [PRIMARY],
+      info: makeInfo(fetcher),
+      fetcher,
+    });
+
+    const hits = await svc.searchTools("q", {
+      pageSize: 2,
+      maxResults: 1,
+      owner: "DevTeam",
+    });
+
+    expect(pagesFetched).toEqual([1, 2]);
+    expect(hits.map((hit) => hit.toolId)).toEqual(["wanted"]);
+  });
+
+  it("filters by complete tool-name query tokens before maxResults", async () => {
+    const pagesFetched: number[] = [];
+    const fetcher: typeof fetch = async (input) => {
+      const url = new URL(typeof input === "string" ? input : (input as URL).toString());
+      const page = Number(url.searchParams.get("page"));
+      pagesFetched.push(page);
+      const hits =
+        page === 1
+          ? [makeHit("noise-1", "o", "r1", 10), makeHit("noise-2", "o", "r2", 9)]
+          : [makeHit("target_tool", "o", "r3", 8), makeHit("noise-3", "o", "r4", 7)];
+      return makePageResponse(PRIMARY.url, hits, page, 2);
+    };
+    const svc = new ToolSearchService({
+      sources: [PRIMARY],
+      info: makeInfo(fetcher),
+      fetcher,
+    });
+
+    const hits = await svc.searchTools("target reads", {
+      pageSize: 2,
+      maxResults: 1,
+      matchName: true,
+    });
+
+    expect(pagesFetched).toEqual([1, 2]);
+    expect(hits.map((hit) => hit.toolId)).toEqual(["target_tool"]);
+  });
+
   it("tolerates a failing source without failing the whole search", async () => {
     const diagnostics: string[] = [];
     const fetcher: typeof fetch = async (input) => {
@@ -254,6 +330,17 @@ describe("ToolSearchService", () => {
     expect(hits.map((h) => h.toolId)).toEqual(["b"]);
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]).toContain("Tool Shed search failed for https://primary.shed");
+  });
+
+  it("throws the source error when every Tool Shed fails", async () => {
+    const fetcher: typeof fetch = async () => new Response("boom", { status: 500 });
+    const svc = new ToolSearchService({
+      sources: [PRIMARY],
+      info: makeInfo(fetcher),
+      fetcher,
+    });
+
+    await expect(svc.searchTools("q")).rejects.toBeInstanceOf(ToolFetchError);
   });
 
   it("ignores non-toolshed sources", async () => {
