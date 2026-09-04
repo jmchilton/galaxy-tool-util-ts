@@ -5,6 +5,7 @@ import { FilesystemCacheStorage } from "./storage/filesystem.js";
 import { ToolCache } from "./tool-cache.js";
 import { CACHE_DIR_ENV_VAR } from "./tool-cache-defaults.js";
 import type { ToolInfoOptions, ToolSource } from "../tool-info.js";
+import type { DiagnosticSink } from "../diagnostics.js";
 import { ToolInfoService } from "../tool-info.js";
 
 export { FilesystemCacheStorage } from "./storage/filesystem.js";
@@ -22,6 +23,8 @@ export function getCacheDir(override?: string): string {
 export interface NodeToolCacheOptions {
   cacheDir?: string;
   defaultToolshedUrl?: string;
+  /** Receives recoverable cache diagnostics. Silent by default. */
+  onDiagnostic?: DiagnosticSink;
 }
 
 /**
@@ -33,6 +36,7 @@ export function makeNodeToolCache(opts?: NodeToolCacheOptions): ToolCache {
   return new ToolCache({
     storage: new FilesystemCacheStorage(cacheDir),
     defaultToolshedUrl: opts?.defaultToolshedUrl,
+    onDiagnostic: opts?.onDiagnostic,
   });
 }
 

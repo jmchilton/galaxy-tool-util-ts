@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { Console } from "node:console";
+import { Writable } from "node:stream";
 
 import { runToolSearch } from "../src/commands/tool-search.js";
 
@@ -23,14 +25,29 @@ function fixtureResponse(name: string): Response {
   });
 }
 
+class MemoryWritable extends Writable {
+  output = "";
+
+  override _write(
+    chunk: Buffer | string,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void,
+  ): void {
+    this.output += chunk.toString();
+    callback();
+  }
+}
+
 describe("gxwf tool-search", () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
   let errSpy: ReturnType<typeof vi.spyOn>;
+  let debugSpy: ReturnType<typeof vi.spyOn>;
   let originalFetch: typeof fetch;
 
   beforeEach(() => {
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     originalFetch = globalThis.fetch;
     process.exitCode = undefined;
   });
@@ -38,6 +55,7 @@ describe("gxwf tool-search", () => {
   afterEach(() => {
     logSpy.mockRestore();
     errSpy.mockRestore();
+    debugSpy.mockRestore();
     globalThis.fetch = originalFetch;
     process.exitCode = undefined;
   });
@@ -106,6 +124,15 @@ describe("gxwf tool-search", () => {
   it("--enrich attempts ParsedTool resolution and tolerates per-hit failures", async () => {
     const cacheDir = await mkdtemp(join(tmpdir(), "gxwf-enrich-"));
     try {
+      const stdout = new MemoryWritable();
+      const stderr = new MemoryWritable();
+      const testConsole = new Console({ stdout, stderr });
+      logSpy.mockImplementation((...args: unknown[]) => testConsole.log(...args));
+      errSpy.mockImplementation((...args: unknown[]) => testConsole.error(...args));
+      // Node's console.debug writes to stdout. Capturing it here makes this test
+      // fail if a recoverable diagnostic corrupts the JSON stream again.
+      debugSpy.mockImplementation((...args: unknown[]) => testConsole.debug(...args));
+
       const calls: string[] = [];
       globalThis.fetch = (async (input: RequestInfo | URL) => {
         const url =
@@ -118,7 +145,7 @@ describe("gxwf tool-search", () => {
       await runToolSearch("fastqc", { json: true, enrich: true, maxResults: 2, cacheDir });
 
       expect(process.exitCode).toBeUndefined();
-      const parsed = JSON.parse(logSpy.mock.calls[0][0] as string);
+      const parsed = JSON.parse(stdout.output);
       expect(parsed.hits).toHaveLength(2);
       // Enrichment was attempted (extra non-search HTTP calls were issued).
       expect(calls.some((u) => !u.includes("/api/tools?"))).toBe(true);
@@ -126,6 +153,8 @@ describe("gxwf tool-search", () => {
       for (const hit of parsed.hits) {
         expect(hit.parsedTool).toBeUndefined();
       }
+      expect(stderr.output).toContain("TRS latest-version lookup failed");
+      expect(stdout.output).not.toContain("TRS latest-version lookup failed");
     } finally {
       await rm(cacheDir, { recursive: true, force: true });
     }

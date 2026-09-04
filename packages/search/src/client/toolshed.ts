@@ -45,7 +45,6 @@ export async function searchTools(
   }
 
   if (response.status === 404) {
-    console.debug(`Tool Shed search: ${url} returned 404 — treating as empty page`);
     return {
       total_results: 0,
       page: opts.page ?? 1,

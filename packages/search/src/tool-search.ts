@@ -1,4 +1,4 @@
-import type { ToolInfoService, ToolSource } from "@galaxy-tool-util/core";
+import type { DiagnosticSink, ToolInfoService, ToolSource } from "@galaxy-tool-util/core";
 import { getLatestTRSToolVersion, getTRSToolVersions, toolIdFromTrs } from "@galaxy-tool-util/core";
 import type { ParsedTool } from "@galaxy-tool-util/schema";
 
@@ -54,6 +54,8 @@ export interface ToolSearchServiceOptions {
   /** Shared with `ToolInfoService` so enriched hits reuse its cache. */
   info: ToolInfoService;
   fetcher?: typeof fetch;
+  /** Receives recoverable per-source and enrichment diagnostics. Silent by default. */
+  onDiagnostic?: DiagnosticSink;
 }
 
 /**
@@ -66,11 +68,13 @@ export class ToolSearchService {
   private readonly sources: ToolSource[];
   private readonly info: ToolInfoService;
   private readonly fetcher: typeof fetch;
+  private readonly onDiagnostic: DiagnosticSink;
 
   constructor(opts: ToolSearchServiceOptions) {
     this.sources = opts.sources.filter((s) => s.type === "toolshed");
     this.info = opts.info;
     this.fetcher = opts.fetcher ?? globalThis.fetch;
+    this.onDiagnostic = opts.onDiagnostic ?? (() => {});
   }
 
   async searchTools(
@@ -84,7 +88,7 @@ export class ToolSearchService {
       this.sources.map((source) =>
         this.collectFromSource(source, query, pageSize, maxResults).catch((err) => {
           const msg = err instanceof Error ? err.message : String(err);
-          console.debug(`Tool Shed search failed for ${source.url}: ${msg}`);
+          this.onDiagnostic(`Tool Shed search failed for ${source.url}: ${msg}`);
           return [] as NormalizedToolHit[];
         }),
       ),
@@ -141,7 +145,7 @@ export class ToolSearchService {
       if (parsed !== null) hit.parsedTool = parsed;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.debug(`Enrichment failed for ${hit.trsToolId}: ${msg}`);
+      this.onDiagnostic(`Enrichment failed for ${hit.trsToolId}: ${msg}`);
     }
   }
 }

@@ -68,6 +68,9 @@ export function useToolInfoService(opts: UseToolInfoServiceOptions = {}): ToolIn
     storage,
     sources,
     defaultToolshedUrl: toolshedUrl,
+    // Browser diagnostics remain available without making the reusable core
+    // package write to a process-wide console by default.
+    onDiagnostic: (message) => console.debug(message),
   });
   return _service;
 }

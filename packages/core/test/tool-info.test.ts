@@ -51,12 +51,16 @@ describe("ToolInfoService", () => {
   });
 
   it("returns null when all sources fail", async () => {
+    const diagnostics: string[] = [];
     const service = makeNodeToolInfoService({
       cacheDir: tmpDir,
       fetcher: mockFetch({}, 404),
+      onDiagnostic: (message) => diagnostics.push(message),
     });
     const result = await service.getToolInfo("cat1", "1.0.0");
     expect(result).toBeNull();
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toContain("toolshed fetch failed");
   });
 
   it("does not fetch when sources are explicitly empty", async () => {
