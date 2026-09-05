@@ -1,5 +1,12 @@
 # @galaxy-tool-util/gxwf-report-shell
 
+## 1.11.0
+
+### Patch Changes
+
+- Updated dependencies [[`073dc22`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/073dc2281c1d0a65ad68e743690db23a0f9622b9), [`3ae51f4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3ae51f4a5d2c1397fd02c2144e0d1793a3b18623), [`4f1a5cf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4f1a5cf5f60d1c3daf3692e9e12e1902058a54be), [`c95a9e2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c95a9e2fdfa2fb1382e207b167d92b7b0a5b804e), [`8a472bf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8a472bf9db3809b0d308f98721db4943dd923721), [`f781dd0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/f781dd0029f769adc42e7cbb5cb1a07b44455381), [`c66afa4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c66afa4906b3545007fba4908c00b9d9c62b343c), [`8a472bf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8a472bf9db3809b0d308f98721db4943dd923721), [`ffa8567`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ffa8567445d8cf02de6e875b60d0b931f0dc7e7e), [`66352c9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/66352c9ad56abf8b446601f65b99b100fe4727ec), [`8d4570c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8d4570c6f156591d4a65cea0e2c8ed170a9250df), [`58ed6fe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/58ed6fec317a25bc3e20e9cb5e22a3759f9c4724)]:
+  - @galaxy-tool-util/schema@1.11.0
+
 ## 1.10.1
 
 ### Patch Changes

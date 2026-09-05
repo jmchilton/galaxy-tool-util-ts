@@ -1,5 +1,85 @@
 # @galaxy-tool-util/cli
 
+## 1.11.0
+
+### Minor Changes
+
+- [#161](https://github.com/jmchilton/galaxy-tool-util-ts/pull/161) [`8d9d397`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8d9d397d7868ec499c2970b621646fccae87fd2f) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `galaxy-tool-cache add-local <tool_path>` — parse a local tool file into a `ParsedTool` and cache it with `source: local`, the local-ingest counterpart to `add` (which fetches from the ToolShed). Dispatches on extension like Galaxy's `get_tool_source`: `.yml` → YAML tool, everything else → XML (CWL is not supported). Mirrors Galaxy's `galaxy-tool-cache add-local`: `--tool-id` (the full toolshed tool_id) is required for cache keying even when the file carries a bare id, which is surfaced only as a hint; `--tool-version` overrides the parsed version.
+
+  `@galaxy-tool-util/tool-xml` now exports `loadToolFile(path)` (extension-dispatching XML/YAML loader → `ParsedTool`) and `loadYamlTool(path)`.
+
+### Patch Changes
+
+- [#167](https://github.com/jmchilton/galaxy-tool-util-ts/pull/167) [`3ae51f4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3ae51f4a5d2c1397fd02c2144e0d1793a3b18623) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(schema): align format2 state validation with Python's linked-state pipeline
+
+  A connection-supplied leaf lives in the format2 `in` block rather than `state`.
+  Validation now mirrors Galaxy's upstream Python pipeline: first validate the
+  stored state against `workflow_step`, where all fields are optional but present
+  values remain typed; then inject actual connections and always validate the
+  effective state against `workflow_step_linked`, which restores requiredness and
+  allows `ConnectedValue` to satisfy a required leaf. Unmatched connection paths
+  are rejected instead of silently discarded.
+
+  `StepRunnerConfig.postValidate` gains the original `args` so the converted
+  result can be checked against the step's `input_connections`.
+
+  The same correction is applied everywhere the pattern appeared, so the workflow
+  actually round-trips end to end:
+  - `toNativeStateful` passes `nativeConnectionsFromFormat2In(step.in)` to both
+    its pre- and post-validation hooks (the reverse leg previously failed
+    `pre_validation` and fell back to schema-free passthrough).
+  - `toFormat2Stateful` credits required runtime placeholders lifted into its
+    synthetic `in` entries during the linked validation pass.
+  - `gxwf validate` and `gxwf validate --mode json-schema` both run the same
+    unlinked-then-linked sequence, including for steps with zero connections.
+  - `ToolStateValidator` accepts a connection map for regular and strict format2
+    validation, so API consumers get the same semantics as the CLI.
+
+  Turning the reverse leg back on exposed a second defect it had been masking:
+  `encodeStateToNative` wrote `undefined` back for every branch leaf the format2
+  state did not contain, so a leaf absent from an under-specified source workflow
+  reappeared as a key after a round-trip. Absent leaves are now skipped, matching
+  the forward direction.
+
+- [#168](https://github.com/jmchilton/galaxy-tool-util-ts/pull/168) [`8ccca4f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8ccca4fe90f18733bf6701d7ffe7d6bdbfc0eefd) Thanks [@jmchilton](https://github.com/jmchilton)! - Keep `gxwf tool-search --enrich --json` stdout machine-readable when enrichment fails. Universal core and search services now expose optional diagnostic sinks and remain silent by default, while the Node factories send diagnostics to stderr so CLI commands and servers retain failure details. Cache-write failures no longer discard a valid fetched tool, and only documented later-page `ObjectNotFound` responses are treated as empty search pages.
+
+- [#170](https://github.com/jmchilton/galaxy-tool-util-ts/pull/170) [`d82490c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d82490cc7489baa826f31c05d741359e89f21000) Thanks [@jmchilton](https://github.com/jmchilton)! - Route `gxwf tool-search` through `ToolSearchService` while preserving its starting-page, filtering, result-limit, enrichment, diagnostic, and exit-code behavior.
+
+- [#167](https://github.com/jmchilton/galaxy-tool-util-ts/pull/167) [`58ed6fe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/58ed6fec317a25bc3e20e9cb5e22a3759f9c4724) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(cli): surface malformed workflows in tree walks instead of dropping them
+
+  `discoverWorkflows` parsed each candidate file inside a `try/catch` that
+  returned `null` on failure, and a `null` parse was indistinguishable from
+  "this file is not a workflow" — so a `.ga` or `.gxwf.yml` with a syntax error
+  was silently omitted from the tree. `gxwf validate-tree` / `lint-tree` then
+  reported a workflow count that quietly excluded the broken files, which is the
+  worst possible outcome for a batch linter.
+
+  Files with an unambiguous workflow extension (`.ga`, `.gxwf.yml`, `.gxwf.yaml`)
+  that fail to parse are now carried through as a `loadError` outcome and
+  reported as `ERROR`, with the count added to the summary line. Malformed plain
+  `.yml`/`.json` files stay silently skipped — those extensions are ambiguous and
+  could be any unrelated file.
+
+  Also: `validate-tree --no-tool-state` (and the no-cache path) now enumerates
+  tool steps and marks each with the new `skip_no_tool_state` status rather than
+  reporting zero steps. That enumeration stays offline — no resolver is passed,
+  so subworkflow expansion is inline-only and an unreachable external reference
+  can no longer fail an otherwise-clean `--no-tool-state` run — and
+  `--strict-state` treats `skip_no_tool_state` as exempt, matching how the
+  single-file `gxwf validate` handles the same flag combination.
+
+  Tree outcome errors are collapsed to their first line where they are recorded,
+  so every consumer benefits: the per-workflow console listing in all five tree
+  commands, and the `|`-delimited Markdown report tables that a raw multi-line
+  YAML parse error would otherwise wreck.
+
+- Updated dependencies [[`8d9d397`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8d9d397d7868ec499c2970b621646fccae87fd2f), [`073dc22`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/073dc2281c1d0a65ad68e743690db23a0f9622b9), [`3ae51f4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3ae51f4a5d2c1397fd02c2144e0d1793a3b18623), [`4f1a5cf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4f1a5cf5f60d1c3daf3692e9e12e1902058a54be), [`4f1a5cf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4f1a5cf5f60d1c3daf3692e9e12e1902058a54be), [`c95a9e2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c95a9e2fdfa2fb1382e207b167d92b7b0a5b804e), [`8a472bf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8a472bf9db3809b0d308f98721db4943dd923721), [`f781dd0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/f781dd0029f769adc42e7cbb5cb1a07b44455381), [`c66afa4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c66afa4906b3545007fba4908c00b9d9c62b343c), [`8a472bf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8a472bf9db3809b0d308f98721db4943dd923721), [`8ccca4f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8ccca4fe90f18733bf6701d7ffe7d6bdbfc0eefd), [`d82490c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d82490cc7489baa826f31c05d741359e89f21000), [`ffa8567`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ffa8567445d8cf02de6e875b60d0b931f0dc7e7e), [`4d4736b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4d4736bc97c63abd3f3b62af6ff0a5749d863737), [`66352c9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/66352c9ad56abf8b446601f65b99b100fe4727ec), [`9847986`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/98479868a371677f8721b4b74c9d96029e36f52d), [`8d4570c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8d4570c6f156591d4a65cea0e2c8ed170a9250df), [`590b724`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/590b7243b2baac1bfab7b771a49812c57171fb5f), [`58ed6fe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/58ed6fec317a25bc3e20e9cb5e22a3759f9c4724)]:
+  - @galaxy-tool-util/tool-xml@1.11.0
+  - @galaxy-tool-util/schema@1.11.0
+  - @galaxy-tool-util/connection-validation@1.11.0
+  - @galaxy-tool-util/core@1.11.0
+  - @galaxy-tool-util/search@1.11.0
+
 ## 1.10.1
 
 ### Patch Changes
