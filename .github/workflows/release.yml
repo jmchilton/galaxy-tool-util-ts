@@ -57,7 +57,7 @@ jobs:
           path: packages
 
       - name: Create Release PR or Publish
-        uses: changesets/action@v2.1.1
+        uses: changesets/action@v2.1.2
         with:
           publish: pnpm changeset publish
           title: "chore: version packages"
