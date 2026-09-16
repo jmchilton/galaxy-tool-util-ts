@@ -17,6 +17,71 @@ function mockFetchError(status: number, body = "Not found"): typeof fetch {
   };
 }
 
+describe.each([
+  [
+    "Tool Shed",
+    (body: unknown, url = "https://example.org") =>
+      fetchFromToolShed(url, "test~tool~id", "1.0", mockFetch(body)),
+  ],
+  [
+    "Galaxy",
+    (body: unknown, url = "https://example.org") =>
+      fetchFromGalaxy(url, "tool", "1.0", mockFetch(body)),
+  ],
+] as const)("%s compact decode diagnostics", (_source, fetchTool) => {
+  it.each([
+    { name: "null payload", body: null, path: "[]" },
+    { name: "null outputs", body: { ...fastqcFixture, outputs: null }, path: "[outputs]" },
+    {
+      name: "null output element",
+      body: { ...fastqcFixture, outputs: [null] },
+      path: "[outputs.0]",
+    },
+    {
+      name: "invalid collection structure",
+      body: {
+        ...fastqcFixture,
+        outputs: [{ name: "out", label: null, hidden: false, type: "collection", structure: 7 }],
+      },
+      path: "[outputs.0.structure]",
+    },
+    {
+      name: "large invalid value",
+      body: { ...fastqcFixture, id: Array(19000).fill("x") },
+      path: "[id]",
+    },
+  ])("bounds $name without rendering declarations or payloads", async ({ body, path }) => {
+    try {
+      await fetchTool(body);
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ToolFetchError);
+      const message = (error as ToolFetchError).message;
+      expect(message).toContain(path);
+      expect(message).toContain("has invalid type");
+      expect(message).not.toContain("readonly");
+      expect(message).not.toContain('"x"');
+      expect(message.length).toBeLessThan(500);
+      expect((error as ToolFetchError).url).toMatch(/^https:\/\/example.org\/api\/tools\//);
+    }
+  });
+
+  it("bounds a long source URL while preserving the field diagnostic and full error URL", async () => {
+    const url = `https://example.org/${"long-path/".repeat(100)}`;
+    try {
+      await fetchTool({ ...fastqcFixture, id: null }, url);
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ToolFetchError);
+      const message = (error as ToolFetchError).message;
+      expect(message).toContain("[id] has invalid type");
+      expect(message).toContain("…");
+      expect(message.length).toBeLessThan(500);
+      expect((error as ToolFetchError).url).toContain(url);
+    }
+  });
+});
+
 describe("fetchFromToolShed", () => {
   it("decodes a valid response", async () => {
     const result = await fetchFromToolShed(
