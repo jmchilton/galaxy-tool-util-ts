@@ -19,7 +19,8 @@ import {
 import type { ToolInfoService } from "../tool-info.js";
 import type { ToolSourceDocument } from "../tool-source.js";
 import { parseToolshedToolId, toolIdFromTrs } from "../cache/tool-id.js";
-import type { CacheStats } from "../cache/tool-cache.js";
+import { DEFAULT_TOOL_VERSION, type CacheStats } from "../cache/tool-cache.js";
+import { cacheKey } from "../cache/cache-key.js";
 import { HttpError } from "./error.js";
 import { cacheToTrs, cacheToTrsOne, toTrsToolId, type CacheIndexRecord } from "./cache-to-trs.js";
 import type {
@@ -58,12 +59,18 @@ async function decorate(
   entry: CacheIndexRecord,
   decode: boolean,
 ): Promise<CachedToolEntry> {
-  const parsed = parseToolshedToolId(entry.tool_id);
+  // Older caches recorded stock IDs as <shed>/repos/<stock-id>.
+  const stockPrefix = toolIdFromTrs(ctx.service.cache.defaultToolshedUrl, "");
+  const suffix = entry.tool_id.startsWith(stockPrefix)
+    ? entry.tool_id.slice(stockPrefix.length)
+    : null;
+  const toolId = suffix !== null && suffix !== "" && !suffix.includes("/") ? suffix : entry.tool_id;
+  const parsed = parseToolshedToolId(toolId);
   const refetchable =
     entry.source !== "orphan" && entry.tool_id !== "unknown" && entry.tool_id !== "";
   const out: CachedToolEntry = {
     cacheKey: entry.cache_key,
-    toolId: entry.tool_id,
+    toolId,
     toolVersion: entry.tool_version,
     source: entry.source,
     sourceUrl: entry.source_url,
@@ -73,8 +80,14 @@ async function decorate(
     decodable: true,
     refetchable,
   };
+  if (entry.tool_version !== DEFAULT_TOOL_VERSION) {
+    const coords = ctx.service.cache.resolveToolCoordinates(toolId, DEFAULT_TOOL_VERSION);
+    const defaultKey = await cacheKey(coords.toolshedUrl, coords.trsToolId, DEFAULT_TOOL_VERSION);
+    if (defaultKey === entry.cache_key) out.requestVersion = DEFAULT_TOOL_VERSION;
+  }
   if (parsed !== null) {
-    out.toolshedUrl = `https://${toolIdFromTrs(parsed.toolshedUrl, parsed.trsToolId)}`;
+    const [owner, repo] = parsed.trsToolId.split("~");
+    out.toolshedUrl = `${parsed.toolshedUrl}/view/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
   }
   const stat = await ctx.service.cache.statCached(entry.cache_key);
   if (stat !== null) out.sizeBytes = stat.sizeBytes;

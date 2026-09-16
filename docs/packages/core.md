@@ -164,3 +164,9 @@ Both HTTP servers expose `GET /api/tools/{tool_id}/versions/{tool_version}/tool_
 as `text/plain; charset=utf-8`, without JSON quoting. The `language` and
 `X-Tool-Source-Macros-Expanded` headers describe the cached document. Missing source
 returns 404; other upstream failures return 502.
+
+Inspector entries may include `requestVersion` when their cache key uses a sentinel
+such as `_default_` while `toolVersion` shows a concrete wrapper version. Use
+`requestVersion ?? toolVersion` for source/model reads and refetch requests so they
+address the same cache entry. Stock tool IDs remain unchanged; the shared inspector
+also normalizes the fabricated stock IDs found in older cache indexes.

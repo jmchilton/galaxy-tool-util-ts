@@ -287,12 +287,6 @@ export class ToolInfoService {
     // (coords.version); an unpinned ToolShed tool (coords.version === null) keys by
     // the resolved version. Must not key a stock tool by tool.version — its entry
     // lives under the `_default_` key, not `~<version>`.
-    //
-    // Known edge (tracked): a stock entry is keyed under `_default_` but its index/display
-    // version is the concrete one (e.g. `1.1.1`). A caller that refetches by the *display*
-    // version (gxwf-web inspector does) passes `1.1.1`, misses the `_default_` key, and
-    // writes a duplicate sibling instead of refreshing. Unreachable until the shed's TRS
-    // version-list endpoint is healthy; fix needs the request version persisted in the index.
     const keyVersion = coords.version ?? tool.version ?? "unknown";
     const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, keyVersion);
     return { cacheKey: key, fetched: true, alreadyCached };

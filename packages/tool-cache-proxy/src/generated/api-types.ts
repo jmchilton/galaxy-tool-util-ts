@@ -311,6 +311,8 @@ export interface components {
       cacheKey: string;
       toolId: string;
       toolVersion: string;
+      /** @description Cache request version when it differs from the displayed wrapper version, such as _default_. */
+      requestVersion?: string;
       source: string;
       sourceUrl: string;
       cachedAt: string;

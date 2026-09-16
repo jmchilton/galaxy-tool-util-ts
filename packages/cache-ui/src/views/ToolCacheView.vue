@@ -211,7 +211,7 @@ function confirmDelete(e: Entry) {
 
 async function refetchEntry(e: Entry) {
   try {
-    await refetch(e.toolId, e.toolVersion);
+    await refetch(e.toolId, e.requestVersion ?? e.toolVersion);
     toast.add({
       severity: "success",
       summary: `Re-fetched ${e.toolId} ${e.toolVersion}`,

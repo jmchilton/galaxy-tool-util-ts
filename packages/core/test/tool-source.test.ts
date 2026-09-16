@@ -10,7 +10,7 @@ import {
   fetchToolSourceFromGalaxy,
   fetchToolSourceFromToolShed,
 } from "../src/client/tool-source.js";
-import { dispatchCacheRoute, getToolSource } from "../src/cache-http/index.js";
+import { dispatchCacheRoute, getToolSource, listCache } from "../src/cache-http/index.js";
 import fastqcFixture from "./fixtures/fastqc-parsed-tool.json" with { type: "json" };
 
 const id = "toolshed.g2.bx.psu.edu/repos/devteam/fastqc/fastqc/0.74+galaxy0";
@@ -127,6 +127,71 @@ describe("tool source", () => {
     expect(await service.cache.removeCached(result.cacheKey)).toBe(true);
     expect(await service.cache.loadToolSource(result.cacheKey)).toBeNull();
     expect(await readdir(directory)).toEqual(["index.json"]);
+  });
+
+  it("source-only stock entries reopen offline and refetch under their original default key", async () => {
+    const fetcher = vi.fn<typeof fetch>(async (url) => {
+      if (String(url).includes("/api/ga4gh/"))
+        return new Response(
+          JSON.stringify([
+            {
+              id: "1.2.3",
+              name: null,
+              url: "https://shed",
+              descriptor_type: ["GALAXY"],
+              author: [],
+            },
+          ]),
+        );
+      if (String(url).includes("/raw_tool_source")) return response();
+      return new Response(JSON.stringify({ ...fastqcFixture, version: "1.2.3" }));
+    });
+    const service = makeNodeToolInfoService({
+      cacheDir: directory,
+      fetcher,
+      sources: [{ type: "galaxy", url: "https://galaxy" }],
+    });
+    await service.fetchToolSource("cat1");
+    const {
+      entries: [entry],
+    } = await listCache({ service, baseUrl: "" });
+    expect(entry).toMatchObject({
+      toolId: "cat1",
+      toolVersion: "1.2.3",
+      requestVersion: "_default_",
+    });
+    const offlineFetch = vi.fn<typeof fetch>(async () => {
+      throw new Error("offline");
+    });
+    const offline = makeNodeToolInfoService({ cacheDir: directory, fetcher: offlineFetch });
+    expect(await offline.fetchToolSource(entry.toolId, entry.requestVersion)).toEqual(document);
+    expect(offlineFetch).not.toHaveBeenCalled();
+    const result = await service.refetch(entry.toolId, entry.requestVersion, { force: true });
+    expect(result.cacheKey).toBe(entry.cacheKey);
+    expect(await service.cache.loadToolSource(entry.cacheKey)).toBeNull();
+    expect(await service.cache.listCached()).toHaveLength(1);
+  });
+
+  it("legacy stock IDs are normalized by the shared inspector without moving cache files", async () => {
+    const service = makeNodeToolInfoService({
+      cacheDir: directory,
+      fetcher: async () => {
+        throw new Error("offline");
+      },
+    });
+    const key = await cacheKey(service.cache.defaultToolshedUrl, "cat1", "_default_");
+    await service.cache.index.add(key, "toolshed.g2.bx.psu.edu/repos/cat1", "1.2.3", "api");
+    await service.cache.saveToolSource(key, document);
+    const {
+      entries: [entry],
+    } = await listCache({ service, baseUrl: "" });
+    expect(entry).toMatchObject({
+      toolId: "cat1",
+      toolVersion: "1.2.3",
+      requestVersion: "_default_",
+      cacheKey: key,
+    });
+    expect(await service.fetchToolSource(entry.toolId, entry.requestVersion)).toEqual(document);
   });
 
   it("forced refetch without a version pin invalidates the resolved source", async () => {

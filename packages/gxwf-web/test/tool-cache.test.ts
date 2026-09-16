@@ -123,7 +123,7 @@ describe("GET /api/tool-cache", () => {
     expect(orphan.toolshedUrl).toBeUndefined();
     expect(real.refetchable).toBe(true);
     // Deep link to the specific repo, not just the shed root.
-    expect(real.toolshedUrl).toBe("https://toolshed.g2.bx.psu.edu/repos/iuc/bwa/bwa_mem");
+    expect(real.toolshedUrl).toBe("https://toolshed.g2.bx.psu.edu/view/iuc/bwa");
   });
 
   it("does not probe payloads without ?decode=1 (defaults decodable: true)", async () => {

@@ -2953,6 +2953,7 @@
           "cacheKey": { "type": "string", "title": "Cache Key" },
           "toolId": { "type": "string", "title": "Tool Id" },
           "toolVersion": { "type": "string", "title": "Tool Version" },
+          "requestVersion": { "type": "string", "description": "Cache request version when it differs from the displayed wrapper version, such as _default_." },
           "source": { "type": "string", "title": "Source" },
           "sourceUrl": { "type": "string", "title": "Source Url" },
           "cachedAt": { "type": "string", "title": "Cached At" },

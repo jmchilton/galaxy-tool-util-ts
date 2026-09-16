@@ -409,6 +409,7 @@
           "cacheKey": { "type": "string" },
           "toolId": { "type": "string" },
           "toolVersion": { "type": "string" },
+          "requestVersion": { "type": "string", "description": "Cache request version when it differs from the displayed wrapper version, such as _default_." },
           "source": { "type": "string" },
           "sourceUrl": { "type": "string" },
           "cachedAt": { "type": "string" },

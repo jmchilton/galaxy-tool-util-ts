@@ -7,7 +7,7 @@ import * as S from "effect/Schema";
 
 import { cacheKey } from "@galaxy-tool-util/core";
 import { ParsedTool } from "@galaxy-tool-util/schema";
-import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
+import { makeNodeToolCache, makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
 import { createProxyContext, createRequestHandler } from "../src/router.js";
 import { defaultConfig, type ServerConfig } from "../src/config.js";
 import fastqcFixture from "../../core/test/fixtures/fastqc-parsed-tool.json" with { type: "json" };
@@ -208,6 +208,47 @@ describe("Proxy Server", () => {
     );
     expect(status).toBe(200);
     expect(body).toBe(contents);
+  });
+
+  it("a Tool Shed-compatible client reads warm proxy source without direct upstream access", async () => {
+    const key = await seedTool(tmpDir, "devteam~fastqc~fastqc", "0.74+galaxy0", fastqcFixture);
+    const contents = '<tool id="fastqc"/>\n';
+    await makeNodeToolCache({ cacheDir: tmpDir }).saveToolSource(key, {
+      contents,
+      language: "xml",
+      macrosExpanded: true,
+    });
+    const handler = makeHandler();
+    const server = createServer((req, res) => {
+      void handler(req, res);
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as { port: number };
+    const baseUrl = `http://127.0.0.1:${port}`;
+    const calls: string[] = [];
+    const client = makeNodeToolInfoService({
+      cacheDir: join(tmpDir, "browser-cache"),
+      sources: [{ type: "toolshed", url: baseUrl }],
+      fetcher: async (url, init) => {
+        calls.push(String(url));
+        if (!String(url).startsWith(baseUrl)) throw new Error("Direct upstream access disabled");
+        return fetch(url, init);
+      },
+    });
+    try {
+      expect(await client.fetchToolSource("devteam~fastqc~fastqc", "0.74+galaxy0")).toEqual({
+        contents,
+        language: "xml",
+        macrosExpanded: true,
+      });
+      expect(calls).toEqual([
+        `${baseUrl}/api/tools/devteam~fastqc~fastqc/versions/0.74%2Bgalaxy0/tool_source`,
+      ]);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((err) => (err ? reject(err) : resolve())),
+      );
+    }
   });
 
   // ── Admin surface ───────────────────────────────────────────────────

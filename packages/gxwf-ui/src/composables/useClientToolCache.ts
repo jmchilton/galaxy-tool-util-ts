@@ -1,10 +1,6 @@
 import { ref } from "vue";
 
-import {
-  getParameterSchema,
-  parseToolshedToolId,
-  type ParameterSchemaKind,
-} from "@galaxy-tool-util/core";
+import { getParameterSchema, listCache, type ParameterSchemaKind } from "@galaxy-tool-util/core";
 import type { components } from "@galaxy-tool-util/gxwf-client";
 
 import { useToolInfoService } from "./useToolInfoService";
@@ -12,9 +8,7 @@ import { useToolInfoService } from "./useToolInfoService";
 type CachedToolEntry = components["schemas"]["CachedToolEntry"];
 type CacheStats = components["schemas"]["CacheStats"];
 
-// Module-level singleton: matches `useToolCache` shape so the existing
-// /cache view components (ToolCacheTable, ToolCacheStats, ToolCacheRawDialog)
-// can render the client-side IndexedDB cache without modification.
+// Module-level singleton for the browser cache inspector.
 const entries = ref<CachedToolEntry[]>([]);
 const stats = ref<CacheStats>({ count: 0, bySource: {} });
 const loading = ref(false);
@@ -54,58 +48,9 @@ export function useClientToolCache() {
     loading.value = true;
     error.value = null;
     try {
-      const cache = useToolInfoService().cache;
-      const raw = await cache.listCached();
-      const decorated: CachedToolEntry[] = [];
-      const bySource: Record<string, number> = {};
-      let oldest: string | undefined;
-      let newest: string | undefined;
-      let totalBytes = 0;
-      let anySize = false;
-      for (const e of raw) {
-        const parsed = parseToolshedToolId(e.tool_id);
-        const refetchable = e.source !== "orphan" && e.tool_id !== "unknown" && e.tool_id !== "";
-        const out: CachedToolEntry = {
-          cacheKey: e.cache_key,
-          toolId: e.tool_id,
-          toolVersion: e.tool_version,
-          source: e.source,
-          sourceUrl: e.source_url,
-          cachedAt: e.cached_at,
-          decodable: true,
-          refetchable,
-        };
-        if (parsed !== null) {
-          const [owner, repo] = parsed.trsToolId.split("~");
-          if (owner && repo) {
-            out.toolshedUrl = `${parsed.toolshedUrl}/view/${owner}/${repo}`;
-          }
-        }
-        const stat = await cache.statCached(e.cache_key);
-        if (stat !== null) out.sizeBytes = stat.sizeBytes;
-        if (opts.decode) {
-          // ParsedTool decode happens at save-time on the browser cache, so a
-          // cache miss is the only source of decode failure: `loadCached`
-          // returns null both when the key is missing and when the payload no
-          // longer decodes (e.g. after a schema migration).
-          const decoded = await cache.loadCached(e.cache_key);
-          out.decodable = decoded !== null;
-        }
-        decorated.push(out);
-        bySource[out.source] = (bySource[out.source] ?? 0) + 1;
-        if (oldest === undefined || out.cachedAt < oldest) oldest = out.cachedAt;
-        if (newest === undefined || out.cachedAt > newest) newest = out.cachedAt;
-        if (out.sizeBytes !== undefined) {
-          totalBytes += out.sizeBytes;
-          anySize = true;
-        }
-      }
-      const next: CacheStats = { count: decorated.length, bySource };
-      if (oldest !== undefined) next.oldest = oldest;
-      if (newest !== undefined) next.newest = newest;
-      if (anySize) next.totalBytes = totalBytes;
-      entries.value = decorated;
-      stats.value = next;
+      const data = await listCache({ service: useToolInfoService(), baseUrl: "" }, opts);
+      entries.value = data.entries;
+      stats.value = data.stats;
     } catch (e) {
       error.value = errMsg(e);
     } finally {

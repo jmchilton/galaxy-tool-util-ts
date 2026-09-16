@@ -1173,6 +1173,8 @@ export interface components {
       toolId: string;
       /** Tool Version */
       toolVersion: string;
+      /** @description Cache request version when it differs from the displayed wrapper version, such as _default_. */
+      requestVersion?: string;
       /** Source */
       source: string;
       /** Source Url */

@@ -123,7 +123,7 @@ async function loadTab(id: TabId): Promise<void> {
   errors[id] = null;
   try {
     const loader = props.loaders[id];
-    const result = await loader(entry.toolId, entry.toolVersion);
+    const result = await loader(entry.toolId, entry.requestVersion ?? entry.toolVersion);
     if (generation !== entryGeneration) return;
     contents[id] = result;
     fetched[id] = true;

@@ -12,6 +12,8 @@ export interface CachedToolEntry {
   cacheKey: string;
   toolId: string;
   toolVersion: string;
+  /** Cache request version when it differs from the displayed wrapper version (e.g. _default_). */
+  requestVersion?: string;
   source: string;
   sourceUrl: string;
   cachedAt: string;

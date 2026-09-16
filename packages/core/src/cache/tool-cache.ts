@@ -80,12 +80,13 @@ export class ToolCache {
         readableId: toolIdFromTrs(parsed.toolshedUrl, parsed.trsToolId),
       };
     }
-    const trsToolId = normalizeShortTrsToolId(toolId) ?? toolId;
+    const shortTrsId = normalizeShortTrsToolId(toolId);
+    const trsToolId = shortTrsId ?? toolId;
     return {
       toolshedUrl: this.defaultToolshedUrl,
       trsToolId,
       version: toolVersion ?? DEFAULT_TOOL_VERSION,
-      readableId: toolIdFromTrs(this.defaultToolshedUrl, trsToolId),
+      readableId: shortTrsId === null ? toolId : toolIdFromTrs(this.defaultToolshedUrl, trsToolId),
     };
   }
 
