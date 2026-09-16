@@ -6,6 +6,7 @@ import { CacheIndex } from "./cache-index.js";
 import { cacheKey } from "./cache-key.js";
 import { normalizeShortTrsToolId, parseToolshedToolId, toolIdFromTrs } from "./tool-id.js";
 import type { CacheStorage } from "./storage/interface.js";
+import type { ToolSourceDocument } from "../tool-source.js";
 import {
   DEFAULT_TOOL_VERSION,
   DEFAULT_TOOLSHED_URL,
@@ -60,6 +61,7 @@ export class ToolCache {
   private readonly storage: CacheStorage;
   private readonly onDiagnostic: DiagnosticSink;
   private memoryCache = new Map<string, ParsedTool>();
+  private sourceCache = new Map<string, ToolSourceDocument>();
 
   constructor(opts: ToolCacheOptions) {
     this.defaultToolshedUrl = opts.defaultToolshedUrl ?? envToolshedUrl() ?? DEFAULT_TOOLSHED_URL;
@@ -146,6 +148,24 @@ export class ToolCache {
     return this.storage.load(key);
   }
 
+  async loadToolSource(key: string): Promise<ToolSourceDocument | null> {
+    const cached = this.sourceCache.get(key);
+    if (cached !== undefined) return cached;
+    try {
+      const source = (await this.storage.loadSource?.(key)) ?? null;
+      if (source !== null) this.sourceCache.set(key, source);
+      return source;
+    } catch (err) {
+      this.onDiagnostic(`Failed to load cached tool source ${key}: ${err}`);
+      return null;
+    }
+  }
+
+  async saveToolSource(key: string, source: ToolSourceDocument): Promise<void> {
+    this.sourceCache.set(key, source);
+    await this.storage.saveSource?.(key, source);
+  }
+
   /** Per-entry size/mtime if the storage backend supports it. */
   async statCached(key: string): Promise<{ sizeBytes: number; mtime?: string } | null> {
     if (typeof this.storage.stat !== "function") return null;
@@ -159,10 +179,11 @@ export class ToolCache {
   async removeCached(key: string): Promise<boolean> {
     const inIndex = await this.index.has(key);
     const inStorage = inIndex ? false : (await this.storage.list()).includes(key);
-    const existed = inIndex || inStorage;
+    const existed = inIndex || inStorage || this.sourceCache.has(key);
     await this.storage.delete(key);
     await this.index.remove(key);
     this.memoryCache.delete(key);
+    this.sourceCache.delete(key);
     return existed;
   }
 
@@ -225,6 +246,7 @@ export class ToolCache {
       }
       await this.index.clear();
       this.memoryCache.clear();
+      this.sourceCache.clear();
       return keys.length;
     }
     const prefix = toolIdPrefix.replace(/\*$/, "");
@@ -233,6 +255,7 @@ export class ToolCache {
       await this.storage.delete(entry.cache_key);
       await this.index.remove(entry.cache_key);
       this.memoryCache.delete(entry.cache_key);
+      this.sourceCache.delete(entry.cache_key);
     }
     return toRemove.length;
   }

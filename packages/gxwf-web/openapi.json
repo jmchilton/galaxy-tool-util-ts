@@ -1282,18 +1282,91 @@
     },
     "/api/tools/{tool_id}/versions/{tool_version}/tool_source": {
       "get": {
-        "tags": ["tools"],
-        "summary": "Tool source (501 until cache stores source)",
+        "tags": [
+          "tools"
+        ],
+        "summary": "Serialized tool wrapper source",
         "operationId": "getToolSource",
         "parameters": [
-          { "$ref": "#/components/parameters/ToolId" },
-          { "$ref": "#/components/parameters/ToolVersion" }
+          {
+            "$ref": "#/components/parameters/ToolId"
+          },
+          {
+            "$ref": "#/components/parameters/ToolVersion"
+          }
         ],
         "responses": {
-          "501": { "description": "Not implemented" }
-        }
+          "200": {
+            "description": "Wrapper text, without JSON encoding.",
+            "headers": {
+              "language": {
+                "description": "Wrapper format reported by the provider, or text if unknown.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "xml",
+                    "yaml",
+                    "json",
+                    "cwl",
+                    "text"
+                  ]
+                }
+              },
+              "X-Tool-Source-Macros-Expanded": {
+                "description": "true for expanded XML; false for formats without XML macros.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool source not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream source fetch failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Lazily fetch and cache the serialized wrapper selected by tool version. XML macros are expanded by the upstream provider. Exact repository changesets and original macro files are not selected by this endpoint. Refetch or delete the cache entry to invalidate its source."
       }
     }
+
   },
   "components": {
     "schemas": {

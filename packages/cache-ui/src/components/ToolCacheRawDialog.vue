@@ -8,16 +8,14 @@
   >
     <Tabs v-model:value="activeTab">
       <TabList>
-        <Tab v-for="t in TABS" :key="t.id" :value="t.id" :disabled="t.disabled">
+        <Tab v-for="t in TABS" :key="t.id" :value="t.id">
           {{ t.label }}
         </Tab>
       </TabList>
       <TabPanels>
         <TabPanel v-for="t in TABS" :key="t.id" :value="t.id">
-          <div v-if="t.disabled" class="loading-state">
-            Not yet available — tool source isn't stored in the cache.
-          </div>
-          <div v-else-if="loading[t.id]" class="loading-state">Loading…</div>
+          <p v-if="t.id === 'tool_source'" class="source-note">XML macros are expanded.</p>
+          <div v-if="loading[t.id]" class="loading-state">Loading…</div>
           <div v-else-if="errors[t.id]" class="error-state">{{ errors[t.id] }}</div>
           <pre v-else class="raw-json">{{ pretty(t.id) }}</pre>
         </TabPanel>
@@ -49,6 +47,7 @@ type TabId =
   | "tool_source";
 
 interface Loaders {
+  tool_source: (toolId: string, toolVersion: string) => Promise<unknown>;
   parameter_model: (toolId: string, toolVersion: string) => Promise<unknown>;
   parameter_request_schema: (toolId: string, toolVersion: string) => Promise<unknown>;
   parameter_landing_request_schema: (toolId: string, toolVersion: string) => Promise<unknown>;
@@ -67,12 +66,12 @@ const visible = computed({
   set: (v) => emit("update:modelValue", v),
 });
 
-const TABS: { id: TabId; label: string; disabled?: boolean }[] = [
+const TABS: { id: TabId; label: string }[] = [
   { id: "parameter_model", label: "Model" },
   { id: "parameter_request_schema", label: "Request schema" },
   { id: "parameter_landing_request_schema", label: "Landing-request schema" },
   { id: "parameter_test_case_xml_schema", label: "Test-case schema" },
-  { id: "tool_source", label: "Source", disabled: true },
+  { id: "tool_source", label: "Source" },
 ];
 
 const toast = useToast();
@@ -103,41 +102,49 @@ const fetched = reactive<Record<TabId, boolean>>({
   parameter_request_schema: false,
   parameter_landing_request_schema: false,
   parameter_test_case_xml_schema: false,
-  tool_source: true, // never fetched until source storage lands
+  tool_source: false,
 });
 
 function pretty(id: TabId): string {
   const v = contents[id];
+  if (id === "tool_source") return typeof v === "string" ? v : "";
   return v === null || v === undefined ? "" : JSON.stringify(v, null, 2);
 }
 const activePretty = computed(() => pretty(activeTab.value));
 
+let entryGeneration = 0;
+
 async function loadTab(id: TabId): Promise<void> {
-  if (id === "tool_source") return;
-  if (fetched[id]) return;
+  if (fetched[id] || loading[id]) return;
   if (!props.entry) return;
+  const generation = entryGeneration;
+  const entry = props.entry;
   loading[id] = true;
   errors[id] = null;
   try {
     const loader = props.loaders[id];
-    contents[id] = await loader(props.entry.toolId, props.entry.toolVersion);
+    const result = await loader(entry.toolId, entry.toolVersion);
+    if (generation !== entryGeneration) return;
+    contents[id] = result;
     fetched[id] = true;
   } catch (e) {
-    errors[id] = e instanceof Error ? e.message : String(e);
+    if (generation === entryGeneration) errors[id] = e instanceof Error ? e.message : String(e);
   } finally {
-    loading[id] = false;
+    if (generation === entryGeneration) loading[id] = false;
   }
 }
 
 watch(
   () => [props.modelValue, props.entry?.cacheKey],
   ([open]) => {
+    entryGeneration += 1;
     if (!open) return;
     // Reset per-entry state when a new entry is shown.
     for (const t of TABS) {
+      loading[t.id] = false;
       contents[t.id] = null;
       errors[t.id] = null;
-      fetched[t.id] = t.id === "tool_source";
+      fetched[t.id] = false;
     }
     activeTab.value = "parameter_model";
     void loadTab("parameter_model");
@@ -155,16 +162,26 @@ async function copy() {
 </script>
 
 <style scoped>
+.source-note {
+  color: var(--p-text-muted-color);
+  font-size: var(--gx-fs-xs);
+}
+
 .raw-json {
   max-height: 60vh;
   overflow: auto;
   margin: 0;
   padding: var(--gx-sp-3);
   background: var(--p-surface-100, #f3f4f6);
+  color: var(--p-text-color, inherit);
   border-radius: 4px;
   font-family: var(--gx-mono);
   font-size: var(--gx-fs-xs);
   white-space: pre;
+}
+
+:global(.dark) .raw-json {
+  background: var(--p-surface-800, #1f2937);
 }
 
 .loading-state,

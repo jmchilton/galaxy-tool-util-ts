@@ -16,6 +16,7 @@ import {
 } from "@galaxy-tool-util/core";
 import {
   readJsonBody,
+  writeCacheResult,
   serveStatic,
   setCorsHeaders,
   writeJson as json,
@@ -288,7 +289,7 @@ export function createRequestHandler(state: AppState) {
         const result = await dispatchCacheRoute(cacheRoute, handlerCtx(req), () =>
           readJsonBody(req),
         );
-        json(res, 200, result);
+        writeCacheResult(res, result);
         return;
       }
 

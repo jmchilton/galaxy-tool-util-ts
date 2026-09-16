@@ -17,6 +17,7 @@ import {
   type TrsToolVersion,
 } from "@galaxy-tool-util/schema";
 import type { ToolInfoService } from "../tool-info.js";
+import type { ToolSourceDocument } from "../tool-source.js";
 import { parseToolshedToolId, toolIdFromTrs } from "../cache/tool-id.js";
 import type { CacheStats } from "../cache/tool-cache.js";
 import { HttpError } from "./error.js";
@@ -268,6 +269,17 @@ export async function getParameterSchema(
   }
 }
 
-export function getToolSource(_ctx: HandlerCtx, _toolId: string, _toolVersion: string): never {
-  throw new HttpError(501, "tool_source endpoint not yet implemented");
+export async function getToolSource(
+  ctx: HandlerCtx,
+  toolId: string,
+  toolVersion: string,
+): Promise<ToolSourceDocument> {
+  let source: ToolSourceDocument | null;
+  try {
+    source = await ctx.service.fetchToolSource(toolId, toolVersion);
+  } catch (err) {
+    throw new HttpError(502, err instanceof Error ? err.message : String(err));
+  }
+  if (source === null) throw new HttpError(404, `Tool source not found: ${toolId}@${toolVersion}`);
+  return source;
 }

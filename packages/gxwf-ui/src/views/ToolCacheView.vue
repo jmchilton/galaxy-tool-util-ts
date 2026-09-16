@@ -33,7 +33,10 @@ import { ref, watch } from "vue";
 import ConfirmDialog from "primevue/confirmdialog";
 import SelectButton from "primevue/selectbutton";
 
-import { ToolCacheView as ServerToolCacheView, createCacheClient } from "@galaxy-tool-util/cache-ui";
+import {
+  ToolCacheView as ServerToolCacheView,
+  createCacheClient,
+} from "@galaxy-tool-util/cache-ui";
 import ToolCachePanel from "../components/ToolCachePanel.vue";
 
 const client = createCacheClient(import.meta.env.VITE_API_BASE_URL ?? "");

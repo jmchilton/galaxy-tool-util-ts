@@ -36,6 +36,16 @@ describe("IndexedDBCacheStorage (browser)", () => {
     storage = new IndexedDBCacheStorage(freshDbName());
   });
 
+  it("persists source without exposing internal metadata keys and removes it with the tool", async () => {
+    const source = { contents: '<tool id="x"/>', language: "xml", macrosExpanded: true } as const;
+    await storage.saveSource("source-only", source);
+    expect(await storage.loadSource("source-only")).toEqual(source);
+    expect(await storage.list()).toEqual(["source-only"]);
+    await storage.delete("source-only");
+    expect(await storage.loadSource("source-only")).toBeNull();
+    expect(await storage.list()).toEqual([]);
+  });
+
   it("save + load round-trip", async () => {
     await storage.save("k1", { hello: "world" });
     expect(await storage.load("k1")).toEqual({ hello: "world" });

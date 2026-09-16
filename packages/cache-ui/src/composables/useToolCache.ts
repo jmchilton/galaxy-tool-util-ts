@@ -69,6 +69,15 @@ export function useToolCache(client: CacheClient) {
     return data;
   }
 
+  async function loadToolSource(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET(
+      "/api/tools/{tool_id}/versions/{tool_version}/tool_source",
+      { params: { path: { tool_id: toolId, tool_version: toolVersion } }, parseAs: "text" },
+    );
+    if (err) throw new Error(detailOf(err, "Failed to load tool source"));
+    return data;
+  }
+
   async function del(cacheKey: string) {
     error.value = null;
     const { error: err } = await client.DELETE("/api/tool-cache/{cacheKey}", {
@@ -130,6 +139,7 @@ export function useToolCache(client: CacheClient) {
     loading,
     error,
     refresh,
+    loadToolSource,
     loadParameterModel,
     loadParameterRequestSchema,
     loadParameterLandingRequestSchema,

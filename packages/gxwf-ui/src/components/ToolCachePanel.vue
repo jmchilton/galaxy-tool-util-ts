@@ -33,7 +33,7 @@
       @delete="confirmDelete"
     />
 
-    <ToolCacheRawDialog v-model="rawOpen" :entry="rawEntry" :load="loadRaw" />
+    <ToolCacheRawDialog v-model="rawOpen" :entry="rawEntry" :loaders="dialogLoaders" />
 
     <Dialog
       v-model:visible="addOpen"
@@ -97,25 +97,40 @@ import Message from "primevue/message";
 import { useConfirm } from "primevue/useconfirm";
 import { useToast } from "primevue/usetoast";
 
-import ToolCacheStats from "./ToolCacheStats.vue";
-import ToolCacheTable from "./ToolCacheTable.vue";
-import ToolCacheRawDialog from "./ToolCacheRawDialog.vue";
-import { useToolCache } from "../composables/useToolCache";
+import { ToolCacheStats, ToolCacheTable, ToolCacheRawDialog } from "@galaxy-tool-util/cache-ui";
 import { useClientToolCache } from "../composables/useClientToolCache";
 import type { components } from "@galaxy-tool-util/gxwf-client";
 
 type Entry = components["schemas"]["CachedToolEntry"];
 
-const props = defineProps<{ transport: "server" | "client" }>();
+defineProps<{ transport: "client" }>();
 
-const title = computed(() =>
-  props.transport === "server" ? "Server-side cache" : "Client-side cache (IndexedDB)",
-);
+const title = "Client-side cache (IndexedDB)";
 
-// Same destructured surface across both backends — that's the whole point of
-// `useClientToolCache` mirroring `useToolCache`.
-const { entries, stats, loading, error, refresh, loadRaw, del, clear, refetch, add } =
-  props.transport === "server" ? useToolCache() : useClientToolCache();
+const {
+  entries,
+  stats,
+  loading,
+  error,
+  refresh,
+  loadParameterModel,
+  loadParameterSchema,
+  loadToolSource,
+  del,
+  clear,
+  refetch,
+  add,
+} = useClientToolCache();
+const dialogLoaders = {
+  parameter_model: loadParameterModel,
+  parameter_request_schema: (id: string, version: string) =>
+    loadParameterSchema(id, version, "request"),
+  parameter_landing_request_schema: (id: string, version: string) =>
+    loadParameterSchema(id, version, "landing_request"),
+  parameter_test_case_xml_schema: (id: string, version: string) =>
+    loadParameterSchema(id, version, "test_case_xml"),
+  tool_source: loadToolSource,
+};
 
 const toast = useToast();
 const confirm = useConfirm();

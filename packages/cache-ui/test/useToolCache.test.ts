@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useToolCache } from "../src/composables/useToolCache.js";
 import type { CacheClient } from "../src/client.js";
+import { createCacheClient } from "../src/client.js";
 
 const calls: { method: string; path: string; init?: unknown }[] = [];
 const responses = new Map<string, unknown>();
@@ -28,6 +29,29 @@ beforeEach(() => {
 });
 
 describe("useToolCache", () => {
+  it("reads source as raw text, preserving quotes and newlines", async () => {
+    const contents = '<tool id="x"><help>Résumé</help></tool>\n';
+    const fetcher = vi.fn<typeof fetch>(async () => new Response(contents));
+    const tc = useToolCache(createCacheClient("https://cache.test", { fetch: fetcher }));
+    expect(await tc.loadToolSource("owner~repo~x", "1+2")).toBe(contents);
+    expect((fetcher.mock.calls[0][0] as Request).url).toBe(
+      "https://cache.test/api/tools/owner~repo~x/versions/1%2B2/tool_source",
+    );
+  });
+
+  it("surfaces upstream source error details", async () => {
+    const tc = useToolCache(
+      createCacheClient("https://cache.test", {
+        fetch: async () =>
+          new Response(JSON.stringify({ detail: "Source display is disabled" }), {
+            status: 502,
+            headers: { "Content-Type": "application/json" },
+          }),
+      }),
+    );
+    await expect(tc.loadToolSource("cat1", "1.0")).rejects.toThrow("Source display is disabled");
+  });
+
   it("refresh populates entries + stats", async () => {
     responses.set("GET /api/tool-cache", {
       entries: [

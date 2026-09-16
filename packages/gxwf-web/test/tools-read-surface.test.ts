@@ -156,11 +156,20 @@ describe("GET /api/tools/{id}/versions/{ver}*", () => {
     expect(data).toBeTypeOf("object");
   });
 
-  it("/tool_source returns 501", async () => {
+  it("/tool_source returns raw UTF-8 source and format headers", async () => {
     await seedTool(READABLE_ID, "0.74+galaxy0");
+    const key = await cacheKey("https://toolshed.g2.bx.psu.edu", TRS_ID, "0.74+galaxy0");
+    const contents = '<tool id="fastqc"><help>Résumé</help></tool>\n';
+    await srv.state.cache.saveToolSource(key, { contents, language: "xml", macrosExpanded: true });
     const res = await fetch(
       `${srv.baseUrl}/api/tools/${TRS_ID}/versions/${encodeURIComponent("0.74+galaxy0")}/tool_source`,
     );
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("language")).toBe("xml");
+    expect(res.headers.get("x-tool-source-macros-expanded")).toBe("true");
+    expect(res.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(res.headers.get("content-length")).toBe(String(Buffer.byteLength(contents)));
+    expect(res.headers.get("access-control-expose-headers")).toContain("language");
+    expect(await res.text()).toBe(contents);
   });
 });

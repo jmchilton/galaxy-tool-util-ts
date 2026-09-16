@@ -122,13 +122,38 @@ export function matchCacheRoute(method: string, url: string): CacheRoute | null 
   return null;
 }
 
+/** Handler results carry either a JSON payload or source bytes and headers. */
+export type CacheResult =
+  | { kind: "json"; body: unknown }
+  | { kind: "bytes"; body: Uint8Array; headers: Record<string, string> };
+
 /**
- * Run the handler for a matched cache route. Body-bearing routes
- * (`refetchTool`, `addTool`) call `readBody` to obtain the parsed JSON body.
+ * Run a matched route. Body-bearing routes call `readBody` for parsed JSON.
  * Errors throw `HttpError`; adapters translate them.
  */
 export async function dispatchCacheRoute(
   route: CacheRoute,
+  ctx: HandlerCtx,
+  readBody: <T>() => Promise<T>,
+): Promise<CacheResult> {
+  if (route.handler === "getToolSource") {
+    const source = await getToolSource(ctx, route.toolId, route.toolVersion);
+    return {
+      kind: "bytes",
+      body: new TextEncoder().encode(source.contents),
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        language: source.language,
+        "X-Tool-Source-Macros-Expanded": String(source.macrosExpanded),
+        "X-Content-Type-Options": "nosniff",
+      },
+    };
+  }
+  return { kind: "json", body: await dispatchJsonCacheRoute(route, ctx, readBody) };
+}
+
+async function dispatchJsonCacheRoute(
+  route: Exclude<CacheRoute, { handler: "getToolSource" }>,
   ctx: HandlerCtx,
   readBody: <T>() => Promise<T>,
 ): Promise<unknown> {
@@ -153,10 +178,6 @@ export async function dispatchCacheRoute(
       return getParsedTool(ctx, route.toolId, route.toolVersion);
     case "getParameterSchema":
       return getParameterSchema(ctx, route.toolId, route.toolVersion, route.kind);
-    case "getToolSource":
-      // Always throws HttpError(501) for now.
-      getToolSource(ctx, route.toolId, route.toolVersion);
-      return null;
     case "listCache": {
       const decode = route.query.get("decode") === "1";
       return listCache(ctx, { decode });

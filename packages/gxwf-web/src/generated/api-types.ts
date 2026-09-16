@@ -508,7 +508,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Tool source (501 until cache stores source) */
+    /**
+     * Serialized tool wrapper source
+     * @description Lazily fetch and cache the serialized wrapper selected by tool version. XML macros are expanded by the upstream provider. Exact repository changesets and original macro files are not selected by this endpoint. Refetch or delete the cache entry to invalidate its source.
+     */
     get: operations["getToolSource"];
     put?: never;
     post?: never;
@@ -2273,12 +2276,40 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Not implemented */
-      501: {
+      /** @description Wrapper text, without JSON encoding. */
+      200: {
+        headers: {
+          /** @description Wrapper format reported by the provider, or text if unknown. */
+          language?: "xml" | "yaml" | "json" | "cwl" | "text";
+          /** @description true for expanded XML; false for formats without XML macros. */
+          "X-Tool-Source-Macros-Expanded"?: "true" | "false";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Tool source not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            detail?: string;
+          };
+        };
+      };
+      /** @description Upstream source fetch failed */
+      502: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            detail?: string;
+          };
+        };
       };
     };
   };

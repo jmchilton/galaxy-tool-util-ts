@@ -5,7 +5,6 @@ import { join } from "node:path";
 
 import { makeNodeToolInfoService } from "../src/cache/node.js";
 import {
-  HttpError,
   cacheToTrs,
   cacheToTrsOne,
   listCache,
@@ -228,7 +227,14 @@ describe("HTTP handlers (read)", () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
-  it("getToolSource throws 501", () => {
-    expect(() => getToolSource(ctx, "x", "y")).toThrow(HttpError);
+  it("getToolSource serves a cached wrapper", async () => {
+    const [{ cache_key }] = await ctx.service.cache.listCached();
+    const source = {
+      contents: '<tool id="fastqc"/>',
+      language: "xml",
+      macrosExpanded: true,
+    } as const;
+    await ctx.service.cache.saveToolSource(cache_key, source);
+    expect(await getToolSource(ctx, "devteam~fastqc~fastqc", "0.74+galaxy0")).toEqual(source);
   });
 });

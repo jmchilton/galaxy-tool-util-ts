@@ -1,6 +1,10 @@
 import { ref } from "vue";
 
-import { parseToolshedToolId } from "@galaxy-tool-util/core";
+import {
+  getParameterSchema,
+  parseToolshedToolId,
+  type ParameterSchemaKind,
+} from "@galaxy-tool-util/core";
 import type { components } from "@galaxy-tool-util/gxwf-client";
 
 import { useToolInfoService } from "./useToolInfoService";
@@ -21,6 +25,31 @@ function errMsg(e: unknown): string {
 }
 
 export function useClientToolCache() {
+  async function loadParameterModel(toolId: string, toolVersion: string) {
+    const tool = await useToolInfoService().getToolInfo(toolId, toolVersion);
+    if (tool === null) throw new Error("Tool not found");
+    return tool;
+  }
+
+  async function loadParameterSchema(
+    toolId: string,
+    toolVersion: string,
+    kind: ParameterSchemaKind,
+  ) {
+    return getParameterSchema(
+      { service: useToolInfoService(), baseUrl: "" },
+      toolId,
+      toolVersion,
+      kind,
+    );
+  }
+
+  async function loadToolSource(toolId: string, toolVersion: string) {
+    const source = await useToolInfoService().fetchToolSource(toolId, toolVersion);
+    if (source === null) throw new Error("Tool source not found");
+    return source.contents;
+  }
+
   async function refresh(opts: { decode?: boolean } = {}) {
     loading.value = true;
     error.value = null;
@@ -146,7 +175,21 @@ export function useClientToolCache() {
     }
   }
 
-  return { entries, stats, loading, error, refresh, loadRaw, del, clear, refetch, add };
+  return {
+    entries,
+    stats,
+    loading,
+    error,
+    refresh,
+    loadRaw,
+    loadParameterModel,
+    loadParameterSchema,
+    loadToolSource,
+    del,
+    clear,
+    refetch,
+    add,
+  };
 }
 
 /** Test-only helper to reset module-level state between specs. */

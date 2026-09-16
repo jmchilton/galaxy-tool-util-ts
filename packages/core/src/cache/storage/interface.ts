@@ -2,6 +2,8 @@
  * Pluggable storage backend for the tool cache.
  * Implementations: FilesystemCacheStorage (Node.js), IndexedDBCacheStorage (browser/Web Worker).
  */
+import type { ToolSourceDocument } from "../../tool-source.js";
+
 export interface CacheStorage {
   /** Load a value by key. Returns null if not found. */
   load(key: string): Promise<unknown | null>;
@@ -15,4 +17,7 @@ export interface CacheStorage {
   saveAll?(entries: ReadonlyArray<[string, unknown]>): Promise<void>;
   /** Optional per-entry size/mtime metadata. Returns null if the key is missing. */
   stat?(key: string): Promise<{ sizeBytes: number; mtime?: string } | null>;
+  /** Optional wrapper-document storage. Deleting a tool key must also delete its source. */
+  loadSource?(key: string): Promise<ToolSourceDocument | null>;
+  saveSource?(key: string, source: ToolSourceDocument): Promise<void>;
 }

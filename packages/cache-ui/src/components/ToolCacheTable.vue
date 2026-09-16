@@ -82,10 +82,11 @@
         <template #body="{ data: row }">
           <Button
             icon="pi pi-eye"
+            aria-label="View tool definition"
             text
             size="small"
             @click="emit('view', row as Entry)"
-            v-tooltip.left="'View raw JSON'"
+            v-tooltip.left="'View tool definition'"
           />
           <Button
             icon="pi pi-refresh"

@@ -59,6 +59,7 @@ export {
   HttpError,
   matchCacheRoute,
   dispatchCacheRoute,
+  type CacheResult,
   type CacheRoute,
   cacheToTrs,
   cacheToTrsOne,
@@ -93,3 +94,6 @@ export type {
   RefetchResponse,
   SearchResults,
 } from "./cache-http/index.js";
+
+export type { ToolSourceDocument } from "./tool-source.js";
+export { fetchToolSourceFromToolShed, fetchToolSourceFromGalaxy } from "./client/index.js";

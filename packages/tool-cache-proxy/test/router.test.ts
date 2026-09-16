@@ -193,15 +193,21 @@ describe("Proxy Server", () => {
     expect(body).toHaveProperty("$schema");
   });
 
-  it("GET .../tool_source returns 501", async () => {
-    await seedTool(tmpDir, "devteam~fastqc~fastqc", "0.74+galaxy0", fastqcFixture);
+  it("GET .../tool_source serves raw wrapper text", async () => {
+    const key = await seedTool(tmpDir, "devteam~fastqc~fastqc", "0.74+galaxy0", fastqcFixture);
+    const contents = '<tool id="fastqc"/>\n';
+    await makeNodeToolCache({ cacheDir: tmpDir }).saveToolSource(key, {
+      contents,
+      language: "xml",
+      macrosExpanded: true,
+    });
     const { status, body } = await makeRequest(
       makeHandler(),
       "GET",
       "/api/tools/devteam~fastqc~fastqc/versions/0.74%2Bgalaxy0/tool_source",
     );
-    expect(status).toBe(501);
-    expect(body.detail).toMatch(/tool_source/);
+    expect(status).toBe(200);
+    expect(body).toBe(contents);
   });
 
   // ── Admin surface ───────────────────────────────────────────────────

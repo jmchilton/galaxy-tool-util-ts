@@ -7,7 +7,12 @@
  */
 
 export { HttpError } from "./error.js";
-export { matchCacheRoute, dispatchCacheRoute, type CacheRoute } from "./route-table.js";
+export {
+  matchCacheRoute,
+  dispatchCacheRoute,
+  type CacheResult,
+  type CacheRoute,
+} from "./route-table.js";
 export {
   cacheToTrs,
   cacheToTrsOne,

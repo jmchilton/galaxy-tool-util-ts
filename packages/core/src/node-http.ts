@@ -12,6 +12,7 @@ import * as fs from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { CacheResult } from "./cache-http/route-table.js";
 import { HttpError } from "./cache-http/error.js";
 
 const DEFAULT_MIME_TYPES: Record<string, string> = {
@@ -43,6 +44,16 @@ export function writeJson(res: ServerResponse, status: number, body: unknown): v
   res.end(payload);
 }
 
+/** Serialize a cache handler result, preserving source bytes and response headers. */
+export function writeCacheResult(res: ServerResponse, result: CacheResult): void {
+  if (result.kind === "json") {
+    writeJson(res, 200, result.body);
+  } else {
+    res.writeHead(200, { ...result.headers, "Content-Length": result.body.byteLength });
+    res.end(result.body);
+  }
+}
+
 export interface CorsOptions {
   /** `Access-Control-Allow-Origin` value. Default `*`. */
   origin?: string;
@@ -54,6 +65,7 @@ export interface CorsOptions {
 
 /** Set `Access-Control-Allow-*` headers on a response. */
 export function setCorsHeaders(res: ServerResponse, opts: CorsOptions = {}): void {
+  res.setHeader("Access-Control-Expose-Headers", "language, X-Tool-Source-Macros-Expanded");
   res.setHeader("Access-Control-Allow-Origin", opts.origin ?? "*");
   res.setHeader(
     "Access-Control-Allow-Methods",

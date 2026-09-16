@@ -10,6 +10,7 @@ import {
 import {
   makeNodeToolInfoService,
   readJsonBody,
+  writeCacheResult,
   serveStatic,
   setCorsHeaders,
   writeJson,
@@ -80,7 +81,7 @@ export function createRequestHandler(ctx: ProxyContext) {
     try {
       if (cacheRoute) {
         const result = await dispatchCacheRoute(cacheRoute, handlerCtx, () => readJsonBody(req));
-        writeJson(res, 200, result);
+        writeCacheResult(res, result);
         return;
       }
 

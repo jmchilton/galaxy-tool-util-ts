@@ -111,6 +111,7 @@ const {
   loading,
   error,
   refresh,
+  loadToolSource,
   loadParameterModel,
   loadParameterRequestSchema,
   loadParameterLandingRequestSchema,
@@ -121,6 +122,7 @@ const {
   add,
 } = useToolCache(props.client);
 const dialogLoaders = {
+  tool_source: loadToolSource,
   parameter_model: loadParameterModel,
   parameter_request_schema: loadParameterRequestSchema,
   parameter_landing_request_schema: loadParameterLandingRequestSchema,
