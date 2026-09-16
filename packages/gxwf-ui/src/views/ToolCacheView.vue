@@ -21,7 +21,7 @@
       </div>
     </div>
 
-    <ToolCachePanel v-if="transport === 'server' || transport === 'both'" transport="server" />
+    <ServerToolCacheView v-if="transport === 'server' || transport === 'both'" :client="client" />
     <ToolCachePanel v-if="transport === 'client' || transport === 'both'" transport="client" />
 
     <ConfirmDialog />
@@ -33,7 +33,10 @@ import { ref, watch } from "vue";
 import ConfirmDialog from "primevue/confirmdialog";
 import SelectButton from "primevue/selectbutton";
 
+import { ToolCacheView as ServerToolCacheView, createCacheClient } from "@galaxy-tool-util/cache-ui";
 import ToolCachePanel from "../components/ToolCachePanel.vue";
+
+const client = createCacheClient(import.meta.env.VITE_API_BASE_URL ?? "");
 
 type Transport = "server" | "client" | "both";
 

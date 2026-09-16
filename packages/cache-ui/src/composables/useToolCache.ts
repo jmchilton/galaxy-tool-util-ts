@@ -1,16 +1,5 @@
 import { ref } from "vue";
-import { useApi } from "./useApi";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type CachedToolEntry = components["schemas"]["CachedToolEntry"];
-type CacheStats = components["schemas"]["CacheStats"];
-
-// Module-level singleton: cache state is shared across components that call
-// useToolCache(), acting as a lightweight global store (mirrors useWorkflows).
-const entries = ref<CachedToolEntry[]>([]);
-const stats = ref<CacheStats>({ count: 0, bySource: {} });
-const loading = ref(false);
-const error = ref<string | null>(null);
+import type { CacheClient, CachedToolEntry, CacheStats } from "../client.js";
 
 /** Pull a server-side error message out of a router-style `{detail: "..."}` body, with fallbacks. */
 function detailOf(err: unknown, fallback: string): string {
@@ -21,8 +10,11 @@ function detailOf(err: unknown, fallback: string): string {
   return fallback;
 }
 
-export function useToolCache() {
-  const client = useApi();
+export function useToolCache(client: CacheClient) {
+  const entries = ref<CachedToolEntry[]>([]);
+  const stats = ref<CacheStats>({ count: 0, bySource: {} });
+  const loading = ref(false);
+  const error = ref<string | null>(null);
 
   async function refresh(opts: { decode?: boolean } = {}) {
     loading.value = true;
@@ -42,11 +34,38 @@ export function useToolCache() {
     }
   }
 
-  async function loadRaw(cacheKey: string) {
-    const { data, error: err } = await client.GET("/api/tool-cache/{cacheKey}", {
-      params: { path: { cacheKey } },
+  async function loadParameterModel(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET("/api/tools/{tool_id}/versions/{tool_version}", {
+      params: { path: { tool_id: toolId, tool_version: toolVersion } },
     });
-    if (err) throw new Error(detailOf(err, "Failed to load raw entry"));
+    if (err) throw new Error(detailOf(err, "Failed to load parameter model"));
+    return data;
+  }
+
+  async function loadParameterRequestSchema(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET(
+      "/api/tools/{tool_id}/versions/{tool_version}/parameter_request_schema",
+      { params: { path: { tool_id: toolId, tool_version: toolVersion } } },
+    );
+    if (err) throw new Error(detailOf(err, "Failed to load request schema"));
+    return data;
+  }
+
+  async function loadParameterLandingRequestSchema(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET(
+      "/api/tools/{tool_id}/versions/{tool_version}/parameter_landing_request_schema",
+      { params: { path: { tool_id: toolId, tool_version: toolVersion } } },
+    );
+    if (err) throw new Error(detailOf(err, "Failed to load landing-request schema"));
+    return data;
+  }
+
+  async function loadParameterTestCaseXmlSchema(toolId: string, toolVersion: string) {
+    const { data, error: err } = await client.GET(
+      "/api/tools/{tool_id}/versions/{tool_version}/parameter_test_case_xml_schema",
+      { params: { path: { tool_id: toolId, tool_version: toolVersion } } },
+    );
+    if (err) throw new Error(detailOf(err, "Failed to load test-case-XML schema"));
     return data;
   }
 
@@ -105,5 +124,19 @@ export function useToolCache() {
     return data;
   }
 
-  return { entries, stats, loading, error, refresh, loadRaw, del, clear, refetch, add };
+  return {
+    entries,
+    stats,
+    loading,
+    error,
+    refresh,
+    loadParameterModel,
+    loadParameterRequestSchema,
+    loadParameterLandingRequestSchema,
+    loadParameterTestCaseXmlSchema,
+    del,
+    clear,
+    refetch,
+    add,
+  };
 }

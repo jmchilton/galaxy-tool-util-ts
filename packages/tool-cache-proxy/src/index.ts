@@ -11,3 +11,5 @@ export type { ToolSourceConfig, ToolCacheConfig } from "./config.js";
 /** Create a proxy context (ToolInfoService + config) and HTTP server. */
 export { createProxyContext, createProxyServer, createRequestHandler } from "./router.js";
 export type { ProxyContext } from "./router.js";
+
+export type { paths, components, operations } from "./generated/api-types.js";

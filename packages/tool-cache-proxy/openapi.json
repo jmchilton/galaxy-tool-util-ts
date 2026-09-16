@@ -1,0 +1,416 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Galaxy Tool Cache Proxy",
+    "description": "HTTP proxy that mirrors a subset of the Galaxy ToolShed API and exposes cache-admin routes for inspector UIs.",
+    "version": "1.1.0"
+  },
+  "paths": {
+    "/api/tools": {
+      "get": {
+        "summary": "Search cached tools",
+        "description": "Substring search across cached tools (q matches tool_id / name / description). Pagination via page (1-based) and page_size (default 25, max 200).",
+        "operationId": "searchTools",
+        "parameters": [
+          { "name": "q", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1 } },
+          { "name": "page_size", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 200 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SearchResults" } } }
+          }
+        }
+      }
+    },
+    "/api/ga4gh/trs/v2/tools": {
+      "get": {
+        "summary": "List TRS tools",
+        "description": "GA4GH TRS v2 — list all cached tools as TRS Tool objects.",
+        "operationId": "trsListTools",
+        "responses": {
+          "200": {
+            "description": "Tool list",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TrsTool" } } } }
+          }
+        }
+      }
+    },
+    "/api/ga4gh/trs/v2/tools/{tool_id}": {
+      "get": {
+        "summary": "Get a TRS tool",
+        "operationId": "trsGetTool",
+        "parameters": [{ "$ref": "#/components/parameters/ToolId" }],
+        "responses": {
+          "200": {
+            "description": "Tool",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TrsTool" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/ga4gh/trs/v2/tools/{tool_id}/versions": {
+      "get": {
+        "summary": "List TRS tool versions",
+        "operationId": "trsListVersions",
+        "parameters": [{ "$ref": "#/components/parameters/ToolId" }],
+        "responses": {
+          "200": {
+            "description": "Tool versions",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TrsToolVersion" } } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/tools/{tool_id}/versions/{tool_version}": {
+      "get": {
+        "summary": "Get parsed tool",
+        "description": "Returns the cached ParsedTool (Galaxy meta-model).",
+        "operationId": "getParsedTool",
+        "parameters": [
+          { "$ref": "#/components/parameters/ToolId" },
+          { "$ref": "#/components/parameters/ToolVersion" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Parsed tool",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ParsedTool" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/tools/{tool_id}/versions/{tool_version}/parameter_request_schema": {
+      "get": {
+        "summary": "Parameter request JSON Schema",
+        "operationId": "getParameterRequestSchema",
+        "parameters": [
+          { "$ref": "#/components/parameters/ToolId" },
+          { "$ref": "#/components/parameters/ToolVersion" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/JsonSchemaResponse" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/tools/{tool_id}/versions/{tool_version}/parameter_landing_request_schema": {
+      "get": {
+        "summary": "Parameter landing-request JSON Schema",
+        "operationId": "getParameterLandingRequestSchema",
+        "parameters": [
+          { "$ref": "#/components/parameters/ToolId" },
+          { "$ref": "#/components/parameters/ToolVersion" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/JsonSchemaResponse" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/tools/{tool_id}/versions/{tool_version}/parameter_test_case_xml_schema": {
+      "get": {
+        "summary": "Parameter test-case-XML JSON Schema",
+        "operationId": "getParameterTestCaseXmlSchema",
+        "parameters": [
+          { "$ref": "#/components/parameters/ToolId" },
+          { "$ref": "#/components/parameters/ToolVersion" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/JsonSchemaResponse" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/tools/{tool_id}/versions/{tool_version}/tool_source": {
+      "get": {
+        "summary": "Tool source",
+        "description": "Raw tool source. Returns 501 until the cache stores source.",
+        "operationId": "getToolSource",
+        "parameters": [
+          { "$ref": "#/components/parameters/ToolId" },
+          { "$ref": "#/components/parameters/ToolVersion" }
+        ],
+        "responses": {
+          "501": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/tool-cache": {
+      "get": {
+        "summary": "List cached tools (admin)",
+        "operationId": "listCache",
+        "parameters": [
+          { "name": "decode", "in": "query", "required": false, "description": "When 1, probe each entry to flag undecodable payloads.", "schema": { "type": "string", "enum": ["1"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listing + stats",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ListResponse" } } }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Clear cache (optionally by prefix)",
+        "operationId": "clearCache",
+        "parameters": [
+          { "name": "prefix", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clear result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClearResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/tool-cache/stats": {
+      "get": {
+        "summary": "Aggregate cache stats",
+        "operationId": "cacheStats",
+        "responses": {
+          "200": {
+            "description": "Stats",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CacheStats" } } }
+          }
+        }
+      }
+    },
+    "/api/tool-cache/{cacheKey}": {
+      "delete": {
+        "summary": "Delete a single cache entry",
+        "operationId": "deleteCacheEntry",
+        "parameters": [
+          { "name": "cacheKey", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Removed",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DeleteResponse" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/tool-cache/refetch": {
+      "post": {
+        "summary": "Force-refetch a tool",
+        "operationId": "refetchTool",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RefetchRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Refetch result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RefetchResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "502": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/tool-cache/add": {
+      "post": {
+        "summary": "Populate the cache for a known tool id (idempotent)",
+        "operationId": "addTool",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Add result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "502": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "ToolId": {
+        "name": "tool_id",
+        "in": "path",
+        "required": true,
+        "description": "TRS-form tool id (owner~repo~tool_id).",
+        "schema": { "type": "string" }
+      },
+      "ToolVersion": {
+        "name": "tool_version",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" }
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Not found",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } }
+      },
+      "Error": {
+        "description": "Error",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorBody" } } }
+      },
+      "JsonSchemaResponse": {
+        "description": "JSON Schema document",
+        "content": { "application/json": { "schema": { "type": "object", "additionalProperties": true } } }
+      }
+    },
+    "schemas": {
+      "ErrorBody": {
+        "type": "object",
+        "properties": { "detail": { "type": "string" } },
+        "required": ["detail"]
+      },
+      "ParsedTool": {
+        "type": "object",
+        "description": "Galaxy parsed tool meta-model. Fully described in @galaxy-tool-util/schema; surfaced opaquely here.",
+        "additionalProperties": true
+      },
+      "TrsToolClass": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "TrsToolVersion": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "is_production": { "type": "boolean" },
+          "descriptor_type": { "type": "array", "items": { "type": "string", "enum": ["CWL", "WDL", "NFL", "GALAXY", "SMK"] } },
+          "containerfile": { "type": "boolean" },
+          "meta_version": { "type": "string" },
+          "verified": { "type": "boolean" },
+          "signed": { "type": "boolean" }
+        },
+        "required": ["url", "id"]
+      },
+      "TrsTool": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "id": { "type": "string" },
+          "organization": { "type": "string" },
+          "toolclass": { "$ref": "#/components/schemas/TrsToolClass" },
+          "versions": { "type": "array", "items": { "$ref": "#/components/schemas/TrsToolVersion" } },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "meta_version": { "type": "string" },
+          "has_checker": { "type": "boolean" },
+          "checker_url": { "type": "string" }
+        },
+        "required": ["url", "id", "organization", "toolclass", "versions"]
+      },
+      "SearchHit": {
+        "type": "object",
+        "properties": {
+          "toolId": { "type": "string" },
+          "toolVersion": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "required": ["toolId", "toolVersion"]
+      },
+      "SearchResults": {
+        "type": "object",
+        "properties": {
+          "q": { "type": "string" },
+          "page": { "type": "integer" },
+          "pageSize": { "type": "integer" },
+          "total": { "type": "integer" },
+          "hits": { "type": "array", "items": { "$ref": "#/components/schemas/SearchHit" } }
+        },
+        "required": ["q", "page", "pageSize", "total", "hits"]
+      },
+      "CachedToolEntry": {
+        "type": "object",
+        "properties": {
+          "cacheKey": { "type": "string" },
+          "toolId": { "type": "string" },
+          "toolVersion": { "type": "string" },
+          "source": { "type": "string" },
+          "sourceUrl": { "type": "string" },
+          "cachedAt": { "type": "string" },
+          "sizeBytes": { "type": "integer" },
+          "decodable": { "type": "boolean" },
+          "toolshedUrl": { "type": "string" },
+          "refetchable": { "type": "boolean" }
+        },
+        "required": ["cacheKey", "toolId", "toolVersion", "source", "sourceUrl", "cachedAt", "decodable", "refetchable"]
+      },
+      "CacheStats": {
+        "type": "object",
+        "properties": {
+          "count": { "type": "integer" },
+          "totalBytes": { "type": "integer" },
+          "bySource": { "type": "object", "additionalProperties": { "type": "integer" } },
+          "oldest": { "type": "string" },
+          "newest": { "type": "string" }
+        },
+        "required": ["count", "bySource"]
+      },
+      "ListResponse": {
+        "type": "object",
+        "properties": {
+          "entries": { "type": "array", "items": { "$ref": "#/components/schemas/CachedToolEntry" } },
+          "stats": { "$ref": "#/components/schemas/CacheStats" }
+        },
+        "required": ["entries", "stats"]
+      },
+      "DeleteResponse": {
+        "type": "object",
+        "properties": { "removed": { "type": "boolean" } },
+        "required": ["removed"]
+      },
+      "ClearResponse": {
+        "type": "object",
+        "properties": { "removed": { "type": "integer" } },
+        "required": ["removed"]
+      },
+      "RefetchRequest": {
+        "type": "object",
+        "properties": {
+          "toolId": { "type": "string" },
+          "toolVersion": { "type": "string" }
+        },
+        "required": ["toolId"]
+      },
+      "RefetchResponse": {
+        "type": "object",
+        "properties": {
+          "cacheKey": { "type": "string" },
+          "fetched": { "type": "boolean" },
+          "alreadyCached": { "type": "boolean" }
+        },
+        "required": ["cacheKey", "fetched", "alreadyCached"]
+      },
+      "AddRequest": {
+        "type": "object",
+        "properties": {
+          "toolId": { "type": "string" },
+          "toolVersion": { "type": "string" }
+        },
+        "required": ["toolId"]
+      },
+      "AddResponse": {
+        "type": "object",
+        "properties": {
+          "cacheKey": { "type": "string" },
+          "alreadyCached": { "type": "boolean" }
+        },
+        "required": ["cacheKey", "alreadyCached"]
+      }
+    }
+  }
+}

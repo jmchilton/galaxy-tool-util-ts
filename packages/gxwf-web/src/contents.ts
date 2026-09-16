@@ -7,7 +7,10 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { HttpError } from "@galaxy-tool-util/core";
 import type { CheckpointModel, ContentsModel } from "./models.js";
+
+export { HttpError };
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -31,18 +34,6 @@ const IGNORE_NAMES = new Set([
 ]);
 const IGNORE_SUFFIXES = [".pyc", ".pyo"];
 const WORKFLOW_SUFFIXES = [".ga", ".gxwf.yml", ".gxwf.yaml"];
-
-// ── Error type ───────────────────────────────────────────────────────
-
-export class HttpError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "HttpError";
-  }
-}
 
 function fail(status: number, message: string): never {
   throw new HttpError(status, message);

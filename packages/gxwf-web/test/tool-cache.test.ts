@@ -158,31 +158,6 @@ describe("GET /api/tool-cache/stats", () => {
   });
 });
 
-describe("GET /api/tool-cache/{key}", () => {
-  it("returns raw payload + decodable=true for valid entries", async () => {
-    await seedTool("abc123", "fastqc", "0.74+galaxy0");
-    const res = await fetch(`${srv.baseUrl}/api/tool-cache/abc123`);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.decodable).toBe(true);
-    expect((data.contents as { id: string }).id).toBe("fastqc");
-  });
-
-  it("returns 404 for missing key", async () => {
-    const res = await fetch(`${srv.baseUrl}/api/tool-cache/no-such-key`);
-    expect(res.status).toBe(404);
-  });
-
-  it("returns 200 + decodable=false for corrupted payload", async () => {
-    await seedTool("k1", "fastqc", "0.74+galaxy0");
-    fs.writeFileSync(path.join(cacheDir, "k1.json"), JSON.stringify({ broken: true }));
-    const res = await fetch(`${srv.baseUrl}/api/tool-cache/k1`);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.decodable).toBe(false);
-  });
-});
-
 describe("DELETE /api/tool-cache/{key}", () => {
   it("removes the entry", async () => {
     await seedTool("k1", "fastqc", "0.74+galaxy0");

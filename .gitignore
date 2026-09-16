@@ -1,6 +1,7 @@
 node_modules/
 dist/
 packages/gxwf-web/public/
+packages/tool-cache-proxy/public/
 *.tsbuildinfo
 *.tgz
 .DS_Store

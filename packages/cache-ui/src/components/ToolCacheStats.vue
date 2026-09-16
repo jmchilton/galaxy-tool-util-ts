@@ -17,9 +17,9 @@
 </template>
 
 <script setup lang="ts">
-import type { components } from "@galaxy-tool-util/gxwf-client";
+import type { CacheStats } from "../client.js";
 
-defineProps<{ stats: components["schemas"]["CacheStats"] }>();
+defineProps<{ stats: CacheStats }>();
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;

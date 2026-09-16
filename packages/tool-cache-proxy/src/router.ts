@@ -1,107 +1,70 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import type { ToolInfoService, ToolSource as CoreToolSource } from "@galaxy-tool-util/core";
-import { makeNodeToolInfoService } from "@galaxy-tool-util/core/node";
 import {
-  createFieldModel,
-  STATE_REPRESENTATIONS,
-  type StateRepresentation,
-  type ToolParameterBundleModel,
-} from "@galaxy-tool-util/schema";
-import * as JSONSchema from "effect/JSONSchema";
+  HttpError,
+  dispatchCacheRoute,
+  matchCacheRoute,
+  type HandlerCtx,
+  type ToolInfoService,
+  type ToolSource as CoreToolSource,
+} from "@galaxy-tool-util/core";
+import {
+  makeNodeToolInfoService,
+  readJsonBody,
+  serveStatic,
+  setCorsHeaders,
+  writeJson,
+} from "@galaxy-tool-util/core/node";
 import type { ServerConfig } from "./config.js";
 
 /** Shared context for the proxy server — holds config and the ToolInfoService. */
 export interface ProxyContext {
   config: ServerConfig;
   service: ToolInfoService;
+  /** If set, GET requests outside the API namespace are served from this directory. */
+  uiDir?: string;
+  /** Optional Content-Security-Policy header for static UI responses. */
+  uiCsp?: string;
+}
+
+/** Optional inputs for building a {@link ProxyContext}. */
+export interface CreateProxyContextOptions {
+  /** Static-file directory for the bundled SPA. */
+  uiDir?: string;
+  /** Content-Security-Policy header to apply when serving from `uiDir`. */
+  uiCsp?: string;
 }
 
 /** Build a ProxyContext from config — initializes ToolInfoService with configured sources. */
-export function createProxyContext(config: ServerConfig): ProxyContext {
+export function createProxyContext(
+  config: ServerConfig,
+  options: CreateProxyContextOptions = {},
+): ProxyContext {
   const enabledSources = config["galaxy.workflows.toolSources"].filter((s) => s.enabled);
   const coreSources: CoreToolSource[] = enabledSources.map((s) => ({
     type: s.type,
     url: s.url,
   }));
-
   const service = makeNodeToolInfoService({
     cacheDir: config["galaxy.workflows.toolCache"]?.directory,
     sources: coreSources,
   });
-  return { config, service };
+  return { config, service, uiDir: options.uiDir, uiCsp: options.uiCsp };
 }
 
-type RouteMatch = {
-  trsId?: string;
-  version?: string;
-  schema?: boolean;
-};
-
-function matchRoute(method: string, url: string): { handler: string; params: RouteMatch } | null {
-  const path = url.split("?")[0];
-
-  if (method === "GET" && path === "/api/tools") {
-    return { handler: "listTools", params: {} };
-  }
-
-  // /api/tools/:trs_id/versions/:version/schema
-  const schemaMatch = path.match(/^\/api\/tools\/([^/]+)\/versions\/([^/]+)\/schema$/);
-  if (method === "GET" && schemaMatch) {
-    return {
-      handler: "toolSchema",
-      params: {
-        trsId: decodeURIComponent(schemaMatch[1]),
-        version: decodeURIComponent(schemaMatch[2]),
-        schema: true,
-      },
-    };
-  }
-
-  // /api/tools/:trs_id/versions/:version
-  const versionMatch = path.match(/^\/api\/tools\/([^/]+)\/versions\/([^/]+)$/);
-  if (method === "GET" && versionMatch) {
-    return {
-      handler: "getTool",
-      params: {
-        trsId: decodeURIComponent(versionMatch[1]),
-        version: decodeURIComponent(versionMatch[2]),
-      },
-    };
-  }
-
-  if (method === "DELETE" && path === "/api/tools/cache") {
-    return { handler: "clearCache", params: {} };
-  }
-
-  return null;
+function originFromRequest(req: IncomingMessage): string {
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host) as string | undefined;
+  const proto =
+    (req.headers["x-forwarded-proto"] as string | undefined) ??
+    ((req.socket as { encrypted?: boolean }).encrypted ? "https" : "http");
+  return host ? `${proto}://${host}` : "";
 }
 
-function queryParam(url: string, key: string): string | undefined {
-  const idx = url.indexOf("?");
-  if (idx === -1) return undefined;
-  const params = new URLSearchParams(url.slice(idx));
-  return params.get(key) ?? undefined;
-}
+// ── Request handler ──────────────────────────────────────────────────────
 
-function json(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body);
-  res.writeHead(status, {
-    "Content-Type": "application/json",
-    "Content-Length": Buffer.byteLength(payload),
-  });
-  res.end(payload);
-}
-
-function cors(res: ServerResponse): void {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-}
-
-/** Create the async request handler that routes to tool cache/schema endpoints. */
+/** Create the async request handler that routes to the shared cache-http handlers. */
 export function createRequestHandler(ctx: ProxyContext) {
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    cors(res);
+    setCorsHeaders(res, { methods: "GET, POST, DELETE, OPTIONS" });
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);
@@ -111,89 +74,31 @@ export function createRequestHandler(ctx: ProxyContext) {
 
     const url = req.url ?? "/";
     const method = req.method ?? "GET";
-    const route = matchRoute(method, url);
-
-    if (!route) {
-      json(res, 404, { error: "Not found" });
-      return;
-    }
+    const cacheRoute = matchCacheRoute(method, url);
+    const handlerCtx: HandlerCtx = { service: ctx.service, baseUrl: originFromRequest(req) };
 
     try {
-      switch (route.handler) {
-        case "listTools": {
-          await ctx.service.cache.index.load();
-          const entries = await ctx.service.cache.listCached();
-          json(res, 200, entries);
-          break;
-        }
-
-        case "getTool": {
-          const { trsId, version } = route.params;
-          if (!trsId || !version) {
-            json(res, 400, { error: "Missing trs_id or version" });
-            return;
-          }
-          const tool = await ctx.service.getToolInfo(trsId, version);
-          if (!tool) {
-            json(res, 404, { error: "Tool not found" });
-            return;
-          }
-          json(res, 200, tool);
-          break;
-        }
-
-        case "toolSchema": {
-          const { trsId, version } = route.params;
-          if (!trsId || !version) {
-            json(res, 400, { error: "Missing trs_id or version" });
-            return;
-          }
-          const repName = queryParam(url, "representation") ?? "workflow_step";
-          if (!STATE_REPRESENTATIONS.includes(repName as StateRepresentation)) {
-            json(res, 400, {
-              error: `Unknown representation: ${repName}`,
-              available: [...STATE_REPRESENTATIONS],
-            });
-            return;
-          }
-
-          const tool = await ctx.service.getToolInfo(trsId, version);
-          if (!tool) {
-            json(res, 404, { error: "Tool not found" });
-            return;
-          }
-
-          const bundle: ToolParameterBundleModel = {
-            parameters: tool.inputs as ToolParameterBundleModel["parameters"],
-          };
-          const effectSchema = createFieldModel(bundle, repName as StateRepresentation);
-          if (!effectSchema) {
-            json(res, 500, {
-              error: "Could not generate schema — unsupported parameter types",
-            });
-            return;
-          }
-          try {
-            const jsonSchema = JSONSchema.make(effectSchema);
-            json(res, 200, jsonSchema);
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            json(res, 500, { error: `JSON Schema generation failed: ${msg}` });
-          }
-          break;
-        }
-
-        case "clearCache": {
-          await ctx.service.cache.index.load();
-          const prefix = queryParam(url, "prefix");
-          await ctx.service.cache.clearCache(prefix ?? undefined);
-          json(res, 200, { status: "cleared" });
-          break;
-        }
+      if (cacheRoute) {
+        const result = await dispatchCacheRoute(cacheRoute, handlerCtx, () => readJsonBody(req));
+        writeJson(res, 200, result);
+        return;
       }
+
+      if (ctx.uiDir && method === "GET") {
+        const [pathOnly] = url.split("?");
+        const opts: { csp?: string } = {};
+        if (ctx.uiCsp) opts.csp = ctx.uiCsp;
+        await serveStatic(res, ctx.uiDir, pathOnly, opts);
+        return;
+      }
+      writeJson(res, 404, { detail: "Not found" });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      json(res, 500, { error: msg });
+      if (e instanceof HttpError) {
+        writeJson(res, e.status, { detail: e.message });
+      } else {
+        const msg = e instanceof Error ? e.message : String(e);
+        writeJson(res, 500, { detail: msg });
+      }
     }
   };
 }

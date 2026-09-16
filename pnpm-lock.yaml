@@ -70,6 +70,31 @@ importers:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@25.5.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(yaml@2.8.3))
 
+  packages/cache-ui:
+    dependencies:
+      '@galaxy-tool-util/tool-cache-proxy':
+        specifier: workspace:*
+        version: link:../tool-cache-proxy
+      openapi-fetch:
+        specifier: ^0.13.8
+        version: 0.13.8
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      primevue:
+        specifier: ^4.3.0
+        version: 4.5.4(vue@3.5.32(typescript@6.0.2))
+      vue:
+        specifier: ^3.5.0
+        version: 3.5.32(typescript@6.0.2)
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.0
+        version: 6.0.6(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(yaml@2.8.3))(vue@3.5.32(typescript@6.0.2))
+      vue-tsc:
+        specifier: ^2.2.0
+        version: 2.2.12(typescript@6.0.2)
+
   packages/cli:
     dependencies:
       '@galaxy-tool-util/connection-validation':
@@ -231,6 +256,9 @@ importers:
       '@fontsource/atkinson-hyperlegible':
         specifier: ^5.2.8
         version: 5.2.8
+      '@galaxy-tool-util/cache-ui':
+        specifier: workspace:*
+        version: link:../cache-ui
       '@galaxy-tool-util/connection-validation':
         specifier: workspace:*
         version: link:../connection-validation
@@ -400,6 +428,37 @@ importers:
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
+      openapi-typescript:
+        specifier: ^7.13.0
+        version: 7.13.0(typescript@6.0.2)
+
+  packages/tool-cache-proxy-ui:
+    dependencies:
+      '@galaxy-tool-util/cache-ui':
+        specifier: workspace:*
+        version: link:../cache-ui
+      '@primevue/themes':
+        specifier: ^4.3.0
+        version: 4.5.4
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      primevue:
+        specifier: ^4.3.0
+        version: 4.5.4(vue@3.5.32(typescript@6.0.2))
+      vue:
+        specifier: ^3.5.0
+        version: 3.5.32(typescript@6.0.2)
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.0
+        version: 6.0.6(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(yaml@2.8.3))(vue@3.5.32(typescript@6.0.2))
+      vite:
+        specifier: ^8.0.0
+        version: 8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(yaml@2.8.3)
+      vue-tsc:
+        specifier: ^2.2.0
+        version: 2.2.12(typescript@6.0.2)
 
   packages/tool-xml:
     dependencies:

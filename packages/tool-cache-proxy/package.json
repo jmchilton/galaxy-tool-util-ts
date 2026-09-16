@@ -14,6 +14,8 @@
   },
   "files": [
     "dist",
+    "public",
+    "openapi.json",
     "README.md",
     "LICENSE"
   ],
@@ -28,6 +30,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "copy-ui": "node scripts/copy-ui.mjs",
+    "codegen": "openapi-typescript openapi.json -o src/generated/api-types.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run",
     "test:watch": "vitest",
@@ -43,6 +47,7 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0"
+    "@types/node": "^25.5.0",
+    "openapi-typescript": "^7.13.0"
   }
 }
