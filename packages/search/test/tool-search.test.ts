@@ -62,10 +62,16 @@ function makePageResponse(
   hits: unknown[],
   page: number,
   pageSize: number,
+  /**
+   * The true cross-page total, mirroring a real Tool Shed response (the
+   * same `total_results` on every page). Defaults to this page's own hit
+   * count, which is only correct for a single-page response.
+   */
+  totalResults = hits.length,
 ): Response {
   return new Response(
     JSON.stringify({
-      total_results: String(hits.length),
+      total_results: String(totalResults),
       page: String(page),
       page_size: String(pageSize),
       hostname,
@@ -220,7 +226,7 @@ describe("ToolSearchService", () => {
       );
       // Last page: return fewer than pageSize to stop iteration.
       const final = page >= 3;
-      return makePageResponse(PRIMARY.url, final ? hits.slice(0, 2) : hits, page, pageSize);
+      return makePageResponse(PRIMARY.url, final ? hits.slice(0, 2) : hits, page, pageSize, 8);
     };
     const svc = new ToolSearchService({
       sources: [PRIMARY],
@@ -262,7 +268,7 @@ describe("ToolSearchService", () => {
         page === 1
           ? [makeHit("other-1", "other", "r1", 10), makeHit("other-2", "other", "r2", 9)]
           : [makeHit("wanted", "devteam", "r3", 8), makeHit("other-3", "other", "r4", 7)];
-      return makePageResponse(PRIMARY.url, hits, page, 2);
+      return makePageResponse(PRIMARY.url, hits, page, 2, 4);
     };
     const svc = new ToolSearchService({
       sources: [PRIMARY],
@@ -290,7 +296,7 @@ describe("ToolSearchService", () => {
         page === 1
           ? [makeHit("noise-1", "o", "r1", 10), makeHit("noise-2", "o", "r2", 9)]
           : [makeHit("target_tool", "o", "r3", 8), makeHit("noise-3", "o", "r4", 7)];
-      return makePageResponse(PRIMARY.url, hits, page, 2);
+      return makePageResponse(PRIMARY.url, hits, page, 2, 4);
     };
     const svc = new ToolSearchService({
       sources: [PRIMARY],

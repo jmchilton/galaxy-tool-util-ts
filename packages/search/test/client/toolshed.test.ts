@@ -188,6 +188,42 @@ describe("iterateToolSearchPages", () => {
     expect(pages).toEqual([5]);
   });
 
+  it("stops once cumulative hits reach total_results, even if a page ignores `page` and repeats", async () => {
+    // Reproduces a live public Tool Shed defect: `/api/tools?q=` can ignore
+    // `page` and re-serve page 1 forever while still reporting the correct
+    // `total_results`. Confirmed against https://toolshed.g2.bx.psu.edu on
+    // 2026-09-16: `q=cutadapt&page_size=20` returns the identical 20 hits
+    // (and `total_results: "20"`) for page=1, 2, 3, and 100 alike.
+    const fetcher: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          total_results: "20",
+          page: "1",
+          page_size: "20",
+          hostname: TOOLSHED,
+          hits: Array.from({ length: 20 }, (_, i) => ({
+            tool: {
+              id: `t${i}`,
+              name: `T${i}`,
+              description: null,
+              repo_name: "r",
+              repo_owner_username: "o",
+            },
+            matched_terms: {},
+            score: 1,
+          })),
+        }),
+        { status: 200 },
+      );
+    const pages = [];
+    for await (const p of iterateToolSearchPages(TOOLSHED, "cutadapt", { pageSize: 20, fetcher })) {
+      pages.push(p.hits.length);
+    }
+    // A single page: the cumulative-hits guard stops the loop without ever
+    // re-fetching the (identical) next page.
+    expect(pages).toEqual([20]);
+  });
+
   it("honors a caller-supplied starting page", async () => {
     const fetcher = makePageResponder([{ hits: 10 }, { hits: 10 }, { hits: 2 }]);
     const pages = [];

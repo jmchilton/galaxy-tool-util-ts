@@ -86,7 +86,16 @@ export async function searchTools(
 
 /**
  * Iterate Tool Shed search results page-by-page. Stops when the server
- * returns fewer hits than `pageSize` (or no hits at all).
+ * returns fewer hits than `pageSize` (or no hits at all), or once the
+ * cumulative hit count reaches the server-reported `total_results`.
+ *
+ * The second condition guards against a live Tool Shed defect: the public
+ * instance's `/api/tools?q=` endpoint ignores `page` for at least some
+ * queries and re-serves page 1 forever while still reporting the correct
+ * `total_results` — a page that is exactly `pageSize` long then never
+ * satisfies the first stopping condition, so without this guard the
+ * generator loops forever re-fetching identical duplicate pages (bounded in
+ * practice only by a caller's own `maxResults` cutoff).
  */
 export async function* iterateToolSearchPages(
   toolshedUrl: string,
@@ -95,10 +104,13 @@ export async function* iterateToolSearchPages(
 ): AsyncGenerator<SearchResults<ToolSearchHit>, void, void> {
   const pageSize = opts.pageSize ?? 10;
   let page = opts.page ?? 1;
+  let seen = 0;
   while (true) {
     const results = await searchTools(toolshedUrl, query, { ...opts, page, pageSize });
     yield results;
+    seen += results.hits.length;
     if (results.hits.length < pageSize) return;
+    if (seen >= results.total_results) return;
     page += 1;
   }
 }
