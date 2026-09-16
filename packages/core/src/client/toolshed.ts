@@ -1,3 +1,5 @@
+import * as Either from "effect/Either";
+import * as ParseResult from "effect/ParseResult";
 import * as S from "effect/Schema";
 import { ParsedTool } from "@galaxy-tool-util/schema";
 
@@ -13,6 +15,22 @@ export class ToolFetchError extends Error {
   ) {
     super(message);
   }
+}
+
+/**
+ * Decode a fetched JSON payload as `ParsedTool`, raising a `ToolFetchError`
+ * that names each failing field path and reason. `effect`'s default
+ * `ParseError#message` instead renders the entire expected `ParsedTool`
+ * type declaration alongside the failure — tens of thousands of characters
+ * for this schema — which is unusable as a diagnostic, so decode failures
+ * go through `ParseResult.ArrayFormatter` instead of the default formatter.
+ */
+function decodeParsedTool(json: unknown, url: string): ParsedTool {
+  const result = S.decodeUnknownEither(ParsedTool)(json);
+  if (Either.isRight(result)) return result.right;
+  const issues = ParseResult.ArrayFormatter.formatErrorSync(result.left);
+  const detail = issues.map((i) => `[${i.path.join(".")}] ${i.message}`).join("; ");
+  throw new ToolFetchError(`invalid tool metadata from ${url}: ${detail}`, url);
 }
 
 /**
@@ -42,7 +60,7 @@ export async function fetchFromToolShed(
     );
   }
   const json = await response.json();
-  return S.decodeUnknownSync(ParsedTool)(json);
+  return decodeParsedTool(json, url);
 }
 
 /**
@@ -74,5 +92,5 @@ export async function fetchFromGalaxy(
     );
   }
   const json = await response.json();
-  return S.decodeUnknownSync(ParsedTool)(json);
+  return decodeParsedTool(json, url);
 }
