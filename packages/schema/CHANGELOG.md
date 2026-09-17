@@ -1,5 +1,98 @@
 # @galaxy-tool-util/schema
 
+## 1.11.0
+
+### Minor Changes
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`073dc22`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/073dc2281c1d0a65ad68e743690db23a0f9622b9) Thanks [@jmchilton](https://github.com/jmchilton)! - Flatten collection outputs onto the output's top level (`collection_type`, `collection_type_source`, `collection_type_from_rules`, `structured_like`, `discover_datasets`), matching Galaxy's `tool_parsing_abstraction` model — no more `structure` wrapper on `ToolOutputCollection`. Both parsers (XML + inline/YAML) emit the flat shape, and `connection-validation` reads it flat.
+
+  `ParsedTool` decode stays **tolerant of both shapes**: a legacy nested `structure` (which current Galaxy releases still emit) is lifted to the top level on decode, so the port keeps decoding `ParsedTool` JSON from any Galaxy version; encode always emits flat. Connection-workflow goldens regenerated from `tool_parsing_abstraction`.
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`4f1a5cf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4f1a5cf5f60d1c3daf3692e9e12e1902058a54be) Thanks [@jmchilton](https://github.com/jmchilton)! - Carry `data_ref` on data_column parameters. `DataColumnParameterModel` now has a `data_ref: string | null` field (the referenced data input), and the input factory populates it from the source — closing a gap against Galaxy's `DataColumnParameterModel`, which has carried `data_ref` all along. Works for both the XML and inline/YAML paths.
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`c95a9e2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c95a9e2fdfa2fb1382e207b167d92b7b0a5b804e) Thanks [@jmchilton](https://github.com/jmchilton)! - Complete `DataParameterModel` against Galaxy's model: add `url_default`, `min`, and `max`. The input factory populates `url_default` from a `data` param's `<default location>` (via `parse_default`); `min`/`max` are present for shape parity but stay `null` (Galaxy's factory never reads them). Closes the remaining data-input field drift.
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`8a472bf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8a472bf9db3809b0d308f98721db4943dd923721) Thanks [@jmchilton](https://github.com/jmchilton)! - Align `TextParameterModel` with Galaxy's `tool_parsing_abstraction` model. **Breaking:** the gx_text default field is renamed `value` → `default_value` (matching Galaxy's `Field(alias="value")` which serializes as `default_value`, and the existing `parameter_models/*.json` goldens). Text `optional` is now inferred faithfully via `text_input_is_optional` — a text param is optional when the empty string passes all its validators (`statically_validates(validators, "")`), instead of the previous value-presence heuristic. So a text param with a default and no validators is now correctly `optional: true`.
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`f781dd0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/f781dd0029f769adc42e7cbb5cb1a07b44455381) Thanks [@jmchilton](https://github.com/jmchilton)! - Introduce the `InputSource` / `PageSource` seam — the TS mirror of Galaxy's `parser.interface.InputSource` / `PageSource`. The input factory (`parseInputs`, formerly reaching into a raw dict) now consumes an `InputSource`, so an XML-backed source in `@galaxy-tool-util/tool-xml` can feed the same `_from_input_source_galaxy`-equivalent factory. Ships the dependency-free interfaces plus the inline/YAML dict implementation (`DictInputSource` / `DictPageSource`, mirroring `YamlInputSource` / `YamlPageSource`), all newly exported. Pure restructure — the produced `ToolParameterModel` output is unchanged (the full schema suite passes before and after). One deliberate behavior alignment: a YAML `type: section` is now rejected (`Unknown Galaxy parameter type 'section'`), matching `YamlInputSource.parse_input_type`, which never returns `"section"`; sections remain reachable only from the XML path (where `tag == "section"`), landing with the `tool-xml` input work.
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`c66afa4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c66afa4906b3545007fba4908c00b9d9c62b343c) Thanks [@jmchilton](https://github.com/jmchilton)! - Detect dynamic options for select and drill-down parameters. A select or drill-down whose options are computed at runtime — an XML `<param type="select">` with an `<options>` element (e.g. `from_data_table`) or either param with a `dynamic_options` code attribute — now yields `options: null` instead of an empty static list, matching Galaxy's factory. Adds `hasDynamicOptions()` / `hasDrillDownDynamicOptions()` to the `InputSource` seam (the inline/YAML source is always static, mirroring Galaxy's base); the XML source overrides them. `DrillDownParameterModel.options` is widened to nullable to carry the dynamic case; the drill-down default resolver and JSON-schema generator treat `null` as "any value, resolved at runtime."
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`8a472bf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8a472bf9db3809b0d308f98721db4943dd923721) Thanks [@jmchilton](https://github.com/jmchilton)! - Add a declarative tool-parsing test harness (`@galaxy-tool-util/tool-xml`) that asserts the SAME YAML expectation files and functional-tool fixtures on the TS parser as Galaxy's Python `parse_tool` — so the two paths cannot silently drift. Fixtures + expectations are scoped to the metadata/inputs/outputs cases the TS parser covers and synced via a new `tool-parsing` fixture group (`make sync-tool-parsing`).
+
+  To back the YAML fixtures, `@galaxy-tool-util/schema` gains `parseYamlTool(repr)` — a decoded-YAML-tool → `ParsedTool` parser handling both the legacy `GalaxyTool` and user-facing `GalaxyUserTool` classes (reusing the existing input/output trees). `parseInlineTool` becomes a thin `GalaxyUserTool`-guarded wrapper over it.
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`ffa8567`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ffa8567445d8cf02de6e875b60d0b931f0dc7e7e) Thanks [@jmchilton](https://github.com/jmchilton)! - Add the XML-backed input source (`XmlInputSource` / `XmlPageSource` in `@galaxy-tool-util/tool-xml`) — the port of Galaxy's `parser.xml.XmlInputSource` / `XmlPageSource`. It feeds the shared parameter-model factory through the `InputSource` seam, so `XmlToolSource.parseInputs()` builds the same `ToolParameterModel` union as the inline/YAML path.
+
+  Covered: leaf `<param>` types (numbers, text, boolean, color, data, data_column, select with static-option dedup by value, drill_down, and the other leaf kinds); the validators the factory keeps (`in_range`/`regex`/`length`/`expression`/`empty_field`/`no_options`, with `regex`/`expression` read from element text); `argument`-derived names; `data_column` `force_select`; `<repeat>`, `<section>`, and `<conditional>` containers — including boolean `<when>` discrimination through the test param's `truevalue`/`falsevalue`.
+
+  To support this, `@galaxy-tool-util/schema` now exports `inputModelsForPage` (build models for any `PageSource`), widens `InputType` with `"section"` and dispatches it in the factory (still returned only by the XML source — YAML sections stay unsupported), and improves boolean `<when>` discrimination for all sources. Also newly exported: `DataParameterModel` / `DataColumnParameterModel` / `DataCollectionParameterModel` / `DrillDownOption` / `ValidatorModel`. Dynamic options and nested-collection `<default>` construction land with later slices.
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`66352c9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/66352c9ad56abf8b446601f65b99b100fe4727ec) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `XmlToolSource.parseOutputs()` — a port of Galaxy's `XmlToolSource.parse_outputs` + `output_objects.from_tool_source` that turns an expanded `<outputs>` tree into the `ToolOutput` union (data / collection / integer / float / boolean / text). Reproduces the subtle behaviors verified against Python: the collections-then-data-then-expression ordering, the legacy (16.01) default dataset collector, `auto_format` → `_sniff_`, pre-21.09 `from_work_dir` stripping, and collection `label` defaulting to `""`. `discover_datasets` translation reuses schema's descriptor parser, now exported as `parseDiscoverDatasets` (Galaxy shares that logic across the XML and YAML paths too). That shared parser also gains a fix: `discover_datasets` format now resolves `ext` before `format` (ext-first), matching Galaxy's `DatasetCollectionDescription` — this affects the existing YAML path only when a descriptor sets both.
+
+### Patch Changes
+
+- [#167](https://github.com/jmchilton/galaxy-tool-util-ts/pull/167) [`3ae51f4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3ae51f4a5d2c1397fd02c2144e0d1793a3b18623) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(schema): align format2 state validation with Python's linked-state pipeline
+
+  A connection-supplied leaf lives in the format2 `in` block rather than `state`.
+  Validation now mirrors Galaxy's upstream Python pipeline: first validate the
+  stored state against `workflow_step`, where all fields are optional but present
+  values remain typed; then inject actual connections and always validate the
+  effective state against `workflow_step_linked`, which restores requiredness and
+  allows `ConnectedValue` to satisfy a required leaf. Unmatched connection paths
+  are rejected instead of silently discarded.
+
+  `StepRunnerConfig.postValidate` gains the original `args` so the converted
+  result can be checked against the step's `input_connections`.
+
+  The same correction is applied everywhere the pattern appeared, so the workflow
+  actually round-trips end to end:
+  - `toNativeStateful` passes `nativeConnectionsFromFormat2In(step.in)` to both
+    its pre- and post-validation hooks (the reverse leg previously failed
+    `pre_validation` and fell back to schema-free passthrough).
+  - `toFormat2Stateful` credits required runtime placeholders lifted into its
+    synthetic `in` entries during the linked validation pass.
+  - `gxwf validate` and `gxwf validate --mode json-schema` both run the same
+    unlinked-then-linked sequence, including for steps with zero connections.
+  - `ToolStateValidator` accepts a connection map for regular and strict format2
+    validation, so API consumers get the same semantics as the CLI.
+
+  Turning the reverse leg back on exposed a second defect it had been masking:
+  `encodeStateToNative` wrote `undefined` back for every branch leaf the format2
+  state did not contain, so a leaf absent from an under-specified source workflow
+  reappeared as a key after a round-trip. Absent leaves are now skipped, matching
+  the forward direction.
+
+- [#159](https://github.com/jmchilton/galaxy-tool-util-ts/pull/159) [`8d4570c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8d4570c6f156591d4a65cea0e2c8ed170a9250df) Thanks [@jmchilton](https://github.com/jmchilton)! - Skip the `<display>` element in the input factory (data_source tools carry one alongside their params), matching `factory.input_models_for_page`. `XmlInputSource.parseInputType()` now returns the real `display` tag instead of collapsing it to `param`, and the container builders (repeat/section/when) route through `inputModelsForPage` so the skip applies uniformly. Fixes `parseXmlTool` throwing `Unknown Galaxy parameter type ''` on `test_data_source.xml` / `ucsc_tablebrowser.xml`; a parse sweep over Galaxy's 298 functional tools now matches Python `parse_tool` exactly.
+
+- [#167](https://github.com/jmchilton/galaxy-tool-util-ts/pull/167) [`58ed6fe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/58ed6fec317a25bc3e20e9cb5e22a3759f9c4724) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(cli): surface malformed workflows in tree walks instead of dropping them
+
+  `discoverWorkflows` parsed each candidate file inside a `try/catch` that
+  returned `null` on failure, and a `null` parse was indistinguishable from
+  "this file is not a workflow" — so a `.ga` or `.gxwf.yml` with a syntax error
+  was silently omitted from the tree. `gxwf validate-tree` / `lint-tree` then
+  reported a workflow count that quietly excluded the broken files, which is the
+  worst possible outcome for a batch linter.
+
+  Files with an unambiguous workflow extension (`.ga`, `.gxwf.yml`, `.gxwf.yaml`)
+  that fail to parse are now carried through as a `loadError` outcome and
+  reported as `ERROR`, with the count added to the summary line. Malformed plain
+  `.yml`/`.json` files stay silently skipped — those extensions are ambiguous and
+  could be any unrelated file.
+
+  Also: `validate-tree --no-tool-state` (and the no-cache path) now enumerates
+  tool steps and marks each with the new `skip_no_tool_state` status rather than
+  reporting zero steps. That enumeration stays offline — no resolver is passed,
+  so subworkflow expansion is inline-only and an unreachable external reference
+  can no longer fail an otherwise-clean `--no-tool-state` run — and
+  `--strict-state` treats `skip_no_tool_state` as exempt, matching how the
+  single-file `gxwf validate` handles the same flag combination.
+
+  Tree outcome errors are collapsed to their first line where they are recorded,
+  so every consumer benefits: the per-workflow console listing in all five tree
+  commands, and the `|`-delimited Markdown report tables that a raw multi-line
+  YAML parse error would otherwise wreck.
+
 ## 1.10.1
 
 ### Patch Changes

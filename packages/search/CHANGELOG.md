@@ -1,5 +1,17 @@
 # @galaxy-tool-util/search
 
+## 1.11.0
+
+### Patch Changes
+
+- [#168](https://github.com/jmchilton/galaxy-tool-util-ts/pull/168) [`8ccca4f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8ccca4fe90f18733bf6701d7ffe7d6bdbfc0eefd) Thanks [@jmchilton](https://github.com/jmchilton)! - Keep `gxwf tool-search --enrich --json` stdout machine-readable when enrichment fails. Universal core and search services now expose optional diagnostic sinks and remain silent by default, while the Node factories send diagnostics to stderr so CLI commands and servers retain failure details. Cache-write failures no longer discard a valid fetched tool, and only documented later-page `ObjectNotFound` responses are treated as empty search pages.
+
+- [#170](https://github.com/jmchilton/galaxy-tool-util-ts/pull/170) [`d82490c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d82490cc7489baa826f31c05d741359e89f21000) Thanks [@jmchilton](https://github.com/jmchilton)! - Route `gxwf tool-search` through `ToolSearchService` while preserving its starting-page, filtering, result-limit, enrichment, diagnostic, and exit-code behavior.
+
+- Updated dependencies [[`073dc22`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/073dc2281c1d0a65ad68e743690db23a0f9622b9), [`3ae51f4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3ae51f4a5d2c1397fd02c2144e0d1793a3b18623), [`4f1a5cf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4f1a5cf5f60d1c3daf3692e9e12e1902058a54be), [`c95a9e2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c95a9e2fdfa2fb1382e207b167d92b7b0a5b804e), [`8a472bf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8a472bf9db3809b0d308f98721db4943dd923721), [`f781dd0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/f781dd0029f769adc42e7cbb5cb1a07b44455381), [`c66afa4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/c66afa4906b3545007fba4908c00b9d9c62b343c), [`8a472bf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8a472bf9db3809b0d308f98721db4943dd923721), [`8ccca4f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8ccca4fe90f18733bf6701d7ffe7d6bdbfc0eefd), [`ffa8567`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ffa8567445d8cf02de6e875b60d0b931f0dc7e7e), [`66352c9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/66352c9ad56abf8b446601f65b99b100fe4727ec), [`8d4570c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8d4570c6f156591d4a65cea0e2c8ed170a9250df), [`58ed6fe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/58ed6fec317a25bc3e20e9cb5e22a3759f9c4724)]:
+  - @galaxy-tool-util/schema@1.11.0
+  - @galaxy-tool-util/core@1.11.0
+
 ## 1.10.1
 
 ### Patch Changes
