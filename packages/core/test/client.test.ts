@@ -56,6 +56,28 @@ describe("fetchFromToolShed", () => {
     }
   });
 
+  it("raises a compact ToolFetchError on decode failure, not the full ParsedTool type", async () => {
+    const malformed = { ...fastqcFixture, id: undefined };
+    delete (malformed as Record<string, unknown>).id;
+    try {
+      await fetchFromToolShed(
+        "https://toolshed.g2.bx.psu.edu",
+        "devteam~fastqc~fastqc",
+        "0.74+galaxy0",
+        mockFetch(malformed),
+      );
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(ToolFetchError);
+      const message = (e as ToolFetchError).message;
+      // Names the failing field and stays well short of the ~19,000-character
+      // dump effect's default ParseError formatter produces for this schema.
+      expect(message).toContain("id");
+      expect(message).toContain("is missing");
+      expect(message.length).toBeLessThan(500);
+    }
+  });
+
   it("constructs correct URL", async () => {
     let capturedUrl = "";
     const captureFetch: typeof fetch = async (url) => {
