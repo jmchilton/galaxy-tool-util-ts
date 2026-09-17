@@ -117,22 +117,14 @@ export interface ToNativeOptions {
  * Convert a Format2 workflow to normalized native Galaxy format.
  */
 export function toNative(raw: unknown, options?: ToNativeOptions): NormalizedNativeWorkflow {
-  let wf: NormalizedFormat2Workflow;
-  if (_isNormalizedFormat2(raw)) {
-    wf = raw;
-  } else {
-    wf = normalizedFormat2(raw);
-  }
+  // Normalize unconditionally: `normalizedFormat2` is idempotent, and no
+  // top-level shape check can tell an already-normalized workflow from a raw
+  // one with list-form `inputs`/`steps` but dict-form `in`/`out` on its steps.
+  const wf: NormalizedFormat2Workflow = normalizedFormat2(raw);
 
   const ctx = new ConversionContext(options);
   _registerLabels(wf, ctx);
   return _buildNativeWorkflow(wf, ctx);
-}
-
-function _isNormalizedFormat2(raw: unknown): raw is NormalizedFormat2Workflow {
-  if (raw == null || typeof raw !== "object") return false;
-  const obj = raw as Record<string, unknown>;
-  return obj.class === "GalaxyWorkflow" && Array.isArray(obj.inputs) && Array.isArray(obj.steps);
 }
 
 function _registerLabels(wf: NormalizedFormat2Workflow, ctx: ConversionContext): void {
