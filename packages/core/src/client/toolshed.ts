@@ -17,20 +17,28 @@ export class ToolFetchError extends Error {
   }
 }
 
+function truncateDiagnostic(text: string, limit: number): string {
+  return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
+}
+
 /**
- * Decode a fetched JSON payload as `ParsedTool`, raising a `ToolFetchError`
- * that names each failing field path and reason. `effect`'s default
- * `ParseError#message` instead renders the entire expected `ParsedTool`
- * type declaration alongside the failure — tens of thousands of characters
- * for this schema — which is unusable as a diagnostic, so decode failures
- * go through `ParseResult.ArrayFormatter` instead of the default formatter.
+ * Report the first failing field path and a bounded reason. ArrayFormatter
+ * removes the outer error tree, but its Type messages can still render large
+ * schema declarations and actual values, so replace those with a short reason.
+ * Bound both source and detail to keep the complete message under 500 characters;
+ * ToolFetchError.url retains the full source URL.
  */
 function decodeParsedTool(json: unknown, url: string): ParsedTool {
   const result = S.decodeUnknownEither(ParsedTool)(json);
   if (Either.isRight(result)) return result.right;
   const issues = ParseResult.ArrayFormatter.formatErrorSync(result.left);
-  const detail = issues.map((i) => `[${i.path.join(".")}] ${i.message}`).join("; ");
-  throw new ToolFetchError(`invalid tool metadata from ${url}: ${detail}`, url);
+  const issue = issues[0];
+  const reason = issue?._tag === "Type" ? "has invalid type" : issue?.message;
+  const detail = issue ? `[${issue.path.join(".")}] ${reason}` : "decode failed";
+  throw new ToolFetchError(
+    `invalid tool metadata from ${truncateDiagnostic(url, 160)}: ${truncateDiagnostic(detail, 300)}`,
+    url,
+  );
 }
 
 /**
