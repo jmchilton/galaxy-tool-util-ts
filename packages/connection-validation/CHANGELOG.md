@@ -1,5 +1,12 @@
 # @galaxy-tool-util/connection-validation
 
+## 1.12.0
+
+### Patch Changes
+
+- Updated dependencies [[`0836ba8`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0836ba8e3ab969a80caeb4a3718cac026bc82365)]:
+  - @galaxy-tool-util/schema@1.12.0
+
 ## 1.11.0
 
 ### Minor Changes
