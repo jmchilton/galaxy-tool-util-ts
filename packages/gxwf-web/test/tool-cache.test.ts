@@ -123,7 +123,7 @@ describe("GET /api/tool-cache", () => {
     expect(orphan.toolshedUrl).toBeUndefined();
     expect(real.refetchable).toBe(true);
     // Deep link to the specific repo, not just the shed root.
-    expect(real.toolshedUrl).toBe("https://toolshed.g2.bx.psu.edu/repos/iuc/bwa/bwa_mem");
+    expect(real.toolshedUrl).toBe("https://toolshed.g2.bx.psu.edu/view/iuc/bwa");
   });
 
   it("does not probe payloads without ?decode=1 (defaults decodable: true)", async () => {
@@ -155,31 +155,6 @@ describe("GET /api/tool-cache/stats", () => {
     expect(data.totalBytes).toBeGreaterThan(0);
     expect(data.oldest).toBeTruthy();
     expect(data.newest).toBeTruthy();
-  });
-});
-
-describe("GET /api/tool-cache/{key}", () => {
-  it("returns raw payload + decodable=true for valid entries", async () => {
-    await seedTool("abc123", "fastqc", "0.74+galaxy0");
-    const res = await fetch(`${srv.baseUrl}/api/tool-cache/abc123`);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.decodable).toBe(true);
-    expect((data.contents as { id: string }).id).toBe("fastqc");
-  });
-
-  it("returns 404 for missing key", async () => {
-    const res = await fetch(`${srv.baseUrl}/api/tool-cache/no-such-key`);
-    expect(res.status).toBe(404);
-  });
-
-  it("returns 200 + decodable=false for corrupted payload", async () => {
-    await seedTool("k1", "fastqc", "0.74+galaxy0");
-    fs.writeFileSync(path.join(cacheDir, "k1.json"), JSON.stringify({ broken: true }));
-    const res = await fetch(`${srv.baseUrl}/api/tool-cache/k1`);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.decodable).toBe(false);
   });
 });
 

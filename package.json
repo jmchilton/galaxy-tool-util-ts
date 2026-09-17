@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"node packages/gxwf-web/dist/bin/gxwf-web.js $GXWF_TEST_WORKFLOW_DIRECTORY\" \"pnpm --filter @galaxy-tool-util/gxwf-ui dev\"",
-    "build": "pnpm -r build && pnpm --filter @galaxy-tool-util/gxwf-web copy-ui",
+    "build": "pnpm -r build && pnpm --filter @galaxy-tool-util/gxwf-web copy-ui && pnpm --filter @galaxy-tool-util/tool-cache-proxy copy-ui",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r --filter=!@galaxy-tool-util/gxwf-e2e test",
     "test:e2e": "pnpm --filter @galaxy-tool-util/gxwf-e2e test",

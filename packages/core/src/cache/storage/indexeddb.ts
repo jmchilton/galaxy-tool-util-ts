@@ -1,10 +1,12 @@
 import type { CacheStorage } from "./interface.js";
+import { isToolSourceDocument, type ToolSourceDocument } from "../../tool-source.js";
 
 /** Stable database name — increment version suffix on schema changes. */
 const DEFAULT_DB_NAME = "galaxy-tool-cache-v1";
 const STORE_NAME = "data";
 /** Reserved key used by CacheIndex to store the index metadata object. */
 const INDEX_KEY = "__index__";
+const SOURCE_PREFIX = "__source__:";
 
 /**
  * IndexedDB-backed CacheStorage for browser and Web Worker contexts.
@@ -61,6 +63,7 @@ export class IndexedDBCacheStorage implements CacheStorage {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readwrite");
       tx.objectStore(STORE_NAME).delete(key);
+      tx.objectStore(STORE_NAME).delete(`${SOURCE_PREFIX}${key}`);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -72,21 +75,38 @@ export class IndexedDBCacheStorage implements CacheStorage {
       const tx = db.transaction(STORE_NAME, "readonly");
       const req = tx.objectStore(STORE_NAME).getAllKeys();
       req.onsuccess = () =>
-        resolve((req.result as IDBValidKey[]).filter((k) => k !== INDEX_KEY) as string[]);
+        resolve([
+          ...new Set(
+            (req.result as string[])
+              .filter((k) => k !== INDEX_KEY)
+              .map((k) => (k.startsWith(SOURCE_PREFIX) ? k.slice(SOURCE_PREFIX.length) : k)),
+          ),
+        ]);
       req.onerror = () => reject(req.error);
     });
   }
 
   async stat(key: string): Promise<{ sizeBytes: number; mtime?: string } | null> {
     const value = await this.load(key);
-    if (value === null) return null;
+    const source = await this.loadSource(key);
+    if (value === null && source === null) return null;
     let sizeBytes: number;
     if (value instanceof Blob) {
       sizeBytes = value.size;
     } else {
-      sizeBytes = JSON.stringify(value).length;
+      sizeBytes = value === null ? 0 : new TextEncoder().encode(JSON.stringify(value)).length;
     }
+    if (source !== null) sizeBytes += new TextEncoder().encode(JSON.stringify(source)).length;
     return { sizeBytes };
+  }
+
+  async loadSource(key: string): Promise<ToolSourceDocument | null> {
+    const source = await this.load(`${SOURCE_PREFIX}${key}`);
+    return isToolSourceDocument(source) ? source : null;
+  }
+
+  async saveSource(key: string, source: ToolSourceDocument): Promise<void> {
+    await this.save(`${SOURCE_PREFIX}${key}`, source);
   }
 
   /** Bulk insert using a single transaction — efficient for pre-populating from a bundled dataset. */

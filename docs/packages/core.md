@@ -139,3 +139,34 @@ const tool = await fetchFromGalaxy(
 | `CACHE_DIR_ENV_VAR` | `GALAXY_TOOL_CACHE_DIR` | Env var to override cache dir |
 | `DEFAULT_TOOLSHED_URL` | `https://toolshed.g2.bx.psu.edu` | Main Galaxy ToolShed |
 | `TOOLSHED_URL_ENV_VAR` | `GALAXY_TOOLSHED_URL` | Env var to override ToolShed URL |
+
+## Wrapper source
+
+`ToolInfoService.fetchToolSource(toolId, toolVersion)` lazily fetches and caches a
+serialized wrapper independently of parsed tool metadata. It returns
+`{ contents, language, macrosExpanded }`, or `null` when every provider reports
+the source missing. Other upstream failures are surfaced after trying the
+configured sources in order.
+
+Tool Shed sources use `/api/tools/{trs_id}/versions/{version}/tool_source`.
+Galaxy sources use `/api/tools/{id}/raw_tool_source?tool_version={version}`;
+source display must be allowed by that Galaxy instance. XML is the expanded
+document returned by the provider, selected by wrapper version. Exact repository
+changesets, original wrapper files, and separate macro files are outside this API.
+
+Filesystem storage keeps `<key>.source` alongside parsed `<key>.json`, with format
+metadata in `<key>.source.json`. IndexedDB stores the same document separately
+from parsed metadata. Refetch and cache deletion invalidate both representations.
+Custom storage backends can implement the optional `loadSource` and `saveSource`
+methods; otherwise source caching is limited to memory.
+
+Both HTTP servers expose `GET /api/tools/{tool_id}/versions/{tool_version}/tool_source`
+as `text/plain; charset=utf-8`, without JSON quoting. The `language` and
+`X-Tool-Source-Macros-Expanded` headers describe the cached document. Missing source
+returns 404; other upstream failures return 502.
+
+Inspector entries may include `requestVersion` when their cache key uses a sentinel
+such as `_default_` while `toolVersion` shows a concrete wrapper version. Use
+`requestVersion ?? toolVersion` for source/model reads and refetch requests so they
+address the same cache entry. Stock tool IDs remain unchanged; the shared inspector
+also normalizes the fabricated stock IDs found in older cache indexes.

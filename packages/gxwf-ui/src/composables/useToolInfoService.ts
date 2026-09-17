@@ -8,7 +8,7 @@ import { IndexedDBCacheStorage, ToolInfoService, type ToolSource } from "@galaxy
  * sync-feel operation once tools are warm.
  *
  * Source order (highest priority first):
- *  1. tool-cache-proxy / gxwf-web `/tools` route, when reachable — lower
+ *  1. tool-cache-proxy / gxwf-web Tool Shed-compatible routes, when reachable — lower
  *     latency, no CORS, served by the same origin.
  *  2. ToolShed (default `https://toolshed.g2.bx.psu.edu`, override via
  *     `VITE_GXWF_TOOLSHED_URL`).
@@ -50,7 +50,7 @@ export function useToolInfoService(opts: UseToolInfoServiceOptions = {}): ToolIn
   const dbName = opts.cacheDbName ?? env.VITE_GXWF_CACHE_DB_NAME ?? DEFAULT_DB_NAME;
 
   const sources: ToolSource[] = [];
-  if (proxyUrl) sources.push({ type: "galaxy", url: proxyUrl });
+  if (proxyUrl) sources.push({ type: "toolshed", url: proxyUrl });
   sources.push({ type: "toolshed", url: toolshedUrl });
 
   const storage = new IndexedDBCacheStorage(dbName);

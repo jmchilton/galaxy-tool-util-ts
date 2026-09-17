@@ -34,6 +34,7 @@ export default tseslint.config(
     files: ["packages/core/src/**/*.ts"],
     ignores: [
       "packages/core/src/node.ts",
+      "packages/core/src/node-http.ts",
       "packages/core/src/config-node.ts",
       "packages/core/src/cache/node.ts",
       "packages/core/src/cache/storage/filesystem.ts",

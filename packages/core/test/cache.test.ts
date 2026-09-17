@@ -172,7 +172,7 @@ describe("ToolCache", () => {
     const coords = cache.resolveToolCoordinates("cat1", "1.0.0");
     expect(coords.trsToolId).toBe("cat1");
     expect(coords.version).toBe("1.0.0");
-    expect(coords.readableId).toBe("toolshed.g2.bx.psu.edu/repos/cat1");
+    expect(coords.readableId).toBe("cat1");
   });
 
   it("resolveToolCoordinates normalizes short owner/repo/tool form", () => {

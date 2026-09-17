@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { loadConfig, defaultConfig } from "../config.js";
 import { createProxyContext, createProxyServer } from "../router.js";
 
@@ -25,11 +26,20 @@ async function main() {
     config = { ...config, port };
   }
 
-  const ctx = createProxyContext(config);
+  const uiDirFromEnv = process.env.GALAXY_TOOL_PROXY_UI_DIST;
+  if (uiDirFromEnv && !existsSync(uiDirFromEnv)) {
+    console.error(`GALAXY_TOOL_PROXY_UI_DIST points to non-existent path: ${uiDirFromEnv}`);
+    process.exit(1);
+  }
+  const bundledUi = fileURLToPath(new URL("../../public", import.meta.url));
+  const uiDir = uiDirFromEnv ?? (existsSync(bundledUi) ? bundledUi : undefined);
+
+  const ctx = createProxyContext(config, { uiDir });
   const server = createProxyServer(ctx);
 
   server.listen(config.port, config.host, () => {
     console.log(`galaxy-tool-proxy listening on ${config.host}:${config.port}`);
+    if (uiDir) console.log(`  UI: ${uiDir}`);
   });
 }
 

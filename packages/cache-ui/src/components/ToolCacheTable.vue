@@ -82,10 +82,11 @@
         <template #body="{ data: row }">
           <Button
             icon="pi pi-eye"
+            aria-label="View tool definition"
             text
             size="small"
             @click="emit('view', row as Entry)"
-            v-tooltip.left="'View raw JSON'"
+            v-tooltip.left="'View tool definition'"
           />
           <Button
             icon="pi pi-refresh"
@@ -132,9 +133,7 @@ import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import Tag from "primevue/tag";
-import type { components } from "@galaxy-tool-util/gxwf-client";
-
-type Entry = components["schemas"]["CachedToolEntry"];
+import type { CachedToolEntry as Entry } from "../client.js";
 
 const props = defineProps<{ entries: Entry[]; loading?: boolean }>();
 const emit = defineEmits<{

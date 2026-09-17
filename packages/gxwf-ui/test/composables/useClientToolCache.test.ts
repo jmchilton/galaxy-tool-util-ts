@@ -1,4 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ToolCache } from "@galaxy-tool-util/core";
+import fastqcFixture from "../../../core/test/fixtures/fastqc-parsed-tool.json" with { type: "json" };
+
+const coordinateCache = new ToolCache({
+  storage: {
+    load: async () => null,
+    save: async () => {},
+    delete: async () => {},
+    list: async () => [],
+  },
+});
 
 interface IndexEntry {
   cache_key: string;
@@ -27,6 +38,8 @@ const refetchMock = vi.fn();
 
 const fakeService = {
   cache: {
+    defaultToolshedUrl: coordinateCache.defaultToolshedUrl,
+    resolveToolCoordinates: coordinateCache.resolveToolCoordinates.bind(coordinateCache),
     async listCached() {
       return cacheBacking.list.filter((e) => !cacheBacking.removed.has(e.cache_key));
     },
@@ -58,26 +71,13 @@ vi.mock("../../src/composables/useToolInfoService", () => ({
   useToolInfoService: () => fakeService,
 }));
 
-vi.mock("@galaxy-tool-util/core", () => ({
-  parseToolshedToolId: (id: string) => {
-    const m = id.match(/^(toolshed[^/]*)\/repos\/([^/]+)\/([^/]+)\/(.+)$/);
-    if (!m) return null;
-    return {
-      toolshedUrl: `https://${m[1]}`,
-      trsToolId: `${m[2]}~${m[3]}~${m[4]}`,
-      toolVersion: null,
-    };
-  },
-  toolIdFromTrs: (toolshedUrl: string, trsToolId: string) =>
-    `${toolshedUrl.replace(/^https?:\/\//, "")}/${trsToolId}`,
-}));
-
 const { useClientToolCache, _resetClientToolCacheForTests } =
   await import("../../src/composables/useClientToolCache");
 
 beforeEach(() => {
   cacheBacking.list = [];
   cacheBacking.raw.clear();
+  cacheBacking.decoded.clear();
   cacheBacking.stats.clear();
   cacheBacking.removed.clear();
   refetchMock.mockReset();
@@ -149,7 +149,7 @@ describe("useClientToolCache", () => {
         cached_at: "2024-01-02T00:00:00Z",
       },
     ];
-    cacheBacking.raw.set("good", { id: "a" });
+    cacheBacking.raw.set("good", { ...fastqcFixture, id: "a" });
     cacheBacking.decoded.set("good", { id: "a" });
     cacheBacking.raw.set("bad", { junk: true });
     // bad has no decoded entry — simulates ParsedTool decode failure.

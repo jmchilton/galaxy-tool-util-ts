@@ -2,6 +2,9 @@ import type { ParsedTool } from "@galaxy-tool-util/schema";
 import { DEFAULT_TOOL_VERSION, ToolCache } from "./cache/tool-cache.js";
 import { cacheKey } from "./cache/cache-key.js";
 import { fetchFromToolShed, fetchFromGalaxy } from "./client/toolshed.js";
+import { ToolFetchError } from "./client/toolshed.js";
+import { fetchToolSourceFromGalaxy, fetchToolSourceFromToolShed } from "./client/tool-source.js";
+import type { ToolSourceDocument } from "./tool-source.js";
 import { getLatestTRSToolVersion } from "./client/trs.js";
 import type { CacheStorage } from "./cache/storage/interface.js";
 import { ignoreDiagnostic, type DiagnosticSink } from "./diagnostics.js";
@@ -63,6 +66,73 @@ export class ToolInfoService {
   async getToolInfo(toolId: string, toolVersion?: string | null): Promise<ParsedTool | null> {
     const resolved = await this.resolveTool(toolId, toolVersion);
     return resolved === null ? null : resolved.tool;
+  }
+
+  /** Lazy wrapper-source fetch with write-through caching, independent of parsed metadata. */
+  async fetchToolSource(
+    toolId: string,
+    toolVersion?: string | null,
+  ): Promise<ToolSourceDocument | null> {
+    const coords = this.cache.resolveToolCoordinates(toolId, toolVersion);
+    const keyVersion =
+      coords.version ?? (await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId));
+    if (keyVersion === null) return null;
+    const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, keyVersion);
+    const cached = await this.cache.loadToolSource(key);
+    if (cached !== null) return cached;
+
+    let fetchVersion = keyVersion;
+    if (keyVersion === DEFAULT_TOOL_VERSION) {
+      const parsed = await this.cache.loadCached(key);
+      fetchVersion =
+        parsed?.version ??
+        (await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId)) ??
+        DEFAULT_TOOL_VERSION;
+    }
+    let failure: unknown;
+    for (const source of this.sources) {
+      let document: ToolSourceDocument;
+      try {
+        document =
+          source.type === "toolshed"
+            ? await fetchToolSourceFromToolShed(
+                source.url,
+                coords.trsToolId,
+                fetchVersion,
+                this.fetcher,
+              )
+            : await fetchToolSourceFromGalaxy(
+                source.url,
+                coords.trsToolId.includes("~") ? coords.readableId : toolId,
+                fetchVersion === DEFAULT_TOOL_VERSION ? null : fetchVersion,
+                this.fetcher,
+              );
+      } catch (err) {
+        this.onDiagnostic(
+          `${source.type} source fetch failed (${source.url}) for ${coords.trsToolId}: ${err}`,
+        );
+        if (!(err instanceof ToolFetchError) || err.statusCode !== 404) failure = err;
+        continue;
+      }
+      try {
+        await this.cache.saveToolSource(key, document);
+        // Source-only entries must participate in cache deletion and prefix clearing.
+        if (!(await this.cache.index.has(key))) {
+          await this.cache.index.add(
+            key,
+            coords.readableId,
+            fetchVersion,
+            source.type === "toolshed" ? "api" : "galaxy",
+            source.url,
+          );
+        }
+      } catch (err) {
+        this.onDiagnostic(`Failed to cache fetched tool source ${coords.trsToolId}: ${err}`);
+      }
+      return document;
+    }
+    if (failure !== undefined) throw failure;
+    return null;
   }
 
   /**
@@ -191,7 +261,10 @@ export class ToolInfoService {
     opts?: { force?: boolean },
   ): Promise<{ cacheKey: string; fetched: boolean; alreadyCached: boolean }> {
     const coords = this.cache.resolveToolCoordinates(toolId, toolVersion ?? null);
-    const resolvedVersion = coords.version;
+    let resolvedVersion = coords.version;
+    if (opts?.force && resolvedVersion === null) {
+      resolvedVersion = await this.resolveLatestVersion(coords.toolshedUrl, coords.trsToolId);
+    }
     let alreadyCached = false;
     if (resolvedVersion !== null) {
       alreadyCached = await this.cache.hasCached(toolId, resolvedVersion);
@@ -200,7 +273,7 @@ export class ToolInfoService {
       const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion!);
       return { cacheKey: key, fetched: false, alreadyCached: true };
     }
-    if (alreadyCached && opts?.force && resolvedVersion !== null) {
+    if (opts?.force && resolvedVersion !== null) {
       const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, resolvedVersion);
       await this.cache.removeCached(key);
     }
@@ -214,12 +287,6 @@ export class ToolInfoService {
     // (coords.version); an unpinned ToolShed tool (coords.version === null) keys by
     // the resolved version. Must not key a stock tool by tool.version — its entry
     // lives under the `_default_` key, not `~<version>`.
-    //
-    // Known edge (tracked): a stock entry is keyed under `_default_` but its index/display
-    // version is the concrete one (e.g. `1.1.1`). A caller that refetches by the *display*
-    // version (gxwf-web inspector does) passes `1.1.1`, misses the `_default_` key, and
-    // writes a duplicate sibling instead of refreshing. Unreachable until the shed's TRS
-    // version-list endpoint is healthy; fix needs the request version persisted in the index.
     const keyVersion = coords.version ?? tool.version ?? "unknown";
     const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, keyVersion);
     return { cacheKey: key, fetched: true, alreadyCached };

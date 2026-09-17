@@ -63,7 +63,7 @@ describe("useToolInfoService", () => {
   it("places the proxy source ahead of ToolShed when configured", () => {
     useToolInfoService({ toolCacheProxyUrl: "http://localhost:8000" });
     expect(serviceConstructions[0]!.sources).toEqual([
-      { type: "galaxy", url: "http://localhost:8000" },
+      { type: "toolshed", url: "http://localhost:8000" },
       { type: "toolshed", url: "https://toolshed.g2.bx.psu.edu" },
     ]);
   });

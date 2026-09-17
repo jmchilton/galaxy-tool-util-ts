@@ -53,3 +53,47 @@ export {
   toolInfoOptionsFromConfig,
 } from "./config.js";
 export type { ConfigToolInfoOptions } from "./config.js";
+
+/** Framework-agnostic HTTP handlers + DTOs shared by gxwf-web and tool-cache-proxy. */
+export {
+  HttpError,
+  matchCacheRoute,
+  dispatchCacheRoute,
+  type CacheResult,
+  type CacheRoute,
+  cacheToTrs,
+  cacheToTrsOne,
+  entryToTrsVersion,
+  listCache,
+  cacheStats,
+  deleteCacheEntry,
+  clearCache,
+  refetchTool,
+  addTool,
+  searchTools,
+  trsListTools,
+  trsGetTool,
+  trsListVersions,
+  getParsedTool,
+  getParameterSchema,
+  getToolSource,
+} from "./cache-http/index.js";
+export type {
+  HandlerCtx,
+  ListOptions,
+  SearchOptions,
+  CacheIndexRecord,
+  AddRequest,
+  AddResponse,
+  CachedToolEntry,
+  ClearResponse,
+  DeleteResponse,
+  ListResponse,
+  ParameterSchemaKind,
+  RefetchRequest,
+  RefetchResponse,
+  SearchResults,
+} from "./cache-http/index.js";
+
+export type { ToolSourceDocument } from "./tool-source.js";
+export { fetchToolSourceFromToolShed, fetchToolSourceFromGalaxy } from "./client/index.js";

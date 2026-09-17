@@ -352,12 +352,170 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get the raw cached payload */
-    get: operations["read_tool_cache_api_tool_cache_key_get"];
+    get?: never;
     put?: never;
     post?: never;
     /** Delete a single cache entry */
     delete: operations["delete_tool_cache_api_tool_cache_key_delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tools": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search cached tools
+     * @description Substring search across cached tools. q matches tool_id / name / description.
+     */
+    get: operations["searchTools"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ga4gh/trs/v2/tools": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List TRS tools */
+    get: operations["trsListTools"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ga4gh/trs/v2/tools/{tool_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get a TRS tool */
+    get: operations["trsGetTool"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/ga4gh/trs/v2/tools/{tool_id}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List TRS tool versions */
+    get: operations["trsListVersions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tools/{tool_id}/versions/{tool_version}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get parsed tool */
+    get: operations["getParsedTool"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tools/{tool_id}/versions/{tool_version}/parameter_request_schema": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Parameter request JSON Schema */
+    get: operations["getParameterRequestSchema"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tools/{tool_id}/versions/{tool_version}/parameter_landing_request_schema": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Parameter landing-request JSON Schema */
+    get: operations["getParameterLandingRequestSchema"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tools/{tool_id}/versions/{tool_version}/parameter_test_case_xml_schema": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Parameter test-case-XML JSON Schema */
+    get: operations["getParameterTestCaseXmlSchema"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/tools/{tool_id}/versions/{tool_version}/tool_source": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Serialized tool wrapper source
+     * @description Lazily fetch and cache the serialized wrapper selected by tool version. XML macros are expanded by the upstream provider. Exact repository changesets and original macro files are not selected by this endpoint. Refetch or delete the cache entry to invalidate its source.
+     */
+    get: operations["getToolSource"];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -1015,6 +1173,8 @@ export interface components {
       toolId: string;
       /** Tool Version */
       toolVersion: string;
+      /** @description Cache request version when it differs from the displayed wrapper version, such as _default_. */
+      requestVersion?: string;
       /** Source */
       source: string;
       /** Source Url */
@@ -1049,13 +1209,6 @@ export interface components {
     ToolCacheListResponse: {
       entries: components["schemas"]["CachedToolEntry"][];
       stats: components["schemas"]["CacheStats"];
-    };
-    /** ToolCacheRawResponse */
-    ToolCacheRawResponse: {
-      /** Contents */
-      contents: unknown;
-      /** Decodable */
-      decodable: boolean;
     };
     /** ToolCacheDeleteResponse */
     ToolCacheDeleteResponse: {
@@ -1097,9 +1250,58 @@ export interface components {
       /** Already Cached */
       alreadyCached: boolean;
     };
+    /** @description Galaxy parsed tool meta-model. Fully described in @galaxy-tool-util/schema. */
+    ParsedTool: {
+      [key: string]: unknown;
+    };
+    TrsToolClass: {
+      id?: string;
+      name?: string;
+      description?: string;
+    };
+    TrsToolVersion: {
+      url: string;
+      id: string;
+      name?: string;
+      is_production?: boolean;
+      descriptor_type?: ("CWL" | "WDL" | "NFL" | "GALAXY" | "SMK")[];
+      containerfile?: boolean;
+      meta_version?: string;
+      verified?: boolean;
+      signed?: boolean;
+    };
+    TrsTool: {
+      url: string;
+      id: string;
+      organization: string;
+      toolclass: components["schemas"]["TrsToolClass"];
+      versions: components["schemas"]["TrsToolVersion"][];
+      name?: string;
+      description?: string;
+      meta_version?: string;
+      has_checker?: boolean;
+      checker_url?: string;
+    };
+    SearchHit: {
+      toolId: string;
+      toolVersion: string;
+      name?: string;
+      description?: string;
+    };
+    SearchResults: {
+      q: string;
+      page: number;
+      pageSize: number;
+      total: number;
+      hits: components["schemas"]["SearchHit"][];
+    };
   };
   responses: never;
-  parameters: never;
+  parameters: {
+    /** @description TRS-form tool id (owner~repo~tool_id) or readable form. */
+    ToolId: string;
+    ToolVersion: string;
+  };
   requestBodies: never;
   headers: never;
   pathItems: never;
@@ -1828,28 +2030,6 @@ export interface operations {
       };
     };
   };
-  read_tool_cache_api_tool_cache_key_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        cacheKey: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ToolCacheRawResponse"];
-        };
-      };
-    };
-  };
   delete_tool_cache_api_tool_cache_key_delete: {
     parameters: {
       query?: never;
@@ -1868,6 +2048,269 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ToolCacheDeleteResponse"];
+        };
+      };
+    };
+  };
+  searchTools: {
+    parameters: {
+      query?: {
+        q?: string;
+        page?: number;
+        page_size?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Search results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SearchResults"];
+        };
+      };
+    };
+  };
+  trsListTools: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tool list */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TrsTool"][];
+        };
+      };
+    };
+  };
+  trsGetTool: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description TRS-form tool id (owner~repo~tool_id) or readable form. */
+        tool_id: components["parameters"]["ToolId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tool */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TrsTool"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  trsListVersions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description TRS-form tool id (owner~repo~tool_id) or readable form. */
+        tool_id: components["parameters"]["ToolId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tool versions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TrsToolVersion"][];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getParsedTool: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description TRS-form tool id (owner~repo~tool_id) or readable form. */
+        tool_id: components["parameters"]["ToolId"];
+        tool_version: components["parameters"]["ToolVersion"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Parsed tool */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ParsedTool"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getParameterRequestSchema: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description TRS-form tool id (owner~repo~tool_id) or readable form. */
+        tool_id: components["parameters"]["ToolId"];
+        tool_version: components["parameters"]["ToolVersion"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description JSON Schema */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  getParameterLandingRequestSchema: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description TRS-form tool id (owner~repo~tool_id) or readable form. */
+        tool_id: components["parameters"]["ToolId"];
+        tool_version: components["parameters"]["ToolVersion"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description JSON Schema */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  getParameterTestCaseXmlSchema: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description TRS-form tool id (owner~repo~tool_id) or readable form. */
+        tool_id: components["parameters"]["ToolId"];
+        tool_version: components["parameters"]["ToolVersion"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description JSON Schema */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  getToolSource: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description TRS-form tool id (owner~repo~tool_id) or readable form. */
+        tool_id: components["parameters"]["ToolId"];
+        tool_version: components["parameters"]["ToolVersion"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Wrapper text, without JSON encoding. */
+      200: {
+        headers: {
+          /** @description Wrapper format reported by the provider, or text if unknown. */
+          language?: "xml" | "yaml" | "json" | "cwl" | "text";
+          /** @description true for expanded XML; false for formats without XML macros. */
+          "X-Tool-Source-Macros-Expanded"?: "true" | "false";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/plain": string;
+        };
+      };
+      /** @description Tool source not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            detail?: string;
+          };
+        };
+      };
+      /** @description Upstream source fetch failed */
+      502: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            detail?: string;
+          };
         };
       };
     };
