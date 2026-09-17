@@ -57,14 +57,15 @@ jobs:
           path: packages
 
       - name: Create Release PR or Publish
-        # Action v1 supports our Changesets CLI v2; upgrade both majors together.
-        uses: changesets/action@v1.9.0
+        uses: changesets/action@v2.1.2
         with:
-          publish: pnpm changeset publish
-          title: "chore: version packages"
-          commit: "chore: version packages"
-          createGithubReleases: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          publish-script: pnpm changeset publish
+          pr-title: "chore: version packages"
+          commit-message: "chore: version packages"
+          create-github-releases: true
         env:
+          # Used by @changesets/changelog-github during versioning.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_IGNORE_SCRIPTS: true
           NPM_CONFIG_PROVENANCE: true

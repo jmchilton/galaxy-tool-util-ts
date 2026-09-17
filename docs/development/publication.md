@@ -4,9 +4,11 @@
 
 Releases are fully automated via the [changesets/action](https://github.com/changesets/action) GitHub Action on every push to `main`.
 
-The workflow uses Changesets action v1 with Changesets CLI v2. Dependabot ignores major
-upgrades of this action because action v2 requires CLI v3 and renamed workflow inputs.
-Upgrade the CLI, action, and inputs together when migrating to CLI v3.
+The workflow uses Changesets action v2 with Changesets CLI v3 and the matching GitHub
+changelog plugin. Release tooling requires Node.js `^22.11 || ^24 || >=26` and pnpm 10 or
+later; CI runs Node.js 24. The action uses the `publish-script`, `pr-title`,
+`commit-message`, and `create-github-releases` inputs. Its `github-token` input configures
+action authentication; `GITHUB_TOKEN` is also passed to the changelog plugin during versioning.
 
 ### Flow
 
@@ -43,6 +45,9 @@ All published packages are in one linked group in `.changeset/config.json`:
 Linked mode means: if any package bumps, **all linked packages bump to the same version** (taking the highest version in the group and applying the highest-level bump). This keeps versions in sync across the monorepo.
 
 Private packages (`gxwf-ui`, `gxwf-e2e`) are excluded from publishing automatically via `"private": true` in their `package.json`.
+
+`privatePackages: { "version": true, "tag": false }` preserves CLI v2 behavior: private
+packages still receive version updates from changesets, but are neither published nor tagged.
 
 ### Trusted Publishing (OIDC)
 
