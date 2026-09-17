@@ -1,5 +1,32 @@
 # @galaxy-tool-util/gxwf-ui
 
+## 0.4.0
+
+### Minor Changes
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`54f0d61`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/54f0d61642a768d531027f9a174322b8259a9db8) Thanks [@jmchilton](https://github.com/jmchilton)! - Extract the Tool Cache panel into a shared package (Phase 4 of merged cache UI plan).
+  - New `@galaxy-tool-util/cache-ui` package: `ToolCacheView`, `ToolCacheTable`, `ToolCacheStats`, `ToolCacheRawDialog`, `useToolCache`, and `createCacheClient(baseUrl)`. The composable takes a `CacheClient` directly — no module-level singleton.
+  - Compile-time types are sourced from the `tool-cache-proxy` OpenAPI spec; both servers implement the surface identically so a `CacheClient` works against either.
+  - `gxwf-ui` consumes `cache-ui` and removes its local copies of the four cache components, the `useToolCache` composable, and the cache view (now a thin wrapper that builds a client and mounts `<ToolCacheView>`).
+  - `tool-cache-proxy` re-exports its generated `paths` / `components` / `operations` types and renames the delete path parameter from `cache_key` to `cacheKey` to match `gxwf-web`.
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`14b767b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/14b767ba182fedf432120df9394cdca75f26dd03) Thanks [@jmchilton](https://github.com/jmchilton)! - Migrate `gxwf-web` cache surface to shared handlers (Phase 3 of merged cache UI plan).
+  - Added GA4GH TRS read surface: `GET /api/ga4gh/trs/v2/tools[/{tool_id}[/versions]]`.
+  - Added `GET /api/tools` search (`q` / `page` / `page_size`).
+  - Added `GET /api/tools/{id}/versions/{ver}` (parsed tool), three concrete `parameter_*_schema` endpoints, and `tool_source` (501).
+  - Router now thin-wraps shared handlers in `@galaxy-tool-util/core/cache-http`; `tool-cache.ts` removed.
+  - `ToolCacheRawDialog` rewritten as a tabbed dialog addressing entries by `(tool_id, tool_version)` — tabs for parameter model, request schema, landing-request schema, test-case XML schema, and tool source (disabled).
+
+### Patch Changes
+
+- Updated dependencies [[`54f0d61`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/54f0d61642a768d531027f9a174322b8259a9db8), [`73c3dd4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/73c3dd457d6129793ca418afaeab4a3716efd1fa), [`cf74f73`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/cf74f73838d9c412d03d4638cbb14509c1cea6bc), [`0836ba8`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0836ba8e3ab969a80caeb4a3718cac026bc82365), [`45741b0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/45741b0db3b6eeada5a53ba57c6af4cfd8f352f7), [`3a0a04d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3a0a04d39eaa2f7bee1862d287feab7047c1760c), [`7f2ece9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7f2ece955d60bb394141354e03fc6369d6e56eb5), [`7614118`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7614118487a6000af8425eeec9650d225975f78c), [`d2e8574`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d2e8574c1bc615dbeea28e01c3a1a644b3638694)]:
+  - @galaxy-tool-util/cache-ui@0.2.0
+  - @galaxy-tool-util/core@1.12.0
+  - @galaxy-tool-util/schema@1.12.0
+  - @galaxy-tool-util/gxwf-client@1.12.0
+  - @galaxy-tool-util/connection-validation@1.12.0
+  - @galaxy-tool-util/gxwf-report-shell@1.12.0
+
 ## 0.3.14
 
 ### Patch Changes

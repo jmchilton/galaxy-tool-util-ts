@@ -1,5 +1,13 @@
 # @galaxy-tool-util/gxwf-client
 
+## 1.12.0
+
+### Patch Changes
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`d2e8574`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d2e8574c1bc615dbeea28e01c3a1a644b3638694) Thanks [@jmchilton](https://github.com/jmchilton)! - Implement lazy wrapper-source fetching and caching from Tool Shed and Galaxy endpoints. Serve UTF-8 source text with language and macro-expansion headers, enable the Source tab in server and browser cache inspectors, and invalidate stored source when refetching or deleting a cache entry. Tool Shed XML is expanded and selected by wrapper version; exact changesets and original macro files remain outside this API.
+- Updated dependencies [[`73c3dd4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/73c3dd457d6129793ca418afaeab4a3716efd1fa), [`14b767b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/14b767ba182fedf432120df9394cdca75f26dd03), [`45741b0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/45741b0db3b6eeada5a53ba57c6af4cfd8f352f7), [`3a0a04d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3a0a04d39eaa2f7bee1862d287feab7047c1760c), [`d2e8574`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d2e8574c1bc615dbeea28e01c3a1a644b3638694)]:
+  - @galaxy-tool-util/gxwf-web@1.12.0
+
 ## 1.11.0
 
 ### Patch Changes
