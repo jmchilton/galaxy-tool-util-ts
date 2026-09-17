@@ -57,7 +57,8 @@ jobs:
           path: packages
 
       - name: Create Release PR or Publish
-        uses: changesets/action@v2.1.2
+        # Action v1 supports our Changesets CLI v2; upgrade both majors together.
+        uses: changesets/action@v1.9.0
         with:
           publish: pnpm changeset publish
           title: "chore: version packages"

@@ -4,6 +4,10 @@
 
 Releases are fully automated via the [changesets/action](https://github.com/changesets/action) GitHub Action on every push to `main`.
 
+The workflow uses Changesets action v1 with Changesets CLI v2. Dependabot ignores major
+upgrades of this action because action v2 requires CLI v3 and renamed workflow inputs.
+Upgrade the CLI, action, and inputs together when migrating to CLI v3.
+
 ### Flow
 
 1. During development, each PR that touches published package source includes a changeset file (created with `pnpm changeset`).
