@@ -414,6 +414,7 @@ async function _validateNativeStepJsonSchema(
     toolId,
     toolVersion,
     toolSchemaDir,
+    step.when,
   );
 }
 
@@ -424,6 +425,31 @@ async function _validateNativeStepJsonSchema(
  * workflow format. (JSON Schema can't enforce double-encoded scalar types, e.g.
  * "5" for an int, but still checks structure and unknown keys.)
  */
+/**
+ * Connection keys that feed the step itself rather than the tool: Galaxy wires
+ * a conditional step's skip-if expression through `input_connections`, under
+ * the literal key `when` in native form and under whatever names the format2
+ * `when:` expression references. Neither names a tool parameter, so neither is
+ * matched by the parameter walk.
+ */
+function stepLevelConnectionKeys(whenExpression: unknown): Set<string> {
+  const keys = new Set<string>(["when"]);
+  if (typeof whenExpression === "string") {
+    for (const m of whenExpression.matchAll(/inputs\.([A-Za-z_]\w*)/g)) keys.add(m[1]);
+    for (const m of whenExpression.matchAll(/inputs\[['"]([^'"]+)['"]\]/g)) keys.add(m[1]);
+  }
+  return keys;
+}
+
+/** Connection keys that matched no tool parameter and are not step-level inputs. */
+function unmatchedConnectionKeys(
+  remaining: Record<string, unknown>,
+  whenExpression: unknown,
+): string[] {
+  const stepLevel = stepLevelConnectionKeys(whenExpression);
+  return Object.keys(remaining).filter((k) => !stepLevel.has(k));
+}
+
 function _validateNativeStateJsonSchema(
   bundle: ToolParameterBundleModel,
   toolState: Record<string, unknown>,
@@ -432,6 +458,7 @@ function _validateNativeStateJsonSchema(
   toolId: string,
   toolVersion: string | null,
   toolSchemaDir?: string,
+  whenExpression?: unknown,
 ): StepValidationResult {
   const replacementScan = scanForReplacements(bundle.parameters, toolState);
   if (replacementScan === "yes") {
@@ -445,7 +472,20 @@ function _validateNativeStateJsonSchema(
   }
 
   const state = structuredClone(toolState);
-  injectConnectionsIntoState(bundle.parameters, state, connections);
+  const remaining = injectConnectionsIntoState(bundle.parameters, state, connections);
+
+  // Mirrors the linked path below: an unmatched connection key is a defect
+  // regardless of which state block the step carries.
+  const unmatchedKeys = unmatchedConnectionKeys(remaining, whenExpression);
+  if (unmatchedKeys.length > 0) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+    };
+  }
 
   const validate = getOrBuildValidator(
     toolId,
@@ -568,6 +608,7 @@ async function _validateFormat2StepJsonSchema(
       toolId,
       toolVersion,
       toolSchemaDir,
+      step.when,
     );
   }
 
@@ -618,7 +659,7 @@ async function _validateFormat2StepJsonSchema(
   const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
     linked: true,
   });
-  const unmatchedKeys = Object.keys(remaining);
+  const unmatchedKeys = unmatchedConnectionKeys(remaining, step.when);
   if (unmatchedKeys.length > 0) {
     return {
       step: stepLabel,
