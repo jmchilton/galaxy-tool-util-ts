@@ -355,6 +355,7 @@ async function _validateNativeStep(
     stepLabel,
     toolId,
     toolVersion,
+    step.when,
   );
 }
 
@@ -365,6 +366,31 @@ async function _validateNativeStep(
  * encoding (double-encoded scalars, inline ConnectedValue/RuntimeValue markers)
  * is identical regardless of workflow format, so the same model validates both.
  */
+/**
+ * Connection keys that feed the step itself rather than the tool: Galaxy wires
+ * a conditional step's skip-if expression through `input_connections`, under
+ * the literal key `when` in native form and under whatever names the format2
+ * `when:` expression references. Neither names a tool parameter, so neither is
+ * matched by the parameter walk.
+ */
+function stepLevelConnectionKeys(whenExpression: unknown): Set<string> {
+  const keys = new Set<string>(["when"]);
+  if (typeof whenExpression === "string") {
+    for (const m of whenExpression.matchAll(/inputs\.([A-Za-z_]\w*)/g)) keys.add(m[1]);
+    for (const m of whenExpression.matchAll(/inputs\[['"]([^'"]+)['"]\]/g)) keys.add(m[1]);
+  }
+  return keys;
+}
+
+/** Connection keys that matched no tool parameter and are not step-level inputs. */
+function unmatchedConnectionKeys(
+  remaining: Record<string, unknown>,
+  whenExpression: unknown,
+): string[] {
+  const stepLevel = stepLevelConnectionKeys(whenExpression);
+  return Object.keys(remaining).filter((k) => !stepLevel.has(k));
+}
+
 function _validateNativeState(
   bundle: ToolParameterBundleModel,
   toolState: Record<string, unknown>,
@@ -372,6 +398,7 @@ function _validateNativeState(
   stepLabel: string,
   toolId: string,
   toolVersion: string | null,
+  whenExpression?: unknown,
 ): StepValidationResult {
   // Skip validation if replacement parameters (${...}) are present in typed fields
   const replacementScan = scanForReplacements(bundle.parameters, toolState);
@@ -391,7 +418,7 @@ function _validateNativeState(
 
   // A connection key that matches no parameter is a defect whichever state block
   // the step carries; the `state` path reports it below and this one must agree.
-  const unmatchedKeys = Object.keys(remaining);
+  const unmatchedKeys = unmatchedConnectionKeys(remaining, whenExpression);
   if (unmatchedKeys.length > 0) {
     return {
       step: stepLabel,
@@ -527,6 +554,7 @@ async function _validateFormat2Step(
       stepLabel,
       toolId,
       toolVersion,
+      step.when,
     );
   }
 
@@ -572,7 +600,7 @@ async function _validateFormat2Step(
     linked: true,
   });
 
-  const unmatchedKeys = Object.keys(remaining);
+  const unmatchedKeys = unmatchedConnectionKeys(remaining, step.when);
   if (unmatchedKeys.length > 0) {
     return {
       step: stepLabel,

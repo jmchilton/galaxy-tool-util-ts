@@ -80,4 +80,62 @@ describe("gxwf validate: connection keys vs the tool's parameters", () => {
     expect(report.results[0].status).toBe("ok");
     expect(report.results[0].errors).toEqual([]);
   });
+  it("does not flag the step-level `when` connection on a conditional native step", async () => {
+    // Galaxy wires a conditional step's skip-if expression through
+    // input_connections under `when`; it names no tool parameter. 136 steps
+    // across 24 IWC workflows do this.
+    const path = join(ctx.tmpDir, "wf.ga");
+    await writeFile(
+      path,
+      JSON.stringify({
+        a_galaxy_workflow: "true",
+        "format-version": "0.1",
+        steps: {
+          "0": { id: 0, type: "data_input", label: "in", tool_id: null, tool_state: "{}" },
+          "1": { id: 1, type: "parameter_input", label: "run_me", tool_id: null, tool_state: "{}" },
+          "2": {
+            id: 2,
+            type: "tool",
+            label: "conditional",
+            tool_id: DATA_TOOL_ID,
+            tool_version: "1.0",
+            tool_state: JSON.stringify({ input_file: { __class__: "ConnectedValue" } }),
+            when: "$(inputs.when)",
+            input_connections: {
+              input_file: [{ id: 0, output_name: "output" }],
+              when: [{ id: 1, output_name: "output" }],
+            },
+          },
+        },
+      }),
+    );
+
+    await runValidateWorkflow(path, { cacheDir: ctx.tmpDir, json: true });
+    const out = ctx.logSpy.mock.calls
+      .map((c) => c[0])
+      .find((s) => typeof s === "string" && s.startsWith("{"));
+    const report = JSON.parse(out as string) as SingleValidationReport;
+
+    expect(report.results.map((r) => r.status)).toEqual(["ok"]);
+  });
+
+  it("does not flag format2 inputs referenced by a `when:` expression", async () => {
+    const report = await validate({
+      class: "GalaxyWorkflow",
+      inputs: { reads: { type: "data" }, run_me: { type: "boolean" } },
+      outputs: {},
+      steps: {
+        consume: {
+          tool_id: DATA_TOOL_ID,
+          tool_version: "1.0",
+          when: "$(inputs.should_run)",
+          in: { input_file: "reads", should_run: "run_me" },
+          out: [{ id: "output" }],
+          tool_state: { input_file: { __class__: "ConnectedValue" }, threshold: 0.5 },
+        },
+      },
+    });
+
+    expect(report.results[0].status).toBe("ok");
+  });
 });
