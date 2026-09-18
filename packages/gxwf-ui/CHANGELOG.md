@@ -1,5 +1,17 @@
 # @galaxy-tool-util/gxwf-ui
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [[`613e3b2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/613e3b20dcae8d38734242e7615798ea33630b09), [`a29fd2a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a29fd2a074070fd6fe728e06bffac8e85f802101)]:
+  - @galaxy-tool-util/schema@1.12.1
+  - @galaxy-tool-util/connection-validation@1.12.1
+  - @galaxy-tool-util/core@1.12.1
+  - @galaxy-tool-util/gxwf-report-shell@1.12.1
+  - @galaxy-tool-util/gxwf-client@1.12.1
+  - @galaxy-tool-util/cache-ui@0.2.1
+
 ## 0.4.0
 
 ### Minor Changes

@@ -1,5 +1,22 @@
 # @galaxy-tool-util/cli
 
+## 1.12.1
+
+### Patch Changes
+
+- [#180](https://github.com/jmchilton/galaxy-tool-util-ts/pull/180) [`1ca82df`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/1ca82df1f7f079c89dd021914ec0db82b8d95215) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Report unmatched connection keys on steps that carry `tool_state`, not just `state`.
+
+  `gxwf validate` fails a step whose `in:` key names no parameter of the pinned tool — but only on the schema-aware `state` path. `_validateNativeState` made the same `injectConnectionsIntoState` call and discarded its return, so the unmatched keys were never reported and a stray connection validated green. Since `gxwf convert --to format2` emits `tool_state`, that covered essentially every converted workflow. Both the Effect and JSON-Schema validators now report the unmatched keys the same way on both paths.
+
+  A conditional step's skip-if expression is wired through the same `input_connections` map — under the literal key `when` natively, and under the names a format2 `when:` expression references — and names no tool parameter. Those keys are excluded from the report on both paths.
+
+- Updated dependencies [[`613e3b2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/613e3b20dcae8d38734242e7615798ea33630b09), [`a29fd2a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a29fd2a074070fd6fe728e06bffac8e85f802101)]:
+  - @galaxy-tool-util/schema@1.12.1
+  - @galaxy-tool-util/connection-validation@1.12.1
+  - @galaxy-tool-util/core@1.12.1
+  - @galaxy-tool-util/search@1.12.1
+  - @galaxy-tool-util/tool-xml@1.12.1
+
 ## 1.12.0
 
 ### Patch Changes

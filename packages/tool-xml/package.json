@@ -1,6 +1,6 @@
 {
   "name": "@galaxy-tool-util/tool-xml",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "XML tool-source layer for Galaxy tools — macro expansion (port of galaxy.util.xml_macros) and XML parsing into ParsedTool",
   "type": "module",
   "sideEffects": false,
