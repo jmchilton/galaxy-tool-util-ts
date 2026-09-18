@@ -445,7 +445,20 @@ function _validateNativeStateJsonSchema(
   }
 
   const state = structuredClone(toolState);
-  injectConnectionsIntoState(bundle.parameters, state, connections);
+  const remaining = injectConnectionsIntoState(bundle.parameters, state, connections);
+
+  // Mirrors the linked path below: an unmatched connection key is a defect
+  // regardless of which state block the step carries.
+  const unmatchedKeys = Object.keys(remaining);
+  if (unmatchedKeys.length > 0) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+    };
+  }
 
   const validate = getOrBuildValidator(
     toolId,

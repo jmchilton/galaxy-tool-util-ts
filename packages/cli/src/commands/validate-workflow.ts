@@ -387,7 +387,20 @@ function _validateNativeState(
 
   // Deep copy state and inject connection markers
   const state = structuredClone(toolState);
-  injectConnectionsIntoState(bundle.parameters, state, connections);
+  const remaining = injectConnectionsIntoState(bundle.parameters, state, connections);
+
+  // A connection key that matches no parameter is a defect whichever state block
+  // the step carries; the `state` path reports it below and this one must agree.
+  const unmatchedKeys = Object.keys(remaining);
+  if (unmatchedKeys.length > 0) {
+    return {
+      step: stepLabel,
+      tool_id: toolId,
+      version: toolVersion,
+      status: "fail",
+      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+    };
+  }
 
   const fieldModel = createFieldModel(bundle, "workflow_step_native");
   if (!fieldModel) {
