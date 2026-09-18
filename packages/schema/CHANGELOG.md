@@ -1,5 +1,21 @@
 # @galaxy-tool-util/schema
 
+## 1.12.1
+
+### Patch Changes
+
+- [#182](https://github.com/jmchilton/galaxy-tool-util-ts/pull/182) [`613e3b2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/613e3b20dcae8d38734242e7615798ea33630b09) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(schema): offset list-form step ids by the input count in `normalizedFormat2`
+
+  List-form Format2 steps without an explicit `id` were numbered from 0 within
+  `steps`, while gxformat2 numbers them from the count of `inputs` so a normalized
+  step id equals the index it takes in native form. A numeric source such as
+  `0/out_file1` resolved to the first step in TypeScript and to the first input in
+  Python; both now resolve to the input.
+
+- [#179](https://github.com/jmchilton/galaxy-tool-util-ts/pull/179) [`a29fd2a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a29fd2a074070fd6fe728e06bffac8e85f802101) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Always normalize in `toNative`, fixing `TypeError: step.in is not iterable` on list-form Format2 workflows.
+
+  `toNative` decided a workflow was already normalized from three top-level facts — `class: GalaxyWorkflow` plus array-valued `inputs` and `steps` — none of which constrain the per-step shape. gxformat2 allows list-form `inputs`/`steps` alongside dict-form `in`/`out`, and such a workflow skipped `normalizedFormat2` entirely and then crashed in `_extractConnections`. `gxwf validate --connections`, `gxwf convert --to native` and `ensureNative` were all affected. `normalizedFormat2` is idempotent, so the shape check is dropped and normalization now runs unconditionally.
+
 ## 1.12.0
 
 ### Minor Changes
