@@ -157,7 +157,7 @@ function _normalizeWorkflow(
 ): NormalizedFormat2Workflow {
   const inputs = _normalizeInputs(raw.inputs);
   const outputs = _normalizeOutputs(raw.outputs);
-  const steps = _normalizeSteps(raw.steps, subworkflows);
+  const steps = _normalizeSteps(raw.steps, subworkflows, inputs.length);
   const uniqueTools = _collectUniqueTools(steps);
 
   const result: NormalizedFormat2Workflow = {
@@ -235,12 +235,16 @@ function _normalizeOutputs(raw: unknown): NormalizedFormat2Output[] {
 function _normalizeSteps(
   raw: unknown,
   subworkflows: Map<string, Record<string, unknown>>,
+  inputsOffset = 0,
 ): NormalizedFormat2Step[] {
   if (!raw) return [];
   if (Array.isArray(raw)) {
+    // List-form steps without an explicit id get the index they will occupy in
+    // native form, where inputs come first -- so a numeric source like
+    // "1/out_file1" means the same thing before and after conversion.
     return raw.map((item, idx) => {
       const obj = item as Record<string, unknown>;
-      return _normalizeStep(obj, (obj.id as string) ?? String(idx), subworkflows);
+      return _normalizeStep(obj, (obj.id as string) ?? String(idx + inputsOffset), subworkflows);
     });
   }
   const result: NormalizedFormat2Step[] = [];
