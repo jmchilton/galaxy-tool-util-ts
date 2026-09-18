@@ -1,5 +1,13 @@
 # @galaxy-tool-util/schema
 
+## 1.12.0
+
+### Minor Changes
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`0836ba8`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0836ba8e3ab969a80caeb4a3718cac026bc82365) Thanks [@jmchilton](https://github.com/jmchilton)! - Shared cache-HTTP layer (Phase 1 of merged cache UI plan).
+  - `@galaxy-tool-util/schema`: GA4GH TRS Effect Schemas — `TrsTool`, `TrsToolVersion`, `TrsToolClass`, `TrsChecksum`, `TrsImageData`, enums (`TrsImageType`, `TrsDescriptorType`, `TrsFileType`). Plus `GALAXY_TOOL_CLASS` default for Galaxy-shaped TRS responses.
+  - `@galaxy-tool-util/core/cache-http`: framework-agnostic handlers + DTOs consumed by `gxwf-web` and `tool-cache-proxy`. Read namespace (`searchTools`, `trsListTools`, `trsGetTool`, `trsListVersions`, `getParsedTool`, `getParameterSchema`, `getToolSource`) and admin namespace (`listCache`, `cacheStats`, `getCacheRaw`, `deleteCacheEntry`, `clearCache`, `refetchTool`, `addTool`). `HttpError` class + `cacheToTrs` helper (normalizes readable cache `tool_id` to TRS form).
+
 ## 1.11.0
 
 ### Minor Changes

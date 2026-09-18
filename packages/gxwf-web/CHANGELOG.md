@@ -1,5 +1,38 @@
 # @galaxy-tool-util/gxwf-web
 
+## 1.12.0
+
+### Minor Changes
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`14b767b`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/14b767ba182fedf432120df9394cdca75f26dd03) Thanks [@jmchilton](https://github.com/jmchilton)! - Migrate `gxwf-web` cache surface to shared handlers (Phase 3 of merged cache UI plan).
+  - Added GA4GH TRS read surface: `GET /api/ga4gh/trs/v2/tools[/{tool_id}[/versions]]`.
+  - Added `GET /api/tools` search (`q` / `page` / `page_size`).
+  - Added `GET /api/tools/{id}/versions/{ver}` (parsed tool), three concrete `parameter_*_schema` endpoints, and `tool_source` (501).
+  - Router now thin-wraps shared handlers in `@galaxy-tool-util/core/cache-http`; `tool-cache.ts` removed.
+  - `ToolCacheRawDialog` rewritten as a tabbed dialog addressing entries by `(tool_id, tool_version)` — tabs for parameter model, request schema, landing-request schema, test-case XML schema, and tool source (disabled).
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`d2e8574`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d2e8574c1bc615dbeea28e01c3a1a644b3638694) Thanks [@jmchilton](https://github.com/jmchilton)! - Implement lazy wrapper-source fetching and caching from Tool Shed and Galaxy endpoints. Serve UTF-8 source text with language and macro-expansion headers, enable the Source tab in server and browser cache inspectors, and invalidate stored source when refetching or deleting a cache entry. Tool Shed XML is expanded and selected by wrapper version; exact changesets and original macro files remain outside this API.
+
+### Patch Changes
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`73c3dd4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/73c3dd457d6129793ca418afaeab4a3716efd1fa) Thanks [@jmchilton](https://github.com/jmchilton)! - Drop the unused `getCacheRaw` handler and `RawResponse` DTO from `@galaxy-tool-util/core`.
+
+  The handler was exported and unit-tested but no router wired it — the merged cache UI plan (§3) replaced cacheKey-addressed raw reads with `(tool_id, tool_version)` reads via `parameter_*_schema` and `tool_source`. Removing dead surface area; `loadCachedRaw` on the cache itself is unchanged.
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`45741b0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/45741b0db3b6eeada5a53ba57c6af4cfd8f352f7) Thanks [@jmchilton](https://github.com/jmchilton)! - Share Node HTTP adapter helpers via `@galaxy-tool-util/core/node`.
+
+  `writeJson`, `setCorsHeaders`, `readJsonBody`, and `serveStatic` (with optional `csp` and `mimeTypes` overrides) now live in core. Both `gxwf-web` and `tool-cache-proxy` import them — local copies removed. Side effect: the proxy server can now opt in to a Content-Security-Policy header for static UI responses via `createProxyContext(config, { uiCsp })` (parity with `gxwf-web`'s Monaco-friendly CSP path), which unblocks shipping a Monaco-hosted UI from the proxy.
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`3a0a04d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3a0a04d39eaa2f7bee1862d287feab7047c1760c) Thanks [@jmchilton](https://github.com/jmchilton)! - Move the cache HTTP route table into `@galaxy-tool-util/core/cache-http`.
+
+  Both `gxwf-web` and `tool-cache-proxy` now import `matchCacheRoute` and `dispatchCacheRoute` from core. URL parsing for the read surface (`/api/tools`, `/api/ga4gh/trs/v2/tools/...`, `/api/tools/{id}/versions/{ver}/...`) and the admin namespace (`/api/tool-cache/...`) lives in one place — neither server can drift on path shape, query parameter handling, or the parameter-schema tail dispatch. Each adapter shrinks ~80 lines; route contract is now a single source of truth.
+
+- Updated dependencies [[`73c3dd4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/73c3dd457d6129793ca418afaeab4a3716efd1fa), [`0836ba8`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0836ba8e3ab969a80caeb4a3718cac026bc82365), [`45741b0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/45741b0db3b6eeada5a53ba57c6af4cfd8f352f7), [`3a0a04d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3a0a04d39eaa2f7bee1862d287feab7047c1760c), [`7f2ece9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7f2ece955d60bb394141354e03fc6369d6e56eb5), [`7614118`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7614118487a6000af8425eeec9650d225975f78c), [`d2e8574`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d2e8574c1bc615dbeea28e01c3a1a644b3638694)]:
+  - @galaxy-tool-util/core@1.12.0
+  - @galaxy-tool-util/schema@1.12.0
+  - @galaxy-tool-util/cli@1.12.0
+  - @galaxy-tool-util/connection-validation@1.12.0
+
 ## 1.11.0
 
 ### Patch Changes

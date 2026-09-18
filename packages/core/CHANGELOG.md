@@ -1,5 +1,51 @@
 # @galaxy-tool-util/core
 
+## 1.12.0
+
+### Minor Changes
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`0836ba8`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0836ba8e3ab969a80caeb4a3718cac026bc82365) Thanks [@jmchilton](https://github.com/jmchilton)! - Shared cache-HTTP layer (Phase 1 of merged cache UI plan).
+  - `@galaxy-tool-util/schema`: GA4GH TRS Effect Schemas — `TrsTool`, `TrsToolVersion`, `TrsToolClass`, `TrsChecksum`, `TrsImageData`, enums (`TrsImageType`, `TrsDescriptorType`, `TrsFileType`). Plus `GALAXY_TOOL_CLASS` default for Galaxy-shaped TRS responses.
+  - `@galaxy-tool-util/core/cache-http`: framework-agnostic handlers + DTOs consumed by `gxwf-web` and `tool-cache-proxy`. Read namespace (`searchTools`, `trsListTools`, `trsGetTool`, `trsListVersions`, `getParsedTool`, `getParameterSchema`, `getToolSource`) and admin namespace (`listCache`, `cacheStats`, `getCacheRaw`, `deleteCacheEntry`, `clearCache`, `refetchTool`, `addTool`). `HttpError` class + `cacheToTrs` helper (normalizes readable cache `tool_id` to TRS form).
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`45741b0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/45741b0db3b6eeada5a53ba57c6af4cfd8f352f7) Thanks [@jmchilton](https://github.com/jmchilton)! - Share Node HTTP adapter helpers via `@galaxy-tool-util/core/node`.
+
+  `writeJson`, `setCorsHeaders`, `readJsonBody`, and `serveStatic` (with optional `csp` and `mimeTypes` overrides) now live in core. Both `gxwf-web` and `tool-cache-proxy` import them — local copies removed. Side effect: the proxy server can now opt in to a Content-Security-Policy header for static UI responses via `createProxyContext(config, { uiCsp })` (parity with `gxwf-web`'s Monaco-friendly CSP path), which unblocks shipping a Monaco-hosted UI from the proxy.
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`3a0a04d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/3a0a04d39eaa2f7bee1862d287feab7047c1760c) Thanks [@jmchilton](https://github.com/jmchilton)! - Move the cache HTTP route table into `@galaxy-tool-util/core/cache-http`.
+
+  Both `gxwf-web` and `tool-cache-proxy` now import `matchCacheRoute` and `dispatchCacheRoute` from core. URL parsing for the read surface (`/api/tools`, `/api/ga4gh/trs/v2/tools/...`, `/api/tools/{id}/versions/{ver}/...`) and the admin namespace (`/api/tool-cache/...`) lives in one place — neither server can drift on path shape, query parameter handling, or the parameter-schema tail dispatch. Each adapter shrinks ~80 lines; route contract is now a single source of truth.
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`d2e8574`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/d2e8574c1bc615dbeea28e01c3a1a644b3638694) Thanks [@jmchilton](https://github.com/jmchilton)! - Implement lazy wrapper-source fetching and caching from Tool Shed and Galaxy endpoints. Serve UTF-8 source text with language and macro-expansion headers, enable the Source tab in server and browser cache inspectors, and invalidate stored source when refetching or deleting a cache entry. Tool Shed XML is expanded and selected by wrapper version; exact changesets and original macro files remain outside this API.
+
+### Patch Changes
+
+- [#176](https://github.com/jmchilton/galaxy-tool-util-ts/pull/176) [`73c3dd4`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/73c3dd457d6129793ca418afaeab4a3716efd1fa) Thanks [@jmchilton](https://github.com/jmchilton)! - Drop the unused `getCacheRaw` handler and `RawResponse` DTO from `@galaxy-tool-util/core`.
+
+  The handler was exported and unit-tested but no router wired it — the merged cache UI plan (§3) replaced cacheKey-addressed raw reads with `(tool_id, tool_version)` reads via `parameter_*_schema` and `tool_source`. Removing dead surface area; `loadCachedRaw` on the cache itself is unchanged.
+
+- [#173](https://github.com/jmchilton/galaxy-tool-util-ts/pull/173) [`7f2ece9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7f2ece955d60bb394141354e03fc6369d6e56eb5) Thanks [@mvdbeek](https://github.com/mvdbeek)! - fix(core): stop dumping the full `ParsedTool` type on a tool-metadata decode failure
+
+  `fetchFromToolShed`/`fetchFromGalaxy` decoded the fetched JSON with
+  `Schema.decodeUnknownSync`, whose default `ParseError#message` renders the
+  entire expected type declaration alongside the failure — tens of thousands of
+  characters for `ParsedTool`'s output union. A single tool-cache miss during
+  `gxwf draft-validate --concrete` (surfaced via `ToolInfoService`'s
+  `onDiagnostic`) could print one `~19,000`-character diagnostic naming nothing
+  more useful than `["structure"] is missing`.
+
+  Both fetchers now decode through `ParseResult.ArrayFormatter` instead, so a
+  decode failure raises a `ToolFetchError` naming the failing field path(s) and
+  reason only, e.g. `invalid tool metadata from <url>: [structure] is missing`.
+
+- [#175](https://github.com/jmchilton/galaxy-tool-util-ts/pull/175) [`7614118`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7614118487a6000af8425eeec9650d225975f78c) Thanks [@jmchilton](https://github.com/jmchilton)! - Bound tool-metadata decode diagnostics for both Tool Shed and Galaxy fetches.
+  Report the first failing field path, summarize type mismatches without rendering
+  schema declarations or invalid payloads, and cap the displayed URL and detail so
+  the complete message stays under 500 characters. The full URL remains available
+  on `ToolFetchError.url`.
+- Updated dependencies [[`0836ba8`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0836ba8e3ab969a80caeb4a3718cac026bc82365)]:
+  - @galaxy-tool-util/schema@1.12.0
+
 ## 1.11.0
 
 ### Patch Changes
