@@ -108,7 +108,7 @@ describe("gxwf convert --stateful", () => {
 
     // Unaware conversion → `tool_state` → validated via the native path.
     const unawarePath = join(ctx.tmpDir, "unaware.gxwf.yml");
-    await runConvert(nativePath, { output: unawarePath });
+    await runConvert(nativePath, { output: unawarePath, stateful: false });
     ctx.logSpy.mockClear();
     await runValidateWorkflow(unawarePath, { cacheDir: ctx.tmpDir, json: true });
     const unawareReport = JSON.parse(
@@ -122,7 +122,7 @@ describe("gxwf convert --stateful", () => {
     const wfPath = join(ctx.tmpDir, "native.ga");
     await writeFile(wfPath, JSON.stringify(buildNativeWorkflow()));
 
-    await runConvert(wfPath, {});
+    await runConvert(wfPath, { stateful: false });
 
     const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
     const converted = YAML.parse(output);
@@ -136,6 +136,51 @@ describe("gxwf convert --stateful", () => {
 
     // Without stateful, num_lines stays as a string
     expect(state.num_lines).toBe("10");
+  });
+
+  it("re-encodes state by default when the tool cache is populated", async () => {
+    await seedAllTools(ctx.tmpDir);
+    const wfPath = join(ctx.tmpDir, "native.ga");
+    await writeFile(wfPath, JSON.stringify(buildNativeWorkflow()));
+
+    // No --stateful, no --cache-dir: the cache resolves from the environment
+    // and a populated one is enough to select schema-aware re-encoding.
+    await runConvert(wfPath, {});
+
+    const output = ctx.stdoutSpy.mock.calls.map((c) => c[0]).join("");
+    const converted = YAML.parse(output);
+    const step = (converted.steps as Array<Record<string, unknown>>)[0];
+    expect(step.state).toBeDefined();
+    expect(step.tool_state == null).toBe(true);
+    expect(getStepState(converted).num_lines).toBe(10);
+  });
+
+  it("--no-stateful opts out even when the tool cache is populated", async () => {
+    await seedAllTools(ctx.tmpDir);
+    const wfPath = join(ctx.tmpDir, "native.ga");
+    await writeFile(wfPath, JSON.stringify(buildNativeWorkflow()));
+
+    await runConvert(wfPath, { stateful: false });
+
+    const converted = YAML.parse(ctx.stdoutSpy.mock.calls.map((c) => c[0]).join(""));
+    const step = (converted.steps as Array<Record<string, unknown>>)[0];
+    expect(step.tool_state).toBeDefined();
+    expect(step.state == null).toBe(true);
+    expect(getStepState(converted).num_lines).toBe("10");
+  });
+
+  it("stays schema-free by default when the tool cache is empty", async () => {
+    const wfPath = join(ctx.tmpDir, "native.ga");
+    await writeFile(wfPath, JSON.stringify(buildNativeWorkflow()));
+
+    await runConvert(wfPath, {});
+
+    const converted = YAML.parse(ctx.stdoutSpy.mock.calls.map((c) => c[0]).join(""));
+    const step = (converted.steps as Array<Record<string, unknown>>)[0];
+    expect(step.tool_state).toBeDefined();
+    // An empty cache is not an error when stateful was never asked for.
+    expect(ctx.warnSpy.mock.calls.map((c) => c[0]).join("\n")).not.toContain("Tool cache is empty");
+    expect(process.exitCode).toBeFalsy();
   });
 
   it("falls back gracefully when tool cache is empty", async () => {

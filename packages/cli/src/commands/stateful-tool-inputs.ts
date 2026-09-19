@@ -13,6 +13,7 @@
  * callback-shaped design: callers pass the resolver, not the map.
  */
 import type { ToolCache } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   expandedFormat2,
   expandedNative,
@@ -122,4 +123,29 @@ function collectFormat2ToolRefs(wf: NormalizedFormat2Workflow): Array<[string, s
   };
   walk(wf.steps);
   return refs;
+}
+
+/**
+ * Resolve whether a conversion runs state-aware, and load the cache it needs.
+ *
+ * `stateful` is tri-state: `true` forces it on, `false` forces it off, and
+ * `undefined` — no flag — turns it on whenever the tool cache holds anything
+ * to resolve against. Returns the cache to convert with, or `null` to take
+ * the schema-free path.
+ */
+export async function resolveConversionCache(opts: {
+  stateful?: boolean;
+  cacheDir?: string;
+}): Promise<ToolCache | null> {
+  if (opts.stateful === false) return null;
+
+  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
+  await cache.index.load();
+  if ((await cache.index.listAll()).length > 0) return cache;
+
+  if (opts.stateful === true) {
+    console.warn("Tool cache is empty — stateful conversion will fall back for every step");
+    return cache;
+  }
+  return null;
 }

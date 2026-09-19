@@ -156,8 +156,9 @@ Convert between native (.ga) and format2 (.gxwf.yml) formats
 | `--json` | Force JSON output |
 | `--yaml` | Force YAML output |
 | `--format <fmt>` | Force source format (auto-detected by default) |
-| `--stateful` | Use cached tool definitions for schema-aware state re-encoding |
-| `--cache-dir <dir>` | Tool cache directory (for --stateful) |
+| `--stateful` | Force schema-aware state re-encoding even if the tool cache is empty |
+| `--no-stateful` | Skip schema-aware state re-encoding; copy tool_state through verbatim |
+| `--cache-dir <dir>` | Tool cache directory (default: schema-aware re-encoding when it is populated) |
 | `--strict` | Shorthand for --strict-structure --strict-encoding --strict-state |
 | `--strict-structure` | Reject unknown keys at envelope/step level |
 | `--strict-encoding` | Reject JSON-string tool_state and format2 field misuse |
@@ -296,8 +297,9 @@ Batch convert all workflows under a directory
 | `--json` | Force JSON output for converted files |
 | `--yaml` | Force YAML output |
 | `--format <fmt>` | Force source format (auto-detected by default) |
-| `--stateful` | Use cached tool definitions for schema-aware state re-encoding |
-| `--cache-dir <dir>` | Tool cache directory (for --stateful) |
+| `--stateful` | Force schema-aware state re-encoding even if the tool cache is empty |
+| `--no-stateful` | Skip schema-aware state re-encoding; copy tool_state through verbatim |
+| `--cache-dir <dir>` | Tool cache directory (default: schema-aware re-encoding when it is populated) |
 | `--strict` | Shorthand for --strict-structure --strict-encoding --strict-state |
 | `--strict-structure` | Reject unknown keys at envelope/step level |
 | `--strict-encoding` | Reject JSON-string tool_state and format2 field misuse |
@@ -454,6 +456,20 @@ Fetch a tool from the ToolShed (shed-path or bare/stock ID) and cache it
 | `--tool-version <ver>` | Tool version |
 | `--cache-dir <dir>` | Cache directory |
 | `--galaxy-url <url>` | Alternate Galaxy source, tried after the ToolShed |
+
+### `add-local <tool_path>`
+
+Parse a local tool file (XML or YAML) and cache it (source: local)
+
+**Arguments:**
+
+- `<tool_path>` — Path to a tool file (.xml or .yml)
+
+| Option | Description |
+|---|---|
+| `--tool-id <id>` | Full toolshed tool_id for cache keying (required; the bare XML id is not a valid key) |
+| `--tool-version <ver>` | Tool version (overrides the parsed version) |
+| `--cache-dir <dir>` | Cache directory |
 
 ### `list`
 

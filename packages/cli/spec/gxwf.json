@@ -312,11 +312,15 @@
         },
         {
           "flags": "--stateful",
-          "description": "Use cached tool definitions for schema-aware state re-encoding"
+          "description": "Force schema-aware state re-encoding even if the tool cache is empty"
+        },
+        {
+          "flags": "--no-stateful",
+          "description": "Skip schema-aware state re-encoding; copy tool_state through verbatim"
         },
         {
           "flags": "--cache-dir <dir>",
-          "description": "Tool cache directory (for --stateful)"
+          "description": "Tool cache directory (default: schema-aware re-encoding when it is populated)"
         }
       ],
       "optionGroups": ["strict"]
@@ -596,11 +600,15 @@
         },
         {
           "flags": "--stateful",
-          "description": "Use cached tool definitions for schema-aware state re-encoding"
+          "description": "Force schema-aware state re-encoding even if the tool cache is empty"
+        },
+        {
+          "flags": "--no-stateful",
+          "description": "Skip schema-aware state re-encoding; copy tool_state through verbatim"
         },
         {
           "flags": "--cache-dir <dir>",
-          "description": "Tool cache directory (for --stateful)"
+          "description": "Tool cache directory (default: schema-aware re-encoding when it is populated)"
         }
       ],
       "optionGroups": ["strict"]
