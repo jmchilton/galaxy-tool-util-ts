@@ -68,6 +68,18 @@ gxwf validate my-workflow.ga --mode json-schema
 ```
 Exports Effect Schemas to [JSON Schema](https://json-schema.org), then validates with [Ajv](https://ajv.js.org). Useful for interop with other JSON Schema tools.
 
+### User-Defined Tool Steps
+
+A step can embed a user-defined tool instead of referencing one by `tool_id`: a format2 `run:` block with `class: GalaxyUserTool`, or a native step's `tool_representation`. These steps need no tool cache — their state is validated against the parameters of the embedded definition, in both backends. The step's output ports are the embedded tool's `outputs[].name`, so connections and workflow outputs can reference them without an `out:` block.
+
+| Embedded definition | Result |
+|---|---|
+| `GalaxyUserTool` that parses | Validated like any cached tool (`ok` / `fail`) |
+| `GalaxyUserTool` that doesn't parse (e.g. unknown parameter type) | `fail` — the definition ships with the workflow |
+| Any other class (e.g. an admin-installed `GalaxyTool`) | Skipped (`skip_tool_not_found`), so `--strict-state` rejects it |
+
+`--mode json-schema` builds validators from the embedded definition per step; `--tool-schema-dir` is not consulted for these steps.
+
 ### Offline Validation
 
 For CI or air-gapped environments, pre-export tool schemas and validate without network access:

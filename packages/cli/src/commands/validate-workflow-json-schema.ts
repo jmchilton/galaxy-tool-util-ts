@@ -20,6 +20,7 @@ import {
   stripConnectedValues,
   scanForReplacements,
   withClass,
+  isGalaxyUserToolRun,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
   type NormalizedFormat2Step,
@@ -45,6 +46,7 @@ import type {
 } from "./validate-workflow.js";
 import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
+import { embeddedToolDefinition, isEmbeddedTool, resolveEmbeddedTool } from "./embedded-tool.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
 
@@ -182,6 +184,26 @@ function getOrBuildValidator(
   }
   _toolStateCache.set(key, validator);
   return validator;
+}
+
+/** Supplies the compiled tool-state validator for one state representation. */
+type ValidatorLookup = (representation: StateRepresentation) => ValidateFunction | null;
+
+function cachedValidators(
+  toolId: string,
+  toolVersion: string | null,
+  bundle: ToolParameterBundleModel,
+  toolSchemaDir?: string,
+): ValidatorLookup {
+  return (representation) =>
+    getOrBuildValidator(toolId, toolVersion, bundle, representation, toolSchemaDir);
+}
+
+// Embedded definitions are built per step: their id is not a cache identity
+// (two workflows may embed different tools under one id) and --tool-schema-dir
+// holds schemas for cached tools only.
+function embeddedValidators(bundle: ToolParameterBundleModel): ValidatorLookup {
+  return (representation) => buildToolStateValidator(bundle, representation);
 }
 
 // --- AJV error formatting ---
@@ -358,6 +380,12 @@ async function _validateNativeWorkflowJsonSchema(
       continue;
     }
 
+    const embedded = embeddedToolDefinition(step);
+    if (embedded) {
+      results.push(_validateEmbeddedNativeStepJsonSchema(step, stepLabel, embedded));
+      continue;
+    }
+
     const toolId = step.tool_id;
     if (!toolId) continue;
     const toolVersion = step.tool_version ?? null;
@@ -413,7 +441,26 @@ async function _validateNativeStepJsonSchema(
     stepLabel,
     toolId,
     toolVersion,
-    toolSchemaDir,
+    cachedValidators(toolId, toolVersion, bundle, toolSchemaDir),
+    step.when,
+  );
+}
+
+function _validateEmbeddedNativeStepJsonSchema(
+  step: NormalizedNativeStep,
+  stepLabel: string,
+  repr: Record<string, unknown>,
+): StepValidationResult {
+  const tool = resolveEmbeddedTool(repr, stepLabel);
+  if (!isEmbeddedTool(tool)) return tool;
+  return _validateNativeStateJsonSchema(
+    tool.bundle,
+    step.tool_state as Record<string, unknown>,
+    { ...step.input_connections },
+    stepLabel,
+    tool.toolId,
+    tool.toolVersion,
+    embeddedValidators(tool.bundle),
     step.when,
   );
 }
@@ -455,9 +502,9 @@ function _validateNativeStateJsonSchema(
   toolState: Record<string, unknown>,
   connections: Record<string, unknown>,
   stepLabel: string,
-  toolId: string,
+  toolId: string | null,
   toolVersion: string | null,
-  toolSchemaDir?: string,
+  validators: ValidatorLookup,
   whenExpression?: unknown,
 ): StepValidationResult {
   const replacementScan = scanForReplacements(bundle.parameters, toolState);
@@ -487,13 +534,7 @@ function _validateNativeStateJsonSchema(
     };
   }
 
-  const validate = getOrBuildValidator(
-    toolId,
-    toolVersion,
-    bundle,
-    "workflow_step_native",
-    toolSchemaDir,
-  );
+  const validate = validators("workflow_step_native");
   if (!validate) {
     return {
       step: stepLabel,
@@ -541,6 +582,11 @@ async function _validateFormat2WorkflowJsonSchema(
   for (let i = 0; i < wf.steps.length; i++) {
     const step = wf.steps[i];
     const stepLabel = prefix ? `${prefix}${i}` : String(i);
+
+    if (isGalaxyUserToolRun(step.run)) {
+      results.push(_validateEmbeddedFormat2StepJsonSchema(step, stepLabel, step.run));
+      continue;
+    }
 
     if (step.run && typeof step.run === "object") {
       const subResults = await _validateFormat2WorkflowJsonSchema(
@@ -595,7 +641,41 @@ async function _validateFormat2StepJsonSchema(
   const bundle: ToolParameterBundleModel = {
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
+  return _validateFormat2StateJsonSchema(
+    bundle,
+    step,
+    stepLabel,
+    toolId,
+    toolVersion,
+    cachedValidators(toolId, toolVersion, bundle, toolSchemaDir),
+  );
+}
 
+function _validateEmbeddedFormat2StepJsonSchema(
+  step: NormalizedFormat2Step,
+  stepLabel: string,
+  repr: Record<string, unknown>,
+): StepValidationResult {
+  const tool = resolveEmbeddedTool(repr, stepLabel);
+  if (!isEmbeddedTool(tool)) return tool;
+  return _validateFormat2StateJsonSchema(
+    tool.bundle,
+    step,
+    stepLabel,
+    tool.toolId,
+    tool.toolVersion,
+    embeddedValidators(tool.bundle),
+  );
+}
+
+function _validateFormat2StateJsonSchema(
+  bundle: ToolParameterBundleModel,
+  step: NormalizedFormat2Step,
+  stepLabel: string,
+  toolId: string | null,
+  toolVersion: string | null,
+  validators: ValidatorLookup,
+): StepValidationResult {
   // A verbatim native `tool_state` block validates through the native path
   // (same encoding regardless of workflow format); a schema-aware `state` block
   // validates below. State shape — not workflow format — picks the validator.
@@ -607,7 +687,7 @@ async function _validateFormat2StepJsonSchema(
       stepLabel,
       toolId,
       toolVersion,
-      toolSchemaDir,
+      validators,
       step.when,
     );
   }
@@ -625,13 +705,7 @@ async function _validateFormat2StepJsonSchema(
   }
 
   // Level 1: validate the stored, unlinked editor state.
-  const baseValidate = getOrBuildValidator(
-    toolId,
-    toolVersion,
-    bundle,
-    "workflow_step",
-    toolSchemaDir,
-  );
+  const baseValidate = validators("workflow_step");
   if (!baseValidate) {
     return {
       step: stepLabel,
@@ -670,13 +744,7 @@ async function _validateFormat2StepJsonSchema(
     };
   }
 
-  const linkedValidate = getOrBuildValidator(
-    toolId,
-    toolVersion,
-    bundle,
-    "workflow_step_linked",
-    toolSchemaDir,
-  );
+  const linkedValidate = validators("workflow_step_linked");
   if (!linkedValidate) {
     return {
       step: stepLabel,
