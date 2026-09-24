@@ -9,6 +9,8 @@ import {
   NormalizedFormat2StepSchema,
   isGalaxyUserToolRun,
   normalizedFormat2,
+  toFormat2,
+  toNative,
 } from "../src/workflow/index.js";
 
 const FIXTURE = join(
@@ -26,5 +28,21 @@ describe("embedded GalaxyUserTool step", () => {
     const decoded = S.decodeUnknownSync(NormalizedFormat2StepSchema)(step);
     expect(isGalaxyUserToolRun(decoded.run)).toBe(true);
     expect(decoded.run).toMatchObject({ class: "GalaxyUserTool", container: "busybox" });
+  });
+
+  it("keeps tool state and when through format2 -> native -> format2", () => {
+    const raw = userToolWorkflow();
+    raw.steps.my_tool.run.inputs.push({ name: "lines", type: "integer" });
+    raw.steps.my_tool.state = { lines: 3 };
+    raw.steps.my_tool.when = "$(inputs.lines > 0)";
+
+    const native = toNative(raw);
+    expect(native.steps["1"].tool_state).toEqual({ __page__: 0, lines: 3 });
+
+    const step = toFormat2(native).steps[0];
+    expect(step.run).toEqual(raw.steps.my_tool.run);
+    expect(step.tool_id).toBeUndefined();
+    expect(step.tool_state).toEqual({ lines: 3 });
+    expect(step.when).toBe("$(inputs.lines > 0)");
   });
 });

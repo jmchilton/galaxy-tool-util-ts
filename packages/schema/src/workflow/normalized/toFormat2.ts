@@ -231,13 +231,7 @@ function _buildToolFormat2Step(
       _mergeInOverrides(inList, override.in);
     }
   } else {
-    // Default: copy tool_state, strip bookkeeping keys
-    const ts = { ...step.tool_state };
-    delete ts.__page__;
-    delete ts.__rerun_remap_job_id__;
-    if (Object.keys(ts).length > 0) {
-      toolState = ts;
-    }
+    toolState = _passthroughToolState(step);
   }
 
   const { stepId, displayLabel } = _resolveStepIdentity(step, labelMap);
@@ -261,6 +255,16 @@ function _buildToolFormat2Step(
   };
 }
 
+/** Default: copy tool_state verbatim, minus bookkeeping keys; null when nothing is left. */
+function _passthroughToolState(step: NormalizedNativeStep): Record<string, unknown> | null {
+  const ts = { ...step.tool_state };
+  delete ts.__page__;
+  delete ts.__rerun_remap_job_id__;
+  return Object.keys(ts).length > 0 ? ts : null;
+}
+
+// The stateful encoder resolves tools by tool_id, which a user-defined tool
+// step doesn't have, so its tool_state always passes through verbatim.
 function _buildUserToolFormat2Step(
   step: NormalizedNativeStep,
   labelMap: Map<string, string>,
@@ -276,7 +280,11 @@ function _buildUserToolFormat2Step(
     run: step.tool_representation as NormalizedFormat2Step["run"],
     in: inList,
     out: outList,
+    tool_state: _passthroughToolState(step),
     position: step.position as NormalizedFormat2Step["position"],
+    when: step.when ?? undefined,
+    uuid: step.uuid ?? undefined,
+    errors: step.errors ?? undefined,
   };
 }
 
