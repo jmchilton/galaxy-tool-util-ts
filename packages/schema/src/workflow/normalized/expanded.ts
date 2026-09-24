@@ -9,8 +9,12 @@
  * and gxformat2/options.py (UrlResolverFn, default_url_resolver, ConversionOptions).
  */
 
-import type { NormalizedFormat2Workflow, NormalizedFormat2Step } from "./format2.js";
-import { normalizedFormat2 } from "./format2.js";
+import type {
+  GalaxyUserToolStub,
+  NormalizedFormat2Workflow,
+  NormalizedFormat2Step,
+} from "./format2.js";
+import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
 import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./native.js";
 import { normalizedNative } from "./native.js";
 import { toFormat2 } from "./toFormat2.js";
@@ -20,7 +24,7 @@ import { toNative } from "./toNative.js";
 
 // Expanded types are structurally identical to normalized — once expansion
 // completes, step.run / step.subworkflow are guaranteed to be inline
-// workflow objects (never unresolved strings).
+// workflow objects or embedded user-defined tools (never unresolved strings).
 export type ExpandedFormat2Workflow = NormalizedFormat2Workflow;
 export type ExpandedFormat2Step = NormalizedFormat2Step;
 export type ExpandedNativeWorkflow = NormalizedNativeWorkflow;
@@ -171,6 +175,7 @@ export async function expandedNative(
 
 function _expandFormat2Sync(wf: NormalizedFormat2Workflow): ExpandedFormat2Workflow {
   const expandedSteps = wf.steps.map((step) => {
+    if (isGalaxyUserToolRun(step.run)) return step;
     if (step.run && typeof step.run === "object") {
       return { ...step, run: _expandFormat2Sync(step.run as NormalizedFormat2Workflow) };
     }
@@ -200,9 +205,12 @@ async function _expandFormat2(
   const expandedSteps: NormalizedFormat2Step[] = [];
 
   for (const step of wf.steps) {
-    let expandedRun: NormalizedFormat2Workflow | null = null;
+    let expandedRun: NormalizedFormat2Workflow | GalaxyUserToolStub | null = null;
 
-    if (step.run && typeof step.run === "object") {
+    if (isGalaxyUserToolRun(step.run)) {
+      // Embedded user-defined tool — nothing to resolve
+      expandedRun = step.run;
+    } else if (step.run && typeof step.run === "object") {
       // Already-inlined subworkflow — recurse
       expandedRun = await _expandFormat2(step.run as NormalizedFormat2Workflow, ctx);
     } else if (typeof step.run === "string") {

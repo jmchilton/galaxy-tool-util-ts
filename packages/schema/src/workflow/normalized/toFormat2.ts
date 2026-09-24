@@ -14,6 +14,7 @@ import type {
   NormalizedFormat2StepInput,
   NormalizedFormat2StepOutput,
 } from "./format2.js";
+import { isGalaxyUserToolRun } from "./format2.js";
 import { flattenCommentData } from "./comments.js";
 import { UNLABELED_INPUT_PREFIX, UNLABELED_STEP_PREFIX, isUnlabeled, Labels } from "./labels.js";
 
@@ -207,9 +208,7 @@ function _buildToolFormat2Step(
   labelMap: Map<string, string>,
   options?: ToFormat2Options,
 ): NormalizedFormat2Step {
-  // User-defined tool: tool_representation with class GalaxyUserTool
-  const toolRep = step.tool_representation as Record<string, unknown> | null | undefined;
-  if (toolRep && toolRep.class === "GalaxyUserTool") {
+  if (isGalaxyUserToolRun(step.tool_representation)) {
     return _buildUserToolFormat2Step(step, labelMap);
   }
 
@@ -499,7 +498,7 @@ function _replaceAnonymousOutputReferences(
   const runsByLabel = new Map<string, NormalizedFormat2Workflow>();
   for (const step of fmt2Steps) {
     const label = step.label ?? step.id;
-    if (step.run && typeof step.run === "object") {
+    if (step.run && typeof step.run === "object" && !isGalaxyUserToolRun(step.run)) {
       runsByLabel.set(String(label), step.run as NormalizedFormat2Workflow);
     }
   }

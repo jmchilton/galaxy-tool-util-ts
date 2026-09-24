@@ -133,6 +133,10 @@ export {
   NormalizedFormat2OutputSchema,
   NormalizedFormat2StepInputSchema,
   NormalizedFormat2StepOutputSchema,
+  GalaxyUserToolStubSchema,
+  /** True when a format2 step's `run:` embeds a user-defined tool (`class: GalaxyUserTool`). */
+  isGalaxyUserToolRun,
+  type GalaxyUserToolStub,
   type NormalizedFormat2Workflow,
   type NormalizedFormat2Step,
   type NormalizedFormat2Input,

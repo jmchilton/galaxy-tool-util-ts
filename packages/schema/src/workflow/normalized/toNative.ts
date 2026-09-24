@@ -11,7 +11,7 @@ import type {
   NormalizedFormat2Input,
   NormalizedFormat2StepOutput,
 } from "./format2.js";
-import { normalizedFormat2 } from "./format2.js";
+import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
 import { unflattenCommentData } from "./comments.js";
 import { isUnlabeled, resolveSourceReference } from "./labels.js";
 
@@ -300,9 +300,7 @@ function _buildStep(
 function _resolveStepType(step: NormalizedFormat2Step): string {
   if (step.run != null) {
     if (typeof step.run === "object") {
-      const runObj = step.run as Record<string, unknown>;
-      if (runObj.class === "GalaxyUserTool") return "tool";
-      return "subworkflow";
+      return isGalaxyUserToolRun(step.run) ? "tool" : "subworkflow";
     }
     if (typeof step.run === "string") return "subworkflow";
   }
@@ -315,14 +313,9 @@ function _buildToolStep(
   orderIndex: number,
   ctx: ConversionContext,
 ): NormalizedNativeStep {
-  // Detect GalaxyUserTool in run field
-  let toolRepresentation: Record<string, unknown> | undefined;
-  if (step.run && typeof step.run === "object") {
-    const runObj = step.run as Record<string, unknown>;
-    if (runObj.class === "GalaxyUserTool") {
-      toolRepresentation = runObj;
-    }
-  }
+  const toolRepresentation: Record<string, unknown> | undefined = isGalaxyUserToolRun(step.run)
+    ? step.run
+    : undefined;
 
   const toolState: Record<string, unknown> = { __page__: 0 };
   const connect = _extractConnections(step);
