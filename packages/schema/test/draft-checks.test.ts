@@ -1493,3 +1493,53 @@ describe("extractConcreteSubset", () => {
     expect(r.dropped_outputs.map((o) => o.label)).toEqual(["drop_me"]);
   });
 });
+
+describe("embedded GalaxyUserTool steps", () => {
+  const userToolFixture = path.join(
+    here,
+    "fixtures",
+    "workflows",
+    "format2",
+    "synthetic-user-defined-tool.gxwf.yml",
+  );
+
+  // Draft copy of the fixture plus a concrete consumer of the embedded tool's
+  // output and a drafty sibling step. The embedded tool step declares no `out:`.
+  function userToolDraft(): Record<string, any> {
+    const wf = parseYaml(fs.readFileSync(userToolFixture, "utf-8"));
+    wf.class = DRAFT_CLASS;
+    wf.outputs.consumed = { outputSource: "consume/out_file1" };
+    wf.steps.consume = {
+      tool_id: "cat1",
+      tool_version: "1.0.0",
+      in: { input1: "my_tool/output1" },
+      out: [{ id: "out_file1" }],
+    };
+    wf.steps.pending = { tool_id: "TODO", in: { input1: "the_input" } };
+    return wf;
+  }
+
+  it("resolves workflow outputs and step inputs against the embedded tool's outputs", () => {
+    const r = validateDraft(userToolDraft());
+    expect(r.topologyErrors).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it("still reports a port the embedded tool does not define", () => {
+    const wf = userToolDraft();
+    wf.outputs.the_output.outputSource = "my_tool/not_an_output";
+    const r = validateDraft(wf);
+    expect(r.topologyErrors.map((e) => e.message)).toContain(
+      `workflow output "the_output" source "my_tool/not_an_output" references unknown port "not_an_output" on step "my_tool"`,
+    );
+  });
+
+  it("extractConcreteSubset keeps outputs and consumers of the embedded tool", () => {
+    const r = extractConcreteSubset(userToolDraft());
+    expect(r.dropped_steps.map((d) => d.path)).toEqual([["pending"]]);
+    expect(r.dropped_outputs).toEqual([]);
+    const extracted = r.workflow as Record<string, any>;
+    expect(Object.keys(extracted.outputs)).toEqual(["the_output", "consumed"]);
+    expect(Object.keys(extracted.steps)).toEqual(["my_tool", "consume"]);
+  });
+});
