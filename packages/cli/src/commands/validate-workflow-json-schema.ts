@@ -47,6 +47,7 @@ import type {
 import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
 import { embeddedToolDefinition, isEmbeddedTool, resolveEmbeddedTool } from "./embedded-tool.js";
+import { resolveStrictOptions } from "./strict-options.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
 
@@ -306,13 +307,16 @@ export async function runValidateWorkflowJsonSchema(
   }
 
   const stateOk = !results.some((r) => r.status === "fail");
+  const strictStateSkipped =
+    resolveStrictOptions(opts).strictState &&
+    results.some((r) => r.status !== "ok" && r.status !== "fail");
 
   if (opts.json) {
     const report = buildSingleValidationReport(filePath, results, {
       structure_errors: structureErrors,
     });
     console.log(JSON.stringify(report, null, 2));
-    process.exitCode = structOk && stateOk ? 0 : 1;
+    process.exitCode = strictStateSkipped ? 2 : structOk && stateOk ? 0 : 1;
     return;
   }
 
@@ -342,6 +346,11 @@ export async function runValidateWorkflowJsonSchema(
   }
 
   console.log(`\nTool state (json-schema): ${validated} validated, ${skipped} skipped`);
+  if (strictStateSkipped) {
+    console.error("Strict state: skipped steps not allowed");
+    process.exitCode = 2;
+    return;
+  }
   process.exitCode = structOk && stateOk ? 0 : 1;
 }
 

@@ -11,6 +11,8 @@ import {
   normalizedFormat2,
   toFormat2,
   toNative,
+  cytoscapeElements,
+  workflowToMermaid,
 } from "../src/workflow/index.js";
 
 const FIXTURE = join(
@@ -44,5 +46,13 @@ describe("embedded GalaxyUserTool step", () => {
     expect(step.tool_id).toBeUndefined();
     expect(step.tool_state).toEqual({ lines: 3 });
     expect(step.when).toBe("$(inputs.lines > 0)");
+  });
+
+  it("renders the embedded run as a tool in both diagram formats", () => {
+    const wf = userToolWorkflow();
+    const node = cytoscapeElements(wf).nodes.find((n) => n.data.label === "my_tool");
+    expect(node?.data.step_type).toBe("tool");
+    expect(node?.classes).toContain("type_tool");
+    expect(workflowToMermaid(wf)).toContain('step_0["my_tool"]');
   });
 });

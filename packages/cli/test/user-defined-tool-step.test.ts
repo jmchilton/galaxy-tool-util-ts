@@ -150,6 +150,28 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
     await runValidateWorkflow(path, { cacheDir: ctx.tmpDir, offline: true, strictState: true });
     expect(process.exitCode).toBe(2);
   });
+
+  it.each(["effect", "json-schema"] as const)(
+    "rejects a skipped embedded tool under --strict-state --json (%s)",
+    async (mode) => {
+      const native = toNative(await userToolWorkflow()) as Record<string, any>;
+      native.steps["1"].tool_representation.class = "GalaxyTool";
+      const path = join(ctx.tmpDir, "wf.ga");
+      await writeFile(path, JSON.stringify(native));
+
+      await runValidateWorkflow(path, {
+        cacheDir: ctx.tmpDir,
+        offline: true,
+        strictState: true,
+        json: true,
+        mode,
+      });
+
+      const report = jsonOutput(ctx) as SingleValidationReport;
+      expect(report.results[0].status).toBe("skip_tool_not_found");
+      expect(process.exitCode).toBe(2);
+    },
+  );
 });
 
 describe("gxwf draft commands: embedded GalaxyUserTool step", () => {

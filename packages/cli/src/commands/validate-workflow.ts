@@ -203,6 +203,8 @@ export async function runValidateWorkflow(
   }
 
   const stateOk = !results.some((r) => r.status === "fail");
+  const strictStateSkipped =
+    strict.strictState && results.some((r) => r.status !== "ok" && r.status !== "fail");
 
   let connectionReport: ConnectionValidationReport | null = null;
   if (opts.connections) {
@@ -222,7 +224,7 @@ export async function runValidateWorkflow(
       console.log(JSON.stringify(report, null, 2));
     }
     await writeReportHtml("validate", report, opts.reportHtml);
-    process.exitCode = structOk && stateOk && connectionsOk ? 0 : 1;
+    process.exitCode = strictStateSkipped ? 2 : structOk && stateOk && connectionsOk ? 0 : 1;
     return;
   }
 
@@ -240,7 +242,7 @@ export async function runValidateWorkflow(
   if (connectionReport !== null) printConnectionReport(connectionReport);
 
   // --- strict state: promote skips to failures ---
-  if (strict.strictState && results.some((r) => r.status !== "ok" && r.status !== "fail")) {
+  if (strictStateSkipped) {
     console.error("Strict state: skipped steps not allowed");
     process.exitCode = 2;
     return;
