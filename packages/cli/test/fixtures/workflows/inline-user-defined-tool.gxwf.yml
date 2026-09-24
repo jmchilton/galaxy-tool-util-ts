@@ -19,7 +19,7 @@ steps:
       version: "0.1"
       name: cat_user_defined
       description: concatenates a file
-      container: busybox
+      container: quay.io/biocontainers/coreutils:9.5
       shell_command: cat '$(inputs.input1.path)' > output.txt
       inputs:
         - name: input1
