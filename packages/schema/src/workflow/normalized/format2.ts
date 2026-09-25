@@ -55,6 +55,8 @@ export const NormalizedFormat2InputSchema = Schema.Struct({
   type: Schema.optional(Schema.NullOr(Schema.Union(Schema.String, Schema.Array(Schema.String)))),
   optional: Schema.optional(Schema.NullOr(Schema.Boolean)),
   default: Schema.optional(Schema.NullOr(Schema.Unknown)),
+  min: Schema.optional(Schema.NullOr(Schema.Number)),
+  max: Schema.optional(Schema.NullOr(Schema.Number)),
   format: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
   collection_type: Schema.optional(Schema.NullOr(Schema.String)),
   position: Schema.optional(
