@@ -7,6 +7,21 @@
 export const UNLABELED_INPUT_PREFIX = "_unlabeled_input_";
 export const UNLABELED_STEP_PREFIX = "_unlabeled_step_";
 
+/**
+ * Node id for a native step: its label, else a synthetic unlabeled sentinel.
+ *
+ * Shared by native→Format2 conversion and layout position matching so the two
+ * cannot drift.
+ */
+export function unlabeledNodeId(
+  label: string | null | undefined,
+  stepId: string | number,
+  isInput: boolean,
+): string {
+  if (label != null) return label;
+  return `${isInput ? UNLABELED_INPUT_PREFIX : UNLABELED_STEP_PREFIX}${stepId}`;
+}
+
 export function isUnlabeledInput(label: string): boolean {
   return label.startsWith(UNLABELED_INPUT_PREFIX);
 }

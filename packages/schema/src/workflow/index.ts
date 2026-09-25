@@ -72,6 +72,7 @@ export {
   resolveSourceReference,
   stepRenderIdentity,
   rawStepRenderIdentity,
+  unlabeledNodeId,
   UNLABELED_INPUT_PREFIX,
   UNLABELED_STEP_PREFIX,
 } from "./normalized/index.js";
@@ -159,6 +160,17 @@ export { workflowToMermaid, type MermaidOptions } from "./mermaid.js";
 export { edgeAnnotationKey, type EdgeAnnotation } from "./edge-annotation.js";
 
 export { cytoscapeElements, type CytoscapeOptions } from "./cytoscape.js";
+export {
+  applyLayout,
+  layeredPositions,
+  layoutPositions,
+  AUTO as LAYOUT_AUTO,
+  LayoutCycleError,
+  type ApplyLayoutOptions,
+  type LayoutPosition,
+  type LayoutStrategy,
+} from "./layout.js";
+export { GRAPH_PROPERTY_CHECKERS, type GraphPropertyChecker } from "./layout-properties.js";
 export {
   elementsToList,
   type CytoscapeEdge,
