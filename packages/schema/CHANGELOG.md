@@ -1,5 +1,11 @@
 # @galaxy-tool-util/schema
 
+## 1.13.1
+
+### Patch Changes
+
+- [#186](https://github.com/jmchilton/galaxy-tool-util-ts/pull/186) [`b65b9f5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/b65b9f55c2c0c3be33b3d5a984bf08a0ae54c96f) Thanks [@jmchilton](https://github.com/jmchilton)! - Preserve numeric Format 2 workflow input `min` and `max` through native conversion. Store bounds as Galaxy `in_range` validators on import and recover them from non-negated validators on export.
+
 ## 1.13.0
 
 ### Minor Changes
