@@ -336,6 +336,10 @@ function lintStepBestPractices(ctx: LintContext, step: NormalizedFormat2Step): v
   }
 }
 
+/**
+ * Native step best-practice checks on native fields, so messages reference
+ * native ids / labels rather than format2 sentinels like `_unlabeled_step_1`.
+ */
 function lintNativeStepBestPractices(ctx: LintContext, step: NormalizedNativeStep): void {
   const stepId = step.label || step.annotation || String(step.id);
 
@@ -348,17 +352,36 @@ function lintNativeStepBestPractices(ctx: LintContext, step: NormalizedNativeSte
     }
   }
 
+  // missing metadata
+  if (!step.annotation) {
+    ctx.warn(`Workflow step ${stepId} has no annotation.`);
+  }
+  if (!step.label) {
+    ctx.warn(`Workflow step ${stepId} has no label.`);
+  }
+
+  // untyped params in tool_state
+  let toolState: unknown = step.tool_state;
+  if (typeof toolState === "string") {
+    try {
+      toolState = JSON.parse(toolState);
+    } catch {
+      toolState = {};
+    }
+  }
+  if (toolState && typeof toolState === "object" && checkJsonForUntypedParams(toolState)) {
+    ctx.warn(`Workflow step ${stepId} specifies an untyped parameter as an input.`);
+  }
+
   // untyped params in post_job_actions
   if (step.post_job_actions && Object.keys(step.post_job_actions).length > 0) {
     if (checkJsonForUntypedParams(step.post_job_actions)) {
-      ctx.warn(
-        `Workflow step with ID ${step.id} specifies an untyped parameter in the post-job actions.`,
-      );
+      ctx.warn(`Workflow step ${stepId} specifies an untyped parameter in the post-job actions.`);
     }
   }
 }
 
-function lintBestPractices(
+function lintWorkflowTopLevel(
   ctx: LintContext,
   nf2: NormalizedFormat2Workflow,
   rawDict: Record<string, unknown>,
@@ -394,11 +417,6 @@ function lintBestPractices(
   if (!nf2.license) {
     ctx.warn("Workflow does not specify a license.");
   }
-
-  // step-level
-  for (const step of nf2.steps) {
-    lintStepBestPractices(ctx, step);
-  }
 }
 
 /**
@@ -415,18 +433,20 @@ export function lintBestPracticesFormat2(workflowDict: Record<string, unknown>):
     nf2 = null;
   }
   if (nf2) {
-    lintBestPractices(ctx, nf2, workflowDict);
+    lintWorkflowTopLevel(ctx, nf2, workflowDict);
+    for (const step of nf2.steps) {
+      lintStepBestPractices(ctx, step);
+    }
   }
   return toLintResult(ctx);
 }
 
 /**
  * Lint best practices for a native Galaxy workflow.
- * Runs shared format2 best practices plus native-specific checks.
+ * Runs top-level checks on the format2 view and step checks on native steps.
  */
 export function lintBestPracticesNative(workflowDict: Record<string, unknown>): LintResult {
   const ctx = new LintContext();
-  // Shared best practices on format2 view
   let nf2: NormalizedFormat2Workflow | null;
   try {
     nf2 = ensureFormat2(workflowDict) as NormalizedFormat2Workflow;
@@ -434,9 +454,8 @@ export function lintBestPracticesNative(workflowDict: Record<string, unknown>): 
     nf2 = null;
   }
   if (nf2) {
-    lintBestPractices(ctx, nf2, workflowDict);
+    lintWorkflowTopLevel(ctx, nf2, workflowDict);
   }
-  // Native-specific checks
   let nnw: NormalizedNativeWorkflow | null;
   try {
     nnw = normalizedNative(workflowDict);

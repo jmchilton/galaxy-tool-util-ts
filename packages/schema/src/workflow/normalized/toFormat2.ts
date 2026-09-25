@@ -16,13 +16,13 @@ import type {
 } from "./format2.js";
 import { isGalaxyUserToolRun } from "./format2.js";
 import { flattenCommentData } from "./comments.js";
-import { UNLABELED_INPUT_PREFIX, UNLABELED_STEP_PREFIX, isUnlabeled, Labels } from "./labels.js";
+import { isUnlabeled, Labels, unlabeledNodeId } from "./labels.js";
 
 // Effect schemas produce deeply-readonly types. We build plain objects
 // and cast — runtime semantics are identical.
 
 // Step types that represent workflow inputs
-const INPUT_STEP_TYPES = new Set(["data_input", "data_collection_input", "parameter_input"]);
+export const INPUT_STEP_TYPES = new Set(["data_input", "data_collection_input", "parameter_input"]);
 
 /**
  * Per-step callback result: a replacement format2 state dict + optional `in`
@@ -58,13 +58,10 @@ function _buildFormat2Workflow(
   // Build label map: step key → label string
   const labelMap = new Map<string, string>();
   for (const [key, step] of Object.entries(wf.steps)) {
-    if (step.label != null) {
-      labelMap.set(String(key), step.label);
-    } else if (INPUT_STEP_TYPES.has(step.type as string)) {
-      labelMap.set(String(key), `${UNLABELED_INPUT_PREFIX}${step.id}`);
-    } else {
-      labelMap.set(String(key), `${UNLABELED_STEP_PREFIX}${step.id}`);
-    }
+    labelMap.set(
+      String(key),
+      unlabeledNodeId(step.label, step.id, INPUT_STEP_TYPES.has(step.type as string)),
+    );
   }
 
   // Build workflow outputs from step workflow_outputs
@@ -137,7 +134,7 @@ function _nativeInputToFormat2Type(
 }
 
 function _buildInputParam(step: NormalizedNativeStep): NormalizedFormat2Input {
-  const stepId = step.label ?? `${UNLABELED_INPUT_PREFIX}${step.id}`;
+  const stepId = unlabeledNodeId(step.label, step.id, true);
   const inputType = _nativeInputToFormat2Type(step.type as string, step.tool_state);
 
   const result: Record<string, unknown> = { id: stepId, type: inputType };

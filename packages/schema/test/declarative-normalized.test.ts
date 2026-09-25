@@ -34,6 +34,8 @@ import {
 import { workflowToMermaid } from "../src/workflow/mermaid.js";
 import { cytoscapeElements } from "../src/workflow/cytoscape.js";
 import { elementsToList } from "../src/workflow/cytoscape-models.js";
+import { applyLayout } from "../src/workflow/layout.js";
+import { GRAPH_PROPERTY_CHECKERS } from "../src/workflow/layout-properties.js";
 import {
   detectDraft,
   validateDraft,
@@ -62,6 +64,7 @@ const OPERATIONS: Record<string, Operation> = {
   validate_native_strict: validateNativeStrict,
   to_format2: toFormat2,
   to_native: toNative,
+  to_format2_via_native: (raw: unknown) => toFormat2(toNative(raw)),
   ensure_format2: ensureFormat2,
   ensure_native: ensureNative,
   expanded_format2: (raw: unknown) => expandedFormat2(raw),
@@ -79,6 +82,14 @@ const OPERATIONS: Record<string, Operation> = {
   cytoscape_elements_to_list: (raw: unknown) => elementsToList(cytoscapeElements(raw)),
   cytoscape_node_ids: (raw: unknown) => cytoscapeElements(raw).nodes.map((n) => n.data.id),
   cytoscape_edge_ids: (raw: unknown) => cytoscapeElements(raw).edges.map((e) => e.data.id),
+  // applyLayout self-detects native vs Format2 via `a_galaxy_workflow`.
+  layout_format2: (raw: unknown) =>
+    applyLayout(raw as Record<string, unknown>, { overwrite: true }),
+  layout_native: (raw: unknown) => applyLayout(raw as Record<string, unknown>, { overwrite: true }),
+  layout_layered_format2: (raw: unknown) =>
+    applyLayout(raw as Record<string, unknown>, { strategy: "layered", overwrite: true }),
+  layout_layered_native: (raw: unknown) =>
+    applyLayout(raw as Record<string, unknown>, { strategy: "layered", overwrite: true }),
   // Draft-workflow ops. detect/validate return camelCase shapes today; wrap
   // with toSnakeCaseKeys so expectation paths stay consistent with the rest
   // of the file. next/extract are already snake_case (and extract returns a
@@ -98,10 +109,7 @@ const KNOWN_PARSER_DIVERGENCES = new Set<string>(["test_unlinted_best_practices_
 // Tests whose expectation reflects Python-side behavior the TS port hasn't
 // mirrored yet — don't hold the synced expectation file hostage; skip locally
 // until the behavior gap is closed.
-const KNOWN_BEHAVIOR_DIVERGENCES = new Set<string>([
-  // gxformat2 best-practice lint emits an extra warning TS does not yet produce
-  "test_bp_native_untyped_param",
-]);
+const KNOWN_BEHAVIOR_DIVERGENCES = new Set<string>([]);
 
 // --- Fixture loading ---
 
@@ -202,6 +210,11 @@ describe("declarative normalized workflow tests", () => {
       const wf = await Promise.resolve(OPERATIONS[operation](raw));
 
       runAssertions(wf, assertions);
+      for (const property of testCase.graph_properties ?? []) {
+        const checker = GRAPH_PROPERTY_CHECKERS[property];
+        if (checker === undefined) throw new Error(`Unknown graph property "${property}"`);
+        checker(wf);
+      }
     });
   }
 });
