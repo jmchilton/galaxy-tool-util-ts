@@ -1,5 +1,13 @@
 # @galaxy-tool-util/tool-cache-proxy
 
+## 1.13.1
+
+### Patch Changes
+
+- Updated dependencies [[`b65b9f5`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/b65b9f55c2c0c3be33b3d5a984bf08a0ae54c96f)]:
+  - @galaxy-tool-util/schema@1.13.1
+  - @galaxy-tool-util/core@1.13.1
+
 ## 1.13.0
 
 ### Patch Changes
