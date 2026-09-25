@@ -164,6 +164,24 @@ function _buildInputParam(step: NormalizedNativeStep): NormalizedFormat2Input {
     }
   }
 
+  if (inputType === "int" || inputType === "float") {
+    const validators = ts.validators;
+    if (Array.isArray(validators)) {
+      for (const validator of validators) {
+        if (
+          validator &&
+          typeof validator === "object" &&
+          validator.type === "in_range" &&
+          !validator.negate
+        ) {
+          if (typeof validator.min === "number") result.min = validator.min;
+          if (typeof validator.max === "number") result.max = validator.max;
+          break;
+        }
+      }
+    }
+  }
+
   if (step.annotation) result.doc = step.annotation;
   if (step.position) result.position = step.position;
 

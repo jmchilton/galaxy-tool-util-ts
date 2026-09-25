@@ -237,6 +237,15 @@ function _buildInputStep(inp: NormalizedFormat2Input, orderIndex: number): Norma
   }
   if (inp.collection_type) toolState.collection_type = inp.collection_type;
   if (inp.default != null) toolState.default = inp.default;
+  if (
+    stepType === "parameter_input" &&
+    ["integer", "int", "float"].includes(typeStr) &&
+    (inp.min != null || inp.max != null)
+  ) {
+    toolState.validators = [
+      { type: "in_range", min: inp.min ?? null, max: inp.max ?? null, negate: false },
+    ];
+  }
 
   // Copy extra fields
   for (const key of [
