@@ -245,10 +245,11 @@ gxwf convert my-workflow.gxwf.yml --to native --json
 | `--json` | Force JSON output |
 | `--yaml` | Force YAML output |
 | `--format <fmt>` | Force source format (auto-detected by default) |
-| `--stateful` | Use cached tool definitions for schema-aware state re-encoding |
-| `--cache-dir <dir>` | Tool cache directory (for `--stateful`) |
+| `--stateful` | Force schema-aware state re-encoding even if the tool cache is empty |
+| `--no-stateful` | Skip schema-aware state re-encoding; copy `tool_state` through verbatim |
+| `--cache-dir <dir>` | Tool cache directory (default: schema-aware re-encoding when it is populated) |
 
-With `--stateful`, scalar types are coerced (`"42"` → `42`), stale bookkeeping keys stripped, and connection/runtime markers routed into the format2 `in` block. Per-step failures fall back to schema-free passthrough and are reported to stderr. Exit code 1 if any step fell back.
+Schema-aware re-encoding runs whenever the tool cache is populated. It coerces scalar types (`"42"` → `42`), strips stale bookkeeping keys, and routes connection/runtime markers into the format2 `in` block. Per-step failures fall back to schema-free passthrough and are reported to stderr. Exit code 1 if any step fell back. Pass `--no-stateful` for a byte-stable, cache-independent conversion.
 
 ### `roundtrip <file>`
 
@@ -458,10 +459,11 @@ gxwf convert-tree ./workflows/ --output-dir ./converted/
 | `--json` | Force JSON output for converted files |
 | `--yaml` | Force YAML output |
 | `--format <fmt>` | Force source format (auto-detected by default) |
-| `--stateful` | Use cached tool definitions for schema-aware state re-encoding |
-| `--cache-dir <dir>` | Tool cache directory (for `--stateful`) |
+| `--stateful` | Force schema-aware state re-encoding even if the tool cache is empty |
+| `--no-stateful` | Skip schema-aware state re-encoding; copy `tool_state` through verbatim |
+| `--cache-dir <dir>` | Tool cache directory (default: schema-aware re-encoding when it is populated) |
 
-With `--stateful`, the shared tool cache is loaded once and reused across all files. Each file reports its per-step conversion count (e.g. `[stateful 3/4]`) and aggregate fallback totals. Exit code 1 if any step fell back.
+When schema-aware re-encoding is active, the shared tool cache is loaded once and reused across all files. Each file reports its per-step conversion count (e.g. `[stateful 3/4]`) and aggregate fallback totals. Exit code 1 if any step fell back.
 
 ### `roundtrip-tree <dir>`
 
