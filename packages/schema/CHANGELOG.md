@@ -1,5 +1,35 @@
 # @galaxy-tool-util/schema
 
+## 1.13.0
+
+### Minor Changes
+
+- [#185](https://github.com/jmchilton/galaxy-tool-util-ts/pull/185) [`74cd49e`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/74cd49eb81db34d8467d822ab83c8bc63ca796ea) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Pass embedded user-defined tools (`run:` with `class: GalaxyUserTool`) through format2 expansion.
+
+  `expandedFormat2` treated every object under a step's `run:` as a subworkflow and crashed with `wf.steps is not iterable` on an embedded tool, which took down `gxwf validate` and `gxwf draft-validate --concrete` for such workflows. Embedded tools now pass through unchanged, as gxformat2's `GalaxyUserToolStub` does. The normalized format2 step schema models the stub (`GalaxyUserToolStubSchema`), and `isGalaxyUserToolRun` tells an embedded tool from a subworkflow.
+
+### Patch Changes
+
+- [#185](https://github.com/jmchilton/galaxy-tool-util-ts/pull/185) [`20514cf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/20514cf7eb1bf5d76b50ef55e8f70400d4e9643e) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Resolve draft edge refs against an embedded user-defined tool's outputs.
+
+  `validateDraft` and `extractConcreteSubset` only knew a step's ports from its `out:` block. For a step embedding a `GalaxyUserTool`, `out:` is optional — Galaxy creates every output the tool defines — so `draft-validate` reported "unknown port" for a workflow output sourced from the tool, and `draft-extract` silently dropped that output along with any step consuming it. The embedded tool's `outputs[].name` now count as the step's ports.
+
+- [#185](https://github.com/jmchilton/galaxy-tool-util-ts/pull/185) [`696b2bd`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/696b2bd3601ae89c0289ae3414222cb1694f9ce3) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Keep a user-defined tool step's `tool_state`, `when`, `uuid` and `errors` when converting native to format2.
+
+  `toFormat2` emitted a native step carrying a `GalaxyUserTool` `tool_representation` as a format2 `run:` step with only its label, connections, outputs and position, dropping the step's parameter values and conditional. `gxwf roundtrip` reported the loss as a real diff. The `tool_state` now passes through verbatim, as it does for a cache-referenced tool without the stateful encoder.
+
+- [#182](https://github.com/jmchilton/galaxy-tool-util-ts/pull/182) [`613e3b2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/613e3b20dcae8d38734242e7615798ea33630b09) Thanks [@jmchilton](https://github.com/jmchilton)! - fix(schema): offset list-form step ids by the input count in `normalizedFormat2`
+
+  List-form Format2 steps without an explicit `id` were numbered from 0 within
+  `steps`, while gxformat2 numbers them from the count of `inputs` so a normalized
+  step id equals the index it takes in native form. A numeric source such as
+  `0/out_file1` resolved to the first step in TypeScript and to the first input in
+  Python; both now resolve to the input.
+
+- [#179](https://github.com/jmchilton/galaxy-tool-util-ts/pull/179) [`a29fd2a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a29fd2a074070fd6fe728e06bffac8e85f802101) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Always normalize in `toNative`, fixing `TypeError: step.in is not iterable` on list-form Format2 workflows.
+
+  `toNative` decided a workflow was already normalized from three top-level facts — `class: GalaxyWorkflow` plus array-valued `inputs` and `steps` — none of which constrain the per-step shape. gxformat2 allows list-form `inputs`/`steps` alongside dict-form `in`/`out`, and such a workflow skipped `normalizedFormat2` entirely and then crashed in `_extractConnections`. `gxwf validate --connections`, `gxwf convert --to native` and `ensureNative` were all affected. `normalizedFormat2` is idempotent, so the shape check is dropped and normalization now runs unconditionally.
+
 ## 1.12.0
 
 ### Minor Changes
