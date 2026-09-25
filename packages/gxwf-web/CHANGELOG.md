@@ -1,5 +1,15 @@
 # @galaxy-tool-util/gxwf-web
 
+## 1.13.0
+
+### Patch Changes
+
+- Updated dependencies [[`1ca82df`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/1ca82df1f7f079c89dd021914ec0db82b8d95215), [`0f71ed2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0f71ed2fae7ed1e42cb56d2773cb29262dc3f2ae), [`20514cf`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/20514cf7eb1bf5d76b50ef55e8f70400d4e9643e), [`74cd49e`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/74cd49eb81db34d8467d822ab83c8bc63ca796ea), [`696b2bd`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/696b2bd3601ae89c0289ae3414222cb1694f9ce3), [`613e3b2`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/613e3b20dcae8d38734242e7615798ea33630b09), [`a29fd2a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a29fd2a074070fd6fe728e06bffac8e85f802101), [`54edf67`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/54edf674a423d03c4648f79c291fd35f1b7f833e)]:
+  - @galaxy-tool-util/cli@1.13.0
+  - @galaxy-tool-util/schema@1.13.0
+  - @galaxy-tool-util/connection-validation@1.13.0
+  - @galaxy-tool-util/core@1.13.0
+
 ## 1.12.0
 
 ### Minor Changes
