@@ -46,7 +46,9 @@ function validateSpec(spec: ProgramSpec, handlers: HandlerRegistry): void {
     if (!handlers[cmd.handler]) {
       throw new Error(`Missing handler "${cmd.handler}" for command "${cmd.name}"`);
     }
-    const seenOptions = new Set<string>();
+    // A boolean may declare both `--foo` and `--no-foo`; they share one
+    // attribute name but are distinct flags, so track the two senses apart.
+    const seenOptions = new Map<string, Set<boolean>>();
     const checkOptName = (flags: string): void => {
       const optName = attributeNameFromFlags(flags);
       if (RESERVED_OPTION_NAMES.has(optName)) {
@@ -56,10 +58,16 @@ function validateSpec(spec: ProgramSpec, handlers: HandlerRegistry): void {
             `action instead of binding). Rename it (e.g. --tool-version).`,
         );
       }
-      if (seenOptions.has(optName)) {
+      const negated = isNegatedFlag(flags);
+      const senses = seenOptions.get(optName);
+      if (!senses) {
+        seenOptions.set(optName, new Set([negated]));
+        return;
+      }
+      if (senses.has(negated)) {
         throw new Error(`Duplicate option "${optName}" on command "${cmd.name}"`);
       }
-      seenOptions.add(optName);
+      senses.add(negated);
     };
     for (const opt of cmd.options ?? []) checkOptName(opt.flags);
     for (const groupName of cmd.optionGroups ?? []) {
@@ -78,6 +86,12 @@ function validateSpec(spec: ProgramSpec, handlers: HandlerRegistry): void {
  * for duplicate detection here; commander itself owns the canonical
  * derivation at runtime.
  */
+/** True when the option's long flag is commander's `--no-` negation form. */
+function isNegatedFlag(flags: string): boolean {
+  const long = flags.split(/[ ,|]+/).find((part) => part.startsWith("--"));
+  return long?.startsWith("--no-") ?? false;
+}
+
 function attributeNameFromFlags(flags: string): string {
   const long = flags.split(/[ ,|]+/).find((part) => part.startsWith("--"));
   if (!long) return flags;

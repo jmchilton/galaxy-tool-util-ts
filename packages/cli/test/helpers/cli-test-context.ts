@@ -1,8 +1,13 @@
 /**
  * Shared test harness for CLI command tests.
  * Creates a temp dir + console spies, tears down on cleanup.
+ *
+ * The temp dir also becomes the tool cache for the duration of the test, so a
+ * command that resolves a cache without being handed one finds this empty dir
+ * rather than the developer's real `~/.galaxy/tool_info_cache`.
  */
 import { vi } from "vitest";
+import { CACHE_DIR_ENV_VAR } from "@galaxy-tool-util/core/node";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,6 +23,8 @@ export interface CliTestContext {
 
 export async function createCliTestContext(prefix: string): Promise<CliTestContext> {
   const tmpDir = await mkdtemp(join(tmpdir(), `${prefix}-`));
+  const priorCacheDir = process.env[CACHE_DIR_ENV_VAR];
+  process.env[CACHE_DIR_ENV_VAR] = tmpDir;
   const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -31,6 +38,11 @@ export async function createCliTestContext(prefix: string): Promise<CliTestConte
     warnSpy,
     stdoutSpy,
     async cleanup() {
+      if (priorCacheDir === undefined) {
+        delete process.env[CACHE_DIR_ENV_VAR];
+      } else {
+        process.env[CACHE_DIR_ENV_VAR] = priorCacheDir;
+      }
       await rm(tmpDir, { recursive: true });
       logSpy.mockRestore();
       errSpy.mockRestore();

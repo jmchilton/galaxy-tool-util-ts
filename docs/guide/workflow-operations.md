@@ -11,7 +11,7 @@ The `gxwf` CLI groups its operations into families. The five core state operatio
 | **Validate** | `gxwf validate` | `gxwf validate-tree` | Structure + tool state validation |
 | **Clean** | `gxwf clean` | `gxwf clean-tree` | Strip stale keys, decode legacy encoding |
 | **Lint** | `gxwf lint` | `gxwf lint-tree` | Structural checks + best practices + state validation |
-| **Convert** | `gxwf convert` | `gxwf convert-tree` | Native <-> format2 conversion (schema-free or `--stateful`) |
+| **Convert** | `gxwf convert` | `gxwf convert-tree` | Native <-> format2 conversion (schema-aware when a tool cache is present) |
 | **Roundtrip** | `gxwf roundtrip` | `gxwf roundtrip-tree` | Native → format2 → native fidelity check |
 
 Beyond the core five, `gxwf` also provides:
@@ -194,20 +194,23 @@ By default this is the schema-free conversion path — it mirrors Python's `gxwf
 
 Conversion has two modes:
 
-**Schema-free** (default): `tool_state` is copied between formats as-is. Fast, no tool cache dependency, but lossy — native state may contain stale bookkeeping keys, string-typed numbers, comma-delimited multi-selects, or ConnectedValue/RuntimeValue markers that remain in the output.
+**Stateful** (default when the tool cache is populated): walks the parameter tree using cached tool definitions to strip stale keys, coerce scalar types, separate connection/runtime markers into the format2 `in` block, and emit clean `state` dicts. Per-step failures (tool not in cache, invalid state) fall back to schema-free passthrough and are reported to stderr.
 
-**Stateful** (`--stateful`): walks the parameter tree using cached tool definitions to strip stale keys, coerce scalar types, separate connection/runtime markers into the format2 `in` block, and emit clean `state` dicts. Per-step failures (tool not in cache, invalid state) fall back to schema-free passthrough and are reported to stderr.
+**Schema-free** (`--no-stateful`, or an empty tool cache): `tool_state` is copied between formats as-is. Fast, no tool cache dependency, and byte-stable across machines — but lossy. Native state may carry stale bookkeeping keys, string-typed numbers, comma-delimited multi-selects, or ConnectedValue/RuntimeValue markers into the output, and steps that keep a `tool_state` block are not format2-validatable.
 
 ```bash
-# Stateful conversion — requires populated tool cache
-gxwf convert my-workflow.ga --to format2 --stateful
-gxwf convert-tree ./workflows/ --to format2 --stateful --output-dir ./converted/
+# Schema-aware by default when the cache has something to resolve against
+gxwf convert my-workflow.ga --to format2
+gxwf convert-tree ./workflows/ --to format2 --output-dir ./converted/
 
 # Share a cache directory across runs
-gxwf convert my-workflow.ga --to format2 --stateful --cache-dir ~/.cache/galaxy-tools
+gxwf convert my-workflow.ga --to format2 --cache-dir ~/.cache/galaxy-tools
+
+# Opt out — verbatim tool_state passthrough regardless of the cache
+gxwf convert my-workflow.ga --to format2 --no-stateful
 ```
 
-Populate the cache first with `galaxy-tool-cache populate-workflow` (see [Tool Cache Management](#tool-cache-management) below). An empty cache emits a warning and falls back for every step.
+Populate the cache first with `galaxy-tool-cache populate-workflow` (see [Tool Cache Management](#tool-cache-management) below). With an empty cache, conversion stays schema-free; passing `--stateful` explicitly against an empty cache warns and falls back for every step.
 
 Stateful mode exit codes: 0 = all steps converted cleanly, 1 = any step fell back to schema-free (typically a missing tool).
 

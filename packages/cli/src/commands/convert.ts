@@ -1,7 +1,6 @@
 /**
  * `gxwf convert` — convert between native (.ga) and format2 (.gxwf.yml) formats.
  */
-import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   toFormat2,
   toFormat2Stateful,
@@ -14,7 +13,7 @@ import {
   type WorkflowFormat,
 } from "@galaxy-tool-util/schema";
 import { dirname } from "node:path";
-import { loadToolInputsForWorkflow } from "./stateful-tool-inputs.js";
+import { loadToolInputsForWorkflow, resolveConversionCache } from "./stateful-tool-inputs.js";
 import { createDefaultResolver } from "./url-resolver.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import {
@@ -75,14 +74,9 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
   let result: Record<string, unknown>;
   let stepStatuses: StepConversionStatus[] | null = null;
 
-  if (opts.stateful) {
-    const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
-    await cache.index.load();
+  const cache = await resolveConversionCache(opts);
 
-    if ((await cache.index.listAll()).length === 0) {
-      console.warn("Tool cache is empty — stateful conversion will fall back for every step");
-    }
-
+  if (cache) {
     const expansionOpts: ExpansionOptions = {
       resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
     };

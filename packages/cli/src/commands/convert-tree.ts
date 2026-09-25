@@ -1,8 +1,6 @@
 /**
  * `gxwf convert-tree` — batch convert all workflows under a directory.
  */
-import type { ToolCache } from "@galaxy-tool-util/core";
-import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   toFormat2,
   toFormat2Stateful,
@@ -16,7 +14,11 @@ import {
 } from "@galaxy-tool-util/schema";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, basename } from "node:path";
-import { loadToolInputsForWorkflow, type ToolLoadStatus } from "./stateful-tool-inputs.js";
+import {
+  loadToolInputsForWorkflow,
+  resolveConversionCache,
+  type ToolLoadStatus,
+} from "./stateful-tool-inputs.js";
 import { createDefaultResolver } from "./url-resolver.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { resolveFormat, serializeWorkflow } from "./workflow-io.js";
@@ -57,14 +59,7 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
   }
 
   // Shared tool cache for stateful mode (loaded once per run)
-  let cache: ToolCache | null = null;
-  if (opts.stateful) {
-    cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
-    await cache.index.load();
-    if ((await cache.index.listAll()).length === 0) {
-      console.warn("Tool cache is empty — stateful conversion will fall back for every step");
-    }
-  }
+  const cache = await resolveConversionCache(opts);
 
   const strict = resolveStrictOptions(opts);
 
@@ -98,7 +93,7 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
     let statefulSteps: StepConversionStatus[] | undefined;
     let toolLoadErrors: ToolLoadStatus[] | undefined;
 
-    if (opts.stateful && cache) {
+    if (cache) {
       const expansionOpts: ExpansionOptions = {
         resolver: createDefaultResolver({
           workflowDirectory: dirname(join(dir, info.relativePath)),
@@ -160,7 +155,7 @@ export async function runConvertTree(dir: string, opts: ConvertTreeOptions): Pro
 
   // Aggregate stateful step counts across files
   let statefulFallbacks = 0;
-  if (opts.stateful) {
+  if (cache) {
     for (const r of report.results) {
       if ("statefulSteps" in r && r.statefulSteps) {
         statefulFallbacks += r.statefulSteps.filter((s) => !s.converted).length;
