@@ -14,6 +14,7 @@ import type {
   NormalizedFormat2StepInput,
   NormalizedFormat2StepOutput,
 } from "./format2.js";
+import { isGalaxyUserToolRun } from "./format2.js";
 import { flattenCommentData } from "./comments.js";
 import { UNLABELED_INPUT_PREFIX, UNLABELED_STEP_PREFIX, isUnlabeled, Labels } from "./labels.js";
 
@@ -207,9 +208,7 @@ function _buildToolFormat2Step(
   labelMap: Map<string, string>,
   options?: ToFormat2Options,
 ): NormalizedFormat2Step {
-  // User-defined tool: tool_representation with class GalaxyUserTool
-  const toolRep = step.tool_representation as Record<string, unknown> | null | undefined;
-  if (toolRep && toolRep.class === "GalaxyUserTool") {
+  if (isGalaxyUserToolRun(step.tool_representation)) {
     return _buildUserToolFormat2Step(step, labelMap);
   }
 
@@ -232,13 +231,7 @@ function _buildToolFormat2Step(
       _mergeInOverrides(inList, override.in);
     }
   } else {
-    // Default: copy tool_state, strip bookkeeping keys
-    const ts = { ...step.tool_state };
-    delete ts.__page__;
-    delete ts.__rerun_remap_job_id__;
-    if (Object.keys(ts).length > 0) {
-      toolState = ts;
-    }
+    toolState = _passthroughToolState(step);
   }
 
   const { stepId, displayLabel } = _resolveStepIdentity(step, labelMap);
@@ -262,6 +255,16 @@ function _buildToolFormat2Step(
   };
 }
 
+/** Default: copy tool_state verbatim, minus bookkeeping keys; null when nothing is left. */
+function _passthroughToolState(step: NormalizedNativeStep): Record<string, unknown> | null {
+  const ts = { ...step.tool_state };
+  delete ts.__page__;
+  delete ts.__rerun_remap_job_id__;
+  return Object.keys(ts).length > 0 ? ts : null;
+}
+
+// The stateful encoder resolves tools by tool_id, which a user-defined tool
+// step doesn't have, so its tool_state always passes through verbatim.
 function _buildUserToolFormat2Step(
   step: NormalizedNativeStep,
   labelMap: Map<string, string>,
@@ -277,7 +280,11 @@ function _buildUserToolFormat2Step(
     run: step.tool_representation as NormalizedFormat2Step["run"],
     in: inList,
     out: outList,
+    tool_state: _passthroughToolState(step),
     position: step.position as NormalizedFormat2Step["position"],
+    when: step.when ?? undefined,
+    uuid: step.uuid ?? undefined,
+    errors: step.errors ?? undefined,
   };
 }
 
@@ -499,7 +506,7 @@ function _replaceAnonymousOutputReferences(
   const runsByLabel = new Map<string, NormalizedFormat2Workflow>();
   for (const step of fmt2Steps) {
     const label = step.label ?? step.id;
-    if (step.run && typeof step.run === "object") {
+    if (step.run && typeof step.run === "object" && !isGalaxyUserToolRun(step.run)) {
       runsByLabel.set(String(label), step.run as NormalizedFormat2Workflow);
     }
   }

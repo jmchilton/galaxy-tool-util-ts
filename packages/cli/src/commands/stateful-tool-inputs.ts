@@ -16,6 +16,7 @@ import type { ToolCache } from "@galaxy-tool-util/core";
 import {
   expandedFormat2,
   expandedNative,
+  isGalaxyUserToolRun,
   type ExpansionOptions,
   type NormalizedFormat2Step,
   type NormalizedFormat2Workflow,
@@ -115,7 +116,7 @@ function collectFormat2ToolRefs(wf: NormalizedFormat2Workflow): Array<[string, s
           refs.push([step.tool_id, step.tool_version ?? null]);
         }
       }
-      if (step.run && typeof step.run === "object") {
+      if (step.run && typeof step.run === "object" && !isGalaxyUserToolRun(step.run)) {
         walk((step.run as NormalizedFormat2Workflow).steps);
       }
     }

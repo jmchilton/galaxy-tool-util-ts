@@ -72,6 +72,30 @@ export const NormalizedFormat2OutputSchema = Schema.Struct({
 });
 export type NormalizedFormat2Output = typeof NormalizedFormat2OutputSchema.Type;
 
+/**
+ * An embedded user-defined tool under a step's `run:` (`class: GalaxyUserTool`).
+ * Only the discriminator is modelled; the rest of the tool definition passes
+ * through untouched. Mirrors gxformat2's `GalaxyUserToolStub`.
+ */
+export const GalaxyUserToolStubSchema = Schema.Struct(
+  {
+    class: Schema.Literal("GalaxyUserTool"),
+    name: Schema.optional(Schema.NullOr(Schema.String)),
+  },
+  Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+);
+export type GalaxyUserToolStub = typeof GalaxyUserToolStubSchema.Type;
+
+/** True when a step's `run:` embeds a user-defined tool rather than a subworkflow. */
+export function isGalaxyUserToolRun(run: unknown): run is GalaxyUserToolStub {
+  return (
+    run != null &&
+    typeof run === "object" &&
+    !Array.isArray(run) &&
+    (run as Record<string, unknown>).class === "GalaxyUserTool"
+  );
+}
+
 // Workflow defined first; step uses suspend for forward ref
 export const NormalizedFormat2WorkflowSchema = Schema.Struct({
   class: Schema.Literal("GalaxyWorkflow"),
@@ -101,7 +125,11 @@ export const NormalizedFormat2StepSchema = Schema.Struct({
     Schema.NullOr(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
   ),
   type: Schema.optional(Schema.NullOr(Schema.String)),
-  run: Schema.optional(Schema.NullOr(Schema.Union(NormalizedFormat2WorkflowSchema, Schema.String))),
+  run: Schema.optional(
+    Schema.NullOr(
+      Schema.Union(NormalizedFormat2WorkflowSchema, GalaxyUserToolStubSchema, Schema.String),
+    ),
+  ),
   in: Schema.Array(NormalizedFormat2StepInputSchema),
   out: Schema.Array(NormalizedFormat2StepOutputSchema),
   post_job_actions: Schema.optional(
@@ -394,7 +422,7 @@ export function normalizeStepOut(raw: unknown): NormalizedFormat2StepOutput[] {
 function _resolveRun(
   raw: unknown,
   subworkflows: Map<string, Record<string, unknown>>,
-): NormalizedFormat2Workflow | string | null | undefined {
+): NormalizedFormat2Workflow | GalaxyUserToolStub | string | null | undefined {
   if (raw == null) return raw as null | undefined;
   if (typeof raw === "string") {
     // #ref → inline subworkflow
@@ -416,8 +444,8 @@ function _resolveRun(
       return dict["@import"];
     }
     // User-defined tool — pass through as-is
-    if (dict.class === "GalaxyUserTool") {
-      return dict as any;
+    if (isGalaxyUserToolRun(dict)) {
+      return dict;
     }
     // Inline workflow definition
     return _normalizeWorkflow(dict, subworkflows);

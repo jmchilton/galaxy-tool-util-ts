@@ -6,6 +6,9 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as yaml from "yaml";
 
 import {
@@ -13,6 +16,7 @@ import {
   expandedNative,
   isTrsUrl,
   MAX_EXPANSION_DEPTH,
+  type ExpandedFormat2Workflow,
   type RefResolver,
 } from "../src/workflow/normalized/expanded.js";
 
@@ -109,6 +113,41 @@ describe("expandedFormat2 (no resolver)", () => {
     const wf = await expandedFormat2(outer);
     // @import becomes a string during normalization, passes through without resolver
     expect(wf.steps[0].run).toBe("inner.gxwf.yml");
+  });
+});
+
+// --- Embedded GalaxyUserTool runs ---
+
+const USER_TOOL_FIXTURE = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "fixtures/workflows/format2/synthetic-user-defined-tool.gxwf.yml",
+);
+
+function userToolWorkflow(): Record<string, unknown> {
+  return yaml.parse(readFileSync(USER_TOOL_FIXTURE, "utf-8"));
+}
+
+describe("expandedFormat2 (GalaxyUserTool run)", () => {
+  it("passes the embedded tool through without a resolver", async () => {
+    const raw = userToolWorkflow();
+    const wf = await expandedFormat2(raw);
+    expect(wf.steps[0].run).toEqual((raw.steps as any).my_tool.run);
+  });
+
+  it("passes the embedded tool through with a resolver", async () => {
+    const raw = userToolWorkflow();
+    const wf = await expandedFormat2(raw, { resolver: mockResolver({}) });
+    expect(wf.steps[0].run).toEqual((raw.steps as any).my_tool.run);
+  });
+
+  it("passes an embedded tool through inside a resolved subworkflow", async () => {
+    const outer = minimalFormat2({
+      steps: { nested: { run: "https://example.com/udt.yml", in: { the_input: "x" } } },
+    });
+    const resolver = mockResolver({ "https://example.com/udt.yml": userToolWorkflow() });
+    const wf = await expandedFormat2(outer, { resolver });
+    const inner = wf.steps[0].run as ExpandedFormat2Workflow;
+    expect(inner.steps[0].run).toMatchObject({ class: "GalaxyUserTool", id: "cat_user_defined" });
   });
 });
 

@@ -13,6 +13,7 @@ import { Either, ParseResult, Schema } from "effect";
 
 import { GalaxyWorkflowDraftSchema } from "./raw/gxformat2-draft.effect.js";
 import { rawStepRenderIdentity, resolveSourceReference } from "./normalized/labels.js";
+import { isGalaxyUserToolRun } from "./normalized/format2.js";
 
 export const TODO_SENTINEL_PATTERN = /^TODO(_[a-zA-Z0-9_]+)?$/;
 // Heuristic for TODO-shaped strings — flags malformed sentinels (TODO-foo,
@@ -335,6 +336,26 @@ function* iterateStepOutIds(out: unknown): Iterable<string> {
   }
 }
 
+/**
+ * Output ports a step exposes: its declared `out:` ids, plus every output an
+ * embedded `GalaxyUserTool` run defines — Galaxy creates those whether or not
+ * `out:` lists them.
+ */
+function stepOutPorts(step: Record<string, unknown>): Set<string> {
+  const ports = new Set<string>(iterateStepOutIds(step.out));
+  if (isGalaxyUserToolRun(step.run)) {
+    const outputs = step.run.outputs;
+    if (Array.isArray(outputs)) {
+      for (const output of outputs) {
+        if (isRecord(output) && typeof output.name === "string") ports.add(output.name);
+      }
+    } else if (isRecord(outputs)) {
+      for (const name of Object.keys(outputs)) ports.add(name);
+    }
+  }
+  return ports;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -366,7 +387,8 @@ export interface DraftValidationResult {
  *                    input labels, output labels, step labels, and step types
  *                    cannot be TODO sentinels. Step/port edge refs must
  *                    resolve to a declared step + declared port (TODO_*
- *                    ports count if declared in the step's `out:`).
+ *                    ports count if declared in the step's `out:`; an
+ *                    embedded `GalaxyUserTool` also declares its outputs).
  *   semanticErrors   TODO-shaped strings (start with `TODO`) that don't
  *                    match the canonical sentinel form (e.g. `TODO-foo`,
  *                    `TODOfoo`, `TODO_` trailing).
@@ -617,8 +639,7 @@ function buildStepIndex(steps: unknown): Map<string, StepIndexEntry> {
   const index = new Map<string, StepIndexEntry>();
   for (const [label, step] of iterateSteps(steps)) {
     if (!isRecord(step)) continue;
-    const outPorts = new Set<string>(iterateStepOutIds(step.out));
-    index.set(label, { outPorts });
+    index.set(label, { outPorts: stepOutPorts(step) });
   }
   return index;
 }
@@ -1150,7 +1171,8 @@ function directDropReason(step: Record<string, unknown>): DropReason | null {
 
 /**
  * For each surviving step, compute its currently-live output ports:
- *   - Non-subworkflow steps: all declared `out:` ids.
+ *   - Non-subworkflow steps: all declared `out:` ids, plus the outputs of an
+ *     embedded `GalaxyUserTool` run.
  *   - Inline-draft subworkflow steps: keys of the recursed inner workflow's
  *     surviving outputs (so outer refs that referenced now-dropped inner
  *     outputs evaluate as dead).
@@ -1176,7 +1198,7 @@ function computeLivePorts(
       }
       livePorts.set(label, surviving);
     } else {
-      livePorts.set(label, new Set(iterateStepOutIds(step.out)));
+      livePorts.set(label, stepOutPorts(step));
     }
   }
   return livePorts;

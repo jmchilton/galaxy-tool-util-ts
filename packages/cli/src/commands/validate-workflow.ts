@@ -13,6 +13,7 @@ import {
   checkStrictStructure,
   withClass,
   scanToolState,
+  isGalaxyUserToolRun,
   buildSingleValidationReport,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
@@ -37,6 +38,12 @@ import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
 import { resolveStrictOptions, type StrictOptions } from "./strict-options.js";
 import { findStdoutSinkConflict, writeReportHtml } from "./report-output.js";
 import { buildConnectionReport } from "./connection-validation.js";
+import {
+  embeddedToolDefinition,
+  embeddedToolIdentity,
+  isEmbeddedTool,
+  resolveEmbeddedTool,
+} from "./embedded-tool.js";
 import type { ConnectionValidationReport } from "@galaxy-tool-util/schema";
 
 export type { WorkflowFormat } from "@galaxy-tool-util/schema";
@@ -196,6 +203,8 @@ export async function runValidateWorkflow(
   }
 
   const stateOk = !results.some((r) => r.status === "fail");
+  const strictStateSkipped =
+    strict.strictState && results.some((r) => r.status !== "ok" && r.status !== "fail");
 
   let connectionReport: ConnectionValidationReport | null = null;
   if (opts.connections) {
@@ -215,7 +224,7 @@ export async function runValidateWorkflow(
       console.log(JSON.stringify(report, null, 2));
     }
     await writeReportHtml("validate", report, opts.reportHtml);
-    process.exitCode = structOk && stateOk && connectionsOk ? 0 : 1;
+    process.exitCode = strictStateSkipped ? 2 : structOk && stateOk && connectionsOk ? 0 : 1;
     return;
   }
 
@@ -233,7 +242,7 @@ export async function runValidateWorkflow(
   if (connectionReport !== null) printConnectionReport(connectionReport);
 
   // --- strict state: promote skips to failures ---
-  if (strict.strictState && results.some((r) => r.status !== "ok" && r.status !== "fail")) {
+  if (strictStateSkipped) {
     console.error("Strict state: skipped steps not allowed");
     process.exitCode = 2;
     return;
@@ -304,6 +313,13 @@ async function _validateNativeWorkflow(
       continue;
     }
 
+    // An embedded definition wins over tool_id, matching connection validation.
+    const embedded = embeddedToolDefinition(step);
+    if (embedded) {
+      results.push(_validateEmbeddedNativeStep(step, stepLabel, embedded, cache));
+      continue;
+    }
+
     const toolId = step.tool_id;
     if (!toolId) continue;
     const toolVersion = step.tool_version ?? null;
@@ -359,6 +375,40 @@ async function _validateNativeStep(
   );
 }
 
+function _validateEmbeddedNativeStep(
+  step: NormalizedNativeStep,
+  stepLabel: string,
+  repr: Record<string, unknown>,
+  cache: ToolCache | null,
+): StepValidationResult {
+  if (!cache) return _stateValidationDisabled(stepLabel, repr);
+  const tool = resolveEmbeddedTool(repr, stepLabel);
+  if (!isEmbeddedTool(tool)) return tool;
+  return _validateNativeState(
+    tool.bundle,
+    step.tool_state as Record<string, unknown>,
+    step.input_connections,
+    stepLabel,
+    tool.toolId,
+    tool.toolVersion,
+    step.when,
+  );
+}
+
+function _stateValidationDisabled(
+  stepLabel: string,
+  repr: Record<string, unknown>,
+): StepValidationResult {
+  const { toolId, toolVersion } = embeddedToolIdentity(repr);
+  return {
+    step: stepLabel,
+    tool_id: toolId,
+    version: toolVersion,
+    status: "skip_no_tool_state",
+    errors: ["tool state validation disabled"],
+  };
+}
+
 /**
  * Validate a native-encoded tool_state block against the `workflow_step_native`
  * model. Shared by native-body steps and format2-body steps that carry a
@@ -396,7 +446,7 @@ function _validateNativeState(
   toolState: Record<string, unknown>,
   connections: Record<string, unknown>,
   stepLabel: string,
-  toolId: string,
+  toolId: string | null,
   toolVersion: string | null,
   whenExpression?: unknown,
 ): StepValidationResult {
@@ -486,6 +536,11 @@ async function _validateFormat2Workflow(
     const step = wf.steps[i];
     const stepLabel = prefix ? `${prefix}${i}` : String(i);
 
+    if (isGalaxyUserToolRun(step.run)) {
+      results.push(_validateEmbeddedFormat2Step(step, stepLabel, step.run, cache));
+      continue;
+    }
+
     // Recurse into inline subworkflows
     if (step.run && typeof step.run === "object") {
       const subResults = await _validateFormat2Workflow(
@@ -541,7 +596,28 @@ async function _validateFormat2Step(
   const bundle: ToolParameterBundleModel = {
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
+  return _validateFormat2State(bundle, step, stepLabel, toolId, toolVersion);
+}
 
+function _validateEmbeddedFormat2Step(
+  step: NormalizedFormat2Step,
+  stepLabel: string,
+  repr: Record<string, unknown>,
+  cache: ToolCache | null,
+): StepValidationResult {
+  if (!cache) return _stateValidationDisabled(stepLabel, repr);
+  const tool = resolveEmbeddedTool(repr, stepLabel);
+  if (!isEmbeddedTool(tool)) return tool;
+  return _validateFormat2State(tool.bundle, step, stepLabel, tool.toolId, tool.toolVersion);
+}
+
+function _validateFormat2State(
+  bundle: ToolParameterBundleModel,
+  step: NormalizedFormat2Step,
+  stepLabel: string,
+  toolId: string | null,
+  toolVersion: string | null,
+): StepValidationResult {
   // A step carries either a schema-aware `state` block or a verbatim native
   // `tool_state` block (gxformat2's state-unaware conversion copies the latter).
   // State shape — not workflow format — picks the validator: tool_state validates
