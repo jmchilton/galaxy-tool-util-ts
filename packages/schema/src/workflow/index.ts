@@ -237,6 +237,8 @@ export {
   withClass,
   validateFormat2,
   validateFormat2Strict,
+  validateFormat2Draft,
+  validateFormat2DraftStrict,
   validateNative,
   validateNativeStrict,
   validatorForFixture,

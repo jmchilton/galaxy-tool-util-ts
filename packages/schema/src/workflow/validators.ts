@@ -14,6 +14,7 @@
 import { Schema } from "effect";
 
 import { GalaxyWorkflowSchema } from "./raw/gxformat2.effect.js";
+import { GalaxyWorkflowDraftSchema } from "./raw/gxformat2-draft.effect.js";
 import { NativeGalaxyWorkflowSchema } from "./raw/native.effect.js";
 import { validateWorkflowSemantics } from "./semantic-validators.js";
 
@@ -72,6 +73,22 @@ export function validateFormat2Strict(wf: unknown): unknown {
   const decoded = Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "error" })(
     withClass(wf, "GalaxyWorkflow"),
   );
+  validateWorkflowSemantics(wf);
+  return decoded;
+}
+
+export function validateFormat2Draft(wf: unknown): unknown {
+  const decoded = Schema.decodeUnknownSync(GalaxyWorkflowDraftSchema, {
+    onExcessProperty: "ignore",
+  })(withClass(wf, "GalaxyWorkflowDraft"));
+  validateWorkflowSemantics(wf);
+  return decoded;
+}
+
+export function validateFormat2DraftStrict(wf: unknown): unknown {
+  const decoded = Schema.decodeUnknownSync(GalaxyWorkflowDraftSchema, {
+    onExcessProperty: "error",
+  })(withClass(wf, "GalaxyWorkflowDraft"));
   validateWorkflowSemantics(wf);
   return decoded;
 }

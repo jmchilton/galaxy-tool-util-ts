@@ -28,6 +28,8 @@ import {
 import {
   validateFormat2,
   validateFormat2Strict,
+  validateFormat2Draft,
+  validateFormat2DraftStrict,
   validateNative,
   validateNativeStrict,
 } from "../src/workflow/validators.js";
@@ -60,6 +62,8 @@ const OPERATIONS: Record<string, Operation> = {
   normalized_native: normalizedNative,
   validate_format2: validateFormat2,
   validate_format2_strict: validateFormat2Strict,
+  validate_format2_draft: validateFormat2Draft,
+  validate_format2_draft_strict: validateFormat2DraftStrict,
   validate_native: validateNative,
   validate_native_strict: validateNativeStrict,
   to_format2: toFormat2,
@@ -179,7 +183,7 @@ describe("declarative normalized workflow tests", () => {
     }
 
     if (!(operation in OPERATIONS)) {
-      it.fails(`${testId} (unknown operation: ${operation})`, () => {
+      it(`${testId} (unknown operation: ${operation})`, () => {
         throw new Error(`Operation "${operation}" is not in OPERATIONS or UNSUPPORTED_OPERATIONS`);
       });
       continue;

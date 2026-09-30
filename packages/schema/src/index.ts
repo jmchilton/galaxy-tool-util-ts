@@ -356,6 +356,8 @@ export {
   /** Effect-schema validator dispatch mirroring gxformat2/validators.py. */
   validateFormat2,
   validateFormat2Strict,
+  validateFormat2Draft,
+  validateFormat2DraftStrict,
   validateNative,
   validateNativeStrict,
   validatorForFixture,
