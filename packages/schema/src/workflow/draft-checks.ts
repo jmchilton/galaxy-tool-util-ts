@@ -141,7 +141,7 @@ export function resolveDraftOverlay(workflow: unknown): DraftOverlay | undefined
   // in) to the render identity the visualizers key off.
   const identityByIterKey = new Map<string, string>();
   if (isRecord(workflow)) {
-    for (const [key, step] of iterateSteps(workflow.steps)) {
+    for (const [key, step] of iterateSteps(workflow)) {
       identityByIterKey.set(key, rawStepRenderIdentity(step, key));
     }
   }
@@ -186,7 +186,7 @@ function walkDraftSteps(
   todos: TodoHit[],
   planFields: PlanHit[],
 ): void {
-  for (const [label, step] of iterateSteps(workflow.steps)) {
+  for (const [label, step] of iterateSteps(workflow)) {
     if (!isRecord(step)) continue;
     const path = [...prefix, label];
 
@@ -204,7 +204,7 @@ function walkDraftSteps(
   // reach this workflow (i.e. the outer step's path); inner outputs collect
   // at that prefix. For the outermost call `prefix` is [], so outer outputs
   // collect at path [].
-  const stepLabels = collectStepLabels(workflow.steps);
+  const stepLabels = collectStepLabels(workflow);
   for (const [label, output] of iterateOutputs(workflow.outputs)) {
     const ref = readOutputSource(output);
     if (ref == null) continue;
@@ -257,14 +257,30 @@ function collectStepPlanFields(
   }
 }
 
-function* iterateSteps(steps: unknown): Iterable<[string, unknown]> {
+/**
+ * Key of a list-form step: its label, else its id, else the index id
+ * normalization assigns (inputs come first, matching `_normalizeSteps`).
+ */
+function listStepKey(step: Record<string, unknown>, index: number, inputsOffset: number): string {
+  for (const field of ["label", "id"] as const) {
+    const value = step[field];
+    if (typeof value === "string" && value.length > 0) return value;
+  }
+  return String(index + inputsOffset);
+}
+
+function inputsOffset(workflow: Record<string, unknown>): number {
+  const inputs = workflow.inputs;
+  if (Array.isArray(inputs)) return inputs.length;
+  return isRecord(inputs) ? Object.keys(inputs).length : 0;
+}
+
+function* iterateSteps(workflow: Record<string, unknown>): Iterable<[string, unknown]> {
+  const steps = workflow.steps;
   if (Array.isArray(steps)) {
-    for (const step of steps) {
-      if (isRecord(step)) {
-        const label =
-          typeof step.label === "string" ? step.label : typeof step.id === "string" ? step.id : "";
-        yield [label, step];
-      }
+    const offset = inputsOffset(workflow);
+    for (const [index, step] of steps.entries()) {
+      if (isRecord(step)) yield [listStepKey(step, index, offset), step];
     }
   } else if (isRecord(steps)) {
     for (const [key, value] of Object.entries(steps)) {
@@ -299,24 +315,25 @@ function readOutputSource(output: unknown): string | null {
  * Anything answering membership for a step label — a `Set` of labels or the
  * `livePorts`/`stepIndex` maps keyed by label both qualify.
  */
-type StepLabelSet = { has(label: string): boolean };
+type StepLabelSet = Set<string> | Map<string, unknown>;
 
-function collectStepLabels(steps: unknown): Set<string> {
+function collectStepLabels(workflow: Record<string, unknown>): Set<string> {
   const labels = new Set<string>();
-  for (const [label] of iterateSteps(steps)) labels.add(label);
+  for (const [label] of iterateSteps(workflow)) labels.add(label);
   return labels;
 }
 
 /**
- * Parse a source ref into `[label, port]`. A slash-less ref that names a step
- * is gxformat2 shorthand for `<step>/output` (matching `resolveSourceReference`
- * on the concrete path and `checkEdgeRef`); anything else is a workflow-input
- * ref, reported port-less (`null`) so callers can treat it as a non-step edge.
+ * Parse a source ref into `[label, port]` via `resolveSourceReference`, so
+ * labels containing `/` match longest-first. A slash-less ref that names a step
+ * is gxformat2 shorthand for `<step>/output`; any other slash-less ref is a
+ * workflow-input ref, reported port-less (`null`) so callers can treat it as a
+ * non-step edge.
  */
 function splitSourceRef(ref: string, stepLabels: StepLabelSet): [string, string | null] {
-  const slash = ref.indexOf("/");
-  if (slash >= 0) return [ref.slice(0, slash), ref.slice(slash + 1)];
-  if (stepLabels.has(ref)) return [ref, "output"];
+  const labels = stepLabels instanceof Map ? new Set(stepLabels.keys()) : stepLabels;
+  const [label, port] = resolveSourceReference(ref, labels);
+  if (labels.has(label) || ref.includes("/")) return [label, port];
   return [ref, null];
 }
 
@@ -493,7 +510,7 @@ function walkDraftValidation(
   }
 
   // Workflow outputs: labels must be concrete; outputSource resolves.
-  const stepIndex = buildStepIndex(workflow.steps);
+  const stepIndex = buildStepIndex(workflow);
   // The label universe every edge ref resolves against — built once per level
   // and shared by the output and step-input edge checks below.
   const knownLabels = new Set<string>([...inputLabels, ...stepIndex.keys()]);
@@ -522,7 +539,7 @@ function walkDraftValidation(
   }
 
   // Steps: labels, types, edge refs, sentinel-form on every TODO-shaped string.
-  for (const [label, step] of iterateSteps(workflow.steps)) {
+  for (const [label, step] of iterateSteps(workflow)) {
     if (!isRecord(step)) continue;
     if (isTodoSentinel(label)) {
       topologyErrors.push({
@@ -553,10 +570,8 @@ function walkDraftValidation(
         semanticErrors,
       );
     }
-    if (isRecord(step.in)) {
-      for (const key of Object.keys(step.in)) {
-        checkTodoLike(key, stepPath, `in: key "${key}"`, semanticErrors);
-      }
+    for (const [key] of iterateStepInputEntries(step.in)) {
+      checkTodoLike(key, stepPath, `in: key "${key}"`, semanticErrors);
     }
     for (const id of iterateStepOutIds(step.out)) {
       checkTodoLike(id, stepPath, `out: id "${id}"`, semanticErrors);
@@ -614,7 +629,9 @@ function stepHasAnyTodo(step: Record<string, unknown>): boolean {
 }
 
 function isToolStep(step: Record<string, unknown>): boolean {
-  return step.type == null || step.type === "tool";
+  if (step.type != null) return step.type === "tool";
+  // No explicit type: an inline workflow `run:` makes it a subworkflow.
+  return step.run == null || isGalaxyUserToolRun(step.run);
 }
 
 function checkTodoLike(
@@ -635,9 +652,9 @@ interface StepIndexEntry {
   outPorts: Set<string>;
 }
 
-function buildStepIndex(steps: unknown): Map<string, StepIndexEntry> {
+function buildStepIndex(workflow: Record<string, unknown>): Map<string, StepIndexEntry> {
   const index = new Map<string, StepIndexEntry>();
-  for (const [label, step] of iterateSteps(steps)) {
+  for (const [label, step] of iterateSteps(workflow)) {
     if (!isRecord(step)) continue;
     index.set(label, { outPorts: stepOutPorts(step) });
   }
@@ -757,8 +774,8 @@ export function nextDraftStep(workflow: unknown): NextStepResult {
 }
 
 function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): NextStepResult {
-  const ordered = topoOrderedSteps(workflow.steps);
-  const outputRefs = collectOutputRefs(workflow.outputs, collectStepLabels(workflow.steps));
+  const ordered = topoOrderedSteps(workflow);
+  const outputRefs = collectOutputRefs(workflow.outputs, collectStepLabels(workflow));
 
   for (const [label, step] of ordered) {
     if (!isRecord(step)) continue;
@@ -788,10 +805,10 @@ function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): N
  * Returns `[label, step]` tuples preserving the iteration shape that
  * iterateSteps would have yielded.
  */
-function topoOrderedSteps(steps: unknown): Array<[string, unknown]> {
+function topoOrderedSteps(workflow: Record<string, unknown>): Array<[string, unknown]> {
   const entries: Array<[string, unknown]> = [];
   const stepLabels = new Set<string>();
-  for (const entry of iterateSteps(steps)) {
+  for (const entry of iterateSteps(workflow)) {
     entries.push(entry);
     stepLabels.add(entry[0]);
   }
@@ -889,13 +906,11 @@ function stepWorkItems(
     work.push("TODO[tool_version]: pick the wrapper version");
   }
 
-  if (isRecord(step.in)) {
-    for (const key of Object.keys(step.in)) {
-      if (!isTodoSentinel(key)) continue;
-      const hint = sentinelHint(key);
-      const hintFragment = hint != null ? ` (semantic hint: '${hint}')` : "";
-      work.push(`TODO[in.${key}]: assign the real wrapper input port name${hintFragment}`);
-    }
+  for (const [key] of iterateStepInputEntries(step.in)) {
+    if (!isTodoSentinel(key)) continue;
+    const hint = sentinelHint(key);
+    const hintFragment = hint != null ? ` (semantic hint: '${hint}')` : "";
+    work.push(`TODO[in.${key}]: assign the real wrapper input port name${hintFragment}`);
   }
 
   const stepOutputRefs = outputRefs.byStepPort.get(stepLabel);
@@ -1056,7 +1071,7 @@ function extractLevel(workflow: Record<string, unknown>, prefix: StepPath): Extr
   // Collect step entries in original iteration order. Same shape as
   // iterateSteps so we keep dict-form / list-form distinguishable later.
   const stepEntries: Array<[string, Record<string, unknown>]> = [];
-  for (const [label, step] of iterateSteps(workflow.steps)) {
+  for (const [label, step] of iterateSteps(workflow)) {
     if (isRecord(step)) stepEntries.push([label, step]);
   }
   const stepLabels = new Set(stepEntries.map(([l]) => l));
@@ -1123,7 +1138,7 @@ function extractLevel(workflow: Record<string, unknown>, prefix: StepPath): Extr
   const levelDrops: InternalDroppedStep[] = [...drops.values()];
   levelDrops.sort((a, b) => {
     if (a.round !== b.round) return a.round - b.round;
-    return pathKey(a.path).localeCompare(pathKey(b.path));
+    return compareCodepoint(pathKey(a.path), pathKey(b.path));
   });
 
   // Concatenate inner-level results in source iteration order. Each inner
@@ -1257,7 +1272,9 @@ function checkStepCascade(
     }
   }
   if (!cascade) return null;
-  const paths = [...depsOnDropped.values()].sort((a, b) => pathKey(a).localeCompare(pathKey(b)));
+  const paths = [...depsOnDropped.values()].sort((a, b) =>
+    compareCodepoint(pathKey(a), pathKey(b)),
+  );
   return { depsOnDropped: paths };
 }
 
@@ -1372,7 +1389,7 @@ function trimWorkflow(
   prefix: StepPath,
 ): TrimResult {
   // Iterate steps in source order; replace dropped + inner-shrunk inline; preserve list/dict shape.
-  const trimmedSteps = trimStepsContainer(workflow.steps, drops, innerResults, livePorts);
+  const trimmedSteps = trimStepsContainer(workflow, drops, innerResults, livePorts);
   const trimmedOutputsResult = trimOutputsContainer(workflow.outputs, drops, livePorts, prefix);
 
   // Build the result dict — preserve key iteration order from the source.
@@ -1392,21 +1409,18 @@ function trimWorkflow(
 }
 
 function trimStepsContainer(
-  steps: unknown,
+  workflow: Record<string, unknown>,
   drops: Map<string, InternalDroppedStep>,
   innerResults: Map<string, ExtractLevelResult>,
   livePorts: Map<string, Set<string>>,
 ): unknown {
+  const steps = workflow.steps;
   if (Array.isArray(steps)) {
+    const offset = inputsOffset(workflow);
     const out: unknown[] = [];
-    for (const entry of steps) {
+    for (const [index, entry] of steps.entries()) {
       if (!isRecord(entry)) continue;
-      const label =
-        typeof entry.label === "string"
-          ? entry.label
-          : typeof entry.id === "string"
-            ? entry.id
-            : "";
+      const label = listStepKey(entry, index, offset);
       if (drops.has(label)) continue;
       out.push(trimStep(entry, label, drops, innerResults, livePorts));
     }
@@ -1599,10 +1613,15 @@ function trimOutputsContainer(
     trimmed = outputs;
   }
 
-  dropped.sort((a, b) => a.label.localeCompare(b.label));
+  dropped.sort((a, b) => compareCodepoint(a.label, b.label));
   return { outputs: trimmed, droppedOutputs: dropped };
 }
 
 function pathKey(path: StepPath): string {
   return path.join("/");
+}
+
+/** Codepoint order (not locale), matching Python's sort so output is byte-identical. */
+function compareCodepoint(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
