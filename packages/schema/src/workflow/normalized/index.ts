@@ -57,6 +57,7 @@ export {
   resolveSourceReference,
   stepRenderIdentity,
   rawStepRenderIdentity,
+  unlabeledNodeId,
   UNLABELED_INPUT_PREFIX,
   UNLABELED_STEP_PREFIX,
 } from "./labels.js";

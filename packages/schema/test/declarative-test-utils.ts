@@ -120,6 +120,8 @@ function coerceMessageLike(value: unknown): unknown {
 }
 
 export function assertValue(actual: unknown, expected: unknown): void {
+  // Python models default unset optional fields to None; TS models omit them.
+  if (expected === null && actual === undefined) return;
   expect(actual).toEqual(expected);
 }
 
@@ -212,6 +214,10 @@ export function assertValueTruthy(actual: unknown): void {
   expect(actual).toBeTruthy();
 }
 
+export function assertValueFalsy(actual: unknown): void {
+  expect(actual).toBeFalsy();
+}
+
 export function assertValueMatches(actual: unknown, pattern: string): void {
   // Python re.search semantics (no flags); supports embedded inline flags like (?s).
   const re = new RegExp(pattern);
@@ -234,6 +240,7 @@ export interface Assertion {
   value_set?: unknown[];
   value_type?: string;
   value_truthy?: boolean;
+  value_falsy?: boolean;
   value_absent?: boolean;
 }
 
@@ -241,6 +248,7 @@ export interface TestCase {
   fixture: string;
   operation: string;
   assertions?: Assertion[];
+  graph_properties?: string[];
   expect_error?: boolean;
 }
 
@@ -291,6 +299,8 @@ export function runAssertions(result: unknown, assertions: Assertion[]): void {
       assertValueType(obj, assertion.value_type!);
     } else if ("value_truthy" in assertion) {
       assertValueTruthy(obj);
+    } else if ("value_falsy" in assertion) {
+      assertValueFalsy(obj);
     } else {
       throw new Error(`Assertion has no recognized mode: ${JSON.stringify(assertion)}`);
     }
