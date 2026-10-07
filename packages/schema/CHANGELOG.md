@@ -1,5 +1,15 @@
 # @galaxy-tool-util/schema
 
+## 1.14.0
+
+### Minor Changes
+
+- [#188](https://github.com/jmchilton/galaxy-tool-util-ts/pull/188) [`ad99d0a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ad99d0adfc01f47330b81b5700fd340b706a2e9d) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `applyLayout` / `layoutPositions` (topological and layered strategies) and
+  `GRAPH_PROPERTY_CHECKERS`, porting gxformat2's layout module. Native
+  best-practice lint now checks step annotation, label, and untyped tool-state
+  parameters on native steps with native ids, matching gxformat2. Export
+  `unlabeledNodeId`.
+
 ## 1.13.1
 
 ### Patch Changes
