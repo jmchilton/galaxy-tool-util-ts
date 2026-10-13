@@ -183,6 +183,8 @@ export {
   expandedNative,
   /** Check whether a string is a TRS (Tool Registry Service) URL. */
   isTrsUrl,
+  /** Build the GA4GH TRS GALAXY descriptor URL for a TRS tool version URL. */
+  trsDescriptorUrl,
   MAX_EXPANSION_DEPTH,
   type ExpandedFormat2Workflow,
   type ExpandedFormat2Step,

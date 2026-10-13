@@ -3,7 +3,7 @@
  *
  * Handles:
  * - base64:// URLs: base64-decode inline content, parse as YAML/JSON
- * - TRS URLs (GA4GH pattern): fetch descriptor endpoint, extract `content`
+ * - TRS URLs (GA4GH pattern): fetch the `GALAXY` descriptor endpoint, extract `content`
  * - Plain HTTP/HTTPS URLs: fetch and parse based on content-type
  * - File paths (no ://): read from workflowDirectory
  *
@@ -13,7 +13,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as yaml from "yaml";
-import { isTrsUrl, type RefResolver } from "@galaxy-tool-util/schema";
+import { trsDescriptorUrl, type RefResolver } from "@galaxy-tool-util/schema";
 
 export interface DefaultResolverOptions {
   /** Custom fetch implementation. Defaults to globalThis.fetch. */
@@ -39,17 +39,22 @@ export function createDefaultResolver(opts: DefaultResolverOptions = {}): RefRes
 
     // URL — fetch via HTTP
     if (ref.includes("://")) {
-      const response = await fetcher(ref, {
+      const descriptorUrl = trsDescriptorUrl(ref);
+      const url = descriptorUrl ?? ref;
+      const response = await fetcher(url, {
         headers: { Accept: "application/json, application/x-yaml, text/yaml, */*" },
         signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${ref}: ${response.status}`);
+        throw new Error(`Failed to fetch ${url}: ${response.status}`);
       }
 
-      if (isTrsUrl(ref)) {
+      if (descriptorUrl) {
         const descriptor = (await response.json()) as Record<string, unknown>;
-        return yaml.parse(descriptor.content as string) as Record<string, unknown>;
+        if (typeof descriptor?.content !== "string") {
+          throw new Error(`TRS descriptor at ${url} has no string 'content' field`);
+        }
+        return yaml.parse(descriptor.content) as Record<string, unknown>;
       }
 
       const contentType = response.headers.get("content-type") ?? "";

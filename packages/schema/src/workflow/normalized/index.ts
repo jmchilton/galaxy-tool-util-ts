@@ -44,6 +44,7 @@ export {
   expandedFormat2,
   expandedNative,
   isTrsUrl,
+  trsDescriptorUrl,
   MAX_EXPANSION_DEPTH,
   type ExpandedFormat2Workflow,
   type ExpandedFormat2Step,
