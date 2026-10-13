@@ -75,7 +75,10 @@ export function isTrsUrl(url: string): boolean {
   return TRS_URL_REGEX.test(url);
 }
 
-/** Percent-decode `%XX` runs, leaving malformed sequences as-is (Python's `unquote`). */
+/**
+ * Percent-decode `%XX` runs (Python's `unquote`). Unlike Python, which swaps
+ * invalid UTF-8 bytes for U+FFFD, a run that isn't valid UTF-8 is left encoded.
+ */
 function _unquote(value: string): string {
   return value.replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
     try {

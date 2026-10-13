@@ -15,6 +15,7 @@ import {
   expandedFormat2,
   expandedNative,
   isTrsUrl,
+  trsDescriptorUrl,
   MAX_EXPANSION_DEPTH,
   type ExpandedFormat2Workflow,
   type RefResolver,
@@ -80,6 +81,23 @@ describe("isTrsUrl", () => {
 
   it("rejects non-http", () => {
     expect(isTrsUrl("base64://abc")).toBe(false);
+  });
+});
+
+// --- trsDescriptorUrl ---
+// Main URL forms are covered by the shared declarative case (trs_descriptor_urls.yml).
+
+describe("trsDescriptorUrl", () => {
+  it("decodes and re-encodes multi-byte UTF-8 like Python unquote/quote_plus", () => {
+    expect(
+      trsDescriptorUrl("https://h.org/ga4gh/trs/v2/tools/%23workflow%2Fcaf%C3%A9/versions/v1"),
+    ).toBe(
+      "https://h.org/ga4gh/trs/v2/tools/%23workflow%2Fcaf%C3%A9/versions/v1/GALAXY/descriptor",
+    );
+  });
+
+  it("returns null for non-TRS URLs", () => {
+    expect(trsDescriptorUrl("https://example.org/workflow.ga")).toBeNull();
   });
 });
 
