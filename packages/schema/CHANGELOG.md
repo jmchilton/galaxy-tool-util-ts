@@ -1,5 +1,22 @@
 # @galaxy-tool-util/schema
 
+## 1.14.0
+
+### Minor Changes
+
+- [#191](https://github.com/jmchilton/galaxy-tool-util-ts/pull/191) [`8fe478f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8fe478fa8186a7c3b833f568d7819822fb60d688) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Fix subworkflow expansion for GA4GH TRS-linked steps (`content_source: trs_url`,
+  as emitted by Galaxy ≥ 26.1 and planemo). The default URL resolver now fetches
+  the percent-encoded `/versions/<v>/GALAXY/descriptor` endpoint instead of the raw
+  `#workflow/...` URL (whose `#` was sent as a fragment), and reports a clear error
+  when the descriptor has no `content`. Adds `trsDescriptorUrl()` to
+  `@galaxy-tool-util/schema`, a port of gxformat2's `trs_descriptor_url()`.
+
+- [#188](https://github.com/jmchilton/galaxy-tool-util-ts/pull/188) [`ad99d0a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ad99d0adfc01f47330b81b5700fd340b706a2e9d) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `applyLayout` / `layoutPositions` (topological and layered strategies) and
+  `GRAPH_PROPERTY_CHECKERS`, porting gxformat2's layout module. Native
+  best-practice lint now checks step annotation, label, and untyped tool-state
+  parameters on native steps with native ids, matching gxformat2. Export
+  `unlabeledNodeId`.
+
 ## 1.13.1
 
 ### Patch Changes
