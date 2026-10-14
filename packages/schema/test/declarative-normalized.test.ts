@@ -18,7 +18,11 @@ import { normalizedNative } from "../src/workflow/normalized/native.js";
 import { toFormat2 } from "../src/workflow/normalized/toFormat2.js";
 import { toNative } from "../src/workflow/normalized/toNative.js";
 import { ensureFormat2, ensureNative } from "../src/workflow/normalized/ensure.js";
-import { expandedFormat2, expandedNative } from "../src/workflow/normalized/expanded.js";
+import {
+  expandedFormat2,
+  expandedNative,
+  trsDescriptorUrl,
+} from "../src/workflow/normalized/expanded.js";
 import {
   lintFormat2,
   lintNative,
@@ -52,6 +56,18 @@ const FORMAT2_DIR = path.join(WORKFLOWS_DIR, "format2");
 const NATIVE_DIR = path.join(WORKFLOWS_DIR, "native");
 
 // --- Operations ---
+
+// {label: TRS descriptor URL (null for non-TRS URLs)} for linked subworkflow steps.
+function linkedSubworkflowDescriptorUrls(raw: unknown): Record<string, string | null> {
+  const steps = (raw as { steps: Record<string, Record<string, unknown>> }).steps;
+  const result: Record<string, string | null> = {};
+  for (const step of Object.values(steps)) {
+    if (step.type === "subworkflow" && typeof step.content_id === "string") {
+      result[step.label as string] = trsDescriptorUrl(step.content_id);
+    }
+  }
+  return result;
+}
 
 type Operation = (raw: unknown) => unknown | Promise<unknown>;
 
@@ -98,6 +114,7 @@ const OPERATIONS: Record<string, Operation> = {
   validate_draft: (raw: unknown) => toSnakeCaseKeys(validateDraft(raw)),
   next_draft_step: (raw: unknown) => nextDraftStep(raw),
   extract_draft_subset: (raw: unknown) => extractConcreteSubset(raw),
+  linked_subworkflow_descriptor_urls: linkedSubworkflowDescriptorUrls,
 };
 
 const UNSUPPORTED_OPERATIONS = new Set<string>([]);

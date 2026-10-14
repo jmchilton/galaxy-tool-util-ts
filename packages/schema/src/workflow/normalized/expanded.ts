@@ -63,13 +63,59 @@ export interface ExpansionOptions {
 
 export const MAX_EXPANSION_DEPTH = 10;
 
-const TRS_URL_REGEX = /^https?:\/\/.+\/ga4gh\/trs\/v2\/tools\/.+\/versions\/[^/]+/;
+const TRS_URL_REGEX =
+  /^(?<trsBaseUrl>https?:\/\/.+)\/ga4gh\/trs\/v2\/tools\/(?<toolId>.+)\/versions\/(?<versionId>[^/]+)/;
+
+const GA4GH_GALAXY_DESCRIPTOR = "GALAXY";
 
 // --- Helpers ---
 
 /** Check if a URL matches the GA4GH TRS v2 tools/versions pattern. */
 export function isTrsUrl(url: string): boolean {
   return TRS_URL_REGEX.test(url);
+}
+
+/**
+ * Percent-decode `%XX` runs (Python's `unquote`). A run that isn't valid UTF-8
+ * is left as-is, so it ends up double-encoded (`%25XX`) where Python would emit
+ * U+FFFD. Real TRS ids are ASCII; parity there isn't worth a TextDecoder.
+ */
+function _unquote(value: string): string {
+  return value.replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      return run;
+    }
+  });
+}
+
+/** Percent-encode like Python's `quote_plus`: only `A-Za-z0-9_.-~` kept, space as `+`. */
+function _quotePlus(value: string): string {
+  return encodeURIComponent(value)
+    .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/%20/g, "+");
+}
+
+/**
+ * Build the GA4GH TRS `GALAXY` descriptor URL for a TRS tool version URL.
+ *
+ * The tool id may be percent-encoded or not (Galaxy and planemo emit it
+ * unencoded, e.g. `.../tools/#workflow/github.com/org/repo/main/versions/v1`),
+ * so it is unquoted and re-encoded to keep `#` and `/` from being misread as
+ * URL syntax. Any trailing path (such as `/GALAXY/descriptor`) is ignored.
+ * Returns `null` if `url` is not a TRS URL.
+ *
+ * Port of gxformat2/options.py trs_descriptor_url (mirrors Galaxy's trs_proxy).
+ */
+export function trsDescriptorUrl(url: string): string | null {
+  const match = TRS_URL_REGEX.exec(url);
+  if (!match?.groups) return null;
+  const { trsBaseUrl, toolId, versionId } = match.groups;
+  return (
+    `${trsBaseUrl}/ga4gh/trs/v2/tools/${_quotePlus(_unquote(toolId))}` +
+    `/versions/${versionId}/${GA4GH_GALAXY_DESCRIPTOR}/descriptor`
+  );
 }
 
 /** Check if a content_id is a URL that can be fetched. */
