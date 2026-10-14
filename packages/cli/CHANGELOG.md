@@ -1,5 +1,22 @@
 # @galaxy-tool-util/cli
 
+## 1.14.0
+
+### Patch Changes
+
+- [#191](https://github.com/jmchilton/galaxy-tool-util-ts/pull/191) [`8fe478f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8fe478fa8186a7c3b833f568d7819822fb60d688) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Fix subworkflow expansion for GA4GH TRS-linked steps (`content_source: trs_url`,
+  as emitted by Galaxy ≥ 26.1 and planemo). The default URL resolver now fetches
+  the percent-encoded `/versions/<v>/GALAXY/descriptor` endpoint instead of the raw
+  `#workflow/...` URL (whose `#` was sent as a fragment), and reports a clear error
+  when the descriptor has no `content`. Adds `trsDescriptorUrl()` to
+  `@galaxy-tool-util/schema`, a port of gxformat2's `trs_descriptor_url()`.
+- Updated dependencies [[`8fe478f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8fe478fa8186a7c3b833f568d7819822fb60d688), [`ad99d0a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ad99d0adfc01f47330b81b5700fd340b706a2e9d)]:
+  - @galaxy-tool-util/schema@1.14.0
+  - @galaxy-tool-util/connection-validation@1.14.0
+  - @galaxy-tool-util/core@1.14.0
+  - @galaxy-tool-util/search@1.14.0
+  - @galaxy-tool-util/tool-xml@1.14.0
+
 ## 1.13.1
 
 ### Patch Changes
