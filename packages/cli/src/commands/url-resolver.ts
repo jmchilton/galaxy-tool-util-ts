@@ -41,18 +41,24 @@ export function createDefaultResolver(opts: DefaultResolverOptions = {}): RefRes
     if (ref.includes("://")) {
       const descriptorUrl = trsDescriptorUrl(ref);
       const url = descriptorUrl ?? ref;
+      const source = descriptorUrl ? `${ref} (${descriptorUrl})` : ref;
       const response = await fetcher(url, {
         headers: { Accept: "application/json, application/x-yaml, text/yaml, */*" },
         signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${url}: ${response.status}`);
+        throw new Error(`Failed to fetch ${source}: ${response.status}`);
       }
 
       if (descriptorUrl) {
-        const descriptor = (await response.json()) as Record<string, unknown>;
+        let descriptor: { content?: unknown } | null;
+        try {
+          descriptor = (await response.json()) as { content?: unknown } | null;
+        } catch {
+          throw new Error(`TRS descriptor at ${source} is not JSON`);
+        }
         if (typeof descriptor?.content !== "string") {
-          throw new Error(`TRS descriptor at ${url} has no string 'content' field`);
+          throw new Error(`TRS descriptor at ${source} has no string 'content' field`);
         }
         return yaml.parse(descriptor.content) as Record<string, unknown>;
       }

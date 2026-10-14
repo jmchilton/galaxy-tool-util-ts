@@ -44,7 +44,18 @@ describe("createDefaultResolver", () => {
   it("throws a clear error when the TRS response has no content", async () => {
     const { fetcher } = recordingFetcher([{ id: "#workflow/github.com/x/y" }]);
     await expect(createDefaultResolver({ fetcher })(TRS_URL)).rejects.toThrow(
-      `TRS descriptor at ${DESCRIPTOR_URL} has no string 'content' field`,
+      `TRS descriptor at ${TRS_URL} (${DESCRIPTOR_URL}) has no string 'content' field`,
+    );
+  });
+
+  it("throws a clear error when the TRS response is not JSON", async () => {
+    const fetcher = (async () =>
+      new Response("<html>proxy error</html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      })) as typeof fetch;
+    await expect(createDefaultResolver({ fetcher })(TRS_URL)).rejects.toThrow(
+      `TRS descriptor at ${TRS_URL} (${DESCRIPTOR_URL}) is not JSON`,
     );
   });
 

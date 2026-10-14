@@ -1,5 +1,5 @@
 ---
-"@galaxy-tool-util/schema": patch
+"@galaxy-tool-util/schema": minor
 "@galaxy-tool-util/cli": patch
 ---
 

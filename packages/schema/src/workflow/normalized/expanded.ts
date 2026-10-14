@@ -76,8 +76,9 @@ export function isTrsUrl(url: string): boolean {
 }
 
 /**
- * Percent-decode `%XX` runs (Python's `unquote`). Unlike Python, which swaps
- * invalid UTF-8 bytes for U+FFFD, a run that isn't valid UTF-8 is left encoded.
+ * Percent-decode `%XX` runs (Python's `unquote`). A run that isn't valid UTF-8
+ * is left as-is, so it ends up double-encoded (`%25XX`) where Python would emit
+ * U+FFFD. Real TRS ids are ASCII; parity there isn't worth a TextDecoder.
  */
 function _unquote(value: string): string {
   return value.replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
