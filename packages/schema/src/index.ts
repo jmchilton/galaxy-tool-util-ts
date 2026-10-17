@@ -339,6 +339,7 @@ export {
   type EmitOptions,
   /** Lint rule classes (one per rule id). */
   NativeStepKeyNotInteger,
+  StepLabelNotUnique,
   /** Lint profile catalog loader — parses `lint_profiles.yml`. */
   parseLintProfiles,
   lintProfilesById,

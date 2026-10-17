@@ -14,3 +14,10 @@ export class NativeStepKeyNotInteger extends Linter {
   static applies_to = ["native"] as const;
   static profile = "structural";
 }
+
+/** Step labels (including inputs) must be unique within a workflow; Galaxy refuses duplicates at import. */
+export class StepLabelNotUnique extends Linter {
+  static severity = "error" as const;
+  static applies_to = ["format2", "native"] as const;
+  static profile = "structural";
+}
