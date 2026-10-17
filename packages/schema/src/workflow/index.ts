@@ -267,7 +267,7 @@ export {
   type EmitOptions,
 } from "./lint.js";
 
-export { NativeStepKeyNotInteger } from "./lint-rules.js";
+export { NativeStepKeyNotInteger, StepLabelNotUnique } from "./lint-rules.js";
 
 export {
   parseLintProfiles,
