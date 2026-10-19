@@ -28,7 +28,9 @@ function _columnDefaultMatchesType(columnType: unknown, value: unknown): boolean
 }
 
 function validateColumnDefinition(column: unknown): void {
-  if (!column || typeof column !== "object") return;
+  if (!column || typeof column !== "object" || Array.isArray(column)) {
+    throw new Error("Expected a mapping for semantic validation");
+  }
   const col = column as Record<string, unknown>;
   const name = col.name;
   if (typeof name === "string" && !COLUMN_NAME_RE.test(name)) {
@@ -45,7 +47,10 @@ function validateColumnDefinition(column: unknown): void {
 
   for (const field of ["restrictions", "suggestions"] as const) {
     const values = col[field];
-    if (!Array.isArray(values)) continue;
+    if (values == null || (Array.isArray(values) && values.length === 0)) continue;
+    if (!Array.isArray(values)) {
+      throw new Error(`Sample sheet column '${String(name)}' ${field} must be a list`);
+    }
     for (const v of values) {
       if (!_columnDefaultMatchesType(columnType, v)) {
         throw new Error(
@@ -62,7 +67,7 @@ function _typeList(typeValue: unknown): string[] {
   return [String(typeValue)];
 }
 
-function validateInputParameter(inputParam: unknown): void {
+export function validateInputParameter(inputParam: unknown): void {
   if (!inputParam || typeof inputParam !== "object") return;
   const data = inputParam as Record<string, unknown>;
   const typeValues = _typeList(data.type);
@@ -70,7 +75,13 @@ function validateInputParameter(inputParam: unknown): void {
   const isCollectionOnly =
     typeValues.length > 0 && typeValues.every((t) => COLLECTION_TYPE_VALUES.has(t));
 
+  if (data.collection_type != null && typeof data.collection_type !== "string") {
+    throw new Error("collection_type must be a string");
+  }
   const columnDefinitions = data.column_definitions;
+  if (columnDefinitions != null && !Array.isArray(columnDefinitions)) {
+    throw new Error("column_definitions must be a list");
+  }
   if (Array.isArray(columnDefinitions) && columnDefinitions.length > 0) {
     if (!isCollectionOnly && typeValues.length > 0) {
       throw new Error(
@@ -88,6 +99,22 @@ function validateInputParameter(inputParam: unknown): void {
     }
   }
 
+  // Record-input fields validation (mirrors gxformat2 #216).
+  const fields = data.fields;
+  if (Array.isArray(fields) && fields.length > 0) {
+    if (!isCollectionOnly && typeValues.length > 0) {
+      throw new Error(
+        `fields is only valid on collection inputs, got type=${JSON.stringify(data.type)}`,
+      );
+    }
+    const collectionType = typeof data.collection_type === "string" ? data.collection_type : "";
+    if (!collectionType.split(":").some((part) => part === "record")) {
+      throw new Error(
+        `fields is only valid on record-typed collection inputs, got collection_type=${JSON.stringify(data.collection_type)}`,
+      );
+    }
+  }
+
   for (const field of ["restrictions", "suggestions", "restrictOnConnections"] as const) {
     const value = data[field];
     if (value == null) continue;
@@ -96,17 +123,6 @@ function validateInputParameter(inputParam: unknown): void {
     if (typeValues.length > 0 && !isTextOnly) {
       throw new Error(
         `${field} is only valid on text/string inputs, got type=${JSON.stringify(data.type)}`,
-      );
-    }
-  }
-
-  // Record-input fields validation (mirrors gxformat2 #216).
-  const fields = data.fields;
-  if (Array.isArray(fields) && fields.length > 0) {
-    const collectionType = typeof data.collection_type === "string" ? data.collection_type : "";
-    if (!collectionType.split(":").some((part) => part === "record")) {
-      throw new Error(
-        `fields is only valid on record-typed collection inputs, got collection_type=${JSON.stringify(data.collection_type)}`,
       );
     }
   }
@@ -137,7 +153,7 @@ function _stateIsSpecified(value: unknown): boolean {
  * says "Only one or the other should be specified") — they are two encodings of
  * the same tool state, so carrying both is ambiguous.
  */
-function validateStep(step: Record<string, unknown>): void {
+export function validateStep(step: Record<string, unknown>): void {
   if (_stateIsSpecified(step.state) && _stateIsSpecified(step.tool_state)) {
     throw new Error("Workflow step specifies both 'state' and 'tool_state'; only one may be set");
   }
@@ -171,7 +187,9 @@ export function validateWorkflowSemantics(workflow: unknown): void {
     if (
       run &&
       typeof run === "object" &&
-      (run as Record<string, unknown>).class === "GalaxyWorkflow"
+      ["GalaxyWorkflow", "GalaxyWorkflowDraft"].includes(
+        String((run as Record<string, unknown>).class),
+      )
     ) {
       validateWorkflowSemantics(run);
     }

@@ -1543,3 +1543,18 @@ describe("embedded GalaxyUserTool steps", () => {
     expect(Object.keys(extracted.steps)).toEqual(["my_tool", "consume"]);
   });
 });
+
+describe("list-form extraction identity", () => {
+  it.each([
+    "synthetic-draft-extract-list-identities.gxwf.yml",
+    "synthetic-draft-extract-nested-list-identities.gxwf.yml",
+  ])("keeps %s valid without mutation and is idempotent", (fixture) => {
+    const workflow = loadFixture(fixture);
+    const original = structuredClone(workflow);
+    expect(validateDraft(workflow).ok).toBe(true);
+    const extracted = extractConcreteSubset(workflow).workflow;
+    expect(workflow).toEqual(original);
+    expect(validateDraft(extracted).ok).toBe(true);
+    expect(extractConcreteSubset(extracted).workflow).toEqual(extracted);
+  });
+});
