@@ -1082,6 +1082,18 @@ export const testsSchema = {
           default: "Collection",
           title: "Class",
         },
+        count: {
+          anyOf: [
+            {
+              type: "integer",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          title: "Count",
+        },
         element_tests: {
           anyOf: [
             {
@@ -1139,6 +1151,30 @@ export const testsSchema = {
           ],
           default: null,
           title: "Elements",
+        },
+        max: {
+          anyOf: [
+            {
+              type: "integer",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          title: "Maximum Count",
+        },
+        min: {
+          anyOf: [
+            {
+              type: "integer",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          title: "Minimum Count",
         },
       },
       title: "TestCollectionCollectionElementAssertions",
@@ -1343,6 +1379,20 @@ export const testsSchema = {
           description:
             "Applies only if `compare` is `diff`, `re_match` or `re_match_multiline`. Sorts the lines of the history data set before comparison; for `diff` and `re_match` the local file is also sorted. Useful for non-deterministic output.",
           title: "Sort",
+        },
+        visible: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "If specified, this value is checked against whether the corresponding output is shown in the history. Use to test outputs a tool or workflow is expected to hide, for instance via a `HideDatasetAction` post job action.",
+          title: "Visible",
         },
       },
       title: "TestCollectionDatasetElementAssertions",
@@ -1661,6 +1711,20 @@ export const testsSchema = {
           description:
             "Applies only if `compare` is `diff`, `re_match` or `re_match_multiline`. Sorts the lines of the history data set before comparison; for `diff` and `re_match` the local file is also sorted. Useful for non-deterministic output.",
           title: "Sort",
+        },
+        visible: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "If specified, this value is checked against whether the corresponding output is shown in the history. Use to test outputs a tool or workflow is expected to hide, for instance via a `HideDatasetAction` post job action.",
+          title: "Visible",
         },
       },
       title: "TestDataOutputAssertions",
