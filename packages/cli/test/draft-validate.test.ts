@@ -322,7 +322,7 @@ steps:
 `;
     const wfPath = join(ctx.tmpDir, "concrete-draft.gxwf.yml");
     await writeFile(wfPath, wf);
-    await runDraftValidate(wfPath, { concrete: true });
+    await runDraftValidate(wfPath, { concrete: true, offline: true });
 
     const out = joined(ctx.logSpy);
     expect(out).toContain("Concrete: OK");
@@ -357,7 +357,7 @@ steps:
 `;
     const wfPath = join(ctx.tmpDir, "partial-drafty.gxwf.yml");
     await writeFile(wfPath, wf);
-    await runDraftValidate(wfPath, { json: true, concrete: true });
+    await runDraftValidate(wfPath, { json: true, concrete: true, offline: true });
 
     const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
     expect(report.concrete?.class_after).toBe("GalaxyWorkflow");
@@ -383,7 +383,7 @@ steps:
 `;
     const wfPath = join(ctx.tmpDir, "concrete.gxwf.yml");
     await writeFile(wfPath, wf);
-    await runDraftValidate(wfPath, { json: true, concrete: true });
+    await runDraftValidate(wfPath, { json: true, concrete: true, offline: true });
 
     const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
     expect(report.concrete).toBeDefined();
@@ -521,6 +521,7 @@ steps:
       json: true,
       concrete: true,
       connections: true,
+      offline: true,
       cacheDir: join(ctx.tmpDir, "empty-cache"),
     });
 
@@ -577,7 +578,7 @@ steps:
 `;
     const wfPath = join(ctx.tmpDir, "non-draft.gxwf.yml");
     await writeFile(wfPath, wf);
-    await runDraftValidate(wfPath, { json: true, concrete: true });
+    await runDraftValidate(wfPath, { json: true, concrete: true, offline: true });
 
     const report = JSON.parse(joined(ctx.logSpy)) as SingleDraftValidationReport;
     expect(report.concrete).toBeUndefined();
@@ -604,7 +605,7 @@ steps:
     const wfPath = join(ctx.tmpDir, "concrete.gxwf.yml");
     await writeFile(wfPath, wf);
     const mdPath = join(ctx.tmpDir, "report.md");
-    await runDraftValidate(wfPath, { concrete: true, reportMarkdown: mdPath });
+    await runDraftValidate(wfPath, { concrete: true, offline: true, reportMarkdown: mdPath });
 
     const md = await readFile(mdPath, "utf-8");
     expect(md).toContain("## Concrete Subset Validation");
