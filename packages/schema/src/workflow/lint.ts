@@ -66,30 +66,35 @@ function validateReport(
   // Note: Galaxy markdown validation (```galaxy directives) not yet ported
 }
 
+function nativeStepContext(ctx: LintContext, stepKey: string): LintContext {
+  return ctx.child("steps").child(stepKey);
+}
+
 /**
  * Error on step labels shared by more than one step, as Galaxy rejects these at import.
  *
- * `labeledSteps` holds `[label, description, jsonPointer]` for each step of one
- * workflow level (subworkflows have their own label namespace). Empty labels
- * are ignored, matching Galaxy.
+ * `labeledSteps` holds `[label, description, labelContext]` for each step of one
+ * workflow level (subworkflows have their own label namespace); `labelContext`
+ * locates the label, or `undefined` to report at `ctx`. Empty labels are
+ * ignored, matching Galaxy.
  */
 function lintDuplicateStepLabels(
   ctx: LintContext,
-  labeledSteps: Iterable<[string | null | undefined, string, string | undefined]>,
+  labeledSteps: Iterable<[string | null | undefined, string, LintContext | undefined]>,
 ): void {
-  const stepsByLabel = new Map<string, [string, string | undefined][]>();
-  for (const [label, description, jsonPointer] of labeledSteps) {
+  const stepsByLabel = new Map<string, [string, LintContext | undefined][]>();
+  for (const [label, description, labelContext] of labeledSteps) {
     if (!label) continue;
     const steps = stepsByLabel.get(label);
-    if (steps) steps.push([description, jsonPointer]);
-    else stepsByLabel.set(label, [[description, jsonPointer]]);
+    if (steps) steps.push([description, labelContext]);
+    else stepsByLabel.set(label, [[description, labelContext]]);
   }
   for (const [label, steps] of stepsByLabel) {
     if (steps.length < 2) continue;
-    ctx.error(`Duplicated step label '${label}' (${steps.map(([d]) => d).join(", ")})`, {
-      linter: StepLabelNotUnique,
-      json_pointer: steps[1][1],
-    });
+    (steps[1][1] ?? ctx).error(
+      `Duplicated step label '${label}' (${steps.map(([d]) => d).join(", ")})`,
+      { linter: StepLabelNotUnique },
+    );
   }
 }
 
@@ -132,15 +137,15 @@ function lintNativeWorkflow(
     Object.entries(nnw.steps).map(([key, step]) => [
       step.label,
       `step ${key}`,
-      `/steps/${key}/label`,
+      nativeStepContext(ctx, key).child("label"),
     ]),
   );
 
   for (const [orderIndex, step] of Object.entries(nnw.steps)) {
+    const stepContext = nativeStepContext(ctx, orderIndex);
     if (!/^\d+$/.test(orderIndex)) {
-      ctx.error(`expected step_key to be integer not [${orderIndex}]`, {
+      stepContext.error(`expected step_key to be integer not [${orderIndex}]`, {
         linter: NativeStepKeyNotInteger,
-        json_pointer: `/steps/${orderIndex}`,
       });
     }
 
@@ -156,7 +161,7 @@ function lintNativeWorkflow(
       if (!step.subworkflow.steps || Object.keys(step.subworkflow.steps).length === 0) {
         ctx.error("subworkflow is missing steps or steps are empty");
       } else {
-        lintNativeWorkflow(ctx, step.subworkflow);
+        lintNativeWorkflow(stepContext.child("subworkflow"), step.subworkflow);
       }
     }
 
