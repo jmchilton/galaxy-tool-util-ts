@@ -36,6 +36,7 @@ describe("lint profile catalog", () => {
 
   it("exposes rules for a named profile", () => {
     expect(rulesForProfile(PROFILES, "structural")).toContain("NativeStepKeyNotInteger");
+    expect(rulesForProfile(PROFILES, "structural")).toContain("StepLabelNotUnique");
     expect(rulesForProfile(PROFILES, "best-practices")).toContain("WorkflowMissingAnnotation");
     expect(rulesForProfile(PROFILES, "release")).toContain("WorkflowMissingRelease");
   });

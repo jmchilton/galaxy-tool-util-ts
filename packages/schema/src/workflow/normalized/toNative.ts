@@ -198,7 +198,7 @@ function _buildNativeWorkflow(
 
 function _buildInputStep(inp: NormalizedFormat2Input, orderIndex: number): NormalizedNativeStep {
   const rawLabel = inp.id || `Input ${orderIndex}`;
-  const label = isUnlabeled(rawLabel) ? undefined : rawLabel;
+  const label = nativeInputLabel(inp, orderIndex);
 
   let inputType: string | readonly string[] | null | undefined = inp.type;
   let multiple = false;
@@ -363,7 +363,7 @@ function _buildToolStep(
   return {
     id: orderIndex,
     type: "tool",
-    label: _stepLabel(step),
+    label: nativeStepLabel(step),
     name: toolId ?? (toolRepresentation?.name as string) ?? "User Defined Tool",
     annotation: step.doc ?? "",
     tool_id: toolId,
@@ -416,7 +416,7 @@ function _buildSubworkflowStep(
   return {
     id: orderIndex,
     type: "subworkflow",
-    label: _stepLabel(step),
+    label: nativeStepLabel(step),
     annotation: step.doc ?? "",
     tool_state: {},
     subworkflow,
@@ -447,7 +447,7 @@ function _buildPauseStep(
   return {
     id: orderIndex,
     type: "pause",
-    label: _stepLabel(step),
+    label: nativeStepLabel(step),
     name,
     annotation: step.doc ?? "",
     tool_state: { name },
@@ -488,7 +488,7 @@ function _buildPickValueStep(
   return {
     id: orderIndex,
     type: "pick_value" as NormalizedNativeStep["type"],
-    label: _stepLabel(step),
+    label: nativeStepLabel(step),
     name,
     annotation: step.doc ?? "",
     tool_state: toolState,
@@ -713,7 +713,25 @@ function _buildNativeComments(
 
 // --- Helpers ---
 
-function _stepLabel(step: NormalizedFormat2Step): string | null | undefined {
+/**
+ * Native step label for a Format2 input at `orderIndex`.
+ *
+ * Inputs are labeled by `id`, falling back to `Input <orderIndex>`.
+ * Sentinel labels (`_unlabeled_*`) are cleared to null.
+ */
+export function nativeInputLabel(inp: NormalizedFormat2Input, orderIndex: number): string | null {
+  const rawLabel = inp.id || `Input ${orderIndex}`;
+  return isUnlabeled(rawLabel) ? null : rawLabel;
+}
+
+/**
+ * Native step label for a Format2 step.
+ *
+ * An explicit `label` wins; otherwise a non-numeric `id` is a user label and
+ * numeric ids are auto-assigned indices. Sentinel labels (`_unlabeled_*`) are
+ * cleared to null.
+ */
+export function nativeStepLabel(step: NormalizedFormat2Step): string | null | undefined {
   if (step.label != null) {
     if (isUnlabeled(step.label)) return null;
     return step.label;

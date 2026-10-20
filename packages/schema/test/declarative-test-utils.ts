@@ -122,7 +122,7 @@ function coerceMessageLike(value: unknown): unknown {
 export function assertValue(actual: unknown, expected: unknown): void {
   // Python models default unset optional fields to None; TS models omit them.
   if (expected === null && actual === undefined) return;
-  expect(actual).toEqual(expected);
+  expect(typeof expected === "string" ? coerceMessageLike(actual) : actual).toEqual(expected);
 }
 
 export function assertValueContains(actual: unknown, expected: string): void {

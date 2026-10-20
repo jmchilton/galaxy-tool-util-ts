@@ -12,7 +12,8 @@ import type { NormalizedFormat2Workflow, NormalizedFormat2Step } from "./normali
 import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./normalized/native.js";
 import { detectFormat } from "./detect-format.js";
 import { LintContext, type LintResult } from "./linting.js";
-import { NativeStepKeyNotInteger } from "./lint-rules.js";
+import { nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
+import { NativeStepKeyNotInteger, StepLabelNotUnique } from "./lint-rules.js";
 
 export {
   LintContext,
@@ -65,6 +66,38 @@ function validateReport(
   // Note: Galaxy markdown validation (```galaxy directives) not yet ported
 }
 
+function nativeStepContext(ctx: LintContext, stepKey: string): LintContext {
+  return ctx.child("steps").child(stepKey);
+}
+
+/**
+ * Error on step labels shared by more than one step, as Galaxy rejects these at import.
+ *
+ * `labeledSteps` holds `[label, description, labelContext]` for each step of one
+ * workflow level (subworkflows have their own label namespace); `labelContext`
+ * locates the label, or `undefined` to report at `ctx`. Empty labels are
+ * ignored, matching Galaxy.
+ */
+function lintDuplicateStepLabels(
+  ctx: LintContext,
+  labeledSteps: Iterable<[string | null | undefined, string, LintContext | undefined]>,
+): void {
+  const stepsByLabel = new Map<string, [string, LintContext | undefined][]>();
+  for (const [label, description, labelContext] of labeledSteps) {
+    if (!label) continue;
+    const steps = stepsByLabel.get(label);
+    if (steps) steps.push([description, labelContext]);
+    else stepsByLabel.set(label, [[description, labelContext]]);
+  }
+  for (const [label, steps] of stepsByLabel) {
+    if (steps.length < 2) continue;
+    (steps[1][1] ?? ctx).error(
+      `Duplicated step label '${label}' (${steps.map(([d]) => d).join(", ")})`,
+      { linter: StepLabelNotUnique },
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Native workflow linting
 // ---------------------------------------------------------------------------
@@ -99,11 +132,20 @@ function lintNativeWorkflow(
   let foundOutputs = false;
   let foundOutputWithoutLabel = false;
 
+  lintDuplicateStepLabels(
+    ctx,
+    Object.entries(nnw.steps).map(([key, step]) => [
+      step.label,
+      `step ${key}`,
+      nativeStepContext(ctx, key).child("label"),
+    ]),
+  );
+
   for (const [orderIndex, step] of Object.entries(nnw.steps)) {
+    const stepContext = nativeStepContext(ctx, orderIndex);
     if (!/^\d+$/.test(orderIndex)) {
-      ctx.error(`expected step_key to be integer not [${orderIndex}]`, {
+      stepContext.error(`expected step_key to be integer not [${orderIndex}]`, {
         linter: NativeStepKeyNotInteger,
-        json_pointer: `/steps/${orderIndex}`,
       });
     }
 
@@ -119,7 +161,7 @@ function lintNativeWorkflow(
       if (!step.subworkflow.steps || Object.keys(step.subworkflow.steps).length === 0) {
         ctx.error("subworkflow is missing steps or steps are empty");
       } else {
-        lintNativeWorkflow(ctx, step.subworkflow);
+        lintNativeWorkflow(stepContext.child("subworkflow"), step.subworkflow);
       }
     }
 
@@ -209,6 +251,20 @@ function lintFormat2Workflow(
       ctx.error("expected to find key [class] but absent");
     }
   }
+
+  // Check the labels conversion will assign to the native steps.
+  lintDuplicateStepLabels(ctx, [
+    ...nf2.inputs.map((inp, i): [string | null, string, undefined] => [
+      nativeInputLabel(inp, i),
+      `input ${inp.id || i}`,
+      undefined,
+    ]),
+    ...nf2.steps.map((step): [string | null | undefined, string, undefined] => [
+      nativeStepLabel(step),
+      `step ${step.id}`,
+      undefined,
+    ]),
+  ]);
 
   for (const step of nf2.steps) {
     lintStepErrors(ctx, step.errors);
