@@ -1,5 +1,13 @@
 # @galaxy-tool-util/search
 
+## 1.14.0
+
+### Patch Changes
+
+- Updated dependencies [[`0dc940d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0dc940dff1a07964c7990c925b73a3d6317fe0ac), [`8fe478f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8fe478fa8186a7c3b833f568d7819822fb60d688), [`ad99d0a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ad99d0adfc01f47330b81b5700fd340b706a2e9d), [`7370ed3`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7370ed3b5505f4013ee07f1ddc30ee59290d5331), [`da4aca6`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/da4aca618eba63a7f8d5f875402c575406d46dc0)]:
+  - @galaxy-tool-util/schema@1.14.0
+  - @galaxy-tool-util/core@1.14.0
+
 ## 1.13.1
 
 ### Patch Changes

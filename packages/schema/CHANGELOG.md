@@ -1,5 +1,38 @@
 # @galaxy-tool-util/schema
 
+## 1.14.0
+
+### Minor Changes
+
+- [#191](https://github.com/jmchilton/galaxy-tool-util-ts/pull/191) [`8fe478f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/8fe478fa8186a7c3b833f568d7819822fb60d688) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Fix subworkflow expansion for GA4GH TRS-linked steps (`content_source: trs_url`,
+  as emitted by Galaxy ≥ 26.1 and planemo). The default URL resolver now fetches
+  the percent-encoded `/versions/<v>/GALAXY/descriptor` endpoint instead of the raw
+  `#workflow/...` URL (whose `#` was sent as a fragment), and reports a clear error
+  when the descriptor has no `content`. Adds `trsDescriptorUrl()` to
+  `@galaxy-tool-util/schema`, a port of gxformat2's `trs_descriptor_url()`.
+
+- [#188](https://github.com/jmchilton/galaxy-tool-util-ts/pull/188) [`ad99d0a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/ad99d0adfc01f47330b81b5700fd340b706a2e9d) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `applyLayout` / `layoutPositions` (topological and layered strategies) and
+  `GRAPH_PROPERTY_CHECKERS`, porting gxformat2's layout module. Native
+  best-practice lint now checks step annotation, label, and untyped tool-state
+  parameters on native steps with native ids, matching gxformat2. Export
+  `unlabeledNodeId`.
+
+- [#192](https://github.com/jmchilton/galaxy-tool-util-ts/pull/192) [`7370ed3`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/7370ed3b5505f4013ee07f1ddc30ee59290d5331) Thanks [@mvdbeek](https://github.com/mvdbeek)! - Lint duplicate step labels as errors (new `StepLabelNotUnique` rule in the
+  `structural` profile), porting gxformat2's check. Galaxy refuses to import a
+  workflow whose steps (inputs included) share a label; subworkflows have their
+  own label namespace. Format2 lint checks the native labels that conversion
+  assigns (shared `nativeInputLabel` / `nativeStepLabel` helpers), so it flags
+  exactly what Galaxy will see.
+
+### Patch Changes
+
+- [#190](https://github.com/jmchilton/galaxy-tool-util-ts/pull/190) [`0dc940d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0dc940dff1a07964c7990c925b73a3d6317fe0ac) Thanks [@jmchilton](https://github.com/jmchilton)! - Align draft workflow validation, planning, extraction, and diagram overlays with gxformat2. Preserve numeric references when extracting list-form steps, report shared semantic errors and shorthand TODO input types, and handle list input ports, inferred subworkflows, slash-containing labels, and deterministic ordering consistently.
+
+- [#194](https://github.com/jmchilton/galaxy-tool-util-ts/pull/194) [`da4aca6`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/da4aca618eba63a7f8d5f875402c575406d46dc0) Thanks [@jmchilton](https://github.com/jmchilton)! - Resync `tests.schema.json` from Galaxy `dev`. Nested collection element
+  assertions now accept `count`, `min`, and `max` (galaxy#23554, Galaxy ≥ 26.1),
+  so `gxwf validate-tests` no longer rejects them. Output and dataset element
+  assertions also gain `visible` (Galaxy ≥ 26.2).
+
 ## 1.13.1
 
 ### Patch Changes
