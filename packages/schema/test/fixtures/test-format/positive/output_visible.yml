@@ -1,0 +1,12 @@
+- doc: output and collection element visibility assertions
+  job: {}
+  outputs:
+    hidden_output:
+      file: test-data/out.txt
+      visible: false
+    pairs:
+      class: Collection
+      element_tests:
+        forward:
+          file: test-data/f.fq
+          visible: true
