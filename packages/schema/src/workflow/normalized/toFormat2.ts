@@ -116,7 +116,7 @@ function _buildFormat2Workflow(
 
 // --- Input parameter building ---
 
-function _nativeInputToFormat2Type(
+export function nativeInputToFormat2Type(
   stepType: string,
   toolState: Record<string, unknown>,
 ): string | string[] {
@@ -135,7 +135,7 @@ function _nativeInputToFormat2Type(
 
 function _buildInputParam(step: NormalizedNativeStep): NormalizedFormat2Input {
   const stepId = unlabeledNodeId(step.label, step.id, true);
-  const inputType = _nativeInputToFormat2Type(step.type as string, step.tool_state);
+  const inputType = nativeInputToFormat2Type(step.type as string, step.tool_state);
 
   const result: Record<string, unknown> = { id: stepId, type: inputType };
 
