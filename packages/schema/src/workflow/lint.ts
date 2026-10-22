@@ -241,22 +241,26 @@ function lintNativeInputDefaults(ctx: LintContext, nnw: NormalizedNativeWorkflow
 interface DefaultCheck {
   typeName: string;
   expected: string;
+  expectedList: string;
   isValid: (value: unknown) => boolean;
 }
 
 const STRING_DEFAULT: DefaultCheck = {
   typeName: "string",
   expected: "a string",
+  expectedList: "a string or a list of strings",
   isValid: (value) => typeof value === "string",
 };
 const INTEGER_DEFAULT: DefaultCheck = {
   typeName: "int",
   expected: "an integer",
+  expectedList: "an integer or a list of integers",
   isValid: (value) => typeof value === "number" && Number.isInteger(value),
 };
 const FLOAT_DEFAULT: DefaultCheck = {
   typeName: "float",
   expected: "a number",
+  expectedList: "a number or a list of numbers",
   isValid: (value) => typeof value === "number",
 };
 const DEFAULT_CHECKS: Record<string, DefaultCheck> = {
@@ -268,6 +272,10 @@ const DEFAULT_CHECKS: Record<string, DefaultCheck> = {
   double: FLOAT_DEFAULT,
 };
 
+function defaultCheck(inputType: string): DefaultCheck | undefined {
+  return Object.hasOwn(DEFAULT_CHECKS, inputType) ? DEFAULT_CHECKS[inputType] : undefined;
+}
+
 function lintInputDefault(
   ctx: LintContext,
   label: string | null | undefined,
@@ -276,16 +284,15 @@ function lintInputDefault(
 ): void {
   if (defaultValue == null || inputType == null) return;
   if (Array.isArray(inputType)) {
-    // Galaxy wraps a bare string default for multiple text inputs.
-    if (inputType.length === 1 && DEFAULT_CHECKS[inputType[0]] === STRING_DEFAULT) {
-      const values = Array.isArray(defaultValue) ? defaultValue : [defaultValue];
-      if (!values.every(STRING_DEFAULT.isValid)) {
-        invalidDefault(ctx, label, "[string]", "a string or a list of strings");
-      }
+    // Galaxy wraps a bare default for multiple parameter inputs.
+    const check = inputType.length === 1 ? defaultCheck(inputType[0]) : undefined;
+    const values = Array.isArray(defaultValue) ? defaultValue : [defaultValue];
+    if (check && !values.every(check.isValid)) {
+      invalidDefault(ctx, label, `[${check.typeName}]`, check.expectedList);
     }
     return;
   }
-  const check = Object.hasOwn(DEFAULT_CHECKS, inputType) ? DEFAULT_CHECKS[inputType] : undefined;
+  const check = defaultCheck(inputType);
   if (check && !check.isValid(defaultValue)) {
     invalidDefault(ctx, label, check.typeName, check.expected);
   }
