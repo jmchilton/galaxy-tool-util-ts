@@ -173,15 +173,16 @@ function _normalizePosition(
 }
 
 function _parseToolState(raw: unknown): Record<string, unknown> {
-  if (typeof raw === "string") {
+  let value = raw;
+  if (typeof value === "string") {
     try {
-      return JSON.parse(raw);
+      value = JSON.parse(value);
     } catch {
       return {};
     }
   }
-  if (raw != null && typeof raw === "object") {
-    return raw as Record<string, unknown>;
+  if (value != null && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
   }
   return {};
 }
