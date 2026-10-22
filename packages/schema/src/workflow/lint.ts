@@ -12,7 +12,7 @@ import type { NormalizedFormat2Workflow, NormalizedFormat2Step } from "./normali
 import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./normalized/native.js";
 import { detectFormat } from "./detect-format.js";
 import { LintContext, type LintResult } from "./linting.js";
-import { nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
+import { format2InputStepType, nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
 import { NativeStepKeyNotInteger, StepLabelNotUnique } from "./lint-rules.js";
 
 export {
@@ -338,19 +338,59 @@ export function lintWorkflow(workflowDict: Record<string, unknown>): LintResult 
 // Best practices linting
 // ---------------------------------------------------------------------------
 
-const UNTYPED_PARAM_RE = /\$\{.+?\}/;
+// Galaxy's informal replacement parameter syntax (`get_informal_replacement_parameters`).
+const UNTYPED_PARAMETER_PATTERN = /\$\{(.+?)\}/g;
+const RENAME_ACTION = "RenameDatasetAction";
 
-function checkJsonForUntypedParams(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.some(checkJsonForUntypedParams);
-  }
-  if (value !== null && typeof value === "object") {
-    return Object.values(value as Record<string, unknown>).some(checkJsonForUntypedParams);
-  }
+/** Distinct `${name}` references anywhere in a JSON-like value, in order. */
+function untypedParameterNames(value: unknown): string[] {
   if (typeof value === "string") {
-    return UNTYPED_PARAM_RE.test(value);
+    return Array.from(value.matchAll(UNTYPED_PARAMETER_PATTERN), (m) => m[1] as string);
   }
-  return false;
+  const items = Array.isArray(value)
+    ? value
+    : value !== null && typeof value === "object"
+      ? Object.values(value)
+      : [];
+  return [...new Set(items.flatMap(untypedParameterNames))];
+}
+
+function lintUntypedToolState(ctx: LintContext, stepId: string, toolState: unknown): void {
+  for (const name of untypedParameterNames(toolState)) {
+    ctx.warn(
+      `Workflow step ${stepId} specifies an untyped parameter as an input. \${${name}} is filled only by ` +
+        "the expanded run form, never via the API; connect a workflow parameter input instead.",
+    );
+  }
+}
+
+/** Warn for `${name}` references Galaxy won't fill from a declared parameter input. */
+function lintUntypedPja(
+  ctx: LintContext,
+  stepId: string,
+  outputName: string | null | undefined,
+  action: string,
+  value: unknown,
+  isRename: boolean,
+  parameterLabels: ReadonlySet<string>,
+): void {
+  const target = outputName ? `output ${outputName}` : "all outputs";
+  for (const name of untypedParameterNames(value)) {
+    let detail: string;
+    if (!isRename) {
+      detail = "stays literal; Galaxy substitutes parameters only in renames.";
+    } else if (parameterLabels.has(name)) {
+      continue;
+    } else {
+      detail =
+        "is not a parameter input label, so Galaxy prompts for it at run time and leaves it literal via " +
+        `the API; add a parameter input labelled ${name}, or use #{input_name} for an input dataset's name.`;
+    }
+    ctx.warn(
+      `Workflow step ${stepId} specifies an untyped parameter in the post-job actions. ` +
+        `\${${name}} in ${action} of ${target} ${detail}`,
+    );
+  }
 }
 
 const SKIP_DISCONNECTED_NATIVE_TYPES = new Set([
@@ -360,7 +400,11 @@ const SKIP_DISCONNECTED_NATIVE_TYPES = new Set([
   "pause",
 ]);
 
-function lintStepBestPractices(ctx: LintContext, step: NormalizedFormat2Step): void {
+function lintStepBestPractices(
+  ctx: LintContext,
+  step: NormalizedFormat2Step,
+  parameterLabels: ReadonlySet<string>,
+): void {
   const stepId = step.label || step.id;
 
   // disconnected inputs
@@ -380,15 +424,15 @@ function lintStepBestPractices(ctx: LintContext, step: NormalizedFormat2Step): v
     ctx.warn(`Workflow step ${stepId} has no label.`);
   }
 
-  // untyped params in state
-  const toolState = step.state || step.tool_state;
-  if (toolState && checkJsonForUntypedParams(toolState)) {
-    ctx.warn(`Workflow step ${stepId} specifies an untyped parameter as an input.`);
-  }
+  lintUntypedToolState(ctx, stepId, step.state || step.tool_state);
 
-  // untyped params in outputs (PJA equivalents)
-  if (step.out && step.out.length > 0 && checkJsonForUntypedParams(step.out)) {
-    ctx.warn(`Workflow step ${stepId} specifies an untyped parameter in the post-job actions.`);
+  // format2 step outputs carry the post-job actions as fields
+  for (const out of step.out ?? []) {
+    for (const [field, value] of Object.entries(out)) {
+      if (field !== "id" && value != null) {
+        lintUntypedPja(ctx, stepId, out.id, field, value, field === "rename", parameterLabels);
+      }
+    }
   }
 }
 
@@ -396,7 +440,11 @@ function lintStepBestPractices(ctx: LintContext, step: NormalizedFormat2Step): v
  * Native step best-practice checks on native fields, so messages reference
  * native ids / labels rather than format2 sentinels like `_unlabeled_step_1`.
  */
-function lintNativeStepBestPractices(ctx: LintContext, step: NormalizedNativeStep): void {
+function lintNativeStepBestPractices(
+  ctx: LintContext,
+  step: NormalizedNativeStep,
+  parameterLabels: ReadonlySet<string>,
+): void {
   const stepId = step.label || step.annotation || String(step.id);
 
   // disconnected inputs
@@ -416,7 +464,6 @@ function lintNativeStepBestPractices(ctx: LintContext, step: NormalizedNativeSte
     ctx.warn(`Workflow step ${stepId} has no label.`);
   }
 
-  // untyped params in tool_state
   let toolState: unknown = step.tool_state;
   if (typeof toolState === "string") {
     try {
@@ -425,14 +472,13 @@ function lintNativeStepBestPractices(ctx: LintContext, step: NormalizedNativeSte
       toolState = {};
     }
   }
-  if (toolState && typeof toolState === "object" && checkJsonForUntypedParams(toolState)) {
-    ctx.warn(`Workflow step ${stepId} specifies an untyped parameter as an input.`);
-  }
+  lintUntypedToolState(ctx, stepId, toolState);
 
-  // untyped params in post_job_actions
-  if (step.post_job_actions && Object.keys(step.post_job_actions).length > 0) {
-    if (checkJsonForUntypedParams(step.post_job_actions)) {
-      ctx.warn(`Workflow step ${stepId} specifies an untyped parameter in the post-job actions.`);
+  for (const pja of Object.values(step.post_job_actions ?? {})) {
+    for (const [argument, value] of Object.entries(pja.action_arguments ?? {})) {
+      const isRename = pja.action_type === RENAME_ACTION && argument === "newname";
+      const action = isRename ? "rename" : pja.action_type;
+      lintUntypedPja(ctx, stepId, pja.output_name, action, value, isRename, parameterLabels);
     }
   }
 }
@@ -490,8 +536,13 @@ export function lintBestPracticesFormat2(workflowDict: Record<string, unknown>):
   }
   if (nf2) {
     lintWorkflowTopLevel(ctx, nf2, workflowDict);
+    const parameterLabels = new Set(
+      nf2.inputs
+        .filter((inp) => inp.id && format2InputStepType(inp) === "parameter_input")
+        .map((inp) => inp.id as string),
+    );
     for (const step of nf2.steps) {
-      lintStepBestPractices(ctx, step);
+      lintStepBestPractices(ctx, step, parameterLabels);
     }
   }
   return toLintResult(ctx);
@@ -519,8 +570,12 @@ export function lintBestPracticesNative(workflowDict: Record<string, unknown>): 
     nnw = null;
   }
   if (nnw) {
-    for (const step of Object.values(nnw.steps)) {
-      lintNativeStepBestPractices(ctx, step);
+    const steps = Object.values(nnw.steps);
+    const parameterLabels = new Set(
+      steps.filter((s) => s.type === "parameter_input" && s.label).map((s) => s.label as string),
+    );
+    for (const step of steps) {
+      lintNativeStepBestPractices(ctx, step, parameterLabels);
     }
   }
   return toLintResult(ctx);
