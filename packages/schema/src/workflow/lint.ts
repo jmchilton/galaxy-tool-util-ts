@@ -13,6 +13,7 @@ import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./normalize
 import { detectFormat } from "./detect-format.js";
 import { LintContext, type LintResult } from "./linting.js";
 import { format2InputStepType, nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
+import { resolveSourceReference } from "./normalized/labels.js";
 import { NativeStepKeyNotInteger, StepLabelNotUnique } from "./lint-rules.js";
 
 export {
@@ -341,6 +342,20 @@ export function lintWorkflow(workflowDict: Record<string, unknown>): LintResult 
 // Galaxy's informal replacement parameter syntax (`get_informal_replacement_parameters`).
 const UNTYPED_PARAMETER_PATTERN = /\$\{(.+?)\}/g;
 const RENAME_ACTION = "RenameDatasetAction";
+const DATA_INPUT_STEP_TYPES = new Set(["data_input", "data_collection_input"]);
+
+/** What a step's `${name}` references can resolve against. */
+interface ReplacementScope {
+  parameterLabels: ReadonlySet<string>;
+  dataLabels: ReadonlySet<string>;
+  /** source input label -> `#{...}` reference to the step input it connects to */
+  connectedInputs: ReadonlyMap<string, string>;
+}
+
+/** Rename `#{...}` reference for a step input; Galaxy reads nested `a|b` as `a.b`. */
+function inputReference(inputName: string): string {
+  return inputName.replaceAll("|", ".");
+}
 
 /** Distinct `${name}` references anywhere in a JSON-like value, in order. */
 function untypedParameterNames(value: unknown): string[] {
@@ -372,15 +387,20 @@ function lintUntypedPja(
   action: string,
   value: unknown,
   isRename: boolean,
-  parameterLabels: ReadonlySet<string>,
+  scope: ReplacementScope,
 ): void {
   const target = outputName ? `output ${outputName}` : "all outputs";
   for (const name of untypedParameterNames(value)) {
     let detail: string;
     if (!isRename) {
       detail = "stays literal; Galaxy substitutes parameters only in renames.";
-    } else if (parameterLabels.has(name)) {
+    } else if (scope.parameterLabels.has(name)) {
       continue;
+    } else if (scope.dataLabels.has(name)) {
+      const ref = scope.connectedInputs.get(name) ?? "input_name";
+      detail =
+        "names a data input, but Galaxy fills ${...} only from parameter inputs; " +
+        `use #{${ref}} for that dataset's name.`;
     } else {
       detail =
         "is not a parameter input label, so Galaxy prompts for it at run time and leaves it literal via " +
@@ -403,7 +423,7 @@ const SKIP_DISCONNECTED_NATIVE_TYPES = new Set([
 function lintStepBestPractices(
   ctx: LintContext,
   step: NormalizedFormat2Step,
-  parameterLabels: ReadonlySet<string>,
+  scope: ReplacementScope,
 ): void {
   const stepId = step.label || step.id;
 
@@ -430,7 +450,7 @@ function lintStepBestPractices(
   for (const out of step.out ?? []) {
     for (const [field, value] of Object.entries(out)) {
       if (field !== "id" && value != null) {
-        lintUntypedPja(ctx, stepId, out.id, field, value, field === "rename", parameterLabels);
+        lintUntypedPja(ctx, stepId, out.id, field, value, field === "rename", scope);
       }
     }
   }
@@ -443,7 +463,7 @@ function lintStepBestPractices(
 function lintNativeStepBestPractices(
   ctx: LintContext,
   step: NormalizedNativeStep,
-  parameterLabels: ReadonlySet<string>,
+  scope: ReplacementScope,
 ): void {
   const stepId = step.label || step.annotation || String(step.id);
 
@@ -478,7 +498,7 @@ function lintNativeStepBestPractices(
     for (const [argument, value] of Object.entries(pja.action_arguments ?? {})) {
       const isRename = pja.action_type === RENAME_ACTION && argument === "newname";
       const action = isRename ? "rename" : pja.action_type;
-      lintUntypedPja(ctx, stepId, pja.output_name, action, value, isRename, parameterLabels);
+      lintUntypedPja(ctx, stepId, pja.output_name, action, value, isRename, scope);
     }
   }
 }
@@ -536,13 +556,27 @@ export function lintBestPracticesFormat2(workflowDict: Record<string, unknown>):
   }
   if (nf2) {
     lintWorkflowTopLevel(ctx, nf2, workflowDict);
+    const inputTypes = nf2.inputs
+      .filter((inp) => inp.id)
+      .map((inp) => [inp.id as string, format2InputStepType(inp)] as const);
     const parameterLabels = new Set(
-      nf2.inputs
-        .filter((inp) => inp.id && format2InputStepType(inp) === "parameter_input")
-        .map((inp) => inp.id as string),
+      inputTypes.filter(([, t]) => t === "parameter_input").map(([label]) => label),
+    );
+    const dataLabels = new Set(
+      inputTypes.filter(([, t]) => t && DATA_INPUT_STEP_TYPES.has(t)).map(([label]) => label),
     );
     for (const step of nf2.steps) {
-      lintStepBestPractices(ctx, step, parameterLabels);
+      const connectedInputs = new Map<string, string>();
+      for (const stepInput of step.in) {
+        const sources = stepInput.source == null ? [] : [stepInput.source].flat();
+        for (const source of sources) {
+          connectedInputs.set(
+            resolveSourceReference(source, dataLabels)[0],
+            inputReference(stepInput.id),
+          );
+        }
+      }
+      lintStepBestPractices(ctx, step, { parameterLabels, dataLabels, connectedInputs });
     }
   }
   return toLintResult(ctx);
@@ -571,11 +605,24 @@ export function lintBestPracticesNative(workflowDict: Record<string, unknown>): 
   }
   if (nnw) {
     const steps = Object.values(nnw.steps);
+    const labels = new Map(steps.filter((s) => s.label).map((s) => [s.id, s.label as string]));
     const parameterLabels = new Set(
       steps.filter((s) => s.type === "parameter_input" && s.label).map((s) => s.label as string),
     );
+    const dataLabels = new Set(
+      steps
+        .filter((s) => DATA_INPUT_STEP_TYPES.has(s.type) && s.label)
+        .map((s) => s.label as string),
+    );
     for (const step of steps) {
-      lintNativeStepBestPractices(ctx, step, parameterLabels);
+      const connectedInputs = new Map<string, string>();
+      for (const [inputName, connections] of Object.entries(step.input_connections)) {
+        for (const connection of connections as { id?: number }[]) {
+          const label = connection.id == null ? undefined : labels.get(connection.id);
+          if (label) connectedInputs.set(label, inputReference(inputName));
+        }
+      }
+      lintNativeStepBestPractices(ctx, step, { parameterLabels, dataLabels, connectedInputs });
     }
   }
   return toLintResult(ctx);
