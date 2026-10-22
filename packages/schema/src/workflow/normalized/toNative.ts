@@ -196,6 +196,34 @@ function _buildNativeWorkflow(
 
 // --- Input step building ---
 
+const INPUT_TYPE_STEP_TYPES: Record<string, NormalizedNativeStep["type"]> = {
+  ...Object.fromEntries(["File", "data", "data_input"].map((t) => [t, "data_input"])),
+  ...Object.fromEntries(
+    ["collection", "data_collection", "data_collection_input"].map((t) => [
+      t,
+      "data_collection_input",
+    ]),
+  ),
+  ...Object.fromEntries(
+    ["text", "string", "integer", "int", "float", "color", "boolean"].map((t) => [
+      t,
+      "parameter_input",
+    ]),
+  ),
+} as Record<string, NormalizedNativeStep["type"]>;
+
+/** Native step type a Format2 input converts to, or undefined if unsupported. */
+export function format2InputStepType(
+  inp: NormalizedFormat2Input,
+): NormalizedNativeStep["type"] | undefined {
+  let inputType: string | readonly string[] | null | undefined = inp.type;
+  if (Array.isArray(inputType)) {
+    if (inputType.length !== 1) return undefined;
+    inputType = inputType[0] as string;
+  }
+  return INPUT_TYPE_STEP_TYPES[(inputType as string) ?? "data"];
+}
+
 function _buildInputStep(inp: NormalizedFormat2Input, orderIndex: number): NormalizedNativeStep {
   const rawLabel = inp.id || `Input ${orderIndex}`;
   const label = nativeInputLabel(inp, orderIndex);
@@ -212,14 +240,8 @@ function _buildInputStep(inp: NormalizedFormat2Input, orderIndex: number): Norma
 
   const typeStr: string = (inputType as string) ?? "data";
 
-  let stepType: NormalizedNativeStep["type"];
-  if (["File", "data", "data_input"].includes(typeStr)) {
-    stepType = "data_input" as NormalizedNativeStep["type"];
-  } else if (["collection", "data_collection", "data_collection_input"].includes(typeStr)) {
-    stepType = "data_collection_input" as NormalizedNativeStep["type"];
-  } else if (["text", "string", "integer", "int", "float", "color", "boolean"].includes(typeStr)) {
-    stepType = "parameter_input" as NormalizedNativeStep["type"];
-  } else {
+  const stepType = format2InputStepType(inp);
+  if (stepType === undefined) {
     throw new Error(`Unknown input type [${typeStr}] encountered.`);
   }
 
