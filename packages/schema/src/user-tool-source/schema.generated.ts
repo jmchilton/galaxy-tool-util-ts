@@ -1975,35 +1975,6 @@ export const userToolSourceSchema = {
       title: "ResourceRequirement",
       type: "object",
     },
-    RuntimeEnvironmentVariable: {
-      additionalProperties: false,
-      properties: {
-        description: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          title: "Description",
-        },
-        name: {
-          title: "Name",
-          type: "string",
-        },
-        required: {
-          default: false,
-          title: "Required",
-          type: "boolean",
-        },
-      },
-      required: ["name"],
-      title: "RuntimeEnvironmentVariable",
-      type: "object",
-    },
     TestCollectionCollectionElementAssertions: {
       additionalProperties: false,
       properties: {
@@ -2303,20 +2274,6 @@ export const userToolSourceSchema = {
           description:
             "Applies only if `compare` is `diff`, `re_match` or `re_match_multiline`. Sorts the lines of the history data set before comparison; for `diff` and `re_match` the local file is also sorted. Useful for non-deterministic output.",
           title: "Sort",
-        },
-        visible: {
-          anyOf: [
-            {
-              type: "boolean",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          description:
-            "If specified, this value is checked against whether the corresponding output is shown in the history. Use to test outputs a tool or workflow is expected to hide, for instance via a `HideDatasetAction` post job action.",
-          title: "Visible",
         },
       },
       title: "TestCollectionDatasetElementAssertions",
@@ -2621,20 +2578,6 @@ export const userToolSourceSchema = {
           description:
             "Applies only if `compare` is `diff`, `re_match` or `re_match_multiline`. Sorts the lines of the history data set before comparison; for `diff` and `re_match` the local file is also sorted. Useful for non-deterministic output.",
           title: "Sort",
-        },
-        visible: {
-          anyOf: [
-            {
-              type: "boolean",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          description:
-            "If specified, this value is checked against whether the corresponding output is shown in the history. Use to test outputs a tool or workflow is expected to hide, for instance via a `HideDatasetAction` post job action.",
-          title: "Visible",
         },
       },
       title: "TestDataOutputAssertions",
@@ -2948,7 +2891,7 @@ export const userToolSourceSchema = {
           ],
           default: [],
           description:
-            "JavaScript helpers and compute resource requests needed to execute this tool. Set the container image with the top-level container field.",
+            "JavaScript helpers and compute resource requests needed to execute this tool.",
           title: "requirements",
         },
         shell_command: {
@@ -3025,6 +2968,7 @@ export const userToolSourceSchema = {
       ],
     },
     XrefDict: {
+      additionalProperties: false,
       properties: {
         type: {
           title: "type",
@@ -4550,14 +4494,6 @@ export const userToolSourceSchema = {
           description:
             "JavaScript helpers and compute resource requests needed to execute this tool.",
           title: "requirements",
-        },
-        runtime_environment_variables: {
-          default: [],
-          items: {
-            $ref: "#/$defs/RuntimeEnvironmentVariable",
-          },
-          title: "runtime_environment_variables",
-          type: "array",
         },
         shell_command: {
           description:
