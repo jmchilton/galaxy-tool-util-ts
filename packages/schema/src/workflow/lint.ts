@@ -14,6 +14,7 @@ import { detectFormat } from "./detect-format.js";
 import { LintContext, type LintResult } from "./linting.js";
 import { format2InputStepType, nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
 import { resolveSourceReference } from "./normalized/labels.js";
+import { nativeInputToFormat2Type } from "./normalized/toFormat2.js";
 import { NativeStepKeyNotInteger, StepLabelNotUnique } from "./lint-rules.js";
 
 export {
@@ -170,6 +171,7 @@ function lintNativeWorkflow(
     lintToolIfPresent(ctx, step.tool_id);
   }
 
+  lintNativeInputDefaults(ctx, nnw);
   validateReport(ctx, (nnw as Record<string, unknown>).report as Record<string, unknown> | null);
 
   if (!foundOutputs) {
@@ -219,24 +221,92 @@ type GalaxyInputType = string | string[] | null | undefined;
 
 function validateInputTypes(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
   for (const inp of nf2.inputs) {
-    if (inp.default == null) continue;
-    const inputType: GalaxyInputType = inp.type as GalaxyInputType;
-    if (Array.isArray(inputType)) continue; // array types — skip
-
-    if (inputType === "int" || inputType === "integer") {
-      if (typeof inp.default !== "number" || !Number.isInteger(inp.default)) {
-        ctx.error("Input default is of invalid type");
-      }
-    } else if (inputType === "float" || inputType === "double") {
-      if (typeof inp.default !== "number") {
-        ctx.error("Input default is of invalid type");
-      }
-    } else if (inputType === "string" || inputType === "text") {
-      if (typeof inp.default !== "string") {
-        ctx.error("Input default is of invalid type");
-      }
-    }
+    lintInputDefault(ctx, inp.id, inp.type as GalaxyInputType, inp.default);
   }
+}
+
+function lintNativeInputDefaults(ctx: LintContext, nnw: NormalizedNativeWorkflow): void {
+  for (const [key, step] of Object.entries(nnw.steps)) {
+    if (step.type !== "parameter_input") continue;
+    const inputType = nativeInputToFormat2Type(step.type, step.tool_state);
+    lintInputDefault(
+      nativeStepContext(ctx, key),
+      step.label || key,
+      inputType,
+      step.tool_state.default,
+    );
+  }
+}
+
+interface DefaultCheck {
+  typeName: string;
+  expected: string;
+  expectedList: string;
+  isValid: (value: unknown) => boolean;
+}
+
+const STRING_DEFAULT: DefaultCheck = {
+  typeName: "string",
+  expected: "a string",
+  expectedList: "a string or a list of strings",
+  isValid: (value) => typeof value === "string",
+};
+const INTEGER_DEFAULT: DefaultCheck = {
+  typeName: "int",
+  expected: "an integer",
+  expectedList: "an integer or a list of integers",
+  isValid: (value) => typeof value === "number" && Number.isInteger(value),
+};
+const FLOAT_DEFAULT: DefaultCheck = {
+  typeName: "float",
+  expected: "a number",
+  expectedList: "a number or a list of numbers",
+  isValid: (value) => typeof value === "number",
+};
+const DEFAULT_CHECKS: Record<string, DefaultCheck> = {
+  string: STRING_DEFAULT,
+  text: STRING_DEFAULT,
+  int: INTEGER_DEFAULT,
+  integer: INTEGER_DEFAULT,
+  float: FLOAT_DEFAULT,
+  double: FLOAT_DEFAULT,
+};
+
+function defaultCheck(inputType: string): DefaultCheck | undefined {
+  return Object.hasOwn(DEFAULT_CHECKS, inputType) ? DEFAULT_CHECKS[inputType] : undefined;
+}
+
+function lintInputDefault(
+  ctx: LintContext,
+  label: string | null | undefined,
+  inputType: GalaxyInputType,
+  defaultValue: unknown,
+): void {
+  if (defaultValue == null || inputType == null) return;
+  if (Array.isArray(inputType)) {
+    // Galaxy wraps a bare default for multiple parameter inputs.
+    const check = inputType.length === 1 ? defaultCheck(inputType[0]) : undefined;
+    const values = Array.isArray(defaultValue) ? defaultValue : [defaultValue];
+    if (check && !values.every(check.isValid)) {
+      invalidDefault(ctx, label, `[${check.typeName}]`, check.expectedList);
+    }
+    return;
+  }
+  const check = defaultCheck(inputType);
+  if (check && !check.isValid(defaultValue)) {
+    invalidDefault(ctx, label, check.typeName, check.expected);
+  }
+}
+
+function invalidDefault(
+  ctx: LintContext,
+  label: string | null | undefined,
+  inputType: string,
+  expected: string,
+): void {
+  ctx.error(
+    `Input default is of invalid type. Input ${label} is ${inputType}; its default must be ${expected}.`,
+  );
 }
 
 function lintFormat2Workflow(
