@@ -3,6 +3,7 @@
 export const userToolSourceSchema = {
   $defs: {
     Citation: {
+      additionalProperties: false,
       properties: {
         content: {
           title: "Content",
@@ -37,6 +38,7 @@ export const userToolSourceSchema = {
       type: "object",
     },
     Container: {
+      additionalProperties: false,
       properties: {
         container_id: {
           title: "Container Id",
@@ -53,6 +55,7 @@ export const userToolSourceSchema = {
       type: "object",
     },
     ContainerRequirement: {
+      additionalProperties: false,
       properties: {
         container: {
           $ref: "#/$defs/Container",
@@ -69,9 +72,17 @@ export const userToolSourceSchema = {
     },
     EmptyFieldParameterValidatorModel: {
       additionalProperties: false,
+      description: "Require a value that is neither an empty string nor null.",
+      examples: [
+        {
+          type: "empty_field",
+        },
+      ],
       properties: {
         implicit: {
           default: false,
+          description:
+            "Set internally when Galaxy added the validator automatically; tool authors normally leave this false.",
           title: "Implicit",
           type: "boolean",
         },
@@ -85,26 +96,43 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Error message shown when validation fails; `%s` is replaced with the rejected value.",
           title: "Message",
         },
         negate: {
           default: false,
+          description: "Require the value to be empty or null instead.",
           title: "Negate",
           type: "boolean",
         },
         type: {
           const: "empty_field",
           default: "empty_field",
+          description: "Fails validation when the submitted value is an empty string or null.",
           title: "Type",
           type: "string",
         },
       },
       title: "EmptyFieldParameterValidatorModel",
       type: "object",
+      "x-parameter-example": {
+        label: "Sample name",
+        name: "sample_name",
+        type: "text",
+        validators: [
+          {
+            type: "empty_field",
+          },
+        ],
+      },
     },
     FilePatternDatasetCollectionDescription: {
+      additionalProperties: false,
       properties: {
         assign_primary_output: {
+          default: false,
+          description: "Whether the first matching file replaces the primary dataset output.",
           title: "Assign Primary Output",
           type: "boolean",
         },
@@ -117,10 +145,14 @@ export const userToolSourceSchema = {
               type: "null",
             },
           ],
+          default: null,
+          description: "Directory to search, relative to the job working directory.",
           title: "Directory",
         },
         discover_via: {
           const: "pattern",
+          default: "pattern",
+          description: "Discover datasets by matching files produced by the command.",
           title: "Discover Via",
           type: "string",
         },
@@ -133,56 +165,62 @@ export const userToolSourceSchema = {
               type: "null",
             },
           ],
+          default: null,
+          description: "Galaxy datatype extension assigned to each discovered dataset.",
           title: "Format",
         },
         match_relative_path: {
+          default: false,
+          description:
+            "Whether `pattern` matches each file's relative path instead of only its filename.",
           title: "Match Relative Path",
           type: "boolean",
         },
         pattern: {
+          description:
+            "Regular expression matched against produced filenames. Named groups such as `name`, `designation`, `ext`, and `dbkey` set discovered dataset metadata.",
           title: "Pattern",
           type: "string",
         },
         recurse: {
+          default: false,
+          description: "Whether to search recursively below `directory`.",
           title: "Recurse",
           type: "boolean",
         },
         sort_comp: {
+          default: "lexical",
+          description: "Whether the sort key is compared as text or as a number.",
           enum: ["lexical", "numeric"],
           title: "Sort Comp",
           type: "string",
         },
         sort_key: {
+          default: "filename",
+          description: "Discovered metadata used to order matching files.",
           enum: ["filename", "name", "designation", "dbkey"],
           title: "Sort Key",
           type: "string",
         },
         sort_reverse: {
           default: false,
+          description: "Whether to reverse the discovered dataset order.",
           title: "Sort Reverse",
           type: "boolean",
         },
         visible: {
+          default: false,
+          description: "Whether discovered datasets are visible in the history.",
           title: "Visible",
           type: "boolean",
         },
       },
-      required: [
-        "discover_via",
-        "format",
-        "visible",
-        "assign_primary_output",
-        "directory",
-        "recurse",
-        "match_relative_path",
-        "sort_key",
-        "sort_comp",
-        "pattern",
-      ],
+      required: ["pattern"],
       title: "FilePatternDatasetCollectionDescription",
       type: "object",
     },
     HelpContent: {
+      additionalProperties: false,
       properties: {
         content: {
           title: "Content",
@@ -200,19 +238,31 @@ export const userToolSourceSchema = {
     },
     InRangeParameterValidatorModel: {
       additionalProperties: false,
+      description: "Require a numeric value to fall within optional lower and upper bounds.",
+      examples: [
+        {
+          max: 1,
+          min: 0,
+          type: "in_range",
+        },
+      ],
       properties: {
         exclude_max: {
           default: false,
+          description: "Whether a value equal to `max` is rejected.",
           title: "Exclude Max",
           type: "boolean",
         },
         exclude_min: {
           default: false,
+          description: "Whether a value equal to `min` is rejected.",
           title: "Exclude Min",
           type: "boolean",
         },
         implicit: {
           default: false,
+          description:
+            "Set internally when Galaxy added the validator automatically; tool authors normally leave this false.",
           title: "Implicit",
           type: "boolean",
         },
@@ -229,6 +279,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Rejects larger values; omit to leave the range without an upper bound.",
           title: "Max",
         },
         message: {
@@ -241,6 +292,8 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Error message shown when validation fails; `%s` is replaced with the rejected value.",
           title: "Message",
         },
         min: {
@@ -256,24 +309,47 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Rejects smaller values; omit to leave the range without a lower bound.",
           title: "Min",
         },
         negate: {
           default: false,
+          description: "Reject values inside the configured range instead of values outside it.",
           title: "Negate",
           type: "boolean",
         },
         type: {
           const: "in_range",
           default: "in_range",
+          description: "Enforces the numeric boundaries configured by `min` and `max`.",
           title: "Type",
           type: "string",
         },
       },
       title: "InRangeParameterValidatorModel",
       type: "object",
+      "x-parameter-example": {
+        label: "Score threshold",
+        name: "threshold",
+        type: "float",
+        validators: [
+          {
+            max: 1,
+            min: 0,
+            type: "in_range",
+          },
+        ],
+        value: 0.5,
+      },
     },
-    IncomingToolOutputCollection: {
+    IncomingToolOutputBoolean: {
+      description: "A boolean value emitted as a workflow-visible scalar output.",
+      examples: [
+        {
+          name: "matched",
+          type: "boolean",
+        },
+      ],
       properties: {
         hidden: {
           anyOf: [
@@ -298,8 +374,160 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
-          description: "Output label. Will be used as dataset name in history.",
+          description: "Name shown for the produced dataset or collection in the history.",
           title: "Label",
+        },
+        name: {
+          description:
+            "Identifier used to connect this output in workflows and address it in tool tests.",
+          title: "Name",
+          type: "string",
+        },
+        type: {
+          const: "boolean",
+          title: "Type",
+          type: "string",
+        },
+      },
+      required: ["name", "type"],
+      title: "IncomingToolOutputBoolean",
+      type: "object",
+    },
+    IncomingToolOutputCollection: {
+      additionalProperties: false,
+      description: "A dataset collection populated by discovering files produced by the command.",
+      examples: [
+        {
+          collection_type: "list",
+          discover_datasets: [
+            {
+              format: "txt",
+              pattern: "(?P<name>.+)\\.txt",
+            },
+          ],
+          label: "Results",
+          name: "results",
+          type: "collection",
+        },
+      ],
+      properties: {
+        collection_type: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Fixed structure Galaxy creates for this output, such as `list`, `paired`, or a nested type such as `list:paired`.",
+          title: "Collection Type",
+        },
+        collection_type_source: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Declared data-collection input whose runtime structure determines this output's collection type.",
+          title: "Collection Type Source",
+        },
+        discover_datasets: {
+          anyOf: [
+            {
+              items: {
+                anyOf: [
+                  {
+                    $ref: "#/$defs/FilePatternDatasetCollectionDescription",
+                  },
+                  {
+                    $ref: "#/$defs/ToolProvidedMetadataDatasetCollection",
+                  },
+                ],
+              },
+              type: "array",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Rules used to discover and populate collection elements from produced files.",
+          title: "Discover Datasets",
+        },
+        format: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Default datatype extension assigned to collection elements.",
+          title: "Format",
+        },
+        format_source: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Input whose datatype supplies the default format for collection elements.",
+          title: "Format Source",
+        },
+        hidden: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Hide the output in the history. The dataset is still created and usable by other tools and workflows.",
+          title: "Hidden",
+        },
+        label: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Name shown for the produced dataset or collection in the history.",
+          title: "Label",
+        },
+        metadata_source: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Dataset input whose metadata supplies defaults for collection elements.",
+          title: "Metadata Source",
         },
         name: {
           anyOf: [
@@ -311,23 +539,47 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
-          description: "Parameter name. Used when referencing parameter in workflows.",
+          description:
+            "Identifier used to connect this output in workflows and address it in tool tests.",
           title: "Name",
         },
-        structure: {
-          $ref: "#/$defs/ToolOutputCollectionStructure",
+        structured_like: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Declared input whose element count, identifiers, and nesting this output mirrors. Use this when each produced element corresponds to an input element.",
+          title: "Structured Like",
         },
         type: {
           const: "collection",
+          description:
+            "Creates one history dataset collection populated from files produced by the command.",
           title: "Type",
           type: "string",
         },
       },
-      required: ["type", "structure"],
+      required: ["type"],
       title: "IncomingToolOutputCollection",
       type: "object",
     },
     IncomingToolOutputDataset: {
+      description: "A dataset collected from a file produced in the job working directory.",
+      examples: [
+        {
+          format: "txt",
+          from_work_dir: "result.txt",
+          label: "Result",
+          name: "result",
+          type: "data",
+        },
+      ],
       properties: {
         discover_datasets: {
           anyOf: [
@@ -349,6 +601,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Rules for discovering additional datasets produced by the command.",
           title: "Discover Datasets",
         },
         format: {
@@ -361,7 +614,8 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
-          description: "The short name for the output datatype.",
+          description:
+            "Galaxy datatype extension assigned when the command always produces a fixed representation. Use `format_source` instead when the datatype depends on an input.",
           title: "Format",
         },
         format_source: {
@@ -375,7 +629,7 @@ export const userToolSourceSchema = {
           ],
           default: null,
           description:
-            "This sets the data type of the output dataset(s) to be the same format as that of the specified tool input.",
+            "Data or collection input whose datatype extension this output inherits. Use this when the command preserves the input representation, such as filtering reads without changing their format.",
           title: "Format Source",
         },
         from_work_dir: {
@@ -389,9 +643,98 @@ export const userToolSourceSchema = {
           ],
           default: null,
           description:
-            "Relative path to a file produced by the tool in its working directory. Output\u2019s contents are set to this file\u2019s contents.",
+            "Relative path, inside the job working directory, that the command writes for this output. Galaxy claims that file after the command finishes.",
           title: "from_work_dir",
         },
+        hidden: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Hide the output in the history. The dataset is still created and usable by other tools and workflows.",
+          title: "Hidden",
+        },
+        label: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Name shown for the produced dataset or collection in the history.",
+          title: "Label",
+        },
+        metadata_source: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Data input whose datatype-specific metadata this output copies as defaults. Use this when the command preserves metadata Galaxy cannot infer from the output, such as interval column assignments.",
+          title: "Metadata Source",
+        },
+        name: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Identifier used to connect this output in workflows and address it in tool tests.",
+          title: "Name",
+        },
+        precreate_directory: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: false,
+          description:
+            "Set true when `from_work_dir` names a produced directory for a composite datatype. Galaxy copies the directory contents into the output dataset's extra-files area.",
+          title: "Precreate Directory",
+        },
+        type: {
+          const: "data",
+          description: "Creates one history dataset from a file produced by the command.",
+          title: "Type",
+          type: "string",
+        },
+      },
+      required: ["type"],
+      title: "IncomingToolOutputDataset",
+      type: "object",
+    },
+    IncomingToolOutputFloat: {
+      description: "A floating-point value emitted as a workflow-visible scalar output.",
+      examples: [
+        {
+          name: "score",
+          type: "float",
+        },
+      ],
+      properties: {
         hidden: {
           anyOf: [
             {
@@ -415,7 +758,486 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
-          description: "Output label. Will be used as dataset name in history.",
+          description: "Name shown for the produced dataset or collection in the history.",
+          title: "Label",
+        },
+        name: {
+          description:
+            "Identifier used to connect this output in workflows and address it in tool tests.",
+          title: "Name",
+          type: "string",
+        },
+        type: {
+          const: "float",
+          title: "Type",
+          type: "string",
+        },
+      },
+      required: ["name", "type"],
+      title: "IncomingToolOutputFloat",
+      type: "object",
+    },
+    IncomingToolOutputInteger: {
+      description: "An integer value emitted as a workflow-visible scalar output.",
+      examples: [
+        {
+          name: "match_count",
+          type: "integer",
+        },
+      ],
+      properties: {
+        hidden: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "If true, the output will not be shown in the history.",
+          title: "Hidden",
+        },
+        label: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Name shown for the produced dataset or collection in the history.",
+          title: "Label",
+        },
+        name: {
+          description:
+            "Identifier used to connect this output in workflows and address it in tool tests.",
+          title: "Name",
+          type: "string",
+        },
+        type: {
+          const: "integer",
+          title: "Type",
+          type: "string",
+        },
+      },
+      required: ["name", "type"],
+      title: "IncomingToolOutputInteger",
+      type: "object",
+    },
+    IncomingToolOutputText: {
+      description: "A text value emitted as a workflow-visible scalar output.",
+      examples: [
+        {
+          name: "message",
+          type: "text",
+        },
+      ],
+      properties: {
+        hidden: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "If true, the output will not be shown in the history.",
+          title: "Hidden",
+        },
+        label: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Name shown for the produced dataset or collection in the history.",
+          title: "Label",
+        },
+        name: {
+          description:
+            "Identifier used to connect this output in workflows and address it in tool tests.",
+          title: "Name",
+          type: "string",
+        },
+        type: {
+          const: "text",
+          title: "Type",
+          type: "string",
+        },
+      },
+      required: ["name", "type"],
+      title: "IncomingToolOutputText",
+      type: "object",
+    },
+    IncomingUserToolOutputCollection: {
+      additionalProperties: false,
+      description: "A user-defined tool collection populated only by matching produced filenames.",
+      examples: [
+        {
+          collection_type: "list",
+          discover_datasets: [
+            {
+              format: "txt",
+              pattern: "(?P<name>.+)\\.txt",
+            },
+          ],
+          label: "Results",
+          name: "results",
+          type: "collection",
+        },
+      ],
+      properties: {
+        collection_type: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Fixed structure Galaxy creates for this output, such as `list`, `paired`, or a nested type such as `list:paired`.",
+          title: "Collection Type",
+        },
+        collection_type_source: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Declared data-collection input whose runtime structure determines this output's collection type.",
+          title: "Collection Type Source",
+        },
+        discover_datasets: {
+          anyOf: [
+            {
+              items: {
+                $ref: "#/$defs/FilePatternDatasetCollectionDescription",
+              },
+              type: "array",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Filename pattern used to discover and populate collection elements.",
+          title: "Discover Datasets",
+        },
+        format: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Default datatype extension assigned to collection elements.",
+          title: "Format",
+        },
+        format_source: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Input whose datatype supplies the default format for collection elements.",
+          title: "Format Source",
+        },
+        hidden: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Hide the output in the history. The dataset is still created and usable by other tools and workflows.",
+          title: "Hidden",
+        },
+        label: {
+          anyOf: [
+            {
+              maxLength: 250,
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Name shown for the produced dataset or collection in the history. `$(inputs.<name>)` and `$(runtime.on_string)` references are filled in when the job is created.",
+          title: "Label",
+        },
+        metadata_source: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description: "Dataset input whose metadata supplies defaults for collection elements.",
+          title: "Metadata Source",
+        },
+        name: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Identifier used to connect this output in workflows and address it in tool tests.",
+          title: "Name",
+        },
+        structured_like: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Declared input whose element count, identifiers, and nesting this output mirrors. Use this when each produced element corresponds to an input element.",
+          title: "Structured Like",
+        },
+        type: {
+          const: "collection",
+          description:
+            "Creates one history dataset collection populated from files produced by the command.",
+          title: "Type",
+          type: "string",
+        },
+      },
+      required: ["type"],
+      title: "IncomingUserToolOutputCollection",
+      type: "object",
+      "x-usage-examples": [
+        {
+          definition: {
+            inputs: [],
+            outputs: [
+              {
+                collection_type: "list",
+                discover_datasets: [
+                  {
+                    directory: "reports",
+                    format: "tabular",
+                    pattern: "(?P<name>.+)\\.tsv",
+                  },
+                ],
+                name: "reports",
+                type: "collection",
+              },
+            ],
+            shell_command:
+              "mkdir reports && printf 'sample\\tvalue\\nA\\t1\\n' > reports/A.tsv && printf 'sample\\tvalue\\nB\\t2\\n' > reports/B.tsv",
+          },
+          description:
+            "`collection_type` can be used to declare a fixed output structure. A `list` contains an ordered set of discovered elements; `paired` requires `forward` and `reverse` identifiers.",
+          field: "collection_type",
+        },
+        {
+          definition: {
+            inputs: [
+              {
+                collection_type: "paired",
+                format: ["fastqsanger"],
+                name: "reads",
+                type: "data_collection",
+              },
+            ],
+            outputs: [
+              {
+                collection_type_source: "reads",
+                discover_datasets: [
+                  {
+                    directory: "copied",
+                    format: "fastqsanger",
+                    pattern: "(?P<name>forward|reverse)\\.fastq",
+                  },
+                ],
+                name: "copied_reads",
+                type: "collection",
+              },
+            ],
+            shell_command:
+              "mkdir copied && cp '$(inputs.reads.elements.forward.path)' copied/forward.fastq && cp '$(inputs.reads.elements.reverse.path)' copied/reverse.fastq",
+          },
+          description:
+            "`collection_type_source` can be used when the output has the same runtime collection type as a declared data-collection input, including when that input accepts more than one structure.",
+          field: "collection_type_source",
+        },
+        {
+          definition: {
+            inputs: [
+              {
+                collection_type: "paired",
+                format: ["fastqsanger"],
+                name: "reads",
+                type: "data_collection",
+              },
+            ],
+            outputs: [
+              {
+                collection_type: "paired",
+                discover_datasets: [
+                  {
+                    directory: "trimmed",
+                    format: "fastqsanger",
+                    pattern: "(?P<name>forward|reverse)\\.fastq",
+                  },
+                ],
+                name: "trimmed_reads",
+                structured_like: "reads",
+                type: "collection",
+              },
+            ],
+            shell_command:
+              "mkdir trimmed && head -n 400 '$(inputs.reads.elements.forward.path)' > trimmed/forward.fastq && head -n 400 '$(inputs.reads.elements.reverse.path)' > trimmed/reverse.fastq",
+          },
+          description:
+            "`structured_like` can be used when each produced element corresponds to an element of a declared input. Galaxy mirrors that input's element identifiers and nesting in the output.",
+          field: "structured_like",
+        },
+      ],
+    },
+    IncomingUserToolOutputDataset: {
+      additionalProperties: false,
+      description:
+        "A user-defined tool dataset discovered only from files inside the job working directory.",
+      examples: [
+        {
+          format: "txt",
+          from_work_dir: "result.txt",
+          label: "Result",
+          name: "result",
+          type: "data",
+        },
+      ],
+      properties: {
+        discover_datasets: {
+          anyOf: [
+            {
+              items: {
+                $ref: "#/$defs/FilePatternDatasetCollectionDescription",
+              },
+              type: "array",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Filename pattern used to discover additional datasets produced by the command.",
+          title: "Discover Datasets",
+        },
+        format: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Galaxy datatype extension assigned when the command always produces a fixed representation. Use `format_source` instead when the datatype depends on an input.",
+          title: "Format",
+        },
+        format_source: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Data or collection input whose datatype extension this output inherits. Use this when the command preserves the input representation, such as filtering reads without changing their format.",
+          title: "Format Source",
+        },
+        from_work_dir: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Relative path, inside the job working directory, that the command writes for this output. Galaxy claims that file after the command finishes.",
+          title: "from_work_dir",
+        },
+        hidden: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Hide the output in the history. The dataset is still created and usable by other tools and workflows.",
+          title: "Hidden",
+        },
+        label: {
+          anyOf: [
+            {
+              maxLength: 250,
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "Name shown for the produced dataset or collection in the history. `$(inputs.<name>)` and `$(runtime.on_string)` references are filled in when the job is created.",
           title: "Label",
         },
         metadata_source: {
@@ -429,7 +1251,7 @@ export const userToolSourceSchema = {
           ],
           default: null,
           description:
-            "This copies the metadata information from the tool\u2019s input dataset to serve as default for information that cannot be detected from the output. One prominent use case is interval data with a non-standard column order that cannot be deduced from a header line, but which is known to be identical in the input and output datasets.",
+            "Data input whose datatype-specific metadata this output copies as defaults. Use this when the command preserves metadata Galaxy cannot infer from the output, such as interval column assignments.",
           title: "Metadata Source",
         },
         name: {
@@ -442,7 +1264,8 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
-          description: "Parameter name. Used when referencing parameter in workflows.",
+          description:
+            "Identifier used to connect this output in workflows and address it in tool tests.",
           title: "Name",
         },
         precreate_directory: {
@@ -455,26 +1278,168 @@ export const userToolSourceSchema = {
             },
           ],
           default: false,
+          description:
+            "Set true when `from_work_dir` names a produced directory for a composite datatype. Galaxy copies the directory contents into the output dataset's extra-files area.",
           title: "Precreate Directory",
         },
         type: {
           const: "data",
+          description: "Creates one history dataset from a file produced by the command.",
           title: "Type",
           type: "string",
         },
       },
       required: ["type"],
-      title: "IncomingToolOutputDataset",
+      title: "IncomingUserToolOutputDataset",
       type: "object",
+      "x-usage-examples": [
+        {
+          definition: {
+            inputs: [
+              {
+                format: ["fastqsanger"],
+                name: "reads",
+                type: "data",
+              },
+            ],
+            outputs: [
+              {
+                format: "fastqsanger",
+                from_work_dir: "first.fastq",
+                label: "$(inputs.reads.element_identifier) (first 400 lines)",
+                name: "first_reads",
+                type: "data",
+              },
+            ],
+            shell_command: "head -n 400 '$(inputs.reads.path)' > first.fastq",
+          },
+          description:
+            "`label` can be used to name the output after the run's inputs. When the run maps over a collection, `$(inputs.reads.element_identifier)` is the sample name. [Output labels](#output-labels) lists the references a label can use.",
+          field: "label",
+        },
+        {
+          definition: {
+            inputs: [],
+            outputs: [
+              {
+                format: "tabular",
+                from_work_dir: "scores.tsv",
+                name: "scores",
+                type: "data",
+              },
+            ],
+            shell_command: "printf 'gene\\tscore\\nBRCA1\\t0.95\\n' > scores.tsv",
+          },
+          description:
+            "`format` can be used to assign a fixed Galaxy datatype when every run writes the same representation. The value is a datatype extension, not a filename suffix.",
+          field: "format",
+        },
+        {
+          definition: {
+            inputs: [
+              {
+                format: ["fastq", "fastqsanger"],
+                name: "reads",
+                type: "data",
+              },
+            ],
+            outputs: [
+              {
+                format_source: "reads",
+                from_work_dir: "first.fastq",
+                name: "first_reads",
+                type: "data",
+              },
+            ],
+            shell_command: "head -n 400 '$(inputs.reads.path)' > first.fastq",
+          },
+          description:
+            "`format_source` can be used to assign an output the selected input dataset's datatype when the command preserves its representation.",
+          field: "format_source",
+        },
+        {
+          definition: {
+            inputs: [
+              {
+                format: ["interval"],
+                name: "intervals",
+                type: "data",
+              },
+            ],
+            outputs: [
+              {
+                format: "interval",
+                from_work_dir: "filtered.interval",
+                metadata_source: "intervals",
+                name: "filtered_intervals",
+                type: "data",
+              },
+            ],
+            shell_command: "awk '$3 > $2' '$(inputs.intervals.path)' > filtered.interval",
+          },
+          description:
+            "`metadata_source` can be used to copy datatype-specific metadata from an input when the command preserves information Galaxy cannot infer from the produced file, such as interval column assignments.",
+          field: "metadata_source",
+        },
+        {
+          definition: {
+            inputs: [
+              {
+                label: "Message",
+                name: "message",
+                type: "text",
+              },
+            ],
+            outputs: [
+              {
+                format: "txt",
+                from_work_dir: "message.txt",
+                name: "message_file",
+                type: "data",
+              },
+            ],
+            shell_command: "printf '%s\\n' '$(inputs.message)' > message.txt",
+          },
+          description:
+            "`from_work_dir` can be used to claim a file written by the command. The relative path must match the command's destination and remain inside the job working directory.",
+          field: "from_work_dir",
+        },
+        {
+          definition: {
+            inputs: [
+              {
+                format: ["fasta"],
+                name: "reference",
+                type: "data",
+              },
+            ],
+            outputs: [
+              {
+                format: "bwa_mem2_index",
+                from_work_dir: "index",
+                name: "index",
+                precreate_directory: true,
+                type: "data",
+              },
+            ],
+            shell_command:
+              "mkdir index && bwa-mem2 index -p index/reference '$(inputs.reference.path)'",
+          },
+          description:
+            "`precreate_directory` can be used with a directory-backed composite datatype. The command creates the directory named by `from_work_dir`; Galaxy then copies its contents into the output dataset's extra-files area.",
+          field: "precreate_directory",
+        },
+      ],
     },
     JavascriptRequirement: {
+      additionalProperties: false,
       properties: {
         expression_lib: {
           anyOf: [
             {
               items: {
                 description:
-                  "Provide Javascript/ECMAScript 5.1 code here that will be available for expressions inside the `shell_command` field.",
+                  "Provide Javascript/ECMAScript 5.1 code here that will be available for expressions inside `shell_command` and `configfiles[*].content`.",
                 examples: [
                   'function pickValue() {\n    if (inputs.conditional_parameter.test_parameter == "a") {\n        return inputs.conditional_parameter.integer_parameter\n    } else {\n        return inputs.conditional_parameter.boolean_parameter\n    }\n}',
                 ],
@@ -501,9 +1466,20 @@ export const userToolSourceSchema = {
     },
     LengthParameterValidatorModel: {
       additionalProperties: false,
+      description:
+        "Require the number of characters in a text value to fall within optional bounds.",
+      examples: [
+        {
+          max: 20,
+          min: 1,
+          type: "length",
+        },
+      ],
       properties: {
         implicit: {
           default: false,
+          description:
+            "Set internally when Galaxy added the validator automatically; tool authors normally leave this false.",
           title: "Implicit",
           type: "boolean",
         },
@@ -517,6 +1493,8 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Rejects text with more characters; omit to leave the length without an upper bound.",
           title: "Max",
         },
         message: {
@@ -529,6 +1507,8 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Error message shown when validation fails; `%s` is replaced with the rejected value.",
           title: "Message",
         },
         min: {
@@ -541,28 +1521,70 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Rejects text with fewer characters; omit to leave the length without a lower bound.",
           title: "Min",
         },
         negate: {
           default: false,
+          description:
+            "Reject values whose length is inside the configured range instead of outside it.",
           title: "Negate",
           type: "boolean",
         },
         type: {
           const: "length",
           default: "length",
+          description: "Enforces character-count boundaries on a submitted text value.",
           title: "Type",
           type: "string",
         },
       },
       title: "LengthParameterValidatorModel",
       type: "object",
+      "x-parameter-example": {
+        label: "Sample name",
+        name: "sample_name",
+        type: "text",
+        validators: [
+          {
+            max: 20,
+            min: 1,
+            type: "length",
+          },
+        ],
+      },
+    },
+    MarkdownHelpContent: {
+      additionalProperties: false,
+      properties: {
+        content: {
+          title: "Content",
+          type: "string",
+        },
+        format: {
+          const: "markdown",
+          title: "Format",
+          type: "string",
+        },
+      },
+      required: ["format", "content"],
+      title: "MarkdownHelpContent",
+      type: "object",
     },
     NoOptionsParameterValidatorModel: {
       additionalProperties: false,
+      description: "Require a select parameter to have at least one available option.",
+      examples: [
+        {
+          type: "no_options",
+        },
+      ],
       properties: {
         implicit: {
           default: false,
+          description:
+            "Set internally when Galaxy added the validator automatically; tool authors normally leave this false.",
           title: "Implicit",
           type: "boolean",
         },
@@ -576,22 +1598,42 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Error message shown when validation fails; `%s` is replaced with the rejected value.",
           title: "Message",
         },
         negate: {
           default: false,
+          description: "Require the select parameter to have no available options instead.",
           title: "Negate",
           type: "boolean",
         },
         type: {
           const: "no_options",
           default: "no_options",
+          description: "Fails validation when a select input has no choices available.",
           title: "Type",
           type: "string",
         },
       },
       title: "NoOptionsParameterValidatorModel",
       type: "object",
+      "x-parameter-example": {
+        label: "Reference database",
+        name: "database",
+        options: [
+          {
+            label: "Human",
+            value: "human",
+          },
+        ],
+        type: "select",
+        validators: [
+          {
+            type: "no_options",
+          },
+        ],
+      },
     },
     OutputCompareType: {
       enum: ["diff", "re_match", "sim_size", "re_match_multiline", "contains", "image_diff"],
@@ -601,14 +1643,24 @@ export const userToolSourceSchema = {
     RegexParameterValidatorModel: {
       additionalProperties: false,
       description:
-        "Check if a regular expression **matches** the value, i.e. appears\nat the beginning of the value. To enforce a match of the complete value use\n``$`` at the end of the expression. The expression is given is the content\nof the validator tag. Note that for ``selects`` each option is checked\nseparately.",
+        "Require a regular expression to match from the start of the value.\n\nEnd the expression with ``$`` to require a full-value match. Each option of\na select parameter is checked separately.",
+      examples: [
+        {
+          expression: "^[ACGT]+$",
+          type: "regex",
+        },
+      ],
       properties: {
         expression: {
+          description:
+            "Regular expression matched from the start of the value. Add `$` at the end to require a complete-value match.",
           title: "Expression",
           type: "string",
         },
         implicit: {
           default: false,
+          description:
+            "Set internally when Galaxy added the validator automatically; tool authors normally leave this false.",
           title: "Implicit",
           type: "boolean",
         },
@@ -622,16 +1674,21 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Error message shown when validation fails; `%s` is replaced with the rejected value.",
           title: "Message",
         },
         negate: {
           default: false,
+          description: "Reject matching values instead of values that do not match.",
           title: "Negate",
           type: "boolean",
         },
         type: {
           const: "regex",
           default: "regex",
+          description:
+            "Applies the regular expression in `expression` to each submitted text value.",
           title: "Type",
           type: "string",
         },
@@ -639,8 +1696,22 @@ export const userToolSourceSchema = {
       required: ["expression"],
       title: "RegexParameterValidatorModel",
       type: "object",
+      "x-parameter-example": {
+        label: "DNA motif",
+        name: "motif",
+        type: "text",
+        validators: [
+          {
+            expression: "^[ACGT]+$",
+            type: "regex",
+          },
+        ],
+      },
     },
     ResourceRequirement: {
+      additionalProperties: false,
+      description:
+        "A tool's compute resource request.\n\nSet the minimum resources needed to run the job and, when useful, an upper\nlimit. Galaxy exposes the allocated CPU count to the command as\n``$GALAXY_SLOTS``. Use numbers or numeric strings. Other strings are\nreserved for expressions, which are not supported yet: a non-numeric value\nfails the create-time lint check.",
       properties: {
         cores_max: {
           anyOf: [
@@ -649,6 +1720,9 @@ export const userToolSourceSchema = {
             },
             {
               type: "number",
+            },
+            {
+              type: "string",
             },
             {
               type: "null",
@@ -668,6 +1742,9 @@ export const userToolSourceSchema = {
               type: "number",
             },
             {
+              type: "string",
+            },
+            {
               type: "null",
             },
           ],
@@ -679,76 +1756,96 @@ export const userToolSourceSchema = {
         cuda_compute_capability: {
           anyOf: [
             {
+              type: "integer",
+            },
+            {
               type: "number",
             },
             {
-              type: "integer",
+              type: "string",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          description: "Minimum CUDA compute capability required, e.g. 7.5.",
           title: "Cuda Compute Capability",
         },
         cuda_device_count_max: {
           anyOf: [
             {
+              type: "integer",
+            },
+            {
               type: "number",
             },
             {
-              type: "integer",
+              type: "string",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          description: "Maximum number of GPUs to reserve.",
           title: "Cuda Device Count Max",
         },
         cuda_device_count_min: {
           anyOf: [
             {
+              type: "integer",
+            },
+            {
               type: "number",
             },
             {
-              type: "integer",
+              type: "string",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          description: "Minimum number of GPUs to reserve.",
           title: "Cuda Device Count Min",
         },
         cuda_version_min: {
           anyOf: [
             {
+              type: "integer",
+            },
+            {
               type: "number",
             },
             {
-              type: "integer",
+              type: "string",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          description: "Minimum CUDA runtime version required, e.g. 11.2.",
           title: "Cuda Version Min",
         },
         gpu_memory_min: {
           anyOf: [
             {
+              type: "integer",
+            },
+            {
               type: "number",
             },
             {
-              type: "integer",
+              type: "string",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          description: "Minimum GPU memory required, in mebibytes (2**20).",
           title: "Gpu Memory Min",
         },
         ram_max: {
@@ -758,6 +1855,9 @@ export const userToolSourceSchema = {
             },
             {
               type: "number",
+            },
+            {
+              type: "string",
             },
             {
               type: "null",
@@ -777,6 +1877,9 @@ export const userToolSourceSchema = {
               type: "number",
             },
             {
+              type: "string",
+            },
+            {
               type: "null",
             },
           ],
@@ -788,16 +1891,20 @@ export const userToolSourceSchema = {
         shm_size: {
           anyOf: [
             {
+              type: "integer",
+            },
+            {
               type: "number",
             },
             {
-              type: "integer",
+              type: "string",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          description: "Size of /dev/shm to request, in bytes.",
           title: "Shm Size",
         },
         timelimit: {
@@ -807,6 +1914,9 @@ export const userToolSourceSchema = {
             },
             {
               type: "number",
+            },
+            {
+              type: "string",
             },
             {
               type: "null",
@@ -820,31 +1930,39 @@ export const userToolSourceSchema = {
         tmpdir_max: {
           anyOf: [
             {
+              type: "integer",
+            },
+            {
               type: "number",
             },
             {
-              type: "integer",
+              type: "string",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          description: "Maximum reserved temporary directory space, in mebibytes (2**20).",
           title: "Tmpdir Max",
         },
         tmpdir_min: {
           anyOf: [
             {
+              type: "integer",
+            },
+            {
               type: "number",
             },
             {
-              type: "integer",
+              type: "string",
             },
             {
               type: "null",
             },
           ],
           default: null,
+          description: "Minimum reserved temporary directory space, in mebibytes (2**20).",
           title: "Tmpdir Min",
         },
         type: {
@@ -855,6 +1973,35 @@ export const userToolSourceSchema = {
       },
       required: ["type"],
       title: "ResourceRequirement",
+      type: "object",
+    },
+    RuntimeEnvironmentVariable: {
+      additionalProperties: false,
+      properties: {
+        description: {
+          anyOf: [
+            {
+              type: "string",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          title: "Description",
+        },
+        name: {
+          title: "Name",
+          type: "string",
+        },
+        required: {
+          default: false,
+          title: "Required",
+          type: "boolean",
+        },
+      },
+      required: ["name"],
+      title: "RuntimeEnvironmentVariable",
       type: "object",
     },
     TestCollectionCollectionElementAssertions: {
@@ -872,6 +2019,18 @@ export const userToolSourceSchema = {
           ],
           default: "Collection",
           title: "Class",
+        },
+        count: {
+          anyOf: [
+            {
+              type: "integer",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          title: "Count",
         },
         element_tests: {
           anyOf: [
@@ -916,6 +2075,30 @@ export const userToolSourceSchema = {
           ],
           default: null,
           title: "Elements",
+        },
+        max: {
+          anyOf: [
+            {
+              type: "integer",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          title: "Maximum Count",
+        },
+        min: {
+          anyOf: [
+            {
+              type: "integer",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          title: "Minimum Count",
         },
       },
       title: "TestCollectionCollectionElementAssertions",
@@ -1120,6 +2303,20 @@ export const userToolSourceSchema = {
           description:
             "Applies only if `compare` is `diff`, `re_match` or `re_match_multiline`. Sorts the lines of the history data set before comparison; for `diff` and `re_match` the local file is also sorted. Useful for non-deterministic output.",
           title: "Sort",
+        },
+        visible: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "If specified, this value is checked against whether the corresponding output is shown in the history. Use to test outputs a tool or workflow is expected to hide, for instance via a `HideDatasetAction` post job action.",
+          title: "Visible",
         },
       },
       title: "TestCollectionDatasetElementAssertions",
@@ -1425,221 +2622,30 @@ export const userToolSourceSchema = {
             "Applies only if `compare` is `diff`, `re_match` or `re_match_multiline`. Sorts the lines of the history data set before comparison; for `diff` and `re_match` the local file is also sorted. Useful for non-deterministic output.",
           title: "Sort",
         },
+        visible: {
+          anyOf: [
+            {
+              type: "boolean",
+            },
+            {
+              type: "null",
+            },
+          ],
+          default: null,
+          description:
+            "If specified, this value is checked against whether the corresponding output is shown in the history. Use to test outputs a tool or workflow is expected to hide, for instance via a `HideDatasetAction` post job action.",
+          title: "Visible",
+        },
       },
       title: "TestDataOutputAssertions",
       type: "object",
     },
-    ToolOutputBoolean: {
-      properties: {
-        hidden: {
-          description: "If true, the output will not be shown in the history.",
-          title: "Hidden",
-        },
-        label: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          description: "Output label. Will be used as dataset name in history.",
-          title: "Label",
-        },
-        name: {
-          description: "Parameter name. Used when referencing parameter in workflows.",
-          title: "Name",
-        },
-        type: {
-          const: "boolean",
-          title: "Type",
-          type: "string",
-        },
-      },
-      required: ["name", "hidden", "type"],
-      title: "ToolOutputBoolean",
-      type: "object",
-    },
-    ToolOutputCollectionStructure: {
-      properties: {
-        collection_type: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          title: "Collection Type",
-        },
-        collection_type_from_rules: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          title: "Collection Type From Rules",
-        },
-        collection_type_source: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          title: "Collection Type Source",
-        },
-        discover_datasets: {
-          anyOf: [
-            {
-              items: {
-                anyOf: [
-                  {
-                    $ref: "#/$defs/FilePatternDatasetCollectionDescription",
-                  },
-                  {
-                    $ref: "#/$defs/ToolProvidedMetadataDatasetCollection",
-                  },
-                ],
-              },
-              type: "array",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          title: "Discover Datasets",
-        },
-        structured_like: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          title: "Structured Like",
-        },
-      },
-      title: "ToolOutputCollectionStructure",
-      type: "object",
-    },
-    ToolOutputFloat: {
-      properties: {
-        hidden: {
-          description: "If true, the output will not be shown in the history.",
-          title: "Hidden",
-        },
-        label: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          description: "Output label. Will be used as dataset name in history.",
-          title: "Label",
-        },
-        name: {
-          description: "Parameter name. Used when referencing parameter in workflows.",
-          title: "Name",
-        },
-        type: {
-          const: "float",
-          title: "Type",
-          type: "string",
-        },
-      },
-      required: ["name", "hidden", "type"],
-      title: "ToolOutputFloat",
-      type: "object",
-    },
-    ToolOutputInteger: {
-      properties: {
-        hidden: {
-          description: "If true, the output will not be shown in the history.",
-          title: "Hidden",
-        },
-        label: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          description: "Output label. Will be used as dataset name in history.",
-          title: "Label",
-        },
-        name: {
-          description: "Parameter name. Used when referencing parameter in workflows.",
-          title: "Name",
-        },
-        type: {
-          const: "integer",
-          title: "Type",
-          type: "string",
-        },
-      },
-      required: ["name", "hidden", "type"],
-      title: "ToolOutputInteger",
-      type: "object",
-    },
-    ToolOutputText: {
-      properties: {
-        hidden: {
-          description: "If true, the output will not be shown in the history.",
-          title: "Hidden",
-        },
-        label: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          description: "Output label. Will be used as dataset name in history.",
-          title: "Label",
-        },
-        name: {
-          description: "Parameter name. Used when referencing parameter in workflows.",
-          title: "Name",
-        },
-        type: {
-          const: "text",
-          title: "Type",
-          type: "string",
-        },
-      },
-      required: ["name", "hidden", "type"],
-      title: "ToolOutputText",
-      type: "object",
-    },
     ToolProvidedMetadataDatasetCollection: {
+      additionalProperties: false,
       properties: {
         assign_primary_output: {
+          default: false,
+          description: "Whether the first matching file replaces the primary dataset output.",
           title: "Assign Primary Output",
           type: "boolean",
         },
@@ -1652,10 +2658,13 @@ export const userToolSourceSchema = {
               type: "null",
             },
           ],
+          default: null,
+          description: "Directory to search, relative to the job working directory.",
           title: "Directory",
         },
         discover_via: {
           const: "tool_provided_metadata",
+          description: "Read discovered dataset details from the tool-provided metadata file.",
           title: "Discover Via",
           type: "string",
         },
@@ -1668,35 +2677,64 @@ export const userToolSourceSchema = {
               type: "null",
             },
           ],
+          default: null,
+          description: "Galaxy datatype extension assigned to each discovered dataset.",
           title: "Format",
         },
         match_relative_path: {
+          default: false,
+          description:
+            "Whether `pattern` matches each file's relative path instead of only its filename.",
           title: "Match Relative Path",
           type: "boolean",
         },
         recurse: {
+          default: false,
+          description: "Whether to search recursively below `directory`.",
           title: "Recurse",
           type: "boolean",
         },
         visible: {
+          default: false,
+          description: "Whether discovered datasets are visible in the history.",
           title: "Visible",
           type: "boolean",
         },
       },
-      required: [
-        "discover_via",
-        "format",
-        "visible",
-        "assign_primary_output",
-        "directory",
-        "recurse",
-        "match_relative_path",
-      ],
+      required: ["discover_via"],
       title: "ToolProvidedMetadataDatasetCollection",
       type: "object",
     },
     UserToolSource: {
       additionalProperties: false,
+      description:
+        "Full unprivileged tool source, including the optional ``tests`` block.\n\nThis is the model persisted and validated on the API surface\n(``DynamicUnprivilegedToolCreatePayload.representation``). LLM authoring\nuses the slimmer ``UserToolSourceAuthoringView`` parent; ``tests`` is added\nback here so direct authors and stored rows can still carry tests.",
+      examples: [
+        {
+          class: "GalaxyUserTool",
+          container: "quay.io/biocontainers/grep:3.4--hf43ccf4_4",
+          description: "from a text file",
+          id: "remove_comments",
+          inputs: [
+            {
+              format: ["txt"],
+              name: "input_file",
+              type: "data",
+            },
+          ],
+          name: "Remove Comment Lines",
+          outputs: [
+            {
+              format_source: "input_file",
+              from_work_dir: "output.txt",
+              name: "output_file",
+              type: "data",
+            },
+          ],
+          shell_command: "grep -v '^#' '$(inputs.input_file.path)' > output.txt || test \"$?\" = 1",
+          version: "0.1.0",
+        },
+      ],
       properties: {
         citations: {
           anyOf: [
@@ -1711,6 +2749,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "DOI or BibTeX references for publications describing the wrapped tool.",
           title: "citations",
         },
         class: {
@@ -1731,11 +2770,13 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
-          description: "A list of config files for this tool.",
+          description:
+            "Files Galaxy writes into the job working directory before running the command. Their content is evaluated with the same sandboxed ECMAScript expressions as `shell_command`. Put scripts and other substantial command logic here, then keep `shell_command` to a short invocation.",
           title: "configfiles",
         },
         container: {
-          description: "Container image to use for this tool.",
+          description:
+            "Docker container image for the tool, as a fully qualified registry/repository:tag string. This image is the tool's entire execution environment, so every command used by shell_command must already exist in it. Do not prefix the value with 'docker://' -- Galaxy adds that itself for Singularity and Apptainer destinations. An unqualified name is resolved against the container runtime's own default registry (Docker Hub), which is rarely what you want.",
           examples: ["quay.io/biocontainers/python:3.13"],
           title: "container",
           type: "string",
@@ -1767,6 +2808,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "EDAM operation identifiers such as `operation_0308`.",
           title: "edam_operations",
         },
         edam_topics: {
@@ -1782,19 +2824,21 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "EDAM topic identifiers such as `topic_0102`.",
           title: "edam_topics",
         },
         help: {
           anyOf: [
             {
-              $ref: "#/$defs/HelpContent",
+              $ref: "#/$defs/MarkdownHelpContent",
             },
             {
               type: "null",
             },
           ],
           default: null,
-          description: "Help text shown below the tool interface.",
+          description:
+            "Help shown below the tool form. Set `format` to `markdown` and put the documentation in `content`.",
           title: "help",
         },
         id: {
@@ -1817,6 +2861,8 @@ export const userToolSourceSchema = {
         },
         inputs: {
           default: [],
+          description:
+            "Parameters displayed on the tool form. Each item needs a unique `name` and a supported `type`. Reference scalar values as `$(inputs.input_name)` and data inputs as `$(inputs.input_name.path)` in `shell_command` or config files. Conditional, repeat, and section inputs contain nested parameters.",
           items: {
             $ref: "#/$defs/YamlGalaxyToolParameter",
           },
@@ -1847,36 +2893,22 @@ export const userToolSourceSchema = {
         },
         outputs: {
           default: [],
+          description:
+            "Datasets and dataset collections Galaxy collects after the command finishes. A data output identifies its produced file with `from_work_dir` or `discover_datasets`; a collection output uses `discover_datasets`.",
           items: {
             discriminator: {
               mapping: {
-                boolean: "#/$defs/ToolOutputBoolean",
-                collection: "#/$defs/IncomingToolOutputCollection",
-                data: "#/$defs/IncomingToolOutputDataset",
-                float: "#/$defs/ToolOutputFloat",
-                integer: "#/$defs/ToolOutputInteger",
-                text: "#/$defs/ToolOutputText",
+                collection: "#/$defs/IncomingUserToolOutputCollection",
+                data: "#/$defs/IncomingUserToolOutputDataset",
               },
               propertyName: "type",
             },
             oneOf: [
               {
-                $ref: "#/$defs/IncomingToolOutputDataset",
+                $ref: "#/$defs/IncomingUserToolOutputDataset",
               },
               {
-                $ref: "#/$defs/IncomingToolOutputCollection",
-              },
-              {
-                $ref: "#/$defs/ToolOutputText",
-              },
-              {
-                $ref: "#/$defs/ToolOutputInteger",
-              },
-              {
-                $ref: "#/$defs/ToolOutputFloat",
-              },
-              {
-                $ref: "#/$defs/ToolOutputBoolean",
+                $ref: "#/$defs/IncomingUserToolOutputCollection",
               },
             ],
           },
@@ -1906,9 +2938,6 @@ export const userToolSourceSchema = {
                   {
                     $ref: "#/$defs/ResourceRequirement",
                   },
-                  {
-                    $ref: "#/$defs/ContainerRequirement",
-                  },
                 ],
               },
               type: "array",
@@ -1919,13 +2948,13 @@ export const userToolSourceSchema = {
           ],
           default: [],
           description:
-            "A list of requirements needed to execute this tool. These can be javascript expressions, resource requirements or container images.",
+            "JavaScript helpers and compute resource requests needed to execute this tool. Set the container image with the top-level container field.",
           title: "requirements",
         },
         shell_command: {
           description:
-            "A string that contains the command to be executed. Parameters can be referenced inside $().",
-          examples: ["head -n '$(inputs.n_lines)' '$(inputs.data_input.path)'"],
+            "A string that contains the command to be executed. Reference inputs inside `$()` as `$(inputs.input_name)` for scalar values and `$(inputs.input_name.path)` for files; `${ ... }` evaluates a JavaScript function body that must return a value. Substituted values are not shell-quoted, so quote them yourself. Because `$(` and `${` are consumed by the expression evaluator, shell command substitution and braced parameter expansion do not reach the shell: escape them as `\\$(` and `\\${`, and prefer unbraced variables such as `$GALAXY_SLOTS`.",
+          examples: ["head -n '$(inputs.num_lines)' '$(inputs.input_file.path)' > output.txt"],
           title: "shell_command",
           type: "string",
         },
@@ -1942,21 +2971,15 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Tool test declarations with input values and expected outputs. Database-stored user-defined tools retain these declarations but do not currently run them in the application.",
           title: "tests",
         },
         version: {
-          anyOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
           description: "Version for the tool.",
           examples: ["0.1.0"],
           title: "version",
+          type: "string",
         },
         xrefs: {
           anyOf: [
@@ -1971,15 +2994,37 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "External registry identifiers, each with a registry `type` and identifier `value`.",
           title: "xrefs",
         },
       },
-      required: ["name", "shell_command", "class", "container"],
+      required: ["version", "name", "shell_command", "class", "container"],
       title: "UserToolSource",
       type: "object",
+      "x-field-order": [
+        "class",
+        "id",
+        "name",
+        "version",
+        "description",
+        "container",
+        "requirements",
+        "shell_command",
+        "configfiles",
+        "inputs",
+        "outputs",
+        "citations",
+        "license",
+        "profile",
+        "edam_operations",
+        "edam_topics",
+        "xrefs",
+        "help",
+        "tests",
+      ],
     },
     XrefDict: {
-      additionalProperties: false,
       properties: {
         type: {
           title: "type",
@@ -1996,6 +3041,15 @@ export const userToolSourceSchema = {
     },
     YamlBooleanParameter: {
       additionalProperties: false,
+      description: "A true-or-false input.",
+      examples: [
+        {
+          label: "Include a header line",
+          name: "include_header",
+          type: "boolean",
+          value: true,
+        },
+      ],
       properties: {
         help: {
           anyOf: [
@@ -2007,6 +3061,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2019,19 +3074,25 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         type: {
           const: "boolean",
+          description:
+            "Presents a true-or-false choice and supplies the selected Boolean value to expressions.",
           title: "Type",
           type: "string",
         },
@@ -2045,15 +3106,26 @@ export const userToolSourceSchema = {
             },
           ],
           default: false,
+          description: "Initial choice shown when the user first opens the tool form.",
           title: "Value",
         },
       },
       required: ["name", "type"],
       title: "YamlBooleanParameter",
       type: "object",
+      "x-shell-command": 'include_header="$(inputs.include_header)"',
     },
     YamlColorParameter: {
       additionalProperties: false,
+      description: "A color-picker input.",
+      examples: [
+        {
+          label: "Plot color",
+          name: "plot_color",
+          type: "color",
+          value: "#3366cc",
+        },
+      ],
       properties: {
         help: {
           anyOf: [
@@ -2065,6 +3137,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2077,19 +3150,25 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         type: {
           const: "color",
+          description:
+            "Presents a color picker and supplies the selected hexadecimal color string.",
           title: "Type",
           type: "string",
         },
@@ -2103,15 +3182,58 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Color initially selected in the picker, written in hexadecimal notation.",
           title: "Value",
         },
       },
       required: ["name", "type"],
       title: "YamlColorParameter",
       type: "object",
+      "x-shell-command": 'plot_color="$(inputs.plot_color)"',
     },
     YamlConditionalParameter: {
       additionalProperties: false,
+      description:
+        "A control input that selects which nested inputs are displayed and supplied to the command.",
+      examples: [
+        {
+          name: "search_options",
+          test_parameter: {
+            label: "Search mode",
+            name: "mode",
+            options: [
+              {
+                label: "Fast",
+                selected: true,
+                value: "fast",
+              },
+              {
+                label: "Sensitive",
+                selected: false,
+                value: "sensitive",
+              },
+            ],
+            type: "select",
+          },
+          type: "conditional",
+          whens: [
+            {
+              discriminator: "fast",
+              parameters: [],
+            },
+            {
+              discriminator: "sensitive",
+              parameters: [
+                {
+                  name: "iterations",
+                  type: "integer",
+                  value: 3,
+                },
+              ],
+            },
+          ],
+        },
+      ],
       properties: {
         help: {
           anyOf: [
@@ -2123,6 +3245,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2135,18 +3258,24 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         test_parameter: {
+          description:
+            "Boolean or select input whose submitted value chooses the active `whens` branch.",
           discriminator: {
             mapping: {
               boolean: "#/$defs/YamlBooleanParameter",
@@ -2166,10 +3295,14 @@ export const userToolSourceSchema = {
         },
         type: {
           const: "conditional",
+          description:
+            "Shows one set of nested inputs at a time according to a Boolean or select control.",
           title: "Type",
           type: "string",
         },
         whens: {
+          description:
+            "Maps each control value to the nested parameters shown and supplied for that branch.",
           items: {
             $ref: "#/$defs/YamlConditionalWhen",
           },
@@ -2181,6 +3314,8 @@ export const userToolSourceSchema = {
       required: ["name", "type", "test_parameter", "whens"],
       title: "YamlConditionalParameter",
       type: "object",
+      "x-shell-command":
+        'mode="$(inputs.search_options.mode)"\niterations="$(inputs.search_options.iterations)"',
     },
     YamlConditionalWhen: {
       additionalProperties: false,
@@ -2211,6 +3346,16 @@ export const userToolSourceSchema = {
     },
     YamlDataCollectionParameter: {
       additionalProperties: false,
+      description: "A dataset collection input.",
+      examples: [
+        {
+          collection_type: "paired",
+          format: ["fastqsanger"],
+          label: "Paired reads",
+          name: "reads",
+          type: "data_collection",
+        },
+      ],
       properties: {
         collection_type: {
           anyOf: [
@@ -2222,10 +3367,14 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Limits selectable collections to this structure, such as `list` or `paired`.",
           title: "Collection Type",
         },
         format: {
           default: ["data"],
+          description:
+            "Requires every selectable collection element to use one of these datatype extensions.",
           items: {
             type: "string",
           },
@@ -2242,6 +3391,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2254,19 +3404,25 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         type: {
           const: "data_collection",
+          description:
+            "Lets the user select a history collection and exposes its elements to expressions.",
           title: "Type",
           type: "string",
         },
@@ -2274,12 +3430,24 @@ export const userToolSourceSchema = {
       required: ["name", "type"],
       title: "YamlDataCollectionParameter",
       type: "object",
+      "x-shell-command":
+        "forward='$(inputs.reads.elements.forward.path)'\nreverse='$(inputs.reads.elements.reverse.path)'",
     },
     YamlDataParameter: {
       additionalProperties: false,
+      description: "One dataset, or a list of datasets when ``multiple`` is true.",
+      examples: [
+        {
+          format: ["txt", "tabular"],
+          label: "Input file",
+          name: "input_file",
+          type: "data",
+        },
+      ],
       properties: {
         format: {
           default: ["data"],
+          description: "Limits selectable datasets to these Galaxy datatype extensions.",
           items: {
             type: "string",
           },
@@ -2296,6 +3464,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2308,48 +3477,32 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
-        },
-        max: {
-          anyOf: [
-            {
-              type: "integer",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          title: "Max",
-        },
-        min: {
-          anyOf: [
-            {
-              type: "integer",
-            },
-            {
-              type: "null",
-            },
-          ],
-          default: null,
-          title: "Min",
         },
         multiple: {
           default: false,
+          description:
+            "Set true to accept several datasets (a list) for this input instead of one.",
           title: "Multiple",
           type: "boolean",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         type: {
           const: "data",
+          description:
+            "Lets the user select history datasets and exposes their paths and metadata to expressions.",
           title: "Type",
           type: "string",
         },
@@ -2357,9 +3510,21 @@ export const userToolSourceSchema = {
       required: ["name", "type"],
       title: "YamlDataParameter",
       type: "object",
+      "x-shell-command": "input_file='$(inputs.input_file.path)'",
     },
     YamlFloatParameter: {
       additionalProperties: false,
+      description: "A numeric input with optional bounds and validators.",
+      examples: [
+        {
+          label: "Score threshold",
+          max: 1.0,
+          min: 0.0,
+          name: "threshold",
+          type: "float",
+          value: 0.5,
+        },
+      ],
       properties: {
         help: {
           anyOf: [
@@ -2371,6 +3536,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2383,6 +3549,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         max: {
@@ -2395,6 +3562,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Rejects submitted values larger than this inclusive upper bound.",
           title: "Max",
         },
         min: {
@@ -2407,24 +3575,31 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Rejects submitted values smaller than this inclusive lower bound.",
           title: "Min",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         type: {
           const: "float",
+          description:
+            "Accepts a number, including decimal values, and supplies it to expressions.",
           title: "Type",
           type: "string",
         },
         validators: {
           default: [],
+          description: "Additional validation rules; supports `in_range`.",
           items: {
             $ref: "#/$defs/InRangeParameterValidatorModel",
           },
@@ -2441,12 +3616,14 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Number prefilled when the user first opens the tool form.",
           title: "Value",
         },
       },
       required: ["name", "type"],
       title: "YamlFloatParameter",
       type: "object",
+      "x-shell-command": 'threshold="$(inputs.threshold)"',
     },
     YamlGalaxyToolParameter: {
       discriminator: {
@@ -2504,6 +3681,17 @@ export const userToolSourceSchema = {
     },
     YamlIntegerParameter: {
       additionalProperties: false,
+      description: "A whole-number input with optional bounds and validators.",
+      examples: [
+        {
+          label: "Number of lines",
+          max: 1000,
+          min: 1,
+          name: "num_lines",
+          type: "integer",
+          value: 10,
+        },
+      ],
       properties: {
         help: {
           anyOf: [
@@ -2515,6 +3703,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2527,6 +3716,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         max: {
@@ -2539,6 +3729,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Rejects submitted values larger than this inclusive upper bound.",
           title: "Max",
         },
         min: {
@@ -2551,24 +3742,30 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Rejects submitted values smaller than this inclusive lower bound.",
           title: "Min",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         type: {
           const: "integer",
+          description: "Accepts a whole number and supplies it as a numeric value to expressions.",
           title: "Type",
           type: "string",
         },
         validators: {
           default: [],
+          description: "Additional validation rules; supports `in_range`.",
           items: {
             $ref: "#/$defs/InRangeParameterValidatorModel",
           },
@@ -2585,14 +3782,17 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Number prefilled when the user first opens the tool form.",
           title: "Value",
         },
       },
       required: ["name", "type"],
       title: "YamlIntegerParameter",
       type: "object",
+      "x-shell-command": 'num_lines="$(inputs.num_lines)"',
     },
     YamlLabelValue: {
+      additionalProperties: false,
       description: "YAML-friendly option model \u2014 ``selected`` defaults to ``False``.",
       properties: {
         label: {
@@ -2615,6 +3815,24 @@ export const userToolSourceSchema = {
     },
     YamlRepeatParameter: {
       additionalProperties: false,
+      description:
+        "A group the user may add multiple times, with ``parameters`` defining one repeated entry.",
+      examples: [
+        {
+          label: "Additional files",
+          max: 3,
+          min: 0,
+          name: "extra_files",
+          parameters: [
+            {
+              format: ["txt"],
+              name: "input_file",
+              type: "data",
+            },
+          ],
+          type: "repeat",
+        },
+      ],
       properties: {
         help: {
           anyOf: [
@@ -2626,6 +3844,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2638,6 +3857,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         max: {
@@ -2650,6 +3870,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Prevents the user from adding more than this many entries.",
           title: "Max",
         },
         min: {
@@ -2662,19 +3883,25 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "Keeps at least this many entries in the group and creates them when the form opens.",
           title: "Min",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         parameters: {
           default: [],
+          description: "Nested inputs that make up one entry in the repeated group.",
           items: {
             $ref: "#/$defs/YamlGalaxyToolParameter",
           },
@@ -2683,6 +3910,8 @@ export const userToolSourceSchema = {
         },
         type: {
           const: "repeat",
+          description:
+            "Lets the user add multiple entries that all contain the same nested inputs.",
           title: "Type",
           type: "string",
         },
@@ -2690,9 +3919,28 @@ export const userToolSourceSchema = {
       required: ["name", "type"],
       title: "YamlRepeatParameter",
       type: "object",
+      "x-shell-command":
+        "files='$(inputs.extra_files.map((item) => item.input_file.path).join(\" \"))'",
     },
     YamlSectionParameter: {
       additionalProperties: false,
+      description: "Related inputs that users can expand or collapse to reduce form complexity.",
+      examples: [
+        {
+          label: "Advanced options",
+          name: "advanced",
+          parameters: [
+            {
+              max: 1.0,
+              min: 0.0,
+              name: "threshold",
+              type: "float",
+              value: 0.5,
+            },
+          ],
+          type: "section",
+        },
+      ],
       properties: {
         help: {
           anyOf: [
@@ -2704,6 +3952,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2716,19 +3965,24 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         parameters: {
           default: [],
+          description: "Nested inputs displayed together inside the section.",
           items: {
             $ref: "#/$defs/YamlGalaxyToolParameter",
           },
@@ -2737,6 +3991,7 @@ export const userToolSourceSchema = {
         },
         type: {
           const: "section",
+          description: "Places related inputs in a collapsible group to simplify the tool form.",
           title: "Type",
           type: "string",
         },
@@ -2744,9 +3999,30 @@ export const userToolSourceSchema = {
       required: ["name", "type"],
       title: "YamlSectionParameter",
       type: "object",
+      "x-shell-command": 'threshold="$(inputs.advanced.threshold)"',
     },
     YamlSelectParameter: {
       additionalProperties: false,
+      description: "A choice from a fixed list of options.",
+      examples: [
+        {
+          label: "Search mode",
+          name: "mode",
+          options: [
+            {
+              label: "Fast",
+              selected: true,
+              value: "fast",
+            },
+            {
+              label: "Sensitive",
+              selected: false,
+              value: "sensitive",
+            },
+          ],
+          type: "select",
+        },
+      ],
       properties: {
         help: {
           anyOf: [
@@ -2758,6 +4034,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2770,23 +4047,30 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         multiple: {
           default: false,
+          description:
+            "Set true to let the user select and supply several option values instead of one.",
           title: "Multiple",
           type: "boolean",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         options: {
+          description: "Choices presented on the tool form, each with a display label and value.",
           items: {
             $ref: "#/$defs/YamlLabelValue",
           },
@@ -2796,11 +4080,14 @@ export const userToolSourceSchema = {
         },
         type: {
           const: "select",
+          description:
+            "Lets the user choose from the declared `options` and supplies the selected value.",
           title: "Type",
           type: "string",
         },
         validators: {
           default: [],
+          description: "Additional validation rules; supports `no_options`.",
           items: {
             $ref: "#/$defs/NoOptionsParameterValidatorModel",
           },
@@ -2811,8 +4098,10 @@ export const userToolSourceSchema = {
       required: ["name", "type", "options"],
       title: "YamlSelectParameter",
       type: "object",
+      "x-shell-command": 'mode="$(inputs.mode)"',
     },
     YamlTemplateConfigFile: {
+      additionalProperties: false,
       properties: {
         content: {
           title: "Content",
@@ -2917,9 +4206,20 @@ export const userToolSourceSchema = {
     },
     YamlTextParameter: {
       additionalProperties: false,
+      description: "A single-line or multiline text input.",
+      examples: [
+        {
+          area: false,
+          label: "Sequence motif",
+          name: "motif",
+          type: "text",
+          value: "ACGT",
+        },
+      ],
       properties: {
         area: {
           default: false,
+          description: "Set true to use a multiline editor instead of a single-line text box.",
           title: "Area",
           type: "boolean",
         },
@@ -2933,6 +4233,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Additional guidance shown on the tool form to help users choose a value.",
           title: "Help",
         },
         label: {
@@ -2945,24 +4246,32 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Label shown for the input on the tool form.",
           title: "Label",
         },
         name: {
+          description:
+            "Identifier used to read this input from `shell_command` and other expressions.",
           title: "Name",
           type: "string",
         },
         optional: {
           default: false,
+          description: "Set true when the command can run without the user supplying this input.",
           title: "Optional",
           type: "boolean",
         },
         type: {
           const: "text",
+          description:
+            "Accepts user-entered text and supplies the resulting string to expressions.",
           title: "Type",
           type: "string",
         },
         validators: {
           default: [],
+          description:
+            "Additional validation rules; supports `length`, `regex`, and `empty_field`.",
           items: {
             anyOf: [
               {
@@ -2989,12 +4298,14 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "Text prefilled when the user first opens the tool form.",
           title: "Value",
         },
       },
       required: ["name", "type"],
       title: "YamlTextParameter",
       type: "object",
+      "x-shell-command": 'motif="$(inputs.motif)"',
     },
     YamlToolSource: {
       additionalProperties: false,
@@ -3012,6 +4323,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "DOI or BibTeX references for publications describing the wrapped tool.",
           title: "citations",
         },
         class: {
@@ -3032,7 +4344,8 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
-          description: "A list of config files for this tool.",
+          description:
+            "Files Galaxy writes into the job working directory before running the command. Their content is evaluated with the same sandboxed ECMAScript expressions as `shell_command`. Put scripts and other substantial command logic here, then keep `shell_command` to a short invocation.",
           title: "configfiles",
         },
         container: {
@@ -3076,6 +4389,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "EDAM operation identifiers such as `operation_0308`.",
           title: "edam_operations",
         },
         edam_topics: {
@@ -3091,6 +4405,7 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description: "EDAM topic identifiers such as `topic_0102`.",
           title: "edam_topics",
         },
         help: {
@@ -3103,7 +4418,8 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
-          description: "Help text shown below the tool interface.",
+          description:
+            "Help shown below the tool form. Set `format` to `markdown`, `restructuredtext`, or `plain_text`, and put the documentation in `content`.",
           title: "help",
         },
         id: {
@@ -3126,6 +4442,8 @@ export const userToolSourceSchema = {
         },
         inputs: {
           default: [],
+          description:
+            "Parameters displayed on the tool form. Each item needs a unique `name` and a supported `type`. Reference scalar values as `$(inputs.input_name)` and data inputs as `$(inputs.input_name.path)` in `shell_command` or config files. Conditional, repeat, and section inputs contain nested parameters.",
           items: {
             $ref: "#/$defs/YamlGalaxyToolParameter",
           },
@@ -3156,15 +4474,17 @@ export const userToolSourceSchema = {
         },
         outputs: {
           default: [],
+          description:
+            "Results Galaxy collects after the command finishes. A data output identifies its produced file with `from_work_dir` or `discover_datasets`; a collection output uses `discover_datasets`. Scalar output types are `text`, `integer`, `float`, and `boolean`.",
           items: {
             discriminator: {
               mapping: {
-                boolean: "#/$defs/ToolOutputBoolean",
+                boolean: "#/$defs/IncomingToolOutputBoolean",
                 collection: "#/$defs/IncomingToolOutputCollection",
                 data: "#/$defs/IncomingToolOutputDataset",
-                float: "#/$defs/ToolOutputFloat",
-                integer: "#/$defs/ToolOutputInteger",
-                text: "#/$defs/ToolOutputText",
+                float: "#/$defs/IncomingToolOutputFloat",
+                integer: "#/$defs/IncomingToolOutputInteger",
+                text: "#/$defs/IncomingToolOutputText",
               },
               propertyName: "type",
             },
@@ -3176,16 +4496,16 @@ export const userToolSourceSchema = {
                 $ref: "#/$defs/IncomingToolOutputCollection",
               },
               {
-                $ref: "#/$defs/ToolOutputText",
+                $ref: "#/$defs/IncomingToolOutputText",
               },
               {
-                $ref: "#/$defs/ToolOutputInteger",
+                $ref: "#/$defs/IncomingToolOutputInteger",
               },
               {
-                $ref: "#/$defs/ToolOutputFloat",
+                $ref: "#/$defs/IncomingToolOutputFloat",
               },
               {
-                $ref: "#/$defs/ToolOutputBoolean",
+                $ref: "#/$defs/IncomingToolOutputBoolean",
               },
             ],
           },
@@ -3228,13 +4548,21 @@ export const userToolSourceSchema = {
           ],
           default: [],
           description:
-            "A list of requirements needed to execute this tool. These can be javascript expressions, resource requirements or container images.",
+            "JavaScript helpers and compute resource requests needed to execute this tool.",
           title: "requirements",
+        },
+        runtime_environment_variables: {
+          default: [],
+          items: {
+            $ref: "#/$defs/RuntimeEnvironmentVariable",
+          },
+          title: "runtime_environment_variables",
+          type: "array",
         },
         shell_command: {
           description:
-            "A string that contains the command to be executed. Parameters can be referenced inside $().",
-          examples: ["head -n '$(inputs.n_lines)' '$(inputs.data_input.path)'"],
+            "A string that contains the command to be executed. Reference inputs inside `$()` as `$(inputs.input_name)` for scalar values and `$(inputs.input_name.path)` for files; `${ ... }` evaluates a JavaScript function body that must return a value. Substituted values are not shell-quoted, so quote them yourself. Because `$(` and `${` are consumed by the expression evaluator, shell command substitution and braced parameter expansion do not reach the shell: escape them as `\\$(` and `\\${`, and prefer unbraced variables such as `$GALAXY_SLOTS`.",
+          examples: ["head -n '$(inputs.num_lines)' '$(inputs.input_file.path)' > output.txt"],
           title: "shell_command",
           type: "string",
         },
@@ -3280,6 +4608,8 @@ export const userToolSourceSchema = {
             },
           ],
           default: null,
+          description:
+            "External registry identifiers, each with a registry `type` and identifier `value`.",
           title: "xrefs",
         },
       },
