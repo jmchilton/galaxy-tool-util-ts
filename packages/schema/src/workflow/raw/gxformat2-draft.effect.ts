@@ -28,7 +28,7 @@ export type PrimitiveType = typeof PrimitiveTypeSchema.Type;
 
 /**
  * Extends primitive types with the native Galaxy concepts such as datasets and collections.
-Normalized gxformat2 workflow input declaration spellings are ``data``, ``collection``, ``string``, ``int``, ``float``, and ``boolean``. Other spellings are accepted as compatibility aliases on import but normalized gxformat2 output emits the normalized spellings.
+Normalized gxformat2 workflow input declaration spellings are ``data``, ``collection``, ``string``, ``int``, ``float``, ``boolean``, ``color``, and ``directory_uri``. Other spellings are accepted as compatibility aliases on import but normalized gxformat2 output emits the normalized spellings.
 data: one Galaxy dataset input. Native Galaxy ``data_input`` converts to this spelling.
 File: accepted alias for ``data``, but normalized gxformat2 output emits ``data``. Note: workflow **test job** YAML uses ``type: File`` to mean 'stage this file as test input data', which is a separate concept from workflow input declaration.
 collection: one Galaxy dataset collection input. Native Galaxy ``data_collection_input`` converts to this spelling.
@@ -36,6 +36,8 @@ string: normalized gxformat2 spelling for native Galaxy text workflow parameters
 text: accepted alias for ``string`` because native Galaxy parameter state and Galaxy tool XML terminology use ``text``.
 int: normalized gxformat2 spelling for native Galaxy integer workflow parameters.
 integer: accepted alias for ``int`` because native Galaxy parameter state and Galaxy tool XML terminology use ``integer``.
+color: native Galaxy color workflow parameter; the value is a color string such as ``#ff0000``.
+directory_uri: native Galaxy directory URI workflow parameter; the value is a URI string such as ``s3://bucket/path/``.
  */
 export const GalaxyTypeSchema = Schema.Literal(
   "null",
@@ -50,6 +52,8 @@ export const GalaxyTypeSchema = Schema.Literal(
   "File",
   "data",
   "collection",
+  "color",
+  "directory_uri",
 );
 export type GalaxyType = typeof GalaxyTypeSchema.Type;
 
@@ -468,6 +472,48 @@ export const WorkflowDataParameterSchema = Schema.Struct({
 export type WorkflowDataParameter = typeof WorkflowDataParameterSchema.Type;
 
 /**
+ * A color input parameter for a Galaxy workflow. The value is a color
+string such as ``#ff0000``.
+ */
+export const WorkflowColorParameterSchema = Schema.Struct({
+  ...BaseInputParameterSchema.fields,
+  /** The unique identifier for this object. */
+  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short, human-readable label of this object. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
+  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
+  /** Must be ``color``. */
+  type: Schema.Literal("color"),
+});
+export type WorkflowColorParameter = typeof WorkflowColorParameterSchema.Type;
+
+/**
+ * A directory URI input parameter for a Galaxy workflow. The value is a
+URI string such as ``s3://bucket/path/``.
+ */
+export const WorkflowDirectoryUriParameterSchema = Schema.Struct({
+  ...BaseInputParameterSchema.fields,
+  /** The unique identifier for this object. */
+  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short, human-readable label of this object. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
+  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
+  /** Must be ``directory_uri``. */
+  type: Schema.Literal("directory_uri"),
+  /** Validators applied to values supplied for this input. */
+  validators: Schema.optional(Schema.Union(Schema.Null, Schema.Array(WorkflowTextValidatorSchema))),
+});
+export type WorkflowDirectoryUriParameter = typeof WorkflowDirectoryUriParameterSchema.Type;
+
+/**
  * Describe an output parameter of a workflow.  The parameter must be
 connected to one parameter defined in the workflow that
 will provide the value of the output parameter. It is legal to
@@ -526,6 +572,8 @@ export const ProcessSchema = Schema.Struct({
         WorkflowFloatParameterSchema,
         WorkflowTextParameterSchema,
         WorkflowBooleanParameterSchema,
+        WorkflowColorParameterSchema,
+        WorkflowDirectoryUriParameterSchema,
       ),
     ),
     Schema.Record({
@@ -537,6 +585,8 @@ export const ProcessSchema = Schema.Struct({
         WorkflowFloatParameterSchema,
         WorkflowTextParameterSchema,
         WorkflowBooleanParameterSchema,
+        WorkflowColorParameterSchema,
+        WorkflowDirectoryUriParameterSchema,
         Schema.String,
       ),
     }),
@@ -629,7 +679,7 @@ export const WorkflowInputParameterSchema = Schema.Struct({
   ),
   /** For text-typed inputs - derive runtime choices from connected tool/subworkflow select inputs. */
   restrictOnConnections: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  /** Validators for text-typed inputs. See `WorkflowTextParameter.validators`. */
+  /** Validators for text-typed and ``directory_uri`` inputs. See `WorkflowTextParameter.validators`. */
   validators: Schema.optional(Schema.Union(Schema.Null, Schema.Array(WorkflowTextValidatorSchema))),
 });
 export type WorkflowInputParameter = typeof WorkflowInputParameterSchema.Type;
@@ -1087,7 +1137,9 @@ export function isWorkflowDataParameter(
     | WorkflowIntegerParameter
     | WorkflowTextParameter
     | WorkflowFloatParameter
-    | WorkflowBooleanParameter,
+    | WorkflowBooleanParameter
+    | WorkflowColorParameter
+    | WorkflowDirectoryUriParameter,
 ): v is WorkflowDataParameter {
   return v?.type === "data" || v?.type === "File";
 }
@@ -1099,7 +1151,9 @@ export function isWorkflowCollectionParameter(
     | WorkflowIntegerParameter
     | WorkflowTextParameter
     | WorkflowFloatParameter
-    | WorkflowBooleanParameter,
+    | WorkflowBooleanParameter
+    | WorkflowColorParameter
+    | WorkflowDirectoryUriParameter,
 ): v is WorkflowCollectionParameter {
   return v?.type === "collection";
 }
@@ -1111,7 +1165,9 @@ export function isWorkflowIntegerParameter(
     | WorkflowIntegerParameter
     | WorkflowTextParameter
     | WorkflowFloatParameter
-    | WorkflowBooleanParameter,
+    | WorkflowBooleanParameter
+    | WorkflowColorParameter
+    | WorkflowDirectoryUriParameter,
 ): v is WorkflowIntegerParameter {
   return v?.type === "integer" || v?.type === "int";
 }
@@ -1123,7 +1179,9 @@ export function isWorkflowTextParameter(
     | WorkflowIntegerParameter
     | WorkflowTextParameter
     | WorkflowFloatParameter
-    | WorkflowBooleanParameter,
+    | WorkflowBooleanParameter
+    | WorkflowColorParameter
+    | WorkflowDirectoryUriParameter,
 ): v is WorkflowTextParameter {
   return v?.type === "text" || v?.type === "string";
 }
@@ -1135,7 +1193,9 @@ export function isWorkflowFloatParameter(
     | WorkflowIntegerParameter
     | WorkflowTextParameter
     | WorkflowFloatParameter
-    | WorkflowBooleanParameter,
+    | WorkflowBooleanParameter
+    | WorkflowColorParameter
+    | WorkflowDirectoryUriParameter,
 ): v is WorkflowFloatParameter {
   return v?.type === "float";
 }
@@ -1147,7 +1207,37 @@ export function isWorkflowBooleanParameter(
     | WorkflowIntegerParameter
     | WorkflowTextParameter
     | WorkflowFloatParameter
-    | WorkflowBooleanParameter,
+    | WorkflowBooleanParameter
+    | WorkflowColorParameter
+    | WorkflowDirectoryUriParameter,
 ): v is WorkflowBooleanParameter {
   return v?.type === "boolean";
+}
+
+export function isWorkflowColorParameter(
+  v:
+    | WorkflowDataParameter
+    | WorkflowCollectionParameter
+    | WorkflowIntegerParameter
+    | WorkflowTextParameter
+    | WorkflowFloatParameter
+    | WorkflowBooleanParameter
+    | WorkflowColorParameter
+    | WorkflowDirectoryUriParameter,
+): v is WorkflowColorParameter {
+  return v?.type === "color";
+}
+
+export function isWorkflowDirectoryUriParameter(
+  v:
+    | WorkflowDataParameter
+    | WorkflowCollectionParameter
+    | WorkflowIntegerParameter
+    | WorkflowTextParameter
+    | WorkflowFloatParameter
+    | WorkflowBooleanParameter
+    | WorkflowColorParameter
+    | WorkflowDirectoryUriParameter,
+): v is WorkflowDirectoryUriParameter {
+  return v?.type === "directory_uri";
 }
