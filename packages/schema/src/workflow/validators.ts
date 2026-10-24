@@ -5,14 +5,15 @@
  * back the decoded value or throw on validation failure. Used by the schema-rule
  * catalog runner and declarative-operation tests.
  *
- * The generated Effect schemas make `class` a required literal; Python's
- * pydantic models default it. `withClass` injects the discriminator when
- * missing so pass/fail semantics match Python byte-for-byte — see the plan
- * note about `Format2MissingClass` being unenforceable today.
+ * The generated Effect schemas make `class` a required literal. Native `.ga`
+ * files never carry it and Format2 inline `run:` subworkflows may omit it, so
+ * `withDecodeClass` injects it there; a Format2 root must declare it
+ * (`Format2MissingClass`, gxformat2 #278).
  */
 
 import { Schema } from "effect";
 
+import type { WorkflowFormat } from "./detect-format.js";
 import { GalaxyWorkflowSchema } from "./raw/gxformat2.effect.js";
 import { NativeGalaxyWorkflowSchema } from "./raw/native.effect.js";
 import { validateWorkflowSemantics } from "./semantic-validators.js";
@@ -29,8 +30,21 @@ import { validateWorkflowSemantics } from "./semantic-validators.js";
 export function withClass(raw: unknown, cls: string): unknown {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
   const obj = raw as Record<string, unknown>;
-  const result: Record<string, unknown> = "class" in obj ? { ...obj } : { ...obj, class: cls };
+  return withStepSubworkflowClass("class" in obj ? obj : { ...obj, class: cls }, cls);
+}
 
+/** Inject `class` where decoding needs it: everywhere for native, inline runs only for Format2. */
+export function withDecodeClass(raw: unknown, format: WorkflowFormat): unknown {
+  if (format === "native") return withClass(raw, "NativeGalaxyWorkflow");
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  return withStepSubworkflowClass(raw as Record<string, unknown>, "GalaxyWorkflow");
+}
+
+function withStepSubworkflowClass(
+  obj: Record<string, unknown>,
+  cls: string,
+): Record<string, unknown> {
+  const result = { ...obj };
   const steps = result.steps;
   if (!steps || typeof steps !== "object") return result;
 
@@ -62,7 +76,7 @@ function injectStepSubworkflow(step: unknown, cls: string): unknown {
 
 export function validateFormat2(wf: unknown): unknown {
   const decoded = Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "ignore" })(
-    withClass(wf, "GalaxyWorkflow"),
+    withDecodeClass(wf, "format2"),
   );
   validateWorkflowSemantics(wf);
   return decoded;
@@ -70,7 +84,7 @@ export function validateFormat2(wf: unknown): unknown {
 
 export function validateFormat2Strict(wf: unknown): unknown {
   const decoded = Schema.decodeUnknownSync(GalaxyWorkflowSchema, { onExcessProperty: "error" })(
-    withClass(wf, "GalaxyWorkflow"),
+    withDecodeClass(wf, "format2"),
   );
   validateWorkflowSemantics(wf);
   return decoded;
@@ -78,13 +92,13 @@ export function validateFormat2Strict(wf: unknown): unknown {
 
 export function validateNative(wf: unknown): unknown {
   return Schema.decodeUnknownSync(NativeGalaxyWorkflowSchema, { onExcessProperty: "ignore" })(
-    withClass(wf, "NativeGalaxyWorkflow"),
+    withDecodeClass(wf, "native"),
   );
 }
 
 export function validateNativeStrict(wf: unknown): unknown {
   return Schema.decodeUnknownSync(NativeGalaxyWorkflowSchema, { onExcessProperty: "error" })(
-    withClass(wf, "NativeGalaxyWorkflow"),
+    withDecodeClass(wf, "native"),
   );
 }
 

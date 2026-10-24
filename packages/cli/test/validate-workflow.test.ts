@@ -595,6 +595,20 @@ describe("validate-workflow (connection-aware)", () => {
       expect(process.exitCode).toBe(1);
     });
 
+    it.each(["effect", "json-schema"] as const)(
+      "reports a format2 workflow missing class as a structure error (%s)",
+      async (mode) => {
+        const workflow = { inputs: [], outputs: [], steps: [] };
+        const wfPath = join(ctx.tmpDir, `no-class-${mode}.gxwf.yml`);
+        await writeFile(wfPath, YAML.stringify(workflow));
+        await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, json: true, mode });
+
+        const report = parseJsonOutput(ctx);
+        expect(report.structure_errors.join("\n")).toContain("class");
+        expect(process.exitCode).toBe(1);
+      },
+    );
+
     it("includes step failures in JSON report", async () => {
       await seedAllTools(ctx.tmpDir);
       const workflow = {

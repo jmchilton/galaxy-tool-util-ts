@@ -356,6 +356,7 @@ export {
   checkStrictStructure,
   /** Inject `class` discriminator into workflow dict when missing (recursive over step subworkflows). */
   withClass,
+  withDecodeClass,
   /** Effect-schema validator dispatch mirroring gxformat2/validators.py. */
   validateFormat2,
   validateFormat2Strict,
