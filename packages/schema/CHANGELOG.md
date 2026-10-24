@@ -1,5 +1,19 @@
 # @galaxy-tool-util/schema
 
+## 1.15.0
+
+### Minor Changes
+
+- [#199](https://github.com/jmchilton/galaxy-tool-util-ts/pull/199) [`5eb9202`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5eb9202d527c9079739863b68637e176b78476d7) Thanks [@jmchilton](https://github.com/jmchilton)! - Reject Format2 workflows missing `class: GalaxyWorkflow` at the root; inline `run:` subworkflows may still omit it (port of galaxyproject/gxformat2#278). Adds `withDecodeClass`.
+
+- [#199](https://github.com/jmchilton/galaxy-tool-util-ts/pull/199) [`81021b9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/81021b94160ef19ba18e9519c53fd2bfed694ede) Thanks [@jmchilton](https://github.com/jmchilton)! - Support regex `validators` on Format2 text inputs: model them, keep them through native/Format2 conversion, and reject them on non-text inputs (port of galaxyproject/gxformat2#265).
+
+### Patch Changes
+
+- [#196](https://github.com/jmchilton/galaxy-tool-util-ts/pull/196) [`4dcc34a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4dcc34a29f28cd1a78d0cabdff80f44e1aa15867) Thanks [@jmchilton](https://github.com/jmchilton)! - Lint multiple text/int/float input defaults and native parameter input defaults; name the input and expected type in default type errors. Treat native `tool_state` that isn't a JSON object as empty instead of crashing lint.
+
+- [#195](https://github.com/jmchilton/galaxy-tool-util-ts/pull/195) [`46afdbe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/46afdbe4b6b75546c55f8ba36b18058af052396e) Thanks [@jmchilton](https://github.com/jmchilton)! - Untyped parameter lint follows Galaxy's `${name}` semantics: renames referencing a declared parameter input label no longer warn, and each warning names the reference, the action and output, and the fix. Mirrors gxformat2.
+
 ## 1.14.0
 
 ### Minor Changes
