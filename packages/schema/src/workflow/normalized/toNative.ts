@@ -14,6 +14,11 @@ import type {
 import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
 import { unflattenCommentData } from "./comments.js";
 import { isUnlabeled, resolveSourceReference } from "./labels.js";
+import { INPUT_TYPES, inputParameterSchema, inputTypesDeclaring } from "../input-parameter.js";
+import {
+  WorkflowCollectionParameterSchema,
+  WorkflowDataParameterSchema,
+} from "../raw/gxformat2.effect.js";
 
 function _uuid(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -196,21 +201,17 @@ function _buildNativeWorkflow(
 
 // --- Input step building ---
 
-const INPUT_TYPE_STEP_TYPES: Record<string, NormalizedNativeStep["type"]> = {
-  ...Object.fromEntries(["File", "data", "data_input"].map((t) => [t, "data_input"])),
-  ...Object.fromEntries(
-    ["collection", "data_collection", "data_collection_input"].map((t) => [
-      t,
-      "data_collection_input",
-    ]),
-  ),
-  ...Object.fromEntries(
-    ["text", "string", "integer", "int", "float", "color", "boolean"].map((t) => [
-      t,
-      "parameter_input",
-    ]),
-  ),
-} as Record<string, NormalizedNativeStep["type"]>;
+const SCHEMA_STEP_TYPES = new Map<unknown, NormalizedNativeStep["type"]>([
+  [WorkflowDataParameterSchema, "data_input"],
+  [WorkflowCollectionParameterSchema, "data_collection_input"],
+]);
+const INPUT_TYPE_STEP_TYPES: Record<string, NormalizedNativeStep["type"]> = Object.fromEntries(
+  [...INPUT_TYPES].map((t) => [
+    t,
+    SCHEMA_STEP_TYPES.get(inputParameterSchema(t)) ?? "parameter_input",
+  ]),
+);
+const REGEX_VALIDATOR_TYPES = inputTypesDeclaring("validators");
 
 /** Native step type a Format2 input converts to, or undefined if unsupported. */
 export function format2InputStepType(
@@ -267,7 +268,7 @@ function _buildInputStep(inp: NormalizedFormat2Input, orderIndex: number): Norma
     toolState.validators = [
       { type: "in_range", min: inp.min ?? null, max: inp.max ?? null, negate: false },
     ];
-  } else if (stepType === "parameter_input" && ["text", "string"].includes(typeStr)) {
+  } else if (stepType === "parameter_input" && REGEX_VALIDATOR_TYPES.has(typeStr)) {
     const textValidators = (inp as Record<string, unknown>).validators;
     if (Array.isArray(textValidators) && textValidators.length > 0) {
       toolState.validators = textValidators.map((v: Record<string, unknown>) => ({

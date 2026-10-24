@@ -17,6 +17,9 @@ import type {
 import { isGalaxyUserToolRun } from "./format2.js";
 import { flattenCommentData } from "./comments.js";
 import { isUnlabeled, Labels, unlabeledNodeId } from "./labels.js";
+import { inputTypesDeclaring } from "../input-parameter.js";
+
+const REGEX_VALIDATOR_TYPES = inputTypesDeclaring("validators");
 
 // Effect schemas produce deeply-readonly types. We build plain objects
 // and cast — runtime semantics are identical.
@@ -187,7 +190,10 @@ function _buildInputParam(step: NormalizedNativeStep): NormalizedFormat2Input {
         }
       }
     }
-  } else if (inputType === "string" || (Array.isArray(inputType) && inputType[0] === "string")) {
+  } else if (
+    (Array.isArray(inputType) && inputType[0] === "string") ||
+    (typeof inputType === "string" && REGEX_VALIDATOR_TYPES.has(inputType))
+  ) {
     const validators = Array.isArray(ts.validators) ? ts.validators : [];
     const textValidators = validators.flatMap(_nativeTextValidatorToFormat2);
     if (textValidators.length > 0) result.validators = textValidators;

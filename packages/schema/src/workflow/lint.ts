@@ -270,6 +270,8 @@ const DEFAULT_CHECKS: Record<string, DefaultCheck> = {
   integer: INTEGER_DEFAULT,
   float: FLOAT_DEFAULT,
   double: FLOAT_DEFAULT,
+  color: { ...STRING_DEFAULT, typeName: "color" },
+  directory_uri: { ...STRING_DEFAULT, typeName: "directory_uri" },
 };
 
 function defaultCheck(inputType: string): DefaultCheck | undefined {
