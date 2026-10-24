@@ -115,7 +115,12 @@ export function validateInputParameter(inputParam: unknown): void {
     }
   }
 
-  for (const field of ["restrictions", "suggestions", "restrictOnConnections"] as const) {
+  for (const field of [
+    "restrictions",
+    "suggestions",
+    "restrictOnConnections",
+    "validators",
+  ] as const) {
     const value = data[field];
     if (value == null) continue;
     if (Array.isArray(value) && value.length === 0) continue;
