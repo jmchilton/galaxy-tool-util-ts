@@ -236,6 +236,7 @@ export {
 
 export {
   withClass,
+  withDecodeClass,
   validateFormat2,
   validateFormat2Strict,
   validateNative,

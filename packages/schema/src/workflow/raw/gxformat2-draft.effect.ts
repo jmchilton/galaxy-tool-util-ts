@@ -200,27 +200,6 @@ export const OutputParameterSchema = Schema.Struct({
 export type OutputParameter = typeof OutputParameterSchema.Type;
 
 /**
- * Describe an output parameter of a workflow.  The parameter must be
-connected to one parameter defined in the workflow that
-will provide the value of the output parameter. It is legal to
-connect a WorkflowInputParameter to a WorkflowOutputParameter.
- */
-export const WorkflowOutputParameterSchema = Schema.Struct({
-  ...OutputParameterSchema.fields,
-  /** The unique identifier for this object. */
-  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A short, human-readable label of this object. */
-  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A documentation string for this object, or an array of strings which should be concatenated. */
-  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
-  /** Specifies workflow parameter that supply the value of to the output parameter. */
-  outputSource: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Specify valid types of data that may be assigned to this parameter. */
-  type: Schema.optional(Schema.Union(Schema.Null, GalaxyTypeSchema)),
-});
-export type WorkflowOutputParameter = typeof WorkflowOutputParameterSchema.Type;
-
-/**
  * This field specifies the location of the step's node when rendered in the workflow editor.
  */
 export const StepPositionSchema = Schema.Struct({
@@ -250,11 +229,22 @@ export const BaseInputParameterSchema = Schema.Struct({
 });
 export type BaseInputParameter = typeof BaseInputParameterSchema.Type;
 
+export const MinMaxSchema = Schema.Struct({
+  /** Minimum allowed value (inclusive). */
+  min: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+  /** Maximum allowed value (inclusive). */
+  max: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+});
+export type MinMax = typeof MinMaxSchema.Type;
+
 /**
- * A boolean input parameter for a Galaxy workflow.
+ * A scalar integer workflow parameter. Normalized gxformat2 output uses
+``type: int``. ``type: integer`` is accepted for compatibility with native
+Galaxy parameter state and Galaxy tool XML terminology.
  */
-export const WorkflowBooleanParameterSchema = Schema.Struct({
+export const WorkflowIntegerParameterSchema = Schema.Struct({
   ...BaseInputParameterSchema.fields,
+  ...MinMaxSchema.fields,
   /** The unique identifier for this object. */
   id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
   /** A short, human-readable label of this object. */
@@ -264,10 +254,10 @@ export const WorkflowBooleanParameterSchema = Schema.Struct({
   /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
   default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
   position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
-  /** Must be ``boolean``. */
-  type: Schema.Literal("boolean"),
+  /** Must be ``integer`` or ``int``. */
+  type: Schema.Literal("integer", "int"),
 });
-export type WorkflowBooleanParameter = typeof WorkflowBooleanParameterSchema.Type;
+export type WorkflowIntegerParameter = typeof WorkflowIntegerParameterSchema.Type;
 
 export const BaseDataParameterSchema = Schema.Struct({
   ...BaseInputParameterSchema.fields,
@@ -284,50 +274,6 @@ export const BaseDataParameterSchema = Schema.Struct({
   format: Schema.optional(Schema.Union(Schema.Null, Schema.Array(Schema.String))),
 });
 export type BaseDataParameter = typeof BaseDataParameterSchema.Type;
-
-/**
- * A data input parameter for a Galaxy workflow. Represents one Galaxy dataset.
-Normalized gxformat2 output uses ``type: data``. ``type: File`` is accepted as
-an alias, but should not be confused with workflow test job syntax where
-``type: File`` means stage a file as test input data.
- */
-export const WorkflowDataParameterSchema = Schema.Struct({
-  ...BaseDataParameterSchema.fields,
-  /** The unique identifier for this object. */
-  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A short, human-readable label of this object. */
-  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A documentation string for this object, or an array of strings which should be concatenated. */
-  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
-  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
-  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
-  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
-  /** Controls whether Galaxy allows invocation of the workflow without a user-supplied value for this input. If ``true``, the input may be omitted at invocation time. ``optional`` and ``default`` are in... */
-  optional: Schema.optional(Schema.Union(Schema.Boolean, Schema.Null)),
-  /** Specify valid types of data that may be assigned to this parameter. */
-  type: Schema.optional(Schema.Union(Schema.Literal("data", "File"), Schema.Null)),
-});
-export type WorkflowDataParameter = typeof WorkflowDataParameterSchema.Type;
-
-/**
- * Describes one field of a `record` collection input.
-Used in `fields` on a `collection_type` containing `record` (e.g.
-`record`, `list:record`, `sample_sheet:record`). Mirrors a subset of
-the CWL `InputRecordSchema` shape that Galaxy persists on
-`DatasetCollection.fields`.
- */
-export const RecordFieldDefinitionSchema = Schema.Struct({
-  /** Field name. Must equal the corresponding element identifier in the materialized record collection. */
-  name: Schema.String,
-  /** Field value type. A subset of the CWL primitive types: `File`, `null`, `boolean`, `int`, `float`, `string`. May be a list to express a union (e.g. `["File", "null"]` for an optional file). */
-  type: Schema.Union(
-    Schema.Literal("File", "null", "boolean", "int", "float", "string"),
-    Schema.Array(Schema.Literal("File", "null", "boolean", "int", "float", "string")),
-  ),
-  /** Optional Galaxy datatype hint for `File`-typed fields. */
-  format: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type RecordFieldDefinition = typeof RecordFieldDefinitionSchema.Type;
 
 /**
  * Describes one column of a sample-sheet collection input.
@@ -367,6 +313,26 @@ export const SampleSheetColumnDefinitionSchema = Schema.Struct({
 export type SampleSheetColumnDefinition = typeof SampleSheetColumnDefinitionSchema.Type;
 
 /**
+ * Describes one field of a `record` collection input.
+Used in `fields` on a `collection_type` containing `record` (e.g.
+`record`, `list:record`, `sample_sheet:record`). Mirrors a subset of
+the CWL `InputRecordSchema` shape that Galaxy persists on
+`DatasetCollection.fields`.
+ */
+export const RecordFieldDefinitionSchema = Schema.Struct({
+  /** Field name. Must equal the corresponding element identifier in the materialized record collection. */
+  name: Schema.String,
+  /** Field value type. A subset of the CWL primitive types: `File`, `null`, `boolean`, `int`, `float`, `string`. May be a list to express a union (e.g. `["File", "null"]` for an optional file). */
+  type: Schema.Union(
+    Schema.Literal("File", "null", "boolean", "int", "float", "string"),
+    Schema.Array(Schema.Literal("File", "null", "boolean", "int", "float", "string")),
+  ),
+  /** Optional Galaxy datatype hint for `File`-typed fields. */
+  format: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type RecordFieldDefinition = typeof RecordFieldDefinitionSchema.Type;
+
+/**
  * A collection input parameter for a Galaxy workflow - represents a dataset collection.
  */
 export const WorkflowCollectionParameterSchema = Schema.Struct({
@@ -394,14 +360,6 @@ export const WorkflowCollectionParameterSchema = Schema.Struct({
   fields: Schema.optional(Schema.Union(Schema.Null, Schema.Array(RecordFieldDefinitionSchema))),
 });
 export type WorkflowCollectionParameter = typeof WorkflowCollectionParameterSchema.Type;
-
-export const MinMaxSchema = Schema.Struct({
-  /** Minimum allowed value (inclusive). */
-  min: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
-  /** Maximum allowed value (inclusive). */
-  max: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
-});
-export type MinMax = typeof MinMaxSchema.Type;
 
 /**
  * A float input parameter for a Galaxy workflow.
@@ -437,6 +395,22 @@ export const WorkflowTextOptionSchema = Schema.Struct({
 export type WorkflowTextOption = typeof WorkflowTextOptionSchema.Type;
 
 /**
+ * A validator restricting values of a text workflow parameter. Persisted
+in native Galaxy as an entry of the input step's `tool_state.validators`.
+ */
+export const WorkflowTextValidatorSchema = Schema.Struct({
+  /** Validator type. Only `regex` is supported. */
+  type: Schema.Literal("regex"),
+  /** Regular expression matched from the start of the value. End it with `$` to require a complete-value match. */
+  expression: Schema.String,
+  /** Message shown when a value fails validation. */
+  message: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Reject matching values instead of values that do not match. Defaults to `false`. */
+  negate: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+});
+export type WorkflowTextValidator = typeof WorkflowTextValidatorSchema.Type;
+
+/**
  * A scalar text workflow parameter. Normalized gxformat2 output uses
 ``type: string``. ``type: text`` is accepted for compatibility with native
 Galaxy parameter state and Galaxy tool XML terminology.
@@ -464,17 +438,19 @@ export const WorkflowTextParameterSchema = Schema.Struct({
   ),
   /** Ask Galaxy to derive valid choices from connected tool or subworkflow select inputs at runtime. Falls back to free text when derivation fails. */
   restrictOnConnections: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  /** Validators applied to values supplied for this input. */
+  validators: Schema.optional(Schema.Union(Schema.Null, Schema.Array(WorkflowTextValidatorSchema))),
 });
 export type WorkflowTextParameter = typeof WorkflowTextParameterSchema.Type;
 
 /**
- * A scalar integer workflow parameter. Normalized gxformat2 output uses
-``type: int``. ``type: integer`` is accepted for compatibility with native
-Galaxy parameter state and Galaxy tool XML terminology.
+ * A data input parameter for a Galaxy workflow. Represents one Galaxy dataset.
+Normalized gxformat2 output uses ``type: data``. ``type: File`` is accepted as
+an alias, but should not be confused with workflow test job syntax where
+``type: File`` means stage a file as test input data.
  */
-export const WorkflowIntegerParameterSchema = Schema.Struct({
-  ...BaseInputParameterSchema.fields,
-  ...MinMaxSchema.fields,
+export const WorkflowDataParameterSchema = Schema.Struct({
+  ...BaseDataParameterSchema.fields,
   /** The unique identifier for this object. */
   id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
   /** A short, human-readable label of this object. */
@@ -484,10 +460,52 @@ export const WorkflowIntegerParameterSchema = Schema.Struct({
   /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
   default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
   position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
-  /** Must be ``integer`` or ``int``. */
-  type: Schema.Literal("integer", "int"),
+  /** Controls whether Galaxy allows invocation of the workflow without a user-supplied value for this input. If ``true``, the input may be omitted at invocation time. ``optional`` and ``default`` are in... */
+  optional: Schema.optional(Schema.Union(Schema.Boolean, Schema.Null)),
+  /** Specify valid types of data that may be assigned to this parameter. */
+  type: Schema.optional(Schema.Union(Schema.Literal("data", "File"), Schema.Null)),
 });
-export type WorkflowIntegerParameter = typeof WorkflowIntegerParameterSchema.Type;
+export type WorkflowDataParameter = typeof WorkflowDataParameterSchema.Type;
+
+/**
+ * Describe an output parameter of a workflow.  The parameter must be
+connected to one parameter defined in the workflow that
+will provide the value of the output parameter. It is legal to
+connect a WorkflowInputParameter to a WorkflowOutputParameter.
+ */
+export const WorkflowOutputParameterSchema = Schema.Struct({
+  ...OutputParameterSchema.fields,
+  /** The unique identifier for this object. */
+  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short, human-readable label of this object. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
+  /** Specifies workflow parameter that supply the value of to the output parameter. */
+  outputSource: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Specify valid types of data that may be assigned to this parameter. */
+  type: Schema.optional(Schema.Union(Schema.Null, GalaxyTypeSchema)),
+});
+export type WorkflowOutputParameter = typeof WorkflowOutputParameterSchema.Type;
+
+/**
+ * A boolean input parameter for a Galaxy workflow.
+ */
+export const WorkflowBooleanParameterSchema = Schema.Struct({
+  ...BaseInputParameterSchema.fields,
+  /** The unique identifier for this object. */
+  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short, human-readable label of this object. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
+  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
+  /** Must be ``boolean``. */
+  type: Schema.Literal("boolean"),
+});
+export type WorkflowBooleanParameter = typeof WorkflowBooleanParameterSchema.Type;
 
 /**
  * The base executable type in CWL is the `Process` object defined by the
@@ -611,8 +629,28 @@ export const WorkflowInputParameterSchema = Schema.Struct({
   ),
   /** For text-typed inputs - derive runtime choices from connected tool/subworkflow select inputs. */
   restrictOnConnections: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  /** Validators for text-typed inputs. See `WorkflowTextParameter.validators`. */
+  validators: Schema.optional(Schema.Union(Schema.Null, Schema.Array(WorkflowTextValidatorSchema))),
 });
 export type WorkflowInputParameter = typeof WorkflowInputParameterSchema.Type;
+
+export const SinkSchema = Schema.Struct({
+  /** Specifies one or more workflow parameters that will provide input to the underlying step parameter. */
+  source: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
+});
+export type Sink = typeof SinkSchema.Type;
+
+/**
+ * TODO:
+ */
+export const WorkflowStepInputSchema = Schema.Struct({
+  ...IdentifiedSchema.fields,
+  ...SinkSchema.fields,
+  ...LabeledSchema.fields,
+  /** The default value for this parameter to use if either there is no `source` field, or the value produced by the `source` is `null`.  The default must be applied prior to scattering or evaluating `va... */
+  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
+});
+export type WorkflowStepInput = typeof WorkflowStepInputSchema.Type;
 
 /**
  * Associate an output parameter of the underlying process with a workflow
@@ -691,36 +729,16 @@ export const BaseCommentSchema = Schema.Struct({
 export type BaseComment = typeof BaseCommentSchema.Type;
 
 /**
- * A plain text annotation in the workflow editor.
+ * A Markdown-rendered annotation in the workflow editor.
  */
-export const TextCommentSchema = Schema.Struct({
+export const MarkdownCommentSchema = Schema.Struct({
   ...BaseCommentSchema.fields,
-  /** Comment type (``text``). */
-  type: Schema.Literal("text"),
-  /** The text content. */
+  /** Comment type (``markdown``). */
+  type: Schema.Literal("markdown"),
+  /** Markdown content. */
   text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Whether the text is displayed in bold. */
-  bold: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  /** Whether the text is displayed in italic. */
-  italic: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  /** Font size of the text. */
-  text_size: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
 });
-export type TextComment = typeof TextCommentSchema.Type;
-
-/**
- * A freehand drawn line on the editor canvas.
- */
-export const FreehandCommentSchema = Schema.Struct({
-  ...BaseCommentSchema.fields,
-  /** Comment type (``freehand``). */
-  type: Schema.Literal("freehand"),
-  /** Line thickness. */
-  thickness: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
-  /** Array of ``[x, y]`` coordinate pairs defining the freehand line path. */
-  line: Schema.optional(Schema.Union(Schema.Array(Schema.Array(Schema.Number)), Schema.Null)),
-});
-export type FreehandComment = typeof FreehandCommentSchema.Type;
+export type MarkdownComment = typeof MarkdownCommentSchema.Type;
 
 /**
  * A person who created or contributed to the workflow.
@@ -742,6 +760,24 @@ export const CreatorPersonSchema = Schema.Struct({
   jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type CreatorPerson = typeof CreatorPersonSchema.Type;
+
+/**
+ * A plain text annotation in the workflow editor.
+ */
+export const TextCommentSchema = Schema.Struct({
+  ...BaseCommentSchema.fields,
+  /** Comment type (``text``). */
+  type: Schema.Literal("text"),
+  /** The text content. */
+  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Whether the text is displayed in bold. */
+  bold: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  /** Whether the text is displayed in italic. */
+  italic: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  /** Font size of the text. */
+  text_size: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
+});
+export type TextComment = typeof TextCommentSchema.Type;
 
 /**
  * Definition of an invocation report for this workflow. Currently the only
@@ -774,16 +810,18 @@ export const FrameCommentSchema = Schema.Struct({
 export type FrameComment = typeof FrameCommentSchema.Type;
 
 /**
- * A Markdown-rendered annotation in the workflow editor.
+ * A freehand drawn line on the editor canvas.
  */
-export const MarkdownCommentSchema = Schema.Struct({
+export const FreehandCommentSchema = Schema.Struct({
   ...BaseCommentSchema.fields,
-  /** Comment type (``markdown``). */
-  type: Schema.Literal("markdown"),
-  /** Markdown content. */
-  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Comment type (``freehand``). */
+  type: Schema.Literal("freehand"),
+  /** Line thickness. */
+  thickness: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
+  /** Array of ``[x, y]`` coordinate pairs defining the freehand line path. */
+  line: Schema.optional(Schema.Union(Schema.Array(Schema.Array(Schema.Number)), Schema.Null)),
 });
-export type MarkdownComment = typeof MarkdownCommentSchema.Type;
+export type FreehandComment = typeof FreehandCommentSchema.Type;
 
 /**
  * A Galaxy workflow description. This record corresponds to the description of a workflow that should be executable
@@ -863,24 +901,6 @@ export const GalaxyWorkflowSchema = Schema.Struct({
   release: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type GalaxyWorkflow = typeof GalaxyWorkflowSchema.Type;
-
-export const SinkSchema = Schema.Struct({
-  /** Specifies one or more workflow parameters that will provide input to the underlying step parameter. */
-  source: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
-});
-export type Sink = typeof SinkSchema.Type;
-
-/**
- * TODO:
- */
-export const WorkflowStepInputSchema = Schema.Struct({
-  ...IdentifiedSchema.fields,
-  ...SinkSchema.fields,
-  ...LabeledSchema.fields,
-  /** The default value for this parameter to use if either there is no `source` field, or the value produced by the `source` is `null`.  The default must be applied prior to scattering or evaluating `va... */
-  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
-});
-export type WorkflowStepInput = typeof WorkflowStepInputSchema.Type;
 
 /**
  * This represents a non-input step a Galaxy Workflow.

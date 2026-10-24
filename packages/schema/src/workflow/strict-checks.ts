@@ -7,7 +7,7 @@
 import { NativeGalaxyWorkflowSchema, GalaxyWorkflowSchema } from "./raw/index.js";
 import type { WorkflowFormat } from "./detect-format.js";
 import { detectFormat } from "./detect-format.js";
-import { withClass } from "./validators.js";
+import { withDecodeClass } from "./validators.js";
 import * as ParseResult from "effect/ParseResult";
 import * as S from "effect/Schema";
 
@@ -93,8 +93,7 @@ export function checkStrictStructure(
   format?: WorkflowFormat,
 ): string[] {
   const fmt = format ?? detectFormat(workflowDict);
-  const cls = fmt === "native" ? "NativeGalaxyWorkflow" : "GalaxyWorkflow";
-  const data = withClass(workflowDict, cls);
+  const data = withDecodeClass(workflowDict, fmt);
 
   const schema: S.Schema<any> =
     fmt === "native" ? NativeGalaxyWorkflowSchema : GalaxyWorkflowSchema;

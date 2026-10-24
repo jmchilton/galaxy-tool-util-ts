@@ -263,6 +263,21 @@ export interface WorkflowTextOption {
   label?: null | string;
 }
 
+/**
+ * A validator restricting values of a text workflow parameter. Persisted
+in native Galaxy as an entry of the input step's `tool_state.validators`.
+ */
+export interface WorkflowTextValidator {
+  /** Validator type. Only `regex` is supported. */
+  type: "regex";
+  /** Regular expression matched from the start of the value. End it with `$` to require a complete-value match. */
+  expression: string;
+  /** Message shown when a value fails validation. */
+  message?: null | string;
+  /** Reject matching values instead of values that do not match. Defaults to `false`. */
+  negate?: null | boolean;
+}
+
 export interface ToolShedRepository {
   /** The name of the tool shed repository this tool can be found in. */
   name: string;
@@ -412,6 +427,8 @@ export interface WorkflowTextParameter extends BaseInputParameter {
   suggestions?: null | Array<string | WorkflowTextOption>;
   /** Ask Galaxy to derive valid choices from connected tool or subworkflow select inputs at runtime. Falls back to free text when derivation fails. */
   restrictOnConnections?: null | boolean;
+  /** Validators applied to values supplied for this input. */
+  validators?: null | Array<WorkflowTextValidator>;
 }
 
 /**
@@ -462,6 +479,8 @@ export interface WorkflowInputParameter extends BaseDataParameter, MinMax {
   suggestions?: null | Array<string | WorkflowTextOption>;
   /** For text-typed inputs - derive runtime choices from connected tool/subworkflow select inputs. */
   restrictOnConnections?: null | boolean;
+  /** Validators for text-typed inputs. See `WorkflowTextParameter.validators`. */
+  validators?: null | Array<WorkflowTextValidator>;
 }
 
 /**

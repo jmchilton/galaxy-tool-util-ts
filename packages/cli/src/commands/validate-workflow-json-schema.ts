@@ -19,7 +19,7 @@ import {
   injectConnectionsIntoState,
   stripConnectedValues,
   scanForReplacements,
-  withClass,
+  withDecodeClass,
   isGalaxyUserToolRun,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
@@ -226,8 +226,7 @@ export function decodeStructureErrorsJsonSchema(
   data: Record<string, unknown>,
   format: WorkflowFormat,
 ): string[] {
-  const cls = format === "native" ? "NativeGalaxyWorkflow" : "GalaxyWorkflow";
-  const validationData = withClass(data, cls);
+  const validationData = withDecodeClass(data, format);
   const structValidator =
     format === "native" ? nativeStructuralValidator() : format2StructuralValidator();
   const ok = structValidator(validationData);
@@ -244,8 +243,7 @@ export async function runValidateWorkflowJsonSchema(
   expansionOpts?: ExpansionOptions,
 ): Promise<void> {
   // --- structural validation ---
-  const cls = format === "native" ? "NativeGalaxyWorkflow" : "GalaxyWorkflow";
-  const validationData = withClass(data, cls);
+  const validationData = withDecodeClass(data, format);
 
   const structValidator =
     format === "native" ? nativeStructuralValidator() : format2StructuralValidator();

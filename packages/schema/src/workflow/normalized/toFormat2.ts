@@ -133,6 +133,16 @@ export function nativeInputToFormat2Type(
   return "data";
 }
 
+function _nativeTextValidatorToFormat2(validator: unknown): Record<string, unknown>[] {
+  if (!validator || typeof validator !== "object") return [];
+  const v = validator as Record<string, unknown>;
+  if (v.type !== "regex") return [];
+  const result: Record<string, unknown> = { type: "regex", expression: v.expression };
+  if (v.message != null) result.message = v.message;
+  if (v.negate) result.negate = true;
+  return [result];
+}
+
 function _buildInputParam(step: NormalizedNativeStep): NormalizedFormat2Input {
   const stepId = unlabeledNodeId(step.label, step.id, true);
   const inputType = nativeInputToFormat2Type(step.type as string, step.tool_state);
@@ -177,6 +187,10 @@ function _buildInputParam(step: NormalizedNativeStep): NormalizedFormat2Input {
         }
       }
     }
+  } else if (inputType === "string" || (Array.isArray(inputType) && inputType[0] === "string")) {
+    const validators = Array.isArray(ts.validators) ? ts.validators : [];
+    const textValidators = validators.flatMap(_nativeTextValidatorToFormat2);
+    if (textValidators.length > 0) result.validators = textValidators;
   }
 
   if (step.annotation) result.doc = step.annotation;

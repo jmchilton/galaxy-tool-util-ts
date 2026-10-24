@@ -256,6 +256,22 @@ export const WorkflowTextOptionSchema = Schema.Struct({
 export type WorkflowTextOption = typeof WorkflowTextOptionSchema.Type;
 
 /**
+ * A validator restricting values of a text workflow parameter. Persisted
+in native Galaxy as an entry of the input step's `tool_state.validators`.
+ */
+export const WorkflowTextValidatorSchema = Schema.Struct({
+  /** Validator type. Only `regex` is supported. */
+  type: Schema.Literal("regex"),
+  /** Regular expression matched from the start of the value. End it with `$` to require a complete-value match. */
+  expression: Schema.String,
+  /** Message shown when a value fails validation. */
+  message: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Reject matching values instead of values that do not match. Defaults to `false`. */
+  negate: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+});
+export type WorkflowTextValidator = typeof WorkflowTextValidatorSchema.Type;
+
+/**
  * Describes an input parameter on a step. This is metadata about the input,
 not the connection wiring (which is in ``input_connections``).
  */
@@ -443,6 +459,15 @@ export const NativeFreehandCommentSchema = Schema.Struct({
 export type NativeFreehandComment = typeof NativeFreehandCommentSchema.Type;
 
 /**
+ * Workflow invocation report template.
+ */
+export const NativeReportSchema = Schema.Struct({
+  /** Galaxy-flavored Markdown content for the invocation report. Supports template directives like ``history_dataset_as_image(output="...")``. */
+  markdown: Schema.String,
+});
+export type NativeReport = typeof NativeReportSchema.Type;
+
+/**
  * Base fields shared by all creator types, corresponding to schema.org
 Thing properties common to both Person and Organization.
  */
@@ -480,36 +505,6 @@ export const NativeCreatorOrganizationSchema = Schema.Struct({
 export type NativeCreatorOrganization = typeof NativeCreatorOrganizationSchema.Type;
 
 /**
- * A person who created or contributed to the workflow.
-Corresponds to a `schema.org Person <https://schema.org/Person>`_.
- */
-export const NativeCreatorPersonSchema = Schema.Struct({
-  ...BaseNativeCreatorSchema.fields,
-  /** Creator type discriminator (``Person``). */
-  class: Schema.Literal("Person"),
-  /** Given (first) name. */
-  givenName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Family (last) name. */
-  familyName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
-  honorificPrefix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
-  honorificSuffix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Job title or role. */
-  jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type NativeCreatorPerson = typeof NativeCreatorPersonSchema.Type;
-
-/**
- * Workflow invocation report template.
- */
-export const NativeReportSchema = Schema.Struct({
-  /** Galaxy-flavored Markdown content for the invocation report. Supports template directives like ``history_dataset_as_image(output="...")``. */
-  markdown: Schema.String,
-});
-export type NativeReport = typeof NativeReportSchema.Type;
-
-/**
  * Provenance tracking for workflows imported from external sources.
 Contains either a direct URL or TRS (Tool Registry Service) metadata,
 depending on how the workflow was imported.
@@ -531,6 +526,27 @@ export const NativeSourceMetadataSchema = Schema.Struct({
   trs_url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type NativeSourceMetadata = typeof NativeSourceMetadataSchema.Type;
+
+/**
+ * A person who created or contributed to the workflow.
+Corresponds to a `schema.org Person <https://schema.org/Person>`_.
+ */
+export const NativeCreatorPersonSchema = Schema.Struct({
+  ...BaseNativeCreatorSchema.fields,
+  /** Creator type discriminator (``Person``). */
+  class: Schema.Literal("Person"),
+  /** Given (first) name. */
+  givenName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Family (last) name. */
+  familyName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
+  honorificPrefix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
+  honorificSuffix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Job title or role. */
+  jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type NativeCreatorPerson = typeof NativeCreatorPersonSchema.Type;
 
 /**
  * A Galaxy native workflow document (.ga format). This is the canonical

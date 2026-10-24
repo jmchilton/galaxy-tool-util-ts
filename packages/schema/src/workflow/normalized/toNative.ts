@@ -267,6 +267,14 @@ function _buildInputStep(inp: NormalizedFormat2Input, orderIndex: number): Norma
     toolState.validators = [
       { type: "in_range", min: inp.min ?? null, max: inp.max ?? null, negate: false },
     ];
+  } else if (stepType === "parameter_input" && ["text", "string"].includes(typeStr)) {
+    const textValidators = (inp as Record<string, unknown>).validators;
+    if (Array.isArray(textValidators) && textValidators.length > 0) {
+      toolState.validators = textValidators.map((v: Record<string, unknown>) => ({
+        negate: false,
+        ...Object.fromEntries(Object.entries(v).filter(([, value]) => value != null)),
+      }));
+    }
   }
 
   // Copy extra fields

@@ -177,6 +177,21 @@ export interface WorkflowTextOption {
   label?: null | string;
 }
 
+/**
+ * A validator restricting values of a text workflow parameter. Persisted
+in native Galaxy as an entry of the input step's `tool_state.validators`.
+ */
+export interface WorkflowTextValidator {
+  /** Validator type. Only `regex` is supported. */
+  type: "regex";
+  /** Regular expression matched from the start of the value. End it with `$` to require a complete-value match. */
+  expression: string;
+  /** Message shown when a value fails validation. */
+  message?: null | string;
+  /** Reject matching values instead of values that do not match. Defaults to `false`. */
+  negate?: null | boolean;
+}
+
 export interface ToolShedRepository {
   /** The name of the tool shed repository this tool can be found in. */
   name: string;
