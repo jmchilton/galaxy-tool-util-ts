@@ -107,6 +107,35 @@ describe("unknown upstream map-over", () => {
     expect(report.step_results[4].connections.map((c) => c.status)).toEqual(["skip"]);
   });
 
+  it("still reports incompatible known map-overs beside a skipped edge", () => {
+    const report = validateConnectionsReport(
+      {
+        class: "GalaxyWorkflow",
+        inputs: {
+          reads: { type: "collection", collection_type: "list:paired" },
+          singles: { type: "collection", collection_type: "list" },
+          pair: { type: "collection", collection_type: "paired" },
+        },
+        steps: {
+          regroup: REGROUP,
+          conflicted: {
+            tool_id: "output_format",
+            in: { input_data_1: "singles", input_data_2: "pair", input_text: "regroup/output" },
+          },
+        },
+      },
+      getToolInfo,
+    );
+    const conflicted = report.step_results[4];
+    expect(conflicted.connections.map((c) => [c.target_input, c.status])).toEqual([
+      ["input_data_1", "ok"],
+      ["input_data_2", "ok"],
+      ["input_text", "skip"],
+    ]);
+    expect(conflicted.errors).toEqual(["Incompatible map-over types: list vs paired"]);
+    expect(report.valid).toBe(false);
+  });
+
   it("marks subworkflow outputs unknown when an edge into it is skipped", () => {
     const report = validateConnectionsReport(
       {
