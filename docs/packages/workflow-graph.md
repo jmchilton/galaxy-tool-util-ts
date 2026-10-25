@@ -87,3 +87,22 @@ A minimal hand-written equivalent of Galaxy's generated `components["schemas"]["
 ### `producesAcceptableDatatype(mapper, inputDatatypes, otherDatatypes)`
 
 Returns a `ConnectionAcceptable` (`{ canAccept, reason }`) describing whether any of `otherDatatypes` is acceptable for any of `inputDatatypes`, accounting for the `input` and `_sniff_` wildcards and the subtype hierarchy. Used by the connection validator to produce human-readable rejection reasons.
+
+## Rule builder DSL
+
+### `RuleSet`
+
+Port of Galaxy's `galaxy.util.rules_dsl.RuleSet`, the rule builder behind `__APPLY_RULES__` and rule-based uploads. Conformance is checked against Galaxy's [`rules_dsl_spec.yml`](https://github.com/galaxyproject/galaxy/blob/dev/lib/galaxy/util/rules_dsl_spec.yml), synced with `make sync-rules-dsl-spec`.
+
+```typescript
+import { RuleSet } from "@galaxy-tool-util/workflow-graph";
+
+const ruleSet = new RuleSet(toolState.rules);
+ruleSet.collectionType;               // e.g. "list:paired", "" when nothing is mapped
+ruleSet.hasErrors;                    // any rule fails validation
+const [data, sources] = ruleSet.apply(rows, elementSources);
+```
+
+`collectionType` reads only the mapping, so it doesn't depend on the rules validating. The connection validator uses it to type `collection_type_from_rules` outputs.
+
+Expressions use Python `re` syntax. `(?P<name>…)`, `(?P=name)` and `match.expand` replacements (`\1`, `\g<1>`, `\g<name>`) are translated; other dialect differences are not.
