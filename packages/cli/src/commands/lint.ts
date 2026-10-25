@@ -29,7 +29,6 @@ import {
 import {
   validateNativeSteps,
   validateFormat2Steps,
-  type StepStateChecks,
   decodeStructureErrors,
   detectEncodingErrors,
 } from "./validate-workflow.js";
@@ -208,7 +207,6 @@ export async function lintWorkflowReport(
     strictState: false,
   };
   const fmt = format as WorkflowFormat;
-  const checks: StepStateChecks = { completeConditionals: strict.strictState };
 
   // Strict encoding check
   const encodingErrors = strict.strictEncoding ? checkStrictEncoding(data, fmt) : [];
@@ -244,25 +242,10 @@ export async function lintWorkflowReport(
           const expansionOpts: ExpansionOptions = {
             resolver: createDefaultResolver({ workflowDirectory }),
           };
-          if (format === "native") {
-            stateValidation = await validateNativeSteps(
-              data,
-              cache,
-              "",
-              expansionOpts,
-              undefined,
-              checks,
-            );
-          } else {
-            stateValidation = await validateFormat2Steps(
-              data,
-              cache,
-              "",
-              expansionOpts,
-              undefined,
-              checks,
-            );
-          }
+          const validateSteps = format === "native" ? validateNativeSteps : validateFormat2Steps;
+          stateValidation = await validateSteps(data, cache, "", expansionOpts, undefined, {
+            completeConditionals: strict.strictState,
+          });
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
