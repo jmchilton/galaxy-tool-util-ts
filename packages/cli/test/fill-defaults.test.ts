@@ -51,6 +51,17 @@ describe("conditional completeness", () => {
     );
   });
 
+  it("validate --mode json-schema --strict-state rejects a missing test parameter", async () => {
+    const wfPath = await writeWf({ param_type: {} });
+    await runValidateWorkflow(wfPath, {
+      cacheDir: ctx.tmpDir,
+      mode: "json-schema",
+      strictState: true,
+    });
+    expect(process.exitCode).toBe(1);
+    expect(allOutput(ctx)).toContain("missing conditional test parameter 'select_param_type'");
+  });
+
   it("validate without --strict-state still accepts partial state", async () => {
     const wfPath = await writeWf({ param_type: {} });
     await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, offline: true });

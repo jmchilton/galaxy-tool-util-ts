@@ -55,13 +55,27 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
   let validateFormat2StepsJsonSchema: typeof validateFormat2Steps | undefined;
   if (mode === "json-schema") {
     const mod = await import("./validate-workflow-json-schema.js");
-    validateNativeStepsJsonSchema = (data, cache, prefix, expansionOpts) =>
+    validateNativeStepsJsonSchema = (data, cache, prefix, expansionOpts, _service, checks) =>
       cache
-        ? mod.validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts)
+        ? mod.validateNativeStepsJsonSchema(
+            data,
+            cache,
+            opts.toolSchemaDir,
+            prefix,
+            expansionOpts,
+            checks,
+          )
         : Promise.resolve([]);
-    validateFormat2StepsJsonSchema = (data, cache, prefix, expansionOpts) =>
+    validateFormat2StepsJsonSchema = (data, cache, prefix, expansionOpts, _service, checks) =>
       cache
-        ? mod.validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts)
+        ? mod.validateFormat2StepsJsonSchema(
+            data,
+            cache,
+            opts.toolSchemaDir,
+            prefix,
+            expansionOpts,
+            checks,
+          )
         : Promise.resolve([]);
   }
 

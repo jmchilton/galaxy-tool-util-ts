@@ -527,7 +527,7 @@ function _validateNativeState(
       errors: formatIssues(result.left),
     };
   }
-  return _completenessResult(bundle, state, checks, stepLabel, toolId, toolVersion);
+  return completenessResult(bundle, state, checks, stepLabel, toolId, toolVersion);
 }
 
 // --- Format2 validation ---
@@ -750,11 +750,11 @@ function _validateFormat2State(
     };
   }
 
-  return _completenessResult(bundle, linkedState, checks, stepLabel, toolId, toolVersion);
+  return completenessResult(bundle, linkedState, checks, stepLabel, toolId, toolVersion);
 }
 
 /** `ok`, or `fail` when an enabled completeness check finds gaps in otherwise valid state. */
-function _completenessResult(
+export function completenessResult(
   bundle: ToolParameterBundleModel,
   state: Record<string, unknown>,
   checks: StepStateChecks,
