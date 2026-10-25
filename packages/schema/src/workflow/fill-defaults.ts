@@ -20,13 +20,23 @@
  * UI action.
  */
 
-import type { ToolParameterModel } from "../schema/bundle-types.js";
+import type {
+  ConditionalParameterModel,
+  RepeatParameterModel,
+  SectionParameterModel,
+  ToolParameterModel,
+} from "../schema/bundle-types.js";
 import {
   NO_DEFAULT,
   coerceTextNullIfNeeded,
   scalarParameterDefault,
 } from "../schema/parameter-defaults.js";
 import { SKIP_VALUE, walkNativeState } from "./walker.js";
+
+export interface ExpandDefaultsOptions {
+  /** Flat state paths (`a|b`, `rep_0|x`) fed by connections; left absent rather than defaulted. */
+  connectedPaths?: ReadonlySet<string>;
+}
 
 /**
  * Return a new tool state dict with defaults filled in for any parameter
@@ -46,13 +56,15 @@ import { SKIP_VALUE, walkNativeState } from "./walker.js";
 export function expandToolStateDefaults(
   toolInputs: ToolParameterModel[],
   currentState: Record<string, unknown>,
+  options: ExpandDefaultsOptions = {},
 ): Record<string, unknown> {
   return walkNativeState(
     {},
     toolInputs,
     currentState,
-    (param, value) => {
+    (param, value, statePath) => {
       if (value === undefined) {
+        if (options.connectedPaths?.has(statePath)) return SKIP_VALUE;
         const def = scalarParameterDefault(param);
         if (def === NO_DEFAULT) return SKIP_VALUE;
         return def;
@@ -63,4 +75,42 @@ export function expandToolStateDefaults(
     },
     { preserveUnknownKeys: true, repeatMinPad: true },
   );
+}
+
+/**
+ * Report every reachable conditional whose test parameter is absent from `state`.
+ *
+ * Galaxy's import materializes absent sections/conditionals as `{}` and then
+ * indexes the conditional's test parameter (`KeyError` → HTTP 500). Absent
+ * leaves are tolerated, so only test parameters are checked. Absent containers
+ * are followed (default `when` for conditionals); only existing repeat
+ * instances are walked. Works on native and format2 state dicts.
+ */
+export function findMissingConditionalTests(
+  toolInputs: ToolParameterModel[],
+  state: Record<string, unknown>,
+): string[] {
+  const testParams = new Set<ToolParameterModel>();
+  collectTestParams(toolInputs, testParams);
+  const missing: string[] = [];
+  walkNativeState({}, toolInputs, state, (param, value, statePath) => {
+    if (value === undefined && testParams.has(param)) {
+      const parent = statePath.slice(0, statePath.length - param.name.length - 1);
+      missing.push(`${parent}: missing conditional test parameter '${param.name}'`);
+    }
+    return SKIP_VALUE;
+  });
+  return missing;
+}
+
+function collectTestParams(inputs: ToolParameterModel[], out: Set<ToolParameterModel>): void {
+  for (const p of inputs) {
+    if (p.parameter_type === "gx_conditional") {
+      const cond = p as ConditionalParameterModel;
+      out.add(cond.test_parameter);
+      for (const when of cond.whens) collectTestParams(when.parameters, out);
+    } else if (p.parameter_type === "gx_repeat" || p.parameter_type === "gx_section") {
+      collectTestParams((p as RepeatParameterModel | SectionParameterModel).parameters, out);
+    }
+  }
 }

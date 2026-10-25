@@ -159,6 +159,8 @@ export {
   nativeConnectionsFromFormat2In,
   /** Expand defaults into a tool state dict (port of Python fill_static_defaults). */
   expandToolStateDefaults,
+  /** Report reachable conditionals whose test parameter is absent (Galaxy import would KeyError). */
+  findMissingConditionalTests,
   /** Build the minimal `tool_state` for a freshly inserted step. Today returns `{}`; designated extension point. */
   buildMinimalToolState,
   /** Build a native (.ga) step skeleton for an inserted tool. */
@@ -436,6 +438,7 @@ export {
   buildToNativeTreeReport,
   buildRoundTripTreeReport,
   type CleanWorkflowOptions,
+  type ExpandDefaultsOptions,
 } from "./workflow/index.js";
 
 export { ToolStateValidator, type ToolStateDiagnostic } from "./tool-state-validator.js";

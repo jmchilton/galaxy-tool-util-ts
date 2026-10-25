@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { expandToolStateDefaults } from "../src/workflow/fill-defaults.js";
+import {
+  expandToolStateDefaults,
+  findMissingConditionalTests,
+} from "../src/workflow/fill-defaults.js";
 import type {
   BooleanParameterModel,
   ConditionalParameterModel,
@@ -594,5 +597,63 @@ describe("expandToolStateDefaults — invariants", () => {
   it("data inputs not seeded with RuntimeValue or null", () => {
     const result = expandToolStateDefaults([dataParam("d")], {});
     expect("d" in result).toBe(false);
+  });
+});
+
+describe("findMissingConditionalTests", () => {
+  const dedup = () =>
+    conditionalParam(
+      "handling_options",
+      selectParam("eval_dups", [
+        { value: "", selected: true },
+        { value: "--dedup", selected: false },
+      ]),
+      [{ discriminator: "", parameters: [intParam("n", 1)], is_default_when: true }],
+    );
+  const tool = [
+    sectionParam("duplicated_reads", [dedup()]),
+    sectionParam("opts", [intParam("depth", 3)]),
+    repeatParam("reps", [dedup()]),
+  ];
+
+  it("flags conditional under absent section", () => {
+    expect(findMissingConditionalTests(tool, {})).toEqual([
+      "duplicated_reads|handling_options: missing conditional test parameter 'eval_dups'",
+    ]);
+  });
+
+  it("flags present conditional missing its test parameter", () => {
+    const state = { duplicated_reads: { handling_options: { n: 2 } } };
+    expect(findMissingConditionalTests(tool, state)).toHaveLength(1);
+  });
+
+  it("walks existing repeat instances only", () => {
+    const state = {
+      duplicated_reads: { handling_options: { eval_dups: "" } },
+      reps: [{ handling_options: { eval_dups: "" } }, {}],
+    };
+    expect(findMissingConditionalTests(tool, state)).toEqual([
+      "reps_1|handling_options: missing conditional test parameter 'eval_dups'",
+    ]);
+  });
+
+  it("ignores missing leaves", () => {
+    const state = { duplicated_reads: { handling_options: { eval_dups: "" } } };
+    expect(findMissingConditionalTests(tool, state)).toEqual([]);
+  });
+
+  it("leaves connected leaves absent", () => {
+    const result = expandToolStateDefaults(
+      tool,
+      {},
+      {
+        connectedPaths: new Set(["duplicated_reads|handling_options|n"]),
+      },
+    );
+    expect(result.duplicated_reads).toEqual({ handling_options: { eval_dups: "" } });
+  });
+
+  it("is satisfied by expandToolStateDefaults output", () => {
+    expect(findMissingConditionalTests(tool, expandToolStateDefaults(tool, {}))).toEqual([]);
   });
 });
