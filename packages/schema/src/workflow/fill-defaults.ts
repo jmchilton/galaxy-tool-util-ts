@@ -58,8 +58,9 @@ export function expandToolStateDefaults(
   currentState: Record<string, unknown>,
   options: ExpandDefaultsOptions = {},
 ): Record<string, unknown> {
+  const connections = Object.fromEntries([...(options.connectedPaths ?? [])].map((p) => [p, true]));
   return walkNativeState(
-    {},
+    connections,
     toolInputs,
     currentState,
     (param, value, statePath) => {

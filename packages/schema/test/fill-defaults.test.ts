@@ -653,6 +653,12 @@ describe("findMissingConditionalTests", () => {
     expect(result.duplicated_reads).toEqual({ handling_options: { eval_dups: "" } });
   });
 
+  it("connected paths materialize repeat instances", () => {
+    const reps = [repeatParam("reps", [intParam("x", 5), intParam("y", 7)])];
+    const result = expandToolStateDefaults(reps, {}, { connectedPaths: new Set(["reps_0|x"]) });
+    expect(result.reps).toEqual([{ y: 7 }]);
+  });
+
   it("is satisfied by expandToolStateDefaults output", () => {
     expect(findMissingConditionalTests(tool, expandToolStateDefaults(tool, {}))).toEqual([]);
   });
