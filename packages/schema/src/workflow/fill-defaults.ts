@@ -78,13 +78,8 @@ export function expandToolStateDefaults(
 }
 
 /**
- * Report every reachable conditional whose test parameter is absent from `state`.
- *
- * Galaxy's import materializes absent sections/conditionals as `{}` and then
- * indexes the conditional's test parameter (`KeyError` → HTTP 500). Absent
- * leaves are tolerated, so only test parameters are checked. Absent containers
- * are followed (default `when` for conditionals); only existing repeat
- * instances are walked. Works on native and format2 state dicts.
+ * Report reachable conditionals (absent containers included) whose test parameter is absent.
+ * Galaxy's import raises `KeyError` on these; absent leaves are tolerated.
  */
 export function findMissingConditionalTests(
   toolInputs: ToolParameterModel[],
