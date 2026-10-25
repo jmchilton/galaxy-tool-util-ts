@@ -474,6 +474,10 @@ importers:
         version: 3.21.0
 
   packages/workflow-graph:
+    dependencies:
+      pyre-to-regexp:
+        specifier: 0.0.6
+        version: 0.0.6
     devDependencies:
       yaml:
         specifier: ^2.8.3
@@ -3250,6 +3254,9 @@ packages:
 
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
+
+  pyre-to-regexp@0.0.6:
+    resolution: {integrity: sha512-keIgqWbZjteRBT4wLtFSlJl+LoKxxWLhdve/tBduOr+jlpXlx027c/7K3ytT91hzhC+//5citGmEB2chVNQpuw==}
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
@@ -6774,6 +6781,8 @@ snapshots:
       escape-goat: 2.1.1
 
   pure-rand@6.1.0: {}
+
+  pyre-to-regexp@0.0.6: {}
 
   queue-microtask@1.2.3: {}
 

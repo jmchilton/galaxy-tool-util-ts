@@ -1,10 +1,13 @@
 /**
- * Port of Galaxy's rule builder DSL (`galaxy.util.rules_dsl`).
+ * Port of Galaxy's rule builder DSL: `galaxy.util.rules_dsl.RuleSet` and the
+ * client's `RuleBuilder/rule-definitions.js` `applyRules`.
  *
  * Conformance is checked against Galaxy's `rules_dsl_spec.yml`, synced via
- * `make sync-rules-dsl-spec`. Expressions use Python `re` syntax; named groups
- * and `match.expand` replacements are translated to their JS equivalents.
+ * `make sync-rules-dsl-spec`. Python `re` expressions go through
+ * `pyre-to-regexp`, as in Galaxy's client.
  */
+
+import pyre, { type PyreRegExp } from "pyre-to-regexp";
 
 export class RulesDSLError extends Error {
   constructor(message: string) {
@@ -35,6 +38,10 @@ export interface RuleSource {
   indices?: number[];
   tags?: string[];
   columns?: unknown[];
+  hid?: unknown;
+  name?: unknown;
+  path?: unknown;
+  uri?: unknown;
 }
 
 export type RuleRow = unknown[];
@@ -44,7 +51,16 @@ type KeyType = "int" | "str" | "bool" | "list";
 interface RuleDefinition {
   validate(rule: Rule): void;
   apply(rule: Rule, data: RuleRow[], sources: unknown[]): [RuleRow[], unknown[]];
+  /** Column header markers after the rule; unchanged when omitted. */
+  columns?(rule: Rule, columns: string[]): string[];
 }
+
+const NEW_COLUMN = "new";
+
+const addsOneColumn = (_rule: Rule, columns: string[]) => [...columns, NEW_COLUMN];
+
+const removeColumns = (columns: string[], targets: number[]) =>
+  columns.filter((_, index) => !targets.includes(index));
 
 const KEY_TYPE_CHECKS: Record<KeyType, (value: unknown) => boolean> = {
   int: (value) => Number.isInteger(value),
@@ -73,29 +89,13 @@ function ensureKeyValueIn(rule: Rule, key: string, values: string[]): void {
   }
 }
 
-/** Compile a Python `re` pattern; throws on invalid syntax. */
-function compilePattern(expression: string): RegExp {
-  const translated = expression.replace(/\(\?P</g, "(?<").replace(/\(\?P=(\w+)\)/g, "\\k<$1>");
-  return new RegExp(translated);
-}
-
-const TEMPLATE_ESCAPES: Record<string, string> = { n: "\n", t: "\t", r: "\r", "\\": "\\" };
-
-/** Python `Match.expand`: `\1`, `\g<1>` and `\g<name>` group references. */
-function expandTemplate(match: RegExpExecArray, template: string): string {
-  return template.replace(/\\(?:g<([^>]+)>|([1-9]\d?)|(.))/g, (whole, ref, num, escape) => {
-    const group: string | undefined = ref ?? num;
-    if (group === undefined) {
-      return TEMPLATE_ESCAPES[escape] ?? whole;
-    }
-    const known = /^\d+$/.test(group)
-      ? Number(group) < match.length
-      : match.groups !== undefined && group in match.groups;
-    if (!known) {
-      throw new RulesDSLError(`Invalid group reference [${whole}] in replacement.`);
-    }
-    return (/^\d+$/.test(group) ? match[Number(group)] : match.groups![group]) ?? "";
-  });
+/** Compile a Python `re` pattern the way Galaxy's client does. */
+function compilePattern(expression: string): PyreRegExp {
+  try {
+    return pyre(String(expression));
+  } catch {
+    throw new RulesDSLError("Invalid regular expression specified.");
+  }
 }
 
 function applyRegex(
@@ -103,33 +103,37 @@ function applyRegex(
   target: number,
   data: RuleRow[],
   replacement?: string,
-  groupCount?: number,
+  groupCount?: number | string,
   allowUnmatched = false,
 ): RuleRow[] {
   const pattern = compilePattern(regex);
-  return data.map((row) => {
-    const source = String(row[target]);
-    const match = pattern.exec(source);
+  const groups = groupCount ? Number(groupCount) : 0;
+  let failedCount = 0;
+  const newData = data.map((row) => {
+    const match = pattern.exec(String(row[target]));
     if (!match) {
       if (!allowUnmatched) {
-        throw new RulesDSLError(`Problem applying regular expression [${regex}] to [${source}].`);
+        failedCount++;
+        return row;
       }
-      const width = replacement == null && groupCount ? groupCount : 1;
-      return [...row, ...Array<string>(width).fill("")];
+      return [...row, ...Array<string>(replacement == null && groups ? groups : 1).fill("")];
     }
     if (replacement != null) {
-      return [...row, expandTemplate(match, replacement)];
+      return [...row, pattern.pyreReplace(match[0], replacement)];
     }
-    if (groupCount) {
-      if (match.length - 1 !== groupCount) {
-        throw new RulesDSLError(
-          "Problem applying regular expression, wrong number of groups found.",
-        );
+    if (groups) {
+      if (match.length - 1 !== groups) {
+        failedCount++;
+        return row;
       }
-      return [...row, ...match.slice(1).map((group) => group ?? null)];
+      return [...row, ...match.slice(1)];
     }
     return [...row, match[0]];
   });
+  if (failedCount > 0) {
+    throw new RulesDSLError(`${failedCount} row(s) failed to match specified regular expression.`);
+  }
+  return newData;
 }
 
 function filterIndex<T>(keep: (index: number) => boolean, items: T[]): T[] {
@@ -158,8 +162,12 @@ function metadataIndex(value: string, prefix: string): number {
   return index;
 }
 
+/** Upload/history metadata only Galaxy's client reads; Python rejects these. */
+const CLIENT_METADATA = ["hid", "name", "path", "uri"] as const;
+
 const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
   add_column_metadata: {
+    columns: addsOneColumn,
     validate: (rule) => ensureRuleContainsKeys(rule, { value: "str" }),
     apply: (rule, data, sources) => {
       const value = rule.value as string;
@@ -172,13 +180,16 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
         cell = (index) => String(source(sources, index).indices![elementIndex]);
       } else if (value === "tags") {
         cell = (index) => [...source(sources, index).tags!].sort().join(",");
+      } else if ((CLIENT_METADATA as readonly string[]).includes(value)) {
+        cell = (index) => source(sources, index)[value as (typeof CLIENT_METADATA)[number]];
       } else {
-        throw new RulesDSLError(`Unknown column metadata value [${value}].`);
+        throw new RulesDSLError(`Unknown metadata type [${value}]`);
       }
       return [data.map((row, index) => [...row, cell(index)]), sources];
     },
   },
   add_column_group_tag_value: {
+    columns: addsOneColumn,
     validate: (rule) => ensureRuleContainsKeys(rule, { value: "str" }),
     apply: (rule, data, sources) => {
       const tagPrefix = `group:${rule.value as string}:`;
@@ -191,6 +202,7 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     },
   },
   add_column_concatenate: {
+    columns: addsOneColumn,
     validate: (rule) =>
       ensureRuleContainsKeys(rule, { target_column_0: "int", target_column_1: "int" }),
     apply: (rule, data, sources) => {
@@ -203,6 +215,7 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     },
   },
   add_column_basename: {
+    columns: addsOneColumn,
     validate: (rule) => ensureRuleContainsKeys(rule, { target_column: "int" }),
     apply: (rule, data, sources) => [
       applyRegex("[^/]*$", rule.target_column as number, data),
@@ -210,6 +223,10 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     ],
   },
   add_column_regex: {
+    columns: (rule, columns) => {
+      const added = rule.replacement == null && rule.group_count ? Number(rule.group_count) : 1;
+      return [...columns, ...Array<string>(added).fill(NEW_COLUMN)];
+    },
     validate: (rule) => {
       ensureRuleContainsKeys(rule, { target_column: "int", expression: "str" });
       compilePattern(rule.expression as string);
@@ -232,6 +249,7 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     },
   },
   add_column_rownum: {
+    columns: addsOneColumn,
     validate: (rule) => ensureRuleContainsKeys(rule, { start: "int" }),
     apply: (rule, data, sources) => {
       const start = rule.start as number;
@@ -239,10 +257,12 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     },
   },
   add_column_value: {
+    columns: addsOneColumn,
     validate: (rule) => ensureRuleContainsKeys(rule, { value: "str" }),
     apply: (rule, data, sources) => [data.map((row) => [...row, String(rule.value)]), sources],
   },
   add_column_substr: {
+    columns: addsOneColumn,
     validate: (rule) => {
       ensureRuleContainsKeys(rule, { target_column: "int", length: "int", substr_type: "str" });
       ensureKeyValueIn(rule, "substr_type", [
@@ -275,6 +295,7 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     },
   },
   add_column_from_sample_sheet_index: {
+    columns: addsOneColumn,
     validate: (rule) => ensureRuleContainsKeys(rule, { value: "int" }),
     apply: (rule, data, sources) => {
       const columnIndex = rule.value as number;
@@ -285,6 +306,7 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     },
   },
   remove_columns: {
+    columns: (rule, columns) => removeColumns(columns, rule.target_columns as number[]),
     validate: (rule) => ensureRuleContainsKeys(rule, { target_columns: "list" }),
     apply: (rule, data, sources) => {
       const targetColumns = rule.target_columns as number[];
@@ -380,6 +402,12 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     },
   },
   swap_columns: {
+    columns: (rule, columns) => {
+      const swapped = [...columns];
+      swapped[rule.target_column_0 as number] = columns[rule.target_column_1 as number]!;
+      swapped[rule.target_column_1 as number] = columns[rule.target_column_0 as number]!;
+      return swapped;
+    },
     validate: (rule) =>
       ensureRuleContainsKeys(rule, { target_column_0: "int", target_column_1: "int" }),
     apply: (rule, data, sources) => {
@@ -395,6 +423,7 @@ const RULES_DEFINITIONS: Record<string, RuleDefinition> = {
     },
   },
   split_columns: {
+    columns: (rule, columns) => removeColumns(columns, rule.target_columns_0 as number[]),
     validate: (rule) =>
       ensureRuleContainsKeys(rule, { target_columns_0: "list", target_columns_1: "list" }),
     apply: (rule, data, sources) => {
@@ -487,4 +516,58 @@ export class RuleSet {
     }
     return ranks.join(":");
   }
+}
+
+/** A rule as Galaxy's rule builder holds it; `applyRules` sets `error` and `warn`. */
+export interface ClientRule extends Rule {
+  error?: string | null;
+  warn?: string | null;
+}
+
+export interface ApplyRulesResult {
+  data: RuleRow[];
+  sources: unknown[];
+  columns: string[];
+  colHeadersPerRule: string[][];
+}
+
+export const SKIPPED_RULE_WARNING = "Skipped due to previous errors.";
+
+/** Spreadsheet-style headers (`A`, `B`, …) for the current table width. */
+export function colHeadersFor(data: RuleRow[], columns?: string[]): string[] {
+  const width = data.length === 0 ? (columns?.length ?? 0) : data[0]!.length;
+  return Array.from({ length: width }, (_, i) => String.fromCharCode(65 + i));
+}
+
+/**
+ * Galaxy client's `applyRules`: runs rules without validating them, records a
+ * failing rule's message on `rule.error` and skips the rest with `rule.warn`.
+ */
+export function applyRules(
+  data: RuleRow[],
+  sources: unknown[],
+  columns: string[],
+  rules: ClientRule[],
+  headersPerRule: string[][] = [],
+): ApplyRulesResult {
+  const colHeadersPerRule = Array.from(headersPerRule);
+  let hasRuleError = false;
+  rules.forEach((rule, ruleIndex) => {
+    colHeadersPerRule[ruleIndex] = colHeadersFor(data, columns);
+    rule.error = null;
+    rule.warn = null;
+    if (hasRuleError) {
+      rule.warn = SKIPPED_RULE_WARNING;
+      return;
+    }
+    try {
+      const definition = ruleDefinition(rule);
+      [data, sources] = definition.apply(rule, data, sources);
+      columns = definition.columns ? definition.columns(rule, columns) : columns;
+    } catch (e) {
+      hasRuleError = true;
+      rule.error = e instanceof Error ? e.message : String(e);
+    }
+  });
+  return { data, sources, columns, colHeadersPerRule };
 }

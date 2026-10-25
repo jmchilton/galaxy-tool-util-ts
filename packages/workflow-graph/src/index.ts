@@ -12,6 +12,11 @@ export { ConnectionAcceptable, producesAcceptableDatatype } from "./connection-a
 export {
   RuleSet,
   RulesDSLError,
+  SKIPPED_RULE_WARNING,
+  applyRules,
+  colHeadersFor,
+  type ApplyRulesResult,
+  type ClientRule,
   type Rule,
   type RuleMapping,
   type RuleRow,

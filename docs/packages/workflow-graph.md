@@ -2,7 +2,7 @@
 
 Pure collection-type algebra and datatype subtyping primitives extracted verbatim from Galaxy's workflow editor (`client/src/components/Workflow/Editor/modules/` and `client/src/components/Datatypes/`). Consumed by Galaxy itself, the [workflow connection validator](guide/workflow-validation.md) in this monorepo, and downstream tooling (CLI, gxwf-ui, future VS Code plugin).
 
-No runtime dependencies. Pure TypeScript / ESM.
+Pure TypeScript / ESM. The only runtime dependency is [`pyre-to-regexp`](https://github.com/jmchilton/pyre-to-regexp), used by the rule builder DSL, as in Galaxy's client.
 
 ## Algebra reference
 
@@ -105,4 +105,24 @@ const [data, sources] = ruleSet.apply(rows, elementSources);
 
 `collectionType` reads only the mapping, so it doesn't depend on the rules validating. The connection validator uses it to type `collection_type_from_rules` outputs.
 
-Expressions use Python `re` syntax. `(?P<name>…)`, `(?P=name)` and `match.expand` replacements (`\1`, `\g<1>`, `\g<name>`) are translated; other dialect differences are not.
+### `applyRules` and `colHeadersFor`
+
+Port of the pure part of Galaxy's client `RuleBuilder/rule-definitions.js`, so the rule builder can import it instead of carrying its own copy. It shares rule implementations with `RuleSet` but follows the client's contract:
+
+```typescript
+import { applyRules, colHeadersFor } from "@galaxy-tool-util/workflow-graph";
+
+const { data, sources, columns, colHeadersPerRule } = applyRules(rows, elementSources, columns, rules);
+rules[0].error; // failing rule's message; later rules get `warn` = SKIPPED_RULE_WARNING
+```
+
+- No validation: rules run as given, and errors land on `rule.error` instead of being thrown.
+- `columns` tracks one marker per table column (`"new"` for added ones) through add, remove, swap and split rules. The caller's array isn't mutated.
+- `add_column_metadata` also reads `hid`, `name`, `path` and `uri` from upload sources, which Python rejects.
+- The rule display metadata (`title`, `display`, `init`, `save`) stays in Galaxy.
+
+Differences from the current client code: a non-numeric cell in `add_filter_compare` or a numeric `sort` is an error rather than `NaN`; `remove_columns` and `split_columns` drop header markers (the client's `removeColumns` compares string indices and never removes any); `add_column_group_tag_value` defaults to `""` rather than `undefined`; an unknown rule type is an error rather than a crash.
+
+### Expressions
+
+Expressions use Python `re` syntax and go through `pyre-to-regexp`, as in Galaxy's client: `(?P<name>…)` groups and `\1`, `\g<1>`, `\g<name>` replacements are translated. Backreferences like `(?P=name)` and other dialect differences are not; a replacement naming a missing group is left as a literal `$n` rather than raising as Python would.
