@@ -9,3 +9,12 @@ export { acceptsAny, effectiveMapOverAny } from "./collection-type-variants.js";
 export type { DatatypesCombinedMap } from "./datatypes-combined-map.js";
 export { DatatypesMapperModel } from "./datatypes-mapper.js";
 export { ConnectionAcceptable, producesAcceptableDatatype } from "./connection-acceptable.js";
+export {
+  RuleSet,
+  RulesDSLError,
+  type Rule,
+  type RuleMapping,
+  type RuleRow,
+  type RuleSetDict,
+  type RuleSource,
+} from "./rules-dsl.js";

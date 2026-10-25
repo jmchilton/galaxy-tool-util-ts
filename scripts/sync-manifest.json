@@ -141,6 +141,18 @@
       ]
     },
     {
+      "name": "rules-dsl-spec",
+      "label": "rules DSL conformance cases (Galaxy)",
+      "src_root": "galaxy_root",
+      "entries": [
+        {
+          "src": "lib/galaxy/util/",
+          "dst": "packages/workflow-graph/test/fixtures/",
+          "files": ["rules_dsl_spec.yml"]
+        }
+      ]
+    },
+    {
       "name": "macro-expansion",
       "label": "XML macro-expansion golden cases (Galaxy)",
       "src_root": "galaxy_root",
