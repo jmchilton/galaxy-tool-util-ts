@@ -58,14 +58,15 @@ export function expandToolStateDefaults(
   currentState: Record<string, unknown>,
   options: ExpandDefaultsOptions = {},
 ): Record<string, unknown> {
-  const connections = Object.fromEntries([...(options.connectedPaths ?? [])].map((p) => [p, true]));
+  const connected = options.connectedPaths ?? new Set<string>();
+  const connections = Object.fromEntries([...connected].map((p) => [p, true]));
   return walkNativeState(
     connections,
     toolInputs,
     currentState,
     (param, value, statePath) => {
       if (value === undefined) {
-        if (options.connectedPaths?.has(statePath)) return SKIP_VALUE;
+        if (connected.has(statePath)) return SKIP_VALUE;
         const def = scalarParameterDefault(param);
         if (def === NO_DEFAULT) return SKIP_VALUE;
         return def;
