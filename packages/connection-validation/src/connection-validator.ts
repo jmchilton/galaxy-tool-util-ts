@@ -88,6 +88,7 @@ export function validateConnectionGraph(
     }
 
     const mapOverContributions: Array<CollectionTypeDescriptor | null> = [];
+    let mapOverUnknown = false;
 
     for (const [inputPath, refs] of Object.entries(step.connections)) {
       for (const ref of refs) {
@@ -103,18 +104,25 @@ export function validateConnectionGraph(
 
         if (connResult.status === "ok" && connResult.mapping) {
           mapOverContributions.push(new CollectionTypeDescription(connResult.mapping));
-        } else if (connResult.status === "ok" || connResult.status === "skip") {
+        } else if (connResult.status === "ok") {
           mapOverContributions.push(null);
+        } else if (connResult.status === "skip") {
+          mapOverUnknown = true;
         }
       }
     }
 
     const stepMapOver = _resolveStepMapOver(mapOverContributions, stepResult);
-    if (stepMapOver) {
+    if (stepMapOver && !mapOverUnknown) {
       stepResult.mapOver = stepMapOver.collectionType;
     }
 
-    if (step.stepType === "subworkflow" && step.innerGraph) {
+    if (mapOverUnknown) {
+      // Map-over may be deeper than any known edge says; outputs could be anything.
+      for (const outputName of Object.keys(resolvedOutputTypes[stepId])) {
+        resolvedOutputTypes[stepId][outputName] = ANY_COLLECTION_TYPE_DESCRIPTION;
+      }
+    } else if (step.stepType === "subworkflow" && step.innerGraph) {
       _resolveSubworkflowOutputs(step, resolvedOutputTypes);
     } else {
       _resolveOutputTypes(step, stepMapOver, resolvedOutputTypes);
