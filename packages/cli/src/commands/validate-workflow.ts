@@ -15,6 +15,7 @@ import {
   scanToolState,
   isGalaxyUserToolRun,
   buildSingleValidationReport,
+  findMissingConditionalTests,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
   type NormalizedFormat2Step,
@@ -95,6 +96,12 @@ export type { ValidationStepResult as StepValidationResult } from "@galaxy-tool-
 
 // Re-import locally for use in this file
 import type { ValidationStepResult as StepValidationResult } from "@galaxy-tool-util/schema";
+
+/** Opt-in per-step checks beyond schema validation. */
+export interface StepStateChecks {
+  /** Fail steps with a reachable conditional missing its test parameter (Galaxy import KeyErrors). */
+  completeConditionals?: boolean;
+}
 
 export async function runValidateWorkflow(
   filePath: string,
@@ -182,15 +189,16 @@ export async function runValidateWorkflow(
 
   const { cache, service } = makeValidationResolver(opts);
   await cache.index.load();
+  const checks: StepStateChecks = { completeConditionals: strict.strictState };
 
   let results: StepValidationResult[] = [];
   const encodingErrors: string[] = [];
 
   try {
     if (format === "native") {
-      results = await validateNativeSteps(data, cache, "", expansionOpts, service);
+      results = await validateNativeSteps(data, cache, "", expansionOpts, service, checks);
     } else {
-      results = await validateFormat2Steps(data, cache, "", expansionOpts, service);
+      results = await validateFormat2Steps(data, cache, "", expansionOpts, service, checks);
     }
   } catch (error) {
     // Catch legacy encoding errors thrown by walker and capture them
@@ -284,9 +292,10 @@ export async function validateNativeSteps(
   prefix = "",
   expansionOpts?: ExpansionOptions,
   service?: ToolInfoService,
+  checks: StepStateChecks = {},
 ): Promise<StepValidationResult[]> {
   const expanded = await expandedNative(data, expansionOpts);
-  return _validateNativeWorkflow(expanded, cache, prefix, service);
+  return _validateNativeWorkflow(expanded, cache, prefix, service, checks);
 }
 
 async function _validateNativeWorkflow(
@@ -294,6 +303,7 @@ async function _validateNativeWorkflow(
   cache: ToolCache | null,
   prefix: string,
   service?: ToolInfoService,
+  checks: StepStateChecks = {},
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
@@ -307,6 +317,7 @@ async function _validateNativeWorkflow(
         cache,
         `${stepLabel}.`,
         service,
+        checks,
       );
       results.push(...subResults);
       continue;
@@ -315,7 +326,7 @@ async function _validateNativeWorkflow(
     // An embedded definition wins over tool_id, matching connection validation.
     const embedded = embeddedToolDefinition(step);
     if (embedded) {
-      results.push(_validateEmbeddedNativeStep(step, stepLabel, embedded, cache));
+      results.push(_validateEmbeddedNativeStep(step, stepLabel, embedded, cache, checks));
       continue;
     }
 
@@ -323,7 +334,15 @@ async function _validateNativeWorkflow(
     if (!toolId) continue;
     const toolVersion = step.tool_version ?? null;
 
-    const result = await _validateNativeStep(step, stepLabel, toolId, toolVersion, cache, service);
+    const result = await _validateNativeStep(
+      step,
+      stepLabel,
+      toolId,
+      toolVersion,
+      cache,
+      service,
+      checks,
+    );
     results.push(result);
   }
 
@@ -337,6 +356,7 @@ async function _validateNativeStep(
   toolVersion: string | null,
   cache: ToolCache | null,
   service?: ToolInfoService,
+  checks: StepStateChecks = {},
 ): Promise<StepValidationResult> {
   if (!cache) {
     return {
@@ -371,6 +391,7 @@ async function _validateNativeStep(
     toolId,
     toolVersion,
     step.when,
+    checks,
   );
 }
 
@@ -379,6 +400,7 @@ function _validateEmbeddedNativeStep(
   stepLabel: string,
   repr: Record<string, unknown>,
   cache: ToolCache | null,
+  checks: StepStateChecks = {},
 ): StepValidationResult {
   if (!cache) return _stateValidationDisabled(stepLabel, repr);
   const tool = resolveEmbeddedTool(repr, stepLabel);
@@ -391,6 +413,7 @@ function _validateEmbeddedNativeStep(
     tool.toolId,
     tool.toolVersion,
     step.when,
+    checks,
   );
 }
 
@@ -448,6 +471,7 @@ function _validateNativeState(
   toolId: string | null,
   toolVersion: string | null,
   whenExpression?: unknown,
+  checks: StepStateChecks = {},
 ): StepValidationResult {
   // Skip validation if replacement parameters (${...}) are present in typed fields
   const replacementScan = scanForReplacements(bundle.parameters, toolState);
@@ -503,7 +527,7 @@ function _validateNativeState(
       errors: formatIssues(result.left),
     };
   }
-  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
+  return _completenessResult(bundle, state, checks, stepLabel, toolId, toolVersion);
 }
 
 // --- Format2 validation ---
@@ -518,9 +542,10 @@ export async function validateFormat2Steps(
   prefix = "",
   expansionOpts?: ExpansionOptions,
   service?: ToolInfoService,
+  checks: StepStateChecks = {},
 ): Promise<StepValidationResult[]> {
   const expanded = await expandedFormat2(data, expansionOpts);
-  return _validateFormat2Workflow(expanded, cache, prefix, service);
+  return _validateFormat2Workflow(expanded, cache, prefix, service, checks);
 }
 
 async function _validateFormat2Workflow(
@@ -528,6 +553,7 @@ async function _validateFormat2Workflow(
   cache: ToolCache | null,
   prefix: string,
   service?: ToolInfoService,
+  checks: StepStateChecks = {},
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
@@ -536,7 +562,7 @@ async function _validateFormat2Workflow(
     const stepLabel = prefix ? `${prefix}${i}` : String(i);
 
     if (isGalaxyUserToolRun(step.run)) {
-      results.push(_validateEmbeddedFormat2Step(step, stepLabel, step.run, cache));
+      results.push(_validateEmbeddedFormat2Step(step, stepLabel, step.run, cache, checks));
       continue;
     }
 
@@ -547,6 +573,7 @@ async function _validateFormat2Workflow(
         cache,
         `${stepLabel}.`,
         service,
+        checks,
       );
       results.push(...subResults);
       continue;
@@ -556,7 +583,15 @@ async function _validateFormat2Workflow(
     if (!toolId) continue;
     const toolVersion = step.tool_version ?? null;
 
-    const result = await _validateFormat2Step(step, stepLabel, toolId, toolVersion, cache, service);
+    const result = await _validateFormat2Step(
+      step,
+      stepLabel,
+      toolId,
+      toolVersion,
+      cache,
+      service,
+      checks,
+    );
     results.push(result);
   }
 
@@ -570,6 +605,7 @@ async function _validateFormat2Step(
   toolVersion: string | null,
   cache: ToolCache | null,
   service?: ToolInfoService,
+  checks: StepStateChecks = {},
 ): Promise<StepValidationResult> {
   if (!cache) {
     return {
@@ -595,7 +631,7 @@ async function _validateFormat2Step(
   const bundle: ToolParameterBundleModel = {
     parameters: resolved.tool.inputs as ToolParameterBundleModel["parameters"],
   };
-  return _validateFormat2State(bundle, step, stepLabel, toolId, toolVersion);
+  return _validateFormat2State(bundle, step, stepLabel, toolId, toolVersion, checks);
 }
 
 function _validateEmbeddedFormat2Step(
@@ -603,11 +639,12 @@ function _validateEmbeddedFormat2Step(
   stepLabel: string,
   repr: Record<string, unknown>,
   cache: ToolCache | null,
+  checks: StepStateChecks = {},
 ): StepValidationResult {
   if (!cache) return _stateValidationDisabled(stepLabel, repr);
   const tool = resolveEmbeddedTool(repr, stepLabel);
   if (!isEmbeddedTool(tool)) return tool;
-  return _validateFormat2State(tool.bundle, step, stepLabel, tool.toolId, tool.toolVersion);
+  return _validateFormat2State(tool.bundle, step, stepLabel, tool.toolId, tool.toolVersion, checks);
 }
 
 function _validateFormat2State(
@@ -616,6 +653,7 @@ function _validateFormat2State(
   stepLabel: string,
   toolId: string | null,
   toolVersion: string | null,
+  checks: StepStateChecks = {},
 ): StepValidationResult {
   // A step carries either a schema-aware `state` block or a verbatim native
   // `tool_state` block (gxformat2's state-unaware conversion copies the latter).
@@ -630,6 +668,7 @@ function _validateFormat2State(
       toolId,
       toolVersion,
       step.when,
+      checks,
     );
   }
 
@@ -711,7 +750,28 @@ function _validateFormat2State(
     };
   }
 
-  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
+  return _completenessResult(bundle, linkedState, checks, stepLabel, toolId, toolVersion);
+}
+
+/** `ok`, or `fail` when an enabled completeness check finds gaps in otherwise valid state. */
+function _completenessResult(
+  bundle: ToolParameterBundleModel,
+  state: Record<string, unknown>,
+  checks: StepStateChecks,
+  stepLabel: string,
+  toolId: string | null,
+  toolVersion: string | null,
+): StepValidationResult {
+  const errors = checks.completeConditionals
+    ? findMissingConditionalTests(bundle.parameters, state)
+    : [];
+  return {
+    step: stepLabel,
+    tool_id: toolId,
+    version: toolVersion,
+    status: errors.length > 0 ? "fail" : "ok",
+    errors,
+  };
 }
 
 // --- Encoding error detection ---

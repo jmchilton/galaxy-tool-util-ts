@@ -34,5 +34,8 @@ export function addStrictOptions(cmd: Command): Command {
     .option("--strict", "Shorthand for --strict-structure --strict-encoding --strict-state")
     .option("--strict-structure", "Reject unknown keys at envelope/step level")
     .option("--strict-encoding", "Reject JSON-string tool_state and format2 field misuse")
-    .option("--strict-state", "Require every tool step to validate; no skips allowed");
+    .option(
+      "--strict-state",
+      "Require every tool step to validate (no skips) and every reachable conditional to set its test parameter",
+    );
 }
