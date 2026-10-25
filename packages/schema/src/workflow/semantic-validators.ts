@@ -11,9 +11,19 @@
  * Format2 rules.
  */
 
+import { inputTypesDeclaring } from "./input-parameter.js";
+
 const COLUMN_NAME_RE = /^[\w\-_ ?]*$/;
 
-const TEXT_TYPE_VALUES = new Set(["text", "string"]);
+// Galaxy offers `multiple` on neither.
+const SCALAR_ONLY_TYPE_VALUES = new Set(["color", "directory_uri"]);
+// Parameter fields valid only on the input types whose schema declares them.
+const PARAMETER_FIELD_TYPE_VALUES = new Map(
+  (["restrictions", "suggestions", "restrictOnConnections", "validators"] as const).map((field) => [
+    field,
+    inputTypesDeclaring(field),
+  ]),
+);
 const COLLECTION_TYPE_VALUES = new Set(["collection", "data_collection", "data_collection_input"]);
 
 function _columnDefaultMatchesType(columnType: unknown, value: unknown): boolean {
@@ -71,9 +81,11 @@ export function validateInputParameter(inputParam: unknown): void {
   if (!inputParam || typeof inputParam !== "object") return;
   const data = inputParam as Record<string, unknown>;
   const typeValues = _typeList(data.type);
-  const isTextOnly = typeValues.length > 0 && typeValues.every((t) => TEXT_TYPE_VALUES.has(t));
   const isCollectionOnly =
     typeValues.length > 0 && typeValues.every((t) => COLLECTION_TYPE_VALUES.has(t));
+  if (Array.isArray(data.type) && typeValues.some((t) => SCALAR_ONLY_TYPE_VALUES.has(t))) {
+    throw new Error(`multiple values are not supported for type=${JSON.stringify(data.type)}`);
+  }
 
   if (data.collection_type != null && typeof data.collection_type !== "string") {
     throw new Error("collection_type must be a string");
@@ -115,19 +127,15 @@ export function validateInputParameter(inputParam: unknown): void {
     }
   }
 
-  for (const field of [
-    "restrictions",
-    "suggestions",
-    "restrictOnConnections",
-    "validators",
-  ] as const) {
+  for (const [field, allowedTypes] of PARAMETER_FIELD_TYPE_VALUES) {
     const value = data[field];
-    if (value == null) continue;
+    // restrictOnConnections=false is the schema default and harmless.
+    if (value == null || value === false) continue;
     if (Array.isArray(value) && value.length === 0) continue;
-    if (value === false) continue;
-    if (typeValues.length > 0 && !isTextOnly) {
+    if (typeValues.length > 0 && !typeValues.every((t) => allowedTypes.has(t))) {
+      const allowed = [...allowedTypes].sort().join("/");
       throw new Error(
-        `${field} is only valid on text/string inputs, got type=${JSON.stringify(data.type)}`,
+        `${field} is only valid on ${allowed} inputs, got type=${JSON.stringify(data.type)}`,
       );
     }
   }
