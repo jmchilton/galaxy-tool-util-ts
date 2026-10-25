@@ -66,13 +66,8 @@ async function fillNative(wf: Record<string, unknown>, ctx: FillContext, prefix:
       continue;
     }
     if (step.type !== "tool" || (!step.tool_id && !embeddedToolDefinition(step))) continue;
-    if (typeof step.tool_state === "string") {
-      ctx.warnings.push(`step ${label}: tool_state is a JSON string; run \`gxwf clean\` first`);
-      continue;
-    }
     const connected = Object.keys((step.input_connections ?? {}) as object);
-    const filled = await fillStep(step, "tool_state", connected, label, ctx);
-    if (filled) step.tool_state = filled;
+    await fillStep(step, "tool_state", connected, label, ctx);
   }
 }
 
@@ -97,25 +92,25 @@ async function fillFormat2(wf: Record<string, unknown>, ctx: FillContext, prefix
     if (!step.tool_id && !embeddedToolDefinition(step)) continue;
     // A verbatim native `tool_state` block takes the place of `state` when present.
     const field = step.state == null && step.tool_state != null ? "tool_state" : "state";
-    if (typeof step[field] === "string") {
-      ctx.warnings.push(`step ${label}: ${field} is a JSON string; run \`gxwf clean\` first`);
-      continue;
-    }
     const connected = Object.keys(nativeConnectionsFromFormat2In(normalizeStepIn(step.in)));
-    const filled = await fillStep(step, field, connected, label, ctx);
-    if (filled) step[field] = filled;
+    await fillStep(step, field, connected, label, ctx);
   }
 }
 
+/** Fill `step[field]` in place; warns and leaves it when unresolvable or JSON-encoded. */
 async function fillStep(
   step: Record<string, unknown>,
   field: "state" | "tool_state",
   connected: string[],
   label: string,
   ctx: FillContext,
-): Promise<Record<string, unknown> | null> {
+): Promise<void> {
+  if (typeof step[field] === "string") {
+    ctx.warnings.push(`step ${label}: ${field} is a JSON string; run \`gxwf clean\` first`);
+    return;
+  }
   const tool = await resolveInputs(step, label, ctx);
-  if (!tool) return null;
+  if (!tool) return;
   const state = (step[field] ?? {}) as Record<string, unknown>;
   const filled = expandToolStateDefaults(tool.inputs, state, {
     connectedPaths: new Set(connected),
@@ -124,7 +119,7 @@ async function fillStep(
     ctx.warnings.push(`step ${label} (${tool.toolId}): ${m}`);
   }
   if (JSON.stringify(filled) !== JSON.stringify(state)) ctx.filled++;
-  return filled;
+  step[field] = filled;
 }
 
 /** Tool inputs for a step: its embedded definition, else the cached/fetched tool. */
