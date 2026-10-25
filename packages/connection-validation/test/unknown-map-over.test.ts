@@ -22,7 +22,7 @@ const PARSED_TOOLS_DIR = join(
 );
 
 const tools = loadParsedToolCache(PARSED_TOOLS_DIR);
-// Collection output with no declared collection_type, like __APPLY_RULES__.
+// Collection output with no type, e.g. __APPLY_RULES__ without a rules mapping.
 const pairTool = tools.get("collection_creates_pair")!;
 const untypedCollectionTool = {
   ...pairTool,
