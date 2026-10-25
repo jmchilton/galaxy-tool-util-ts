@@ -217,3 +217,28 @@ describe("fill-defaults edge cases", () => {
     expect(out).toContain("step 1: subworkflow not inline");
   });
 });
+
+describe("fill-defaults format2 shapes", () => {
+  let ctx: CliTestContext;
+
+  beforeEach(async () => {
+    ctx = await createCliTestContext("fill-defaults-f2");
+    await seedAllTools(ctx.tmpDir);
+  });
+  afterEach(async () => {
+    await ctx.cleanup();
+  });
+
+  it("warns on JSON-string format2 tool_state and leaves it unchanged", async () => {
+    const wf = condWorkflow({}) as any;
+    delete wf.steps.compose.state;
+    wf.steps.compose.tool_state = '{"param_type": {"select_param_type": "text"}}';
+    const wfPath = join(ctx.tmpDir, "wf.gxwf.yml");
+    await writeFile(wfPath, YAML.stringify(wf));
+    const outPath = join(ctx.tmpDir, "out.gxwf.yml");
+    await runFillDefaults(wfPath, { cacheDir: ctx.tmpDir, offline: true, output: outPath });
+    const filled = YAML.parse(await readFile(outPath, "utf-8"));
+    expect(filled.steps.compose.tool_state).toBe(wf.steps.compose.tool_state);
+    expect(allOutput(ctx)).toContain("step compose: tool_state is a JSON string");
+  });
+});

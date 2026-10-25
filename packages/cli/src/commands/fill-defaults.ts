@@ -91,6 +91,10 @@ async function fillFormat2(wf: Record<string, unknown>, ctx: FillContext, prefix
     if (!step.tool_id && !embeddedToolDefinition(step)) continue;
     // A verbatim native `tool_state` block takes the place of `state` when present.
     const field = step.state == null && step.tool_state != null ? "tool_state" : "state";
+    if (typeof step[field] === "string") {
+      ctx.warnings.push(`step ${label}: ${field} is a JSON string; run \`gxwf clean\` first`);
+      continue;
+    }
     const connected = Object.keys(nativeConnectionsFromFormat2In(normalizeStepIn(step.in)));
     const filled = await fillStep(step, field, connected, label, ctx);
     if (filled) step[field] = filled;
