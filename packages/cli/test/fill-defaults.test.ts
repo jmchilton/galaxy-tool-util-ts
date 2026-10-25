@@ -241,4 +241,15 @@ describe("fill-defaults format2 shapes", () => {
     expect(filled.steps.compose.tool_state).toBe(wf.steps.compose.tool_state);
     expect(allOutput(ctx)).toContain("step compose: tool_state is a JSON string");
   });
+
+  it("fills every $graph entry", async () => {
+    const main = { ...condWorkflow({}), id: "main" };
+    const wfPath = join(ctx.tmpDir, "graph.gxwf.yml");
+    await writeFile(wfPath, YAML.stringify({ $graph: [main] }));
+    const outPath = join(ctx.tmpDir, "out.gxwf.yml");
+    await runFillDefaults(wfPath, { cacheDir: ctx.tmpDir, offline: true, output: outPath });
+    const filled = YAML.parse(await readFile(outPath, "utf-8"));
+    expect(filled.$graph[0].steps.compose.state.param_type.select_param_type).toBe("text");
+    expect(allOutput(ctx)).toContain("Filled defaults on 1 step(s)");
+  });
 });

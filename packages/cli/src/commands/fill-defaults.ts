@@ -42,7 +42,11 @@ export async function runFillDefaults(filePath: string, opts: FillDefaultsOption
   const ctx: FillContext = { cache, service, warnings: [], filled: 0 };
 
   if (format === "native") await fillNative(data, ctx, "");
-  else await fillFormat2(data, ctx, "");
+  else if (Array.isArray(data.$graph)) {
+    for (const entry of data.$graph as Record<string, unknown>[]) {
+      await fillFormat2(entry, ctx, entry.id === "main" ? "" : `${String(entry.id)}.`);
+    }
+  } else await fillFormat2(data, ctx, "");
 
   for (const w of ctx.warnings) console.error(`Warning: ${w}`);
   console.error(`Filled defaults on ${ctx.filled} step(s)`);
@@ -81,7 +85,9 @@ async function fillFormat2(wf: Record<string, unknown>, ctx: FillContext, prefix
     const label = `${prefix}${key}`;
     const run = step.run as Record<string, unknown> | string | undefined;
     if (typeof run === "string") {
-      ctx.warnings.push(`step ${label}: subworkflow \`${run}\` not inline; left as-is`);
+      // `#id` references a $graph entry, filled on its own.
+      if (!run.startsWith("#"))
+        ctx.warnings.push(`step ${label}: subworkflow \`${run}\` not inline; left as-is`);
       continue;
     }
     if (run && typeof run === "object" && run.class === "GalaxyWorkflow") {
