@@ -5,6 +5,8 @@ import * as YAML from "yaml";
 
 import { runFillDefaults } from "../src/commands/fill-defaults.js";
 import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
+import { runLint } from "../src/commands/lint.js";
+import { runDraftValidate } from "../src/commands/draft-validate.js";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 import { seedAllTools, COMPOSE_TOOL_ID } from "./helpers/fixtures.js";
 
@@ -59,6 +61,26 @@ describe("conditional completeness", () => {
       strictState: true,
     });
     expect(process.exitCode).toBe(1);
+    expect(allOutput(ctx)).toContain("missing conditional test parameter 'select_param_type'");
+  });
+
+  it("lint --strict-state rejects a missing test parameter", async () => {
+    const wfPath = await writeWf({ param_type: {} });
+    await runLint(wfPath, { cacheDir: ctx.tmpDir, offline: true, strictState: true });
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("draft-validate --strict-state rejects a missing test parameter", async () => {
+    const wfPath = join(ctx.tmpDir, "wf.gxwf.yml");
+    const draft = { ...condWorkflow({ param_type: {} }), class: "GalaxyWorkflowDraft" };
+    await writeFile(wfPath, YAML.stringify(draft));
+    await runDraftValidate(wfPath, {
+      cacheDir: ctx.tmpDir,
+      offline: true,
+      concrete: true,
+      strictState: true,
+    });
+    expect(process.exitCode).not.toBe(0);
     expect(allOutput(ctx)).toContain("missing conditional test parameter 'select_param_type'");
   });
 
