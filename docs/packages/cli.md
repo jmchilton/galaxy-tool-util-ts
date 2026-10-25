@@ -138,7 +138,7 @@ gxwf validate my-workflow.ga --mode json-schema
 | `--strict` | Shorthand for `--strict-structure --strict-encoding --strict-state` |
 | `--strict-structure` | Reject unknown keys at envelope/step level |
 | `--strict-encoding` | Reject JSON-string `tool_state`; reject `tool_state` field in format2 steps |
-| `--strict-state` | Require every tool step to validate; no skips allowed |
+| `--strict-state` | Require every tool step to validate (no skips) and every reachable conditional to set its test parameter |
 | `--json` | Output structured JSON report |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
@@ -181,6 +181,23 @@ gxwf clean my-workflow.ga --diff
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 | `--skip-uuid` | Skip stripping `uuid` fields (errors are always stripped) |
 
+### `fill-defaults <file>`
+
+Fill section, conditional and leaf defaults from each tool step's definition, so Galaxy's import (which does not fill children of a present section or conditional) accepts minimal state. Connected inputs stay absent; data inputs are never filled. Steps whose tool can't be resolved are left as-is with a warning.
+
+```bash
+gxwf fill-defaults draft.gxwf.yml --output filled.gxwf.yml
+gxwf validate filled.gxwf.yml --strict-state
+```
+
+| Option | Description |
+|---|---|
+| `--output <file>` | Write filled workflow to file (default: stdout) |
+| `--format <fmt>` | Force format (auto-detected by default) |
+| `--cache-dir <dir>` | Tool cache directory |
+| `--offline` | Read only the local cache |
+| `--galaxy-url <url>` | Extra Galaxy tool source after the ToolShed |
+
 ### `lint <file>`
 
 Unified lint combining structural checks, best practices, and tool state validation.
@@ -215,7 +232,7 @@ Exit codes: 0 = clean, 1 = warnings only, 2 = errors.
 | `--strict` | Shorthand for `--strict-structure --strict-encoding --strict-state` |
 | `--strict-structure` | Reject unknown keys at envelope/step level |
 | `--strict-encoding` | Reject JSON-string `tool_state`; reject `tool_state` field in format2 steps |
-| `--strict-state` | Require every tool step to validate; no skips allowed |
+| `--strict-state` | Require every tool step to validate (no skips) and every reachable conditional to set its test parameter |
 | `--json` | Output structured JSON result |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 

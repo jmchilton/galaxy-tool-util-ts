@@ -18,7 +18,7 @@
       },
       {
         "flags": "--strict-state",
-        "description": "Require every tool step to validate; no skips allowed"
+        "description": "Require every tool step to validate (no skips) and every reachable conditional to set its test parameter"
       }
     ]
   },
@@ -234,6 +234,39 @@
         {
           "flags": "--skip-uuid",
           "description": "Skip stripping uuid fields (errors are always stripped)"
+        }
+      ]
+    },
+    {
+      "name": "fill-defaults",
+      "description": "Fill tool-state defaults (sections, conditionals, leaves) from tool definitions; connected inputs stay connected",
+      "handler": "fillDefaults",
+      "args": [
+        {
+          "raw": "<file>",
+          "description": "Workflow file (.ga, .gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--output <file>",
+          "description": "Write filled workflow to file (default: stdout)"
+        },
+        {
+          "flags": "--format <fmt>",
+          "description": "Force format: native or format2 (auto-detected by default)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache directory"
+        },
+        {
+          "flags": "--offline",
+          "description": "Do not fetch uncached tools; read only the local cache (uncached tools are skipped)"
+        },
+        {
+          "flags": "--galaxy-url <url>",
+          "description": "Galaxy instance to try as a tool source after the ToolShed when fetching uncached tools"
         }
       ]
     },
