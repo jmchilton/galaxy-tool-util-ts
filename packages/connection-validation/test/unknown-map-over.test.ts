@@ -106,4 +106,32 @@ describe("unknown upstream map-over", () => {
     expect(mixed.map_over).toBeNull();
     expect(report.step_results[4].connections.map((c) => c.status)).toEqual(["skip"]);
   });
+
+  it("marks subworkflow outputs unknown when an edge into it is skipped", () => {
+    const report = validateConnectionsReport(
+      {
+        class: "GalaxyWorkflow",
+        inputs: { reads: { type: "collection", collection_type: "list:paired" } },
+        steps: {
+          regroup: REGROUP,
+          inner_wf: {
+            run: {
+              class: "GalaxyWorkflow",
+              inputs: { inner_in: { type: "collection", collection_type: "paired" } },
+              outputs: { inner_out: { outputSource: "inner_fastp/out1" } },
+              steps: {
+                inner_fastp: { tool_id: "collection_paired_test", in: { f1: "inner_in" } },
+              },
+            },
+            in: { inner_in: "regroup/output" },
+          },
+          consume: { tool_id: "gx_data_collection_list", in: { parameter: "inner_wf/inner_out" } },
+        },
+      },
+      getToolInfo,
+    );
+    const consume = report.step_results[3].connections[0];
+    expect(consume.status).toBe("skip");
+    expect(consume.errors).toEqual(["Cannot determine output type for 'inner_out' on step 2"]);
+  });
 });

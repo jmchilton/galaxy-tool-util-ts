@@ -118,8 +118,12 @@ export function validateConnectionGraph(
     }
 
     if (mapOverUnknown) {
-      // Map-over may be deeper than any known edge says; outputs could be anything.
-      for (const outputName of Object.keys(resolvedOutputTypes[stepId])) {
+      // A skipped edge leaves map-over unknown, so outputs could be anything.
+      const outputNames = [
+        ...Object.keys(resolvedOutputTypes[stepId]),
+        ...Object.keys(step.subworkflowOutputMap),
+      ];
+      for (const outputName of outputNames) {
         resolvedOutputTypes[stepId][outputName] = ANY_COLLECTION_TYPE_DESCRIPTION;
       }
     } else if (step.stepType === "subworkflow" && step.innerGraph) {
