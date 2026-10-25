@@ -134,16 +134,39 @@ describe("UserToolSource validator — mirror of test_user_tool_source_validatio
 
   it("collection output without discover rejected", () => {
     expectErrorContains(
+      doc({ outputs: [{ type: "collection", name: "outs", collection_type: "list" }] }),
+      "discover_datasets",
+    );
+  });
+
+  it("flat collection output with pattern-only discover accepted", () => {
+    expectValid(
       doc({
         outputs: [
           {
             type: "collection",
             name: "outs",
-            structure: { collection_type: "list" },
+            collection_type: "list",
+            discover_datasets: [{ pattern: "*.txt" }],
           },
         ],
       }),
-      "discover_datasets",
+    );
+  });
+
+  it("collection discover typo rejected", () => {
+    expectErrorContains(
+      doc({
+        outputs: [
+          {
+            type: "collection",
+            name: "outs",
+            collection_type: "list",
+            discover_datasets: [{ patern: "*.txt" }],
+          },
+        ],
+      }),
+      "must NOT have additional properties",
     );
   });
 
