@@ -113,23 +113,17 @@ export function validateConnectionGraph(
     }
 
     const stepMapOver = _resolveStepMapOver(mapOverContributions, stepResult);
-    if (stepMapOver && !mapOverUnknown) {
-      stepResult.mapOver = stepMapOver.collectionType;
-    }
-
     if (mapOverUnknown) {
-      // A skipped edge leaves map-over unknown, so outputs could be anything.
-      const outputNames = [
-        ...Object.keys(resolvedOutputTypes[stepId]),
-        ...Object.keys(step.subworkflowOutputMap),
-      ];
-      for (const outputName of outputNames) {
-        resolvedOutputTypes[stepId][outputName] = ANY_COLLECTION_TYPE_DESCRIPTION;
-      }
-    } else if (step.stepType === "subworkflow" && step.innerGraph) {
-      _resolveSubworkflowOutputs(step, resolvedOutputTypes);
+      _markOutputsUnknown(step, resolvedOutputTypes);
     } else {
-      _resolveOutputTypes(step, stepMapOver, resolvedOutputTypes);
+      if (stepMapOver) {
+        stepResult.mapOver = stepMapOver.collectionType;
+      }
+      if (step.stepType === "subworkflow" && step.innerGraph) {
+        _resolveSubworkflowOutputs(step, resolvedOutputTypes);
+      } else {
+        _resolveOutputTypes(step, stepMapOver, resolvedOutputTypes);
+      }
     }
 
     stepResults.push(stepResult);
@@ -141,6 +135,14 @@ export function validateConnectionGraph(
     summary: _summary(stepResults),
   };
   return [result, resolvedOutputTypes];
+}
+
+/** A skipped edge leaves map-over unknown, so every output could be any collection. */
+function _markOutputsUnknown(step: ResolvedStep, resolvedOutputTypes: StepOutputTypeMap): void {
+  const outputs = resolvedOutputTypes[step.stepId];
+  for (const outputName of [...Object.keys(outputs), ...Object.keys(step.subworkflowOutputMap)]) {
+    outputs[outputName] = ANY_COLLECTION_TYPE_DESCRIPTION;
+  }
 }
 
 function _isValid(stepResults: StepConnectionResult[]): boolean {
