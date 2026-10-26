@@ -596,3 +596,79 @@ describe("expandToolStateDefaults — invariants", () => {
     expect("d" in result).toBe(false);
   });
 });
+
+describe("expandToolStateDefaults — sparse state and connections", () => {
+  const dedup = () =>
+    conditionalParam(
+      "handling_options",
+      selectParam("eval_dups", [
+        { value: "", selected: true },
+        { value: "--dedup", selected: false },
+      ]),
+      [{ discriminator: "", parameters: [intParam("n", 1)], is_default_when: true }],
+    );
+  const tool = [
+    sectionParam("duplicated_reads", [dedup()]),
+    sectionParam("opts", [intParam("depth", 3)]),
+    repeatParam("reps", [dedup()]),
+  ];
+
+  it("expands a defaulted conditional under an absent section without mutating the input", () => {
+    const state = {};
+    expect(expandToolStateDefaults(tool, state)).toEqual({
+      duplicated_reads: { handling_options: { eval_dups: "", n: 1 } },
+      opts: { depth: 3 },
+      reps: [],
+    });
+    expect(state).toEqual({});
+  });
+
+  it("fills an omitted selector while preserving explicit children", () => {
+    const state = { duplicated_reads: { handling_options: { n: 2 } } };
+    expect(expandToolStateDefaults(tool, state).duplicated_reads).toEqual({
+      handling_options: { eval_dups: "", n: 2 },
+    });
+    expect(state).toEqual({ duplicated_reads: { handling_options: { n: 2 } } });
+  });
+
+  it("fills omitted selectors inside existing repeat instances", () => {
+    const state = {
+      duplicated_reads: { handling_options: { eval_dups: "" } },
+      reps: [{ handling_options: { eval_dups: "" } }, {}],
+    };
+    expect(expandToolStateDefaults(tool, state).reps).toEqual([
+      { handling_options: { eval_dups: "", n: 1 } },
+      { handling_options: { eval_dups: "", n: 1 } },
+    ]);
+  });
+
+  it("preserves an explicit empty-string selector while filling its children", () => {
+    const state = { duplicated_reads: { handling_options: { eval_dups: "" } } };
+    expect(expandToolStateDefaults(tool, state).duplicated_reads).toEqual({
+      handling_options: { eval_dups: "", n: 1 },
+    });
+  });
+
+  it("leaves connected leaves absent", () => {
+    const result = expandToolStateDefaults(
+      tool,
+      {},
+      {
+        connectedPaths: new Set(["duplicated_reads|handling_options|n"]),
+      },
+    );
+    expect(result.duplicated_reads).toEqual({ handling_options: { eval_dups: "" } });
+  });
+
+  it("connected paths materialize repeat instances", () => {
+    const reps = [repeatParam("reps", [intParam("x", 5), intParam("y", 7)])];
+    const result = expandToolStateDefaults(reps, {}, { connectedPaths: new Set(["reps_0|x"]) });
+    expect(result.reps).toEqual([{ y: 7 }]);
+  });
+
+  it("is idempotent with connected leaves and repeat instances", () => {
+    const options = { connectedPaths: new Set(["reps_1|handling_options|n"]) };
+    const once = expandToolStateDefaults(tool, {}, options);
+    expect(expandToolStateDefaults(tool, once, options)).toEqual(once);
+  });
+});

@@ -52,6 +52,10 @@ gxwf validate my-workflow.ga --strict-state       # require every tool step to v
 
 These flags apply to `validate`, `lint`, `convert`, `roundtrip`, and their `-tree` batch variants.
 
+Strict state validation accepts omitted conditional selectors when the tool defines a default case. The selected case still determines which child parameters are valid. Explicit invalid selectors remain errors. Validation does not write defaults into your workflow.
+
+To inspect or export explicit defaults, run `gxwf fill-defaults workflow.gxwf.yml --output expanded.gxwf.yml`. This is an optional transformation, not a prerequisite for strict validation. Schema validation does not guarantee importability into every Galaxy version. Older servers can reject sparse state because of importer bugs.
+
 ### Validation Backends
 
 Two backends are available for [tool state](glossary#tool-state) validation:

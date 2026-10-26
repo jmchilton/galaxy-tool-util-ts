@@ -40,6 +40,7 @@ export type {
 } from "./commands/validate-tool-source-tree.js";
 /** Clean a Galaxy workflow — strip stale keys and decode legacy encoding. */
 export { runClean } from "./commands/clean.js";
+export { runFillDefaults } from "./commands/fill-defaults.js";
 /** Lint a Galaxy workflow — structural checks, best practices, tool state validation. */
 export { runLint, lintWorkflowReport } from "./commands/lint.js";
 export type { LintReport, LintReportOptions } from "./commands/lint.js";

@@ -1,0 +1,23 @@
+class: GalaxyWorkflow
+inputs:
+  reads: {type: collection, collection_type: "list:paired"}
+outputs:
+  report: {outputSource: fastp/report_json}
+steps:
+  fastp:
+    tool_id: toolshed.g2.bx.psu.edu/repos/iuc/fastp/fastp/1.4.0+galaxy0
+    tool_version: 1.4.0+galaxy0
+    in:
+      single_paired|paired_input: reads
+    state:
+      single_paired:
+        single_paired_selector: paired_collection
+        paired_input: {__class__: ConnectedValue}
+        merge_reads: {merge: ''}
+        adapter_trimming_options: {disable_adapter_trimming: false, detect_adapter_for_pe: true}
+        global_trimming_options: {}
+      filter_options:
+        quality_filtering_options: {disable_quality_filtering: false}
+        length_filtering_options: {disable_length_filtering: false, length_required: 15}
+        low_complexity_filter: {enable_low_complexity_filter: false}
+      output_options: {report_html: true, report_json: true}

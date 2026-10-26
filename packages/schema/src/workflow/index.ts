@@ -92,6 +92,7 @@ export {
 } from "./state-merge.js";
 
 export { expandToolStateDefaults } from "./fill-defaults.js";
+export type { ExpandDefaultsOptions } from "./fill-defaults.js";
 export { buildMinimalToolState } from "./minimal-tool-state.js";
 export {
   buildNativeStep,

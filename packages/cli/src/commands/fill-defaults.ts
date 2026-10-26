@@ -1,0 +1,148 @@
+/**
+ * `gxwf fill-defaults` — expand tool-state defaults on every tool step.
+ */
+import type { ToolCache, ToolInfoService } from "@galaxy-tool-util/core";
+import {
+  expandToolStateDefaults,
+  nativeConnectionsFromFormat2In,
+  normalizeStepIn,
+  serializeWorkflow,
+  type ToolParameterModel,
+} from "@galaxy-tool-util/schema";
+import {
+  describeResolveError,
+  isResolveError,
+  makeValidationResolver,
+  resolveTool,
+  type ValidationFetchOptions,
+} from "./resolve-tool.js";
+import { embeddedToolDefinition, isEmbeddedTool, resolveEmbeddedTool } from "./embedded-tool.js";
+import { readWorkflowFile, resolveFormat, writeWorkflowOutput } from "./workflow-io.js";
+
+export interface FillDefaultsOptions extends ValidationFetchOptions {
+  output?: string;
+  format?: string;
+}
+
+interface FillContext {
+  cache: ToolCache;
+  service?: ToolInfoService;
+  warnings: string[];
+  filled: number;
+}
+
+export async function runFillDefaults(filePath: string, opts: FillDefaultsOptions): Promise<void> {
+  const data = await readWorkflowFile(filePath);
+  if (!data) return;
+  const format = resolveFormat(data, opts.format);
+
+  const { cache, service } = makeValidationResolver(opts);
+  await cache.index.load();
+  const ctx: FillContext = { cache, service, warnings: [], filled: 0 };
+
+  if (format === "native") await fillNative(data, ctx, "");
+  else if (Array.isArray(data.$graph)) {
+    for (const entry of data.$graph as Record<string, unknown>[]) {
+      await fillFormat2(entry, ctx, entry.id === "main" ? "" : `${String(entry.id)}.`);
+    }
+  } else await fillFormat2(data, ctx, "");
+
+  for (const w of ctx.warnings) console.error(`Warning: ${w}`);
+  console.error(`Filled defaults on ${ctx.filled} step(s)`);
+  await writeWorkflowOutput(serializeWorkflow(data, format), opts.output, "Filled workflow");
+}
+
+async function fillNative(wf: Record<string, unknown>, ctx: FillContext, prefix: string) {
+  const steps = (wf.steps ?? {}) as Record<string, Record<string, unknown>>;
+  for (const [key, step] of Object.entries(steps)) {
+    const label = `${prefix}${key}`;
+    if (step.subworkflow && typeof step.subworkflow === "object") {
+      await fillNative(step.subworkflow as Record<string, unknown>, ctx, `${label}.`);
+      continue;
+    }
+    if (step.type === "subworkflow") {
+      ctx.warnings.push(`step ${label}: subworkflow not inline; left as-is`);
+      continue;
+    }
+    if (step.type !== "tool" || (!step.tool_id && !embeddedToolDefinition(step))) continue;
+    const connected = Object.keys((step.input_connections ?? {}) as object);
+    await fillStep(step, "tool_state", connected, label, ctx);
+  }
+}
+
+async function fillFormat2(wf: Record<string, unknown>, ctx: FillContext, prefix: string) {
+  const raw = wf.steps ?? [];
+  const entries: [string, Record<string, unknown>][] = Array.isArray(raw)
+    ? raw.map((s, i) => [String(i), s])
+    : Object.entries(raw as Record<string, Record<string, unknown>>);
+  for (const [key, step] of entries) {
+    const label = `${prefix}${key}`;
+    const run = step.run as Record<string, unknown> | string | undefined;
+    if (typeof run === "string") {
+      // `#id` references a $graph entry, filled on its own.
+      if (!run.startsWith("#"))
+        ctx.warnings.push(`step ${label}: subworkflow \`${run}\` not inline; left as-is`);
+      continue;
+    }
+    if (run && typeof run === "object" && run.class === "GalaxyWorkflow") {
+      await fillFormat2(run, ctx, `${label}.`);
+      continue;
+    }
+    if (!step.tool_id && !embeddedToolDefinition(step)) continue;
+    // A verbatim native `tool_state` block takes the place of `state` when present.
+    const field = step.state == null && step.tool_state != null ? "tool_state" : "state";
+    const connected = Object.keys(nativeConnectionsFromFormat2In(normalizeStepIn(step.in)));
+    await fillStep(step, field, connected, label, ctx);
+  }
+}
+
+/** Fill `step[field]` in place; warns and leaves it when unresolvable or JSON-encoded. */
+async function fillStep(
+  step: Record<string, unknown>,
+  field: "state" | "tool_state",
+  connected: string[],
+  label: string,
+  ctx: FillContext,
+): Promise<void> {
+  if (typeof step[field] === "string") {
+    ctx.warnings.push(`step ${label}: ${field} is a JSON string; run \`gxwf clean\` first`);
+    return;
+  }
+  const inputs = await resolveInputs(step, label, ctx);
+  if (!inputs) return;
+  const state = (step[field] ?? {}) as Record<string, unknown>;
+  const filled = expandToolStateDefaults(inputs, state, {
+    connectedPaths: new Set(connected),
+  });
+  if (JSON.stringify(filled) !== JSON.stringify(state)) ctx.filled++;
+  step[field] = filled;
+}
+
+/** Tool inputs for a step: its embedded definition, else the cached/fetched tool. */
+async function resolveInputs(
+  step: Record<string, unknown>,
+  label: string,
+  ctx: FillContext,
+): Promise<ToolParameterModel[] | null> {
+  const embedded = embeddedToolDefinition(step);
+  if (embedded) {
+    const tool = resolveEmbeddedTool(embedded, label);
+    if (!isEmbeddedTool(tool)) {
+      ctx.warnings.push(`step ${label}: ${tool.errors[0] ?? tool.status}; left as-is`);
+      return null;
+    }
+    return tool.bundle.parameters;
+  }
+  const toolId = step.tool_id as string;
+  const resolved = await resolveTool(
+    ctx.cache,
+    toolId,
+    (step.tool_version as string | undefined) ?? null,
+    ctx.service,
+  );
+  if (isResolveError(resolved)) {
+    ctx.warnings.push(`step ${label} (${toolId}): ${describeResolveError(resolved)}; left as-is`);
+    return null;
+  }
+  return resolved.tool.inputs as ToolParameterModel[];
+}
