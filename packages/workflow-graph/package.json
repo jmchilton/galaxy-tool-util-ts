@@ -1,7 +1,7 @@
 {
   "name": "@galaxy-tool-util/workflow-graph",
   "version": "1.2.0",
-  "description": "Pure collection-type algebra and datatype subtyping primitives extracted from Galaxy's workflow editor",
+  "description": "Pure collection-type algebra, datatype subtyping primitives and rule builder DSL extracted from Galaxy",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -43,5 +43,8 @@
   "license": "MIT",
   "devDependencies": {
     "yaml": "^2.8.3"
+  },
+  "dependencies": {
+    "pyre-to-regexp": "0.0.6"
   }
 }

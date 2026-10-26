@@ -88,6 +88,7 @@ export function validateConnectionGraph(
     }
 
     const mapOverContributions: Array<CollectionTypeDescriptor | null> = [];
+    let mapOverUnknown = false;
 
     for (const [inputPath, refs] of Object.entries(step.connections)) {
       for (const ref of refs) {
@@ -103,21 +104,26 @@ export function validateConnectionGraph(
 
         if (connResult.status === "ok" && connResult.mapping) {
           mapOverContributions.push(new CollectionTypeDescription(connResult.mapping));
-        } else if (connResult.status === "ok" || connResult.status === "skip") {
+        } else if (connResult.status === "ok") {
           mapOverContributions.push(null);
+        } else if (connResult.status === "skip") {
+          mapOverUnknown = true;
         }
       }
     }
 
     const stepMapOver = _resolveStepMapOver(mapOverContributions, stepResult);
-    if (stepMapOver) {
-      stepResult.mapOver = stepMapOver.collectionType;
-    }
-
-    if (step.stepType === "subworkflow" && step.innerGraph) {
-      _resolveSubworkflowOutputs(step, resolvedOutputTypes);
+    if (mapOverUnknown) {
+      _markOutputsUnknown(step, resolvedOutputTypes);
     } else {
-      _resolveOutputTypes(step, stepMapOver, resolvedOutputTypes);
+      if (stepMapOver) {
+        stepResult.mapOver = stepMapOver.collectionType;
+      }
+      if (step.stepType === "subworkflow" && step.innerGraph) {
+        _resolveSubworkflowOutputs(step, resolvedOutputTypes);
+      } else {
+        _resolveOutputTypes(step, stepMapOver, resolvedOutputTypes);
+      }
     }
 
     stepResults.push(stepResult);
@@ -129,6 +135,14 @@ export function validateConnectionGraph(
     summary: _summary(stepResults),
   };
   return [result, resolvedOutputTypes];
+}
+
+/** A skipped edge leaves map-over unknown, so every output could be any collection. */
+function _markOutputsUnknown(step: ResolvedStep, resolvedOutputTypes: StepOutputTypeMap): void {
+  const outputs = resolvedOutputTypes[step.stepId];
+  for (const outputName of [...Object.keys(outputs), ...Object.keys(step.subworkflowOutputMap)]) {
+    outputs[outputName] = ANY_COLLECTION_TYPE_DESCRIPTION;
+  }
 }
 
 function _isValid(stepResults: StepConnectionResult[]): boolean {

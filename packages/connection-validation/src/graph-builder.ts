@@ -9,6 +9,7 @@ import { normalizedNative } from "@galaxy-tool-util/schema";
 import { toNative } from "@galaxy-tool-util/schema";
 import type { NormalizedNativeStep, NormalizedNativeWorkflow } from "@galaxy-tool-util/schema";
 import type { ConditionalParameterModel, ToolParameterModel } from "@galaxy-tool-util/schema";
+import { RuleSet, type RuleSetDict } from "@galaxy-tool-util/workflow-graph";
 
 import type { GetToolInfo } from "./get-tool-info.js";
 import { ensureInlineResolver, resolveForStep } from "./inline-resolver.js";
@@ -157,12 +158,7 @@ function _resolveToolStep(
   if (parsed) {
     inputs = _collectInputs(parsed.inputs as ToolParameterModel[], step.tool_state ?? {});
     outputs = _collectOutputs(parsed.outputs);
-    // Python additionally calls _resolve_rules_collection_types here to
-    // populate `collection_type` from a RuleSet mapping when the output
-    // declares `collection_type_from_rules`. RuleSet (galaxy.util.rules_dsl)
-    // is not yet ported — affected outputs stay unresolved (ANY) instead of
-    // gaining a concrete type. Outputs without rules-driven types behave
-    // identically to Python.
+    _resolveRulesCollectionTypes(outputs, step.tool_state ?? {});
   }
 
   if (step.when && "when" in connections) {
@@ -417,6 +413,25 @@ function _collectOutputs(rawOutputs: readonly unknown[]): Record<string, Resolve
     }
   }
   return result;
+}
+
+/** Set `collectionType` on `collection_type_from_rules` outputs from the step's rules mapping. */
+function _resolveRulesCollectionTypes(
+  outputs: Record<string, ResolvedOutput>,
+  toolState: Record<string, unknown>,
+): void {
+  for (const output of Object.values(outputs)) {
+    const rulesParam = output.collectionTypeFromRules;
+    if (!rulesParam || output.collectionType) continue;
+    const rules = toolState[rulesParam];
+    if (!rules || typeof rules !== "object" || !("mapping" in rules)) continue;
+    try {
+      const collectionType = new RuleSet(rules as RuleSetDict).collectionType;
+      if (collectionType) output.collectionType = collectionType;
+    } catch {
+      // Malformed rules leave the output untyped, as in Python.
+    }
+  }
 }
 
 function _topologicalSort(steps: Record<string, ResolvedStep>): string[] {
