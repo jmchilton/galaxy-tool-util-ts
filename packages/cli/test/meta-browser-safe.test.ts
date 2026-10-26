@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const metaRoot = resolve(__dirname, "../src/meta");
 const specDataRoot = resolve(__dirname, "../spec");
+const packageJson = resolve(__dirname, "../package.json");
 
 /** Packages browser-safe enough that meta may import them. Empty by design. */
 const ALLOWED_EXTERNAL: ReadonlySet<string> = new Set([]);
@@ -75,7 +76,7 @@ describe("@galaxy-tool-util/cli/meta browser-safety boundary", () => {
         const resolved = resolve(dirname(file), spec);
         const inMeta = resolved === metaRoot || resolved.startsWith(metaRoot + "/");
         const inSpecData = resolved === specDataRoot || resolved.startsWith(specDataRoot + "/");
-        if (!inMeta && !inSpecData) {
+        if (!inMeta && !inSpecData && resolved !== packageJson) {
           violations.push(
             `${rel}: relative import "${spec}" escapes src/meta/ and spec/ (resolves to ${resolved})`,
           );

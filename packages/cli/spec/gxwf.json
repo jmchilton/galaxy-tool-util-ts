@@ -1,7 +1,6 @@
 {
   "name": "gxwf",
   "description": "Galaxy workflow operations — validate, clean, lint, convert (single-file and tree)",
-  "version": "1.0.0",
   "optionGroups": {
     "strict": [
       {

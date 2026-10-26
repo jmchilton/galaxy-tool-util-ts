@@ -1,7 +1,6 @@
 {
   "name": "galaxy-tool-cache",
   "description": "Cache and inspect Galaxy tool metadata",
-  "version": "1.0.0",
   "commands": [
     {
       "name": "add",

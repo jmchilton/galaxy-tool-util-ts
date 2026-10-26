@@ -16,11 +16,14 @@ import { buildProgramFromSpec } from "../src/spec/build-program.js";
 import { extractProgramFromSpec } from "../src/meta/extract-spec.js";
 import type { ProgramSpec } from "../src/meta/spec-types.js";
 import { readFileSync } from "node:fs";
+import pkg from "../package.json" with { type: "json" };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const specDir = join(__dirname, "..", "spec");
-const loadSpec = (name: string): ProgramSpec =>
-  JSON.parse(readFileSync(join(specDir, name), "utf8")) as ProgramSpec;
+const loadSpec = (name: string): ProgramSpec => ({
+  ...JSON.parse(readFileSync(join(specDir, name), "utf8")),
+  version: pkg.version,
+});
 
 const noopHandler = (): void => {
   /* parity test only walks structure */
