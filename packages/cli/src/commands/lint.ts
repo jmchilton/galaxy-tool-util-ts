@@ -242,10 +242,11 @@ export async function lintWorkflowReport(
           const expansionOpts: ExpansionOptions = {
             resolver: createDefaultResolver({ workflowDirectory }),
           };
-          const validateSteps = format === "native" ? validateNativeSteps : validateFormat2Steps;
-          stateValidation = await validateSteps(data, cache, "", expansionOpts, undefined, {
-            completeConditionals: strict.strictState,
-          });
+          if (format === "native") {
+            stateValidation = await validateNativeSteps(data, cache, "", expansionOpts);
+          } else {
+            stateValidation = await validateFormat2Steps(data, cache, "", expansionOpts);
+          }
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);

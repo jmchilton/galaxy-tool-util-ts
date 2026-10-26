@@ -197,9 +197,7 @@ async function runConcretePass(
     const expansionOpts: ExpansionOptions = {
       resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
     };
-    const stepResults = await validateFormat2Steps(trimmed, cache, "", expansionOpts, service, {
-      completeConditionals: strict.strictState,
-    });
+    const stepResults = await validateFormat2Steps(trimmed, cache, "", expansionOpts, service);
     report.tool_state = {
       results: stepResults,
       summary: summarize(stepResults),

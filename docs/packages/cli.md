@@ -138,7 +138,7 @@ gxwf validate my-workflow.ga --mode json-schema
 | `--strict` | Shorthand for `--strict-structure --strict-encoding --strict-state` |
 | `--strict-structure` | Reject unknown keys at envelope/step level |
 | `--strict-encoding` | Reject JSON-string `tool_state`; reject `tool_state` field in format2 steps |
-| `--strict-state` | Require every tool step to validate (no skips) and every reachable conditional to set its test parameter |
+| `--strict-state` | Require every tool step to validate; no skips allowed |
 | `--json` | Output structured JSON report |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 
@@ -183,10 +183,12 @@ gxwf clean my-workflow.ga --diff
 
 ### `fill-defaults <file>`
 
-Fill section, conditional and leaf defaults from each tool step's definition, so Galaxy's import (which does not fill children of a present section or conditional) accepts minimal state. Connected inputs stay absent; data inputs are never filled. Steps whose tool can't be resolved are left as-is with a warning.
+Write an explicit expansion of the static defaults available in each tool step's definition. Use this optional transformation to inspect defaults or export expanded state. Sparse state with defaulted conditional selectors already passes `validate --strict-state`.
+
+Tool definitions come from the local cache or configured tool sources. Connected inputs that are absent stay absent, and existing connection markers are preserved. Runtime-dependent defaults and required data inputs still need to be supplied by Galaxy or workflow connections. This command does not validate the result or guarantee importability into every Galaxy version.
 
 ```bash
-gxwf fill-defaults draft.gxwf.yml --output filled.gxwf.yml
+gxwf fill-defaults workflow.gxwf.yml --output filled.gxwf.yml
 gxwf validate filled.gxwf.yml --strict-state
 ```
 
@@ -197,6 +199,10 @@ gxwf validate filled.gxwf.yml --strict-state
 | `--cache-dir <dir>` | Tool cache directory |
 | `--offline` | Read only the local cache |
 | `--galaxy-url <url>` | Extra Galaxy tool source after the ToolShed |
+
+The command reports how many steps changed and writes the expanded workflow to `--output`, or stdout when omitted. Native workflows, format2 workflows, `$graph` entries, inline subworkflows, and embedded tool definitions are supported. Validate the written file separately as shown above.
+
+Unresolved tools, JSON-string state, and external subworkflows produce warnings and are left unchanged. Resolve missing tools, use `gxwf clean` for JSON-string state, or expand external subworkflows before retrying. Connection paths use Galaxy's `|` separator. `/`-separated connection paths are not supported.
 
 ### `lint <file>`
 
@@ -232,7 +238,7 @@ Exit codes: 0 = clean, 1 = warnings only, 2 = errors.
 | `--strict` | Shorthand for `--strict-structure --strict-encoding --strict-state` |
 | `--strict-structure` | Reject unknown keys at envelope/step level |
 | `--strict-encoding` | Reject JSON-string `tool_state`; reject `tool_state` field in format2 steps |
-| `--strict-state` | Require every tool step to validate (no skips) and every reachable conditional to set its test parameter |
+| `--strict-state` | Require every tool step to validate; no skips allowed |
 | `--json` | Output structured JSON result |
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 

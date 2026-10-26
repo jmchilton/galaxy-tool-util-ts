@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  expandToolStateDefaults,
-  findMissingConditionalTests,
-} from "../src/workflow/fill-defaults.js";
+import { expandToolStateDefaults } from "../src/workflow/fill-defaults.js";
 import type {
   BooleanParameterModel,
   ConditionalParameterModel,
@@ -600,7 +597,7 @@ describe("expandToolStateDefaults — invariants", () => {
   });
 });
 
-describe("findMissingConditionalTests", () => {
+describe("expandToolStateDefaults — sparse state and connections", () => {
   const dedup = () =>
     conditionalParam(
       "handling_options",
@@ -616,30 +613,40 @@ describe("findMissingConditionalTests", () => {
     repeatParam("reps", [dedup()]),
   ];
 
-  it("flags conditional under absent section", () => {
-    expect(findMissingConditionalTests(tool, {})).toEqual([
-      "duplicated_reads|handling_options: missing conditional test parameter 'eval_dups'",
-    ]);
+  it("expands a defaulted conditional under an absent section without mutating the input", () => {
+    const state = {};
+    expect(expandToolStateDefaults(tool, state)).toEqual({
+      duplicated_reads: { handling_options: { eval_dups: "", n: 1 } },
+      opts: { depth: 3 },
+      reps: [],
+    });
+    expect(state).toEqual({});
   });
 
-  it("flags present conditional missing its test parameter", () => {
+  it("fills an omitted selector while preserving explicit children", () => {
     const state = { duplicated_reads: { handling_options: { n: 2 } } };
-    expect(findMissingConditionalTests(tool, state)).toHaveLength(1);
+    expect(expandToolStateDefaults(tool, state).duplicated_reads).toEqual({
+      handling_options: { eval_dups: "", n: 2 },
+    });
+    expect(state).toEqual({ duplicated_reads: { handling_options: { n: 2 } } });
   });
 
-  it("walks existing repeat instances only", () => {
+  it("fills omitted selectors inside existing repeat instances", () => {
     const state = {
       duplicated_reads: { handling_options: { eval_dups: "" } },
       reps: [{ handling_options: { eval_dups: "" } }, {}],
     };
-    expect(findMissingConditionalTests(tool, state)).toEqual([
-      "reps_1|handling_options: missing conditional test parameter 'eval_dups'",
+    expect(expandToolStateDefaults(tool, state).reps).toEqual([
+      { handling_options: { eval_dups: "", n: 1 } },
+      { handling_options: { eval_dups: "", n: 1 } },
     ]);
   });
 
-  it("ignores missing leaves", () => {
+  it("preserves an explicit empty-string selector while filling its children", () => {
     const state = { duplicated_reads: { handling_options: { eval_dups: "" } } };
-    expect(findMissingConditionalTests(tool, state)).toEqual([]);
+    expect(expandToolStateDefaults(tool, state).duplicated_reads).toEqual({
+      handling_options: { eval_dups: "", n: 1 },
+    });
   });
 
   it("leaves connected leaves absent", () => {
@@ -659,7 +666,9 @@ describe("findMissingConditionalTests", () => {
     expect(result.reps).toEqual([{ y: 7 }]);
   });
 
-  it("is satisfied by expandToolStateDefaults output", () => {
-    expect(findMissingConditionalTests(tool, expandToolStateDefaults(tool, {}))).toEqual([]);
+  it("is idempotent with connected leaves and repeat instances", () => {
+    const options = { connectedPaths: new Set(["reps_1|handling_options|n"]) };
+    const once = expandToolStateDefaults(tool, {}, options);
+    expect(expandToolStateDefaults(tool, once, options)).toEqual(once);
   });
 });

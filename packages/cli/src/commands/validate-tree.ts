@@ -20,7 +20,6 @@ import { resolveFormat } from "./workflow-io.js";
 import {
   validateNativeSteps,
   validateFormat2Steps,
-  type StepStateChecks,
   type ValidationMode,
 } from "./validate-workflow.js";
 import { collectTree, type TreeResult } from "./tree.js";
@@ -55,32 +54,17 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
   let validateFormat2StepsJsonSchema: typeof validateFormat2Steps | undefined;
   if (mode === "json-schema") {
     const mod = await import("./validate-workflow-json-schema.js");
-    validateNativeStepsJsonSchema = (data, cache, prefix, expansionOpts, _service, checks) =>
+    validateNativeStepsJsonSchema = (data, cache, prefix, expansionOpts) =>
       cache
-        ? mod.validateNativeStepsJsonSchema(
-            data,
-            cache,
-            opts.toolSchemaDir,
-            prefix,
-            expansionOpts,
-            checks,
-          )
+        ? mod.validateNativeStepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts)
         : Promise.resolve([]);
-    validateFormat2StepsJsonSchema = (data, cache, prefix, expansionOpts, _service, checks) =>
+    validateFormat2StepsJsonSchema = (data, cache, prefix, expansionOpts) =>
       cache
-        ? mod.validateFormat2StepsJsonSchema(
-            data,
-            cache,
-            opts.toolSchemaDir,
-            prefix,
-            expansionOpts,
-            checks,
-          )
+        ? mod.validateFormat2StepsJsonSchema(data, cache, opts.toolSchemaDir, prefix, expansionOpts)
         : Promise.resolve([]);
   }
 
   const strict = resolveStrictOptions(opts);
-  const checks: StepStateChecks = { completeConditionals: strict.strictState };
 
   const treeResult = await collectTree<WorkflowValidationResult>(dir, async (info, data) => {
     const format = resolveFormat(data, opts.format);
@@ -109,8 +93,8 @@ export async function runValidateTree(dir: string, opts: ValidateTreeOptions): P
       const validateF2 = validateFormat2StepsJsonSchema ?? validateFormat2Steps;
       stepResults =
         format === "native"
-          ? await validateNative(data, cache, "", expansionOpts, undefined, checks)
-          : await validateF2(data, cache, "", expansionOpts, undefined, checks);
+          ? await validateNative(data, cache, "", expansionOpts)
+          : await validateF2(data, cache, "", expansionOpts);
     } else {
       // Tool-state validation disabled (or no cache): still enumerate tool
       // steps so the step count is reported, marking each as skipped. No

@@ -44,7 +44,7 @@ import type {
   WorkflowFormat,
   StepValidationResult,
 } from "./validate-workflow.js";
-import { completenessResult, isEmptyState, type StepStateChecks } from "./validate-workflow.js";
+import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
 import { embeddedToolDefinition, isEmbeddedTool, resolveEmbeddedTool } from "./embedded-tool.js";
 import { resolveStrictOptions } from "./strict-options.js";
@@ -282,7 +282,6 @@ export async function runValidateWorkflowJsonSchema(
 
   const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
   await cache.index.load();
-  const checks: StepStateChecks = { completeConditionals: resolveStrictOptions(opts).strictState };
 
   let results: StepValidationResult[] = [];
   if (structOk) {
@@ -293,7 +292,6 @@ export async function runValidateWorkflowJsonSchema(
         opts.toolSchemaDir,
         "",
         expansionOpts,
-        checks,
       );
     } else {
       results = await validateFormat2StepsJsonSchema(
@@ -302,7 +300,6 @@ export async function runValidateWorkflowJsonSchema(
         opts.toolSchemaDir,
         "",
         expansionOpts,
-        checks,
       );
     }
   }
@@ -363,10 +360,9 @@ export async function validateNativeStepsJsonSchema(
   toolSchemaDir?: string,
   prefix = "",
   expansionOpts?: ExpansionOptions,
-  checks: StepStateChecks = {},
 ): Promise<StepValidationResult[]> {
   const expanded = await expandedNative(data, expansionOpts);
-  return _validateNativeWorkflowJsonSchema(expanded, cache, toolSchemaDir, prefix, checks);
+  return _validateNativeWorkflowJsonSchema(expanded, cache, toolSchemaDir, prefix);
 }
 
 async function _validateNativeWorkflowJsonSchema(
@@ -374,7 +370,6 @@ async function _validateNativeWorkflowJsonSchema(
   cache: ToolCache,
   toolSchemaDir: string | undefined,
   prefix: string,
-  checks: StepStateChecks = {},
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
@@ -387,7 +382,6 @@ async function _validateNativeWorkflowJsonSchema(
         cache,
         toolSchemaDir,
         `${stepLabel}.`,
-        checks,
       );
       results.push(...subResults);
       continue;
@@ -395,7 +389,7 @@ async function _validateNativeWorkflowJsonSchema(
 
     const embedded = embeddedToolDefinition(step);
     if (embedded) {
-      results.push(_validateEmbeddedNativeStepJsonSchema(step, stepLabel, embedded, checks));
+      results.push(_validateEmbeddedNativeStepJsonSchema(step, stepLabel, embedded));
       continue;
     }
 
@@ -410,7 +404,6 @@ async function _validateNativeWorkflowJsonSchema(
       toolVersion,
       cache,
       toolSchemaDir,
-      checks,
     );
     results.push(result);
   }
@@ -425,7 +418,6 @@ async function _validateNativeStepJsonSchema(
   toolVersion: string | null,
   cache: ToolCache,
   toolSchemaDir?: string,
-  checks: StepStateChecks = {},
 ): Promise<StepValidationResult> {
   const resolved = await resolveTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
@@ -458,7 +450,6 @@ async function _validateNativeStepJsonSchema(
     toolVersion,
     cachedValidators(toolId, toolVersion, bundle, toolSchemaDir),
     step.when,
-    checks,
   );
 }
 
@@ -466,7 +457,6 @@ function _validateEmbeddedNativeStepJsonSchema(
   step: NormalizedNativeStep,
   stepLabel: string,
   repr: Record<string, unknown>,
-  checks: StepStateChecks = {},
 ): StepValidationResult {
   const tool = resolveEmbeddedTool(repr, stepLabel);
   if (!isEmbeddedTool(tool)) return tool;
@@ -479,7 +469,6 @@ function _validateEmbeddedNativeStepJsonSchema(
     tool.toolVersion,
     embeddedValidators(tool.bundle),
     step.when,
-    checks,
   );
 }
 
@@ -524,7 +513,6 @@ function _validateNativeStateJsonSchema(
   toolVersion: string | null,
   validators: ValidatorLookup,
   whenExpression?: unknown,
-  checks: StepStateChecks = {},
 ): StepValidationResult {
   const replacementScan = scanForReplacements(bundle.parameters, toolState);
   if (replacementScan === "yes") {
@@ -574,7 +562,7 @@ function _validateNativeStateJsonSchema(
       errors: formatAjvErrors(validate),
     };
   }
-  return completenessResult(bundle, state, checks, stepLabel, toolId, toolVersion);
+  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
 }
 
 // --- Format2 validation (json-schema) ---
@@ -585,10 +573,9 @@ export async function validateFormat2StepsJsonSchema(
   toolSchemaDir?: string,
   prefix = "",
   expansionOpts?: ExpansionOptions,
-  checks: StepStateChecks = {},
 ): Promise<StepValidationResult[]> {
   const expanded = await expandedFormat2(data, expansionOpts);
-  return _validateFormat2WorkflowJsonSchema(expanded, cache, toolSchemaDir, prefix, checks);
+  return _validateFormat2WorkflowJsonSchema(expanded, cache, toolSchemaDir, prefix);
 }
 
 async function _validateFormat2WorkflowJsonSchema(
@@ -596,7 +583,6 @@ async function _validateFormat2WorkflowJsonSchema(
   cache: ToolCache,
   toolSchemaDir: string | undefined,
   prefix: string,
-  checks: StepStateChecks = {},
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
@@ -605,7 +591,7 @@ async function _validateFormat2WorkflowJsonSchema(
     const stepLabel = prefix ? `${prefix}${i}` : String(i);
 
     if (isGalaxyUserToolRun(step.run)) {
-      results.push(_validateEmbeddedFormat2StepJsonSchema(step, stepLabel, step.run, checks));
+      results.push(_validateEmbeddedFormat2StepJsonSchema(step, stepLabel, step.run));
       continue;
     }
 
@@ -615,7 +601,6 @@ async function _validateFormat2WorkflowJsonSchema(
         cache,
         toolSchemaDir,
         `${stepLabel}.`,
-        checks,
       );
       results.push(...subResults);
       continue;
@@ -632,7 +617,6 @@ async function _validateFormat2WorkflowJsonSchema(
       toolVersion,
       cache,
       toolSchemaDir,
-      checks,
     );
     results.push(result);
   }
@@ -647,7 +631,6 @@ async function _validateFormat2StepJsonSchema(
   toolVersion: string | null,
   cache: ToolCache,
   toolSchemaDir?: string,
-  checks: StepStateChecks = {},
 ): Promise<StepValidationResult> {
   const resolved = await resolveTool(cache, toolId, toolVersion);
   if (isResolveError(resolved)) {
@@ -672,7 +655,6 @@ async function _validateFormat2StepJsonSchema(
     toolId,
     toolVersion,
     cachedValidators(toolId, toolVersion, bundle, toolSchemaDir),
-    checks,
   );
 }
 
@@ -680,7 +662,6 @@ function _validateEmbeddedFormat2StepJsonSchema(
   step: NormalizedFormat2Step,
   stepLabel: string,
   repr: Record<string, unknown>,
-  checks: StepStateChecks = {},
 ): StepValidationResult {
   const tool = resolveEmbeddedTool(repr, stepLabel);
   if (!isEmbeddedTool(tool)) return tool;
@@ -691,7 +672,6 @@ function _validateEmbeddedFormat2StepJsonSchema(
     tool.toolId,
     tool.toolVersion,
     embeddedValidators(tool.bundle),
-    checks,
   );
 }
 
@@ -702,7 +682,6 @@ function _validateFormat2StateJsonSchema(
   toolId: string | null,
   toolVersion: string | null,
   validators: ValidatorLookup,
-  checks: StepStateChecks = {},
 ): StepValidationResult {
   // A verbatim native `tool_state` block validates through the native path
   // (same encoding regardless of workflow format); a schema-aware `state` block
@@ -717,7 +696,6 @@ function _validateFormat2StateJsonSchema(
       toolVersion,
       validators,
       step.when,
-      checks,
     );
   }
 
@@ -795,5 +773,5 @@ function _validateFormat2StateJsonSchema(
     };
   }
 
-  return completenessResult(bundle, linkedState, checks, stepLabel, toolId, toolVersion);
+  return { step: stepLabel, tool_id: toolId, version: toolVersion, status: "ok", errors: [] };
 }

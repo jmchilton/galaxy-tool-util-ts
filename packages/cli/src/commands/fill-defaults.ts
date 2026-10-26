@@ -4,7 +4,6 @@
 import type { ToolCache, ToolInfoService } from "@galaxy-tool-util/core";
 import {
   expandToolStateDefaults,
-  findMissingConditionalTests,
   nativeConnectionsFromFormat2In,
   normalizeStepIn,
   serializeWorkflow,
@@ -109,15 +108,12 @@ async function fillStep(
     ctx.warnings.push(`step ${label}: ${field} is a JSON string; run \`gxwf clean\` first`);
     return;
   }
-  const tool = await resolveInputs(step, label, ctx);
-  if (!tool) return;
+  const inputs = await resolveInputs(step, label, ctx);
+  if (!inputs) return;
   const state = (step[field] ?? {}) as Record<string, unknown>;
-  const filled = expandToolStateDefaults(tool.inputs, state, {
+  const filled = expandToolStateDefaults(inputs, state, {
     connectedPaths: new Set(connected),
   });
-  for (const m of findMissingConditionalTests(tool.inputs, filled)) {
-    ctx.warnings.push(`step ${label} (${tool.toolId}): ${m}`);
-  }
   if (JSON.stringify(filled) !== JSON.stringify(state)) ctx.filled++;
   step[field] = filled;
 }
@@ -127,7 +123,7 @@ async function resolveInputs(
   step: Record<string, unknown>,
   label: string,
   ctx: FillContext,
-): Promise<{ toolId: string | null; inputs: ToolParameterModel[] } | null> {
+): Promise<ToolParameterModel[] | null> {
   const embedded = embeddedToolDefinition(step);
   if (embedded) {
     const tool = resolveEmbeddedTool(embedded, label);
@@ -135,7 +131,7 @@ async function resolveInputs(
       ctx.warnings.push(`step ${label}: ${tool.errors[0] ?? tool.status}; left as-is`);
       return null;
     }
-    return { toolId: tool.toolId, inputs: tool.bundle.parameters };
+    return tool.bundle.parameters;
   }
   const toolId = step.tool_id as string;
   const resolved = await resolveTool(
@@ -148,5 +144,5 @@ async function resolveInputs(
     ctx.warnings.push(`step ${label} (${toolId}): ${describeResolveError(resolved)}; left as-is`);
     return null;
   }
-  return { toolId, inputs: resolved.tool.inputs as ToolParameterModel[] };
+  return resolved.tool.inputs as ToolParameterModel[];
 }

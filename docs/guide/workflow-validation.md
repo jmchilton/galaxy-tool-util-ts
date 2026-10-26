@@ -40,17 +40,21 @@ gxwf validate my-workflow.ga --strict
 # Or enable individually
 gxwf validate my-workflow.ga --strict-structure   # reject unknown keys
 gxwf validate my-workflow.ga --strict-encoding    # reject legacy JSON-string tool_state
-gxwf validate my-workflow.ga --strict-state       # require every tool step to validate (no skips), conditionals complete
+gxwf validate my-workflow.ga --strict-state       # require every tool step to validate (no skips)
 ```
 
 | Flag | What it checks |
 |---|---|
 | `--strict-structure` | Unknown keys at the workflow envelope and step level (via `onExcessProperty: "error"`) |
 | `--strict-encoding` | JSON-string `tool_state` in native workflows; `tool_state` field used instead of `state` in format2 |
-| `--strict-state` | Every tool step must produce a valid result — steps with missing tools or skipped for any reason are treated as failures. Every reachable conditional (including inside absent sections) must set its test parameter; Galaxy's import raises `KeyError` otherwise. `gxwf fill-defaults` fills these. |
+| `--strict-state` | Every tool step must produce a valid result — steps with missing tools or skipped for any reason are treated as failures |
 | `--strict` | Shorthand for all three flags above |
 
 These flags apply to `validate`, `lint`, `convert`, `roundtrip`, and their `-tree` batch variants.
+
+Strict state validation accepts omitted conditional selectors when the tool defines a default case. The selected case still determines which child parameters are valid. Explicit invalid selectors remain errors. Validation does not write defaults into your workflow.
+
+To inspect or export explicit defaults, run `gxwf fill-defaults workflow.gxwf.yml --output expanded.gxwf.yml`. This is an optional transformation, not a prerequisite for strict validation. Schema validation does not guarantee importability into every Galaxy version. Older servers can reject sparse state because of importer bugs.
 
 ### Validation Backends
 

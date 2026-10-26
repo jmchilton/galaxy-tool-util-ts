@@ -20,12 +20,7 @@
  * UI action.
  */
 
-import type {
-  ConditionalParameterModel,
-  RepeatParameterModel,
-  SectionParameterModel,
-  ToolParameterModel,
-} from "../schema/bundle-types.js";
+import type { ToolParameterModel } from "../schema/bundle-types.js";
 import {
   NO_DEFAULT,
   coerceTextNullIfNeeded,
@@ -77,37 +72,4 @@ export function expandToolStateDefaults(
     },
     { preserveUnknownKeys: true, repeatMinPad: true },
   );
-}
-
-/**
- * Report reachable conditionals (absent containers included) whose test parameter is absent.
- * Galaxy's import raises `KeyError` on these; absent leaves are tolerated.
- */
-export function findMissingConditionalTests(
-  toolInputs: ToolParameterModel[],
-  state: Record<string, unknown>,
-): string[] {
-  const testParams = new Set<ToolParameterModel>();
-  collectTestParams(toolInputs, testParams);
-  const missing: string[] = [];
-  walkNativeState({}, toolInputs, state, (param, value, statePath) => {
-    if (value === undefined && testParams.has(param)) {
-      const parent = statePath.slice(0, statePath.length - param.name.length - 1);
-      missing.push(`${parent}: missing conditional test parameter '${param.name}'`);
-    }
-    return SKIP_VALUE;
-  });
-  return missing;
-}
-
-function collectTestParams(inputs: ToolParameterModel[], out: Set<ToolParameterModel>): void {
-  for (const p of inputs) {
-    if (p.parameter_type === "gx_conditional") {
-      const cond = p as ConditionalParameterModel;
-      out.add(cond.test_parameter);
-      for (const when of cond.whens) collectTestParams(when.parameters, out);
-    } else if (p.parameter_type === "gx_repeat" || p.parameter_type === "gx_section") {
-      collectTestParams((p as RepeatParameterModel | SectionParameterModel).parameters, out);
-    }
-  }
 }

@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as YAML from "yaml";
 
 import { runFillDefaults } from "../src/commands/fill-defaults.js";
 import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
+import { runValidateTree } from "../src/commands/validate-tree.js";
 import { runLint } from "../src/commands/lint.js";
 import { runDraftValidate } from "../src/commands/draft-validate.js";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
@@ -27,7 +28,7 @@ const condWorkflow = (state: Record<string, unknown>) => ({
 const allOutput = (ctx: CliTestContext) =>
   [...ctx.logSpy.mock.calls, ...ctx.errSpy.mock.calls].map((c) => String(c[0])).join("\n");
 
-describe("conditional completeness", () => {
+describe("sparse conditional state", () => {
   let ctx: CliTestContext;
 
   beforeEach(async () => {
@@ -44,33 +45,59 @@ describe("conditional completeness", () => {
     return wfPath;
   }
 
-  it("validate --strict-state rejects a conditional missing its test parameter", async () => {
-    const wfPath = await writeWf({ param_type: {} });
-    await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, offline: true, strictState: true });
-    expect(process.exitCode).toBe(1);
-    expect(allOutput(ctx)).toContain(
-      "param_type: missing conditional test parameter 'select_param_type'",
-    );
-  });
+  it.each(["effect", "json-schema"])(
+    "validate --strict-state accepts a defaulted omitted selector in %s mode",
+    async (mode) => {
+      const wfPath = await writeWf({ param_type: {} });
+      const original = await readFile(wfPath, "utf-8");
+      await runValidateWorkflow(wfPath, {
+        cacheDir: ctx.tmpDir,
+        offline: true,
+        strictState: true,
+        mode,
+      });
+      expect(process.exitCode).toBe(0);
+      expect(allOutput(ctx)).toContain("tool_state: OK");
+      expect(await readFile(wfPath, "utf-8")).toBe(original);
+    },
+  );
 
-  it("validate --mode json-schema --strict-state rejects a missing test parameter", async () => {
-    const wfPath = await writeWf({ param_type: {} });
-    await runValidateWorkflow(wfPath, {
-      cacheDir: ctx.tmpDir,
-      mode: "json-schema",
-      strictState: true,
-    });
-    expect(process.exitCode).toBe(1);
-    expect(allOutput(ctx)).toContain("missing conditional test parameter 'select_param_type'");
-  });
+  it.each(["effect", "json-schema"])(
+    "validate --strict-state still rejects an invalid explicit selector in %s mode",
+    async (mode) => {
+      const wfPath = await writeWf({ param_type: { select_param_type: "invalid" } });
+      await runValidateWorkflow(wfPath, {
+        cacheDir: ctx.tmpDir,
+        offline: true,
+        strictState: true,
+        mode,
+      });
+      expect(process.exitCode).toBe(1);
+      expect(allOutput(ctx)).toContain("tool_state errors");
+    },
+  );
 
-  it("lint --strict-state rejects a missing test parameter", async () => {
+  it.each(["effect", "json-schema"])(
+    "validate-tree --strict-state accepts sparse state in %s mode",
+    async (mode) => {
+      const dir = join(ctx.tmpDir, "workflows");
+      await mkdir(dir);
+      await writeFile(join(dir, "wf.gxwf.yml"), YAML.stringify(condWorkflow({ param_type: {} })));
+      await runValidateTree(dir, { cacheDir: ctx.tmpDir, strictState: true, mode, json: true });
+      expect(process.exitCode).toBe(0);
+      const report = JSON.parse(ctx.logSpy.mock.calls.map((c) => String(c[0])).join(""));
+      expect(report.workflows).toHaveLength(1);
+    },
+  );
+
+  it("lint --strict-state accepts a defaulted omitted selector", async () => {
     const wfPath = await writeWf({ param_type: {} });
     await runLint(wfPath, { cacheDir: ctx.tmpDir, offline: true, strictState: true });
-    expect(process.exitCode).toBe(2);
+    expect(process.exitCode).toBe(1); // Metadata warnings, no state errors.
+    expect(allOutput(ctx)).toContain("tool_state: OK");
   });
 
-  it("draft-validate --strict-state rejects a missing test parameter", async () => {
+  it("draft-validate --concrete --strict-state accepts a defaulted omitted selector", async () => {
     const wfPath = join(ctx.tmpDir, "wf.gxwf.yml");
     const draft = { ...condWorkflow({ param_type: {} }), class: "GalaxyWorkflowDraft" };
     await writeFile(wfPath, YAML.stringify(draft));
@@ -80,8 +107,7 @@ describe("conditional completeness", () => {
       concrete: true,
       strictState: true,
     });
-    expect(process.exitCode).not.toBe(0);
-    expect(allOutput(ctx)).toContain("missing conditional test parameter 'select_param_type'");
+    expect(process.exitCode).toBe(0);
   });
 
   it("validate without --strict-state still accepts partial state", async () => {
@@ -121,7 +147,7 @@ describe("fill-defaults edge cases", () => {
     return p;
   };
 
-  it("connected test parameter is not flagged and stays absent", async () => {
+  it("connected test parameter stays absent without completeness warnings", async () => {
     const wf = condWorkflow({});
     wf.steps.compose.in = {
       "param_type|select_param_type": "text",
@@ -137,7 +163,7 @@ describe("fill-defaults edge cases", () => {
     expect(filled.steps.compose.state.param_type?.select_param_type).toBeUndefined();
   });
 
-  it("flags a missing test parameter inside a subworkflow", async () => {
+  it("accepts a defaulted omitted selector inside a subworkflow", async () => {
     const wf = {
       class: "GalaxyWorkflow",
       inputs: {},
@@ -146,10 +172,8 @@ describe("fill-defaults edge cases", () => {
     };
     const wfPath = await write("sub.gxwf.yml", wf);
     await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, offline: true, strictState: true });
-    expect(process.exitCode).toBe(1);
-    expect(allOutput(ctx)).toContain(
-      "param_type: missing conditional test parameter 'select_param_type'",
-    );
+    expect(process.exitCode).toBe(0);
+    expect(allOutput(ctx)).toContain("tool_state: OK");
   });
 
   it("fills native tool_state and keeps input_connections", async () => {
@@ -169,6 +193,8 @@ describe("fill-defaults edge cases", () => {
       },
     };
     const wfPath = await write("wf.ga", wf);
+    await runValidateWorkflow(wfPath, { cacheDir: ctx.tmpDir, offline: true, strictState: true });
+    expect(process.exitCode).toBe(0);
     const outPath = join(ctx.tmpDir, "out.ga");
     await runFillDefaults(wfPath, { cacheDir: ctx.tmpDir, offline: true, output: outPath });
     const filled = JSON.parse(await readFile(outPath, "utf-8"));

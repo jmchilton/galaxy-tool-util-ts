@@ -91,7 +91,7 @@ export {
   nativeConnectionsFromFormat2In,
 } from "./state-merge.js";
 
-export { expandToolStateDefaults, findMissingConditionalTests } from "./fill-defaults.js";
+export { expandToolStateDefaults } from "./fill-defaults.js";
 export type { ExpandDefaultsOptions } from "./fill-defaults.js";
 export { buildMinimalToolState } from "./minimal-tool-state.js";
 export {
