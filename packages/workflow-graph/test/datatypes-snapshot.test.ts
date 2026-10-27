@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { producesAcceptableDatatype } from "../src/connection-acceptable.js";
@@ -25,6 +28,15 @@ describe("DATATYPES_SNAPSHOT", () => {
   it("is not exported from the package index", () => {
     expect(Object.keys(index)).not.toContain("DATATYPES_SNAPSHOT");
     expect(Object.keys(index)).not.toContain("snapshotDatatypesMapper");
+  });
+
+  it("is imported by no other src module", () => {
+    const srcDir = fileURLToPath(new URL("../src/", import.meta.url));
+    const snapshotModules = ["datatypes-snapshot.ts", "datatypes-snapshot.generated.ts"];
+    const importers = readdirSync(srcDir)
+      .filter((f) => f.endsWith(".ts") && !snapshotModules.includes(f))
+      .filter((f) => /["']\.\/datatypes-snapshot/.test(readFileSync(join(srcDir, f), "utf-8")));
+    expect(importers).toEqual([]);
   });
 });
 
