@@ -454,6 +454,8 @@ export {
   type WorkflowDataType,
   /** Workflow shape consumed by `checkTestsAgainstWorkflow`. */
   type WorkflowShape,
+  /** Optional datatype mapper enabling `filetype` vs `format` checks. */
+  type CrossCheckOptions,
   /** Extract inputs from a parsed workflow dict (auto-detects format). */
   extractWorkflowInputs,
   /** Extract outputs from a parsed workflow dict (auto-detects format). */

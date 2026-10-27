@@ -29,6 +29,10 @@ export interface WorkflowInput {
   type: WorkflowDataType;
   default?: unknown;
   optional?: boolean;
+  /** Datatype extensions a data input accepts. */
+  format?: string[];
+  /** Declared `collection_type` of a collection input. */
+  collectionType?: string;
 }
 
 export interface WorkflowOutput {
@@ -36,4 +40,9 @@ export interface WorkflowOutput {
   doc?: string;
   uuid?: string;
   type?: WorkflowDataType;
+  /**
+   * Resolved shape: a collection type, `null` for a dataset, absent when
+   * unknown. Extractors leave it absent; callers with tool info fill it.
+   */
+  collectionType?: string | null;
 }

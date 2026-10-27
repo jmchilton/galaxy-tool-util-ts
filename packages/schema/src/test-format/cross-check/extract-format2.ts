@@ -1,14 +1,5 @@
+import { asRecord, asString, asStringList } from "./coerce.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
-
-function asRecord(v: unknown): Record<string, unknown> | undefined {
-  return v && typeof v === "object" && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : undefined;
-}
-
-function asString(v: unknown): string | undefined {
-  return typeof v === "string" ? v : undefined;
-}
 
 function parseInputEntry(name: string, raw: unknown): WorkflowInput {
   // Shorthand: `name: File` or `name: int` — a bare string is the type.
@@ -23,10 +14,14 @@ function parseInputEntry(name: string, raw: unknown): WorkflowInput {
   const doc = asString(entry.doc);
   const optional = typeof entry.optional === "boolean" ? entry.optional : undefined;
   const hasDefault = Object.prototype.hasOwnProperty.call(entry, "default");
+  const format = asStringList(entry.format);
+  const collectionType = asString(entry.collection_type);
   const out: WorkflowInput = { name, type };
   if (doc !== undefined) out.doc = doc;
   if (optional !== undefined) out.optional = optional;
   if (hasDefault) out.default = entry.default;
+  if (format) out.format = format;
+  if (collectionType) out.collectionType = collectionType;
   return out;
 }
 

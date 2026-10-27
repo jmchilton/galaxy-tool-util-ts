@@ -12,5 +12,6 @@ export {
   isCompatibleType,
   jsTypeOf,
   checkTestsAgainstWorkflow,
+  type CrossCheckOptions,
   type WorkflowShape,
 } from "./cross-check/index.js";

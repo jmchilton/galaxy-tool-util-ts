@@ -49,6 +49,7 @@ Validate a workflow-test file (*-tests.yml, *.gxwf-tests.yml) against the Galaxy
 |---|---|
 | `--json` | Output structured JSON report |
 | `--workflow <path>` | Cross-check job inputs + output assertions against a workflow (.ga / .gxwf.yml) |
+| `--cache-dir <dir>` | Tool cache read (never fetched) to resolve tool-step output shapes for the cross-check |
 
 ### `draft-validate <file>`
 
@@ -340,6 +341,7 @@ Batch validate workflow-test files (*-tests.yml / *.gxwf-tests.yml) under a dire
 |---|---|
 | `--json` | Output structured JSON report |
 | `--auto-workflow` | Pair each tests file with a sibling workflow by filename convention (foo.gxwf-tests.yml ↔ foo.gxwf.yml/foo.ga) and cross-check inputs/outputs |
+| `--cache-dir <dir>` | Tool cache read (never fetched) to resolve tool-step output shapes for the cross-check |
 
 ### `validate-tool-source <file>`
 

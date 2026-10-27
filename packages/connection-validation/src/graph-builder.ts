@@ -68,7 +68,7 @@ function _buildFromNormalized(
     steps[stepId] = _resolveStep(stepId, step, getToolInfo);
   }
   const sorted = _topologicalSort(steps);
-  return { steps, sortedStepIds: sorted };
+  return { steps, sortedStepIds: sorted, outputMap: _buildWorkflowOutputMap(workflow) };
 }
 
 function _resolveStep(
@@ -192,7 +192,7 @@ function _resolveSubworkflowStep(
 
   if (step.subworkflow != null) {
     innerGraph = _buildFromNormalized(step.subworkflow, getToolInfo);
-    outputMap = _buildSubworkflowOutputMap(step.subworkflow);
+    outputMap = innerGraph.outputMap;
     inputs = _synthesizeSubworkflowInputs(connections, innerGraph);
   }
 
@@ -249,11 +249,11 @@ function _inputFromInnerStep(innerStep: ResolvedStep, inputPath: string): Resolv
   return { name: inputPath, statePath: inputPath, type: "data" };
 }
 
-function _buildSubworkflowOutputMap(
-  subworkflow: NormalizedNativeWorkflow,
+function _buildWorkflowOutputMap(
+  workflow: NormalizedNativeWorkflow,
 ): Record<string, [string, string]> {
   const result: Record<string, [string, string]> = {};
-  for (const [stepId, step] of Object.entries(subworkflow.steps)) {
+  for (const [stepId, step] of Object.entries(workflow.steps)) {
     for (const wo of step.workflow_outputs ?? []) {
       if (!wo.output_name) continue;
       const externalName = wo.label || `${stepId}:${wo.output_name}`;

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { runValidateTests } from "../src/commands/validate-tests.js";
 
 describe("runValidateTests", () => {
@@ -169,6 +170,66 @@ steps:
       );
       expect(entry).toBeDefined();
       expect(process.exitCode).toBe(1);
+    });
+
+    describe("collection shape and datatype", () => {
+      const MAPPED_WF = fileURLToPath(
+        new URL(
+          "../../connection-validation/test/fixtures/mapped_subworkflow_outputs.gxwf.yml",
+          import.meta.url,
+        ),
+      );
+      const READS = `{class: Collection, collection_type: list, elements: []}`;
+
+      it("flags kind mismatches on inputs and resolved outputs", async () => {
+        const tests = join(dir, "kinds-tests.yml");
+        await writeFile(
+          tests,
+          `- doc: kinds
+  job:
+    genome: {class: Collection, collection_type: list, elements: []}
+    reads: ${READS}
+  outputs:
+    mapped: {ftype: txt}
+    single: {class: Collection, collection_type: list, element_tests: {}}
+    reads_out: {class: Collection, collection_type: "list:paired", element_tests: {}}
+`,
+        );
+        await runValidateTests(tests, { workflow: MAPPED_WF, json: true });
+        const report = JSON.parse(logs.join("\n"));
+        expect(
+          report.errors.map((e: { path: string; keyword: string }) => [e.path, e.keyword]),
+        ).toEqual([
+          ["/0/job/genome", "workflow_input_kind"],
+          ["/0/outputs/mapped", "workflow_output_kind"],
+          ["/0/outputs/single", "workflow_output_kind"],
+          ["/0/outputs/reads_out/collection_type", "workflow_output_collection_type"],
+        ]);
+        expect(report.warnings).toEqual([]);
+        expect(process.exitCode).toBe(1);
+      });
+
+      it("reports filetype outside format as a warning; stays valid", async () => {
+        const tests = join(dir, "format-tests.yml");
+        await writeFile(
+          tests,
+          `- doc: format
+  job:
+    genome: {class: File, path: g.bam, filetype: bam}
+    reads: ${READS}
+  outputs:
+    mapped: {class: Collection, collection_type: list, element_tests: {}}
+`,
+        );
+        await runValidateTests(tests, { workflow: MAPPED_WF, json: true });
+        const report = JSON.parse(logs.join("\n"));
+        expect(report.valid).toBe(true);
+        expect(report.errors).toEqual([]);
+        expect(report.warnings.map((e: { keyword: string }) => e.keyword)).toEqual([
+          "workflow_input_format",
+        ]);
+        expect(process.exitCode).toBe(0);
+      });
     });
   });
 });

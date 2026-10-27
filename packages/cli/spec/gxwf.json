@@ -95,6 +95,10 @@
         {
           "flags": "--workflow <path>",
           "description": "Cross-check job inputs + output assertions against a workflow (.ga / .gxwf.yml)"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache read (never fetched) to resolve tool-step output shapes for the cross-check"
         }
       ]
     },
@@ -676,6 +680,10 @@
         {
           "flags": "--auto-workflow",
           "description": "Pair each tests file with a sibling workflow by filename convention (foo.gxwf-tests.yml ↔ foo.gxwf.yml/foo.ga) and cross-check inputs/outputs"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Tool cache read (never fetched) to resolve tool-step output shapes for the cross-check"
         }
       ]
     },

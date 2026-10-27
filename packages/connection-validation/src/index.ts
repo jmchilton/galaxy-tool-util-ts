@@ -16,6 +16,7 @@ export type {
 export { buildWorkflowGraph } from "./graph-builder.js";
 export { validateConnections, validateConnectionGraph } from "./connection-validator.js";
 export { validateConnectionsReport, toConnectionValidationReport } from "./report-builder.js";
+export { resolveWorkflowOutputCollectionTypes } from "./workflow-output-types.js";
 export { buildEdgeAnnotations, edgeAnnotationKey } from "./edge-annotations.js";
 export type { EdgeAnnotation } from "./edge-annotations.js";
 export type {

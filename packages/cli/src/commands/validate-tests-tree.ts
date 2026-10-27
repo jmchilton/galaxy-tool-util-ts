@@ -15,25 +15,21 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { parse as parseYaml } from "yaml";
-import {
-  checkTestsAgainstWorkflow,
-  extractWorkflowInputs,
-  extractWorkflowOutputs,
-  resolveFormat,
-  validateTestsFile,
-  type TestFormatDiagnostic,
-  type WorkflowShape,
-} from "@galaxy-tool-util/schema";
+import { validateTestsFile, type TestFormatDiagnostic } from "@galaxy-tool-util/schema";
+
+import { crossCheckTests, partitionDiagnostics } from "./tests-cross-check.js";
 
 export interface ValidateTestsTreeOptions {
   json?: boolean;
   autoWorkflow?: boolean;
+  cacheDir?: string;
 }
 
 export interface TestsTreeFileReport {
   path: string;
   valid: boolean;
   errors: TestFormatDiagnostic[];
+  warnings: TestFormatDiagnostic[];
   workflow?: string;
 }
 
@@ -86,21 +82,6 @@ async function findSiblingWorkflow(testsPath: string): Promise<string | undefine
   return undefined;
 }
 
-async function loadWorkflowShape(path: string): Promise<WorkflowShape> {
-  const raw = await readFile(path, "utf-8");
-  const parsed: unknown =
-    path.endsWith(".ga") || path.endsWith(".json") ? JSON.parse(raw) : parseYaml(raw);
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`Workflow ${path} did not parse to an object.`);
-  }
-  const dict = parsed as Record<string, unknown>;
-  const format = resolveFormat(dict);
-  return {
-    inputs: extractWorkflowInputs(dict, format),
-    outputs: extractWorkflowOutputs(dict, format),
-  };
-}
-
 async function discoverTestFiles(root: string): Promise<string[]> {
   const out: string[] = [];
   await walk(root, out);
@@ -131,7 +112,7 @@ async function walk(dir: string, out: string[]): Promise<void> {
 async function validateOne(
   path: string,
   root: string,
-  autoWorkflow: boolean,
+  opts: ValidateTestsTreeOptions,
 ): Promise<TestsTreeFileReport & { loadError?: boolean }> {
   const rel = relative(root, path);
   let parsed: unknown;
@@ -147,21 +128,21 @@ async function validateOne(
       errors: [
         { path: "(root)", message: `YAML parse error: ${msg}`, keyword: "yaml", params: {} },
       ],
+      warnings: [],
     };
   }
-  const { valid: schemaValid, errors } = validateTestsFile(parsed);
-  const allErrors: TestFormatDiagnostic[] = [...errors];
+  const { valid: schemaValid, errors: schemaErrors } = validateTestsFile(parsed);
+  const diagnostics: TestFormatDiagnostic[] = [...schemaErrors];
   let pairedWorkflow: string | undefined;
-  if (autoWorkflow) {
+  if (opts.autoWorkflow) {
     const sibling = await findSiblingWorkflow(path);
     if (sibling) {
       pairedWorkflow = relative(root, sibling);
       try {
-        const shape = await loadWorkflowShape(sibling);
-        allErrors.push(...checkTestsAgainstWorkflow(parsed, shape));
+        diagnostics.push(...(await crossCheckTests(parsed, sibling, opts)));
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        allErrors.push({
+        diagnostics.push({
           path: "(root)",
           message: `Failed to load workflow ${pairedWorkflow}: ${msg}`,
           keyword: "workflow_load_error",
@@ -170,8 +151,9 @@ async function validateOne(
       }
     }
   }
-  const valid = schemaValid && allErrors.length === 0;
-  const report: TestsTreeFileReport = { path: rel, valid, errors: allErrors };
+  const { errors, warnings } = partitionDiagnostics(diagnostics);
+  const valid = schemaValid && errors.length === 0;
+  const report: TestsTreeFileReport = { path: rel, valid, errors, warnings };
   if (pairedWorkflow) report.workflow = pairedWorkflow;
   return report;
 }
@@ -183,7 +165,7 @@ export async function runValidateTestsTree(
   const paths = await discoverTestFiles(dir);
   const files: (TestsTreeFileReport & { loadError?: boolean })[] = [];
   for (const p of paths) {
-    files.push(await validateOne(p, dir, opts.autoWorkflow === true));
+    files.push(await validateOne(p, dir, opts));
   }
 
   const summary = {
@@ -195,8 +177,8 @@ export async function runValidateTestsTree(
 
   const report: ValidateTestsTreeReport = {
     root: dir,
-    files: files.map(({ path, valid, errors, workflow }) => {
-      const entry: TestsTreeFileReport = { path, valid, errors };
+    files: files.map(({ path, valid, errors, warnings, workflow }) => {
+      const entry: TestsTreeFileReport = { path, valid, errors, warnings };
       if (workflow) entry.workflow = workflow;
       return entry;
     }),
@@ -217,6 +199,9 @@ export async function runValidateTestsTree(
         for (const e of f.errors) {
           console.error(`    ${e.path}: ${e.message} [${e.keyword}]`);
         }
+      }
+      for (const w of f.warnings) {
+        console.error(`    warning ${w.path}: ${w.message} [${w.keyword}]`);
       }
     }
     const s = summary;

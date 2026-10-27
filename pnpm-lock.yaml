@@ -106,6 +106,9 @@ importers:
       '@galaxy-tool-util/tool-xml':
         specifier: workspace:*
         version: link:../tool-xml
+      '@galaxy-tool-util/workflow-graph':
+        specifier: workspace:*
+        version: link:../workflow-graph
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
@@ -378,6 +381,9 @@ importers:
 
   packages/schema:
     dependencies:
+      '@galaxy-tool-util/workflow-graph':
+        specifier: workspace:*
+        version: link:../workflow-graph
       ajv:
         specifier: ^8.18.0
         version: 8.18.0

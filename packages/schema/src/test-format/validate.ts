@@ -22,6 +22,8 @@ export interface TestFormatDiagnostic {
   message: string;
   keyword: string;
   params: Record<string, unknown>;
+  /** Absent means error. Warnings don't make a tests file invalid. */
+  severity?: "error" | "warning";
 }
 
 let _validator: ValidateFunction | undefined;

@@ -152,9 +152,12 @@ gxwf validate-tests my-workflow-tests.yml --workflow my-workflow.gxwf.yml
 gxwf validate-tests my-workflow-tests.yml --json
 ```
 
+The cross-check flags unknown or missing inputs, value types, `class: File` vs `class: Collection` on inputs, input `collection_type` the input can't accept, and dataset vs collection form and `collection_type` on output assertions. Output shapes come from the connection graph. Inline user-defined tools and subworkflows need nothing extra; other tool steps need cached tools (`--cache-dir`), and outputs that can't be resolved are skipped. Warnings, which don't fail validation: `filetype` outside the input's declared `format` (checked against the bundled datatypes snapshot), and a collection that would map over the input. The JSON report lists them under `warnings`.
+
 | Option | Description |
 |---|---|
 | `--workflow <path>` | Cross-check job inputs + output assertions against a workflow (`.ga` / `.gxwf.yml`) |
+| `--cache-dir <dir>` | Tool cache read (never fetched) to resolve tool-step output shapes |
 | `--json` | Output structured JSON report |
 
 ### `clean <file>`

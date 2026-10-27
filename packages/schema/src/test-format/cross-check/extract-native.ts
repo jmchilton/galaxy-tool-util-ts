@@ -1,17 +1,8 @@
 import { parseToolState } from "../../workflow/tool-state-io.js";
+import { asRecord, asString, asStringList } from "./coerce.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
 
 const INPUT_STEP_TYPES = new Set(["data_input", "data_collection_input", "parameter_input"]);
-
-function asRecord(v: unknown): Record<string, unknown> | undefined {
-  return v && typeof v === "object" && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : undefined;
-}
-
-function asString(v: unknown): string | undefined {
-  return typeof v === "string" ? v : undefined;
-}
 
 function inputTypeFor(stepType: string, toolState: Record<string, unknown>): string {
   if (stepType === "data_input") return "data";
@@ -55,6 +46,12 @@ export function extractNativeInputs(parsed: unknown): WorkflowInput[] {
     if (typeof toolState.optional === "boolean") input.optional = toolState.optional;
     if (Object.prototype.hasOwnProperty.call(toolState, "default")) {
       input.default = toolState.default;
+    }
+    if (stepType !== "parameter_input") {
+      const format = asStringList(toolState.format);
+      const collectionType = asString(toolState.collection_type);
+      if (format) input.format = format;
+      if (collectionType) input.collectionType = collectionType;
     }
     out.push(input);
   }
