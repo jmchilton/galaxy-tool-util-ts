@@ -102,18 +102,22 @@ describe("checkTestsAgainstWorkflow — input kinds", () => {
     expect(check(`- job:${VALID_JOB}  outputs: {}`)).toEqual([]);
   });
 
-  it("flags a Collection bound to a data input", () => {
+  // Galaxy maps the workflow over a collection bound to a data input.
+  it("warns when a Collection maps over a data input; skips that case's output shapes", () => {
     const d = check(`
 - job:
     genome: {class: Collection, collection_type: list, elements: []}
     proteins: {class: File, path: p.fa}
     reads: {class: Collection, collection_type: "list:paired", elements: []}
-  outputs: {}
+  outputs:
+    bam_out: {class: Collection, collection_type: list, element_tests: {}}
+- job:${VALID_JOB}  outputs:
+    bam_out: {class: Collection, collection_type: list, element_tests: {}}
 `);
-    expect(d).toEqual([
-      expect.objectContaining({ keyword: "workflow_input_kind", path: "/0/job/genome" }),
+    expect(d.map((x) => [x.path, x.keyword, x.severity])).toEqual([
+      ["/0/job/genome", "workflow_input_collection_map_over", "warning"],
+      ["/1/outputs/bam_out", "workflow_output_kind", undefined],
     ]);
-    expect(d[0]!.severity).toBeUndefined();
   });
 
   it("flags a File bound to a collection input", () => {
@@ -202,6 +206,25 @@ describe("checkTestsAgainstWorkflow — output kinds", () => {
     unresolved_out: {class: Collection, element_tests: {}}
 `);
     expect(k).toEqual([]);
+  });
+
+  // planemo treats element_tests as collection form; IWC tests omit class.
+  it("treats element_tests without class as collection form", () => {
+    expect(keywords(`- job:${VALID_JOB}  outputs:\n    list_out: {element_tests: {}}\n`)).toEqual(
+      [],
+    );
+  });
+
+  it("skips output shapes when a deeper collection maps over an input", () => {
+    const k = keywords(`
+- job:
+    genome: {class: File, path: g.fa}
+    proteins: {class: File, path: p.fa}
+    reads: {class: Collection, collection_type: "list:list:paired", elements: []}
+  outputs:
+    list_out: {class: Collection, collection_type: "list:list", element_tests: {}}
+`);
+    expect(k).toEqual(["workflow_input_collection_map_over"]);
   });
 
   it("flags a dataset assertion on a collection output", () => {

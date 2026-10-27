@@ -192,7 +192,7 @@ function _resolveSubworkflowStep(
 
   if (step.subworkflow != null) {
     innerGraph = _buildFromNormalized(step.subworkflow, getToolInfo);
-    outputMap = innerGraph.outputMap;
+    outputMap = innerGraph.outputMap ?? {};
     inputs = _synthesizeSubworkflowInputs(connections, innerGraph);
   }
 

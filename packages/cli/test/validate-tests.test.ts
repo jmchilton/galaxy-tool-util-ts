@@ -187,25 +187,37 @@ steps:
           tests,
           `- doc: kinds
   job:
-    genome: {class: Collection, collection_type: list, elements: []}
+    genome: {class: File, path: g.fa}
     reads: ${READS}
   outputs:
     mapped: {ftype: txt}
     single: {class: Collection, collection_type: list, element_tests: {}}
     reads_out: {class: Collection, collection_type: "list:paired", element_tests: {}}
+- doc: file on a collection input
+  job:
+    genome: {class: File, path: g.fa}
+    reads: {class: File, path: r.fq}
+  outputs: {}
+- doc: collection maps over the data input; output shapes not checked
+  job:
+    genome: {class: Collection, collection_type: list, elements: []}
+    reads: ${READS}
+  outputs:
+    single: {class: Collection, collection_type: list, element_tests: {}}
 `,
         );
         await runValidateTests(tests, { workflow: MAPPED_WF, json: true });
         const report = JSON.parse(logs.join("\n"));
-        expect(
-          report.errors.map((e: { path: string; keyword: string }) => [e.path, e.keyword]),
-        ).toEqual([
-          ["/0/job/genome", "workflow_input_kind"],
+        const at = (ds: { path: string; keyword: string }[]) => ds.map((e) => [e.path, e.keyword]);
+        expect(at(report.errors)).toEqual([
           ["/0/outputs/mapped", "workflow_output_kind"],
           ["/0/outputs/single", "workflow_output_kind"],
           ["/0/outputs/reads_out/collection_type", "workflow_output_collection_type"],
+          ["/1/job/reads", "workflow_input_kind"],
         ]);
-        expect(report.warnings).toEqual([]);
+        expect(at(report.warnings)).toEqual([
+          ["/2/job/genome", "workflow_input_collection_map_over"],
+        ]);
         expect(process.exitCode).toBe(1);
       });
 

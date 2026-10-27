@@ -62,8 +62,8 @@ export interface ResolvedStep {
 export interface WorkflowGraph {
   steps: Record<string, ResolvedStep>;
   sortedStepIds: string[];
-  /** Workflow output label → `[stepId, outputName]`. */
-  outputMap: Record<string, [string, string]>;
+  /** Workflow output label → `[stepId, outputName]`; always set by `buildWorkflowGraph`. */
+  outputMap?: Record<string, [string, string]>;
 }
 
 export type ConnectionStatus = "ok" | "invalid" | "skip";

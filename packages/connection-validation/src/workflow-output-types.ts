@@ -15,7 +15,7 @@ export function resolveWorkflowOutputCollectionTypes(
   const graph = buildWorkflowGraph(workflow, getToolInfo);
   const [, resolved] = validateConnectionGraph(graph);
   const result: Record<string, string | null> = {};
-  for (const [label, [stepId, outputName]] of Object.entries(graph.outputMap)) {
+  for (const [label, [stepId, outputName]] of Object.entries(graph.outputMap ?? {})) {
     const desc = resolved[stepId]?.[outputName];
     if (!desc || isAnyDesc(desc)) continue;
     result[label] = isNullDesc(desc) ? null : desc.collectionType;

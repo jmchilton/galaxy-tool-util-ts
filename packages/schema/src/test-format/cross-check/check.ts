@@ -22,6 +22,7 @@ function jptr(parts: (string | number)[]): string {
 
 const DATASET_INPUT_TYPES = new Set(["data", "data_input", "File"]);
 const COLLECTION_INPUT_TYPES = new Set(["collection", "data_collection", "data_collection_input"]);
+const MAP_OVER = "workflow_input_collection_map_over";
 
 export interface WorkflowShape {
   inputs: WorkflowInput[];
@@ -41,13 +42,16 @@ export interface CrossCheckOptions {
  *   workflow_input_undefined           job key not declared in workflow
  *   workflow_input_required            required workflow input missing from job (and no default)
  *   workflow_input_type                job value's JS type incompatible with declared type
- *   workflow_input_kind                File bound to a collection input or vice versa
+ *   workflow_input_kind                File bound to a collection input
  *   workflow_input_collection_type     collection_type the input cannot accept
- *   workflow_input_collection_map_over (warning) collection_type would map over the input
+ *   workflow_input_collection_map_over (warning) collection maps over a data or collection input
  *   workflow_input_format              (warning) filetype outside the declared format
  *   workflow_output_undefined          output assertion name not declared in workflow
  *   workflow_output_kind               dataset assertion on a collection output or vice versa
  *   workflow_output_collection_type    asserted collection_type differs from the resolved one
+ *
+ * Output shape checks are skipped for a test whose inputs map over: the
+ * resolved shapes assume unmapped inputs.
  */
 export function checkTestsAgainstWorkflow(
   testsDoc: unknown,
@@ -64,6 +68,7 @@ export function checkTestsAgainstWorkflow(
     if (!entry) continue;
     const job = asRecord(entry.job) ?? {};
     const outputs = asRecord(entry.outputs) ?? {};
+    let mapsOver = false;
 
     // Inputs: flag unknowns, check types.
     for (const [name, value] of Object.entries(job)) {
@@ -87,7 +92,9 @@ export function checkTestsAgainstWorkflow(
         });
         continue;
       }
-      diagnostics.push(...checkInputKind([testIdx, "job", name], declared, value, options));
+      const kindDiagnostics = checkInputKind([testIdx, "job", name], declared, value, options);
+      mapsOver ||= kindDiagnostics.some((d) => d.keyword === MAP_OVER);
+      diagnostics.push(...kindDiagnostics);
     }
 
     // Inputs: flag required ones missing from the job.
@@ -115,7 +122,9 @@ export function checkTestsAgainstWorkflow(
         });
         continue;
       }
-      diagnostics.push(...checkOutputKind([testIdx, "outputs", name], declared, assertion));
+      if (!mapsOver) {
+        diagnostics.push(...checkOutputKind([testIdx, "outputs", name], declared, assertion));
+      }
     }
   }
 
@@ -133,23 +142,30 @@ function checkInputKind(
   const name = declared.name;
   const isCollection = job.class === "Collection";
   const isFile = job.class === "File";
+  const actualCollectionType = asString(job.collection_type);
 
-  if (
-    (isCollection && DATASET_INPUT_TYPES.has(declared.type)) ||
-    (isFile && COLLECTION_INPUT_TYPES.has(declared.type))
-  ) {
-    const expected = isCollection ? "a dataset" : "a collection";
+  if (isFile && COLLECTION_INPUT_TYPES.has(declared.type)) {
     return [
       {
         path: jptr(pathParts),
-        message: `Input '${name}' expects ${expected} but the job provides class '${job.class}'.`,
+        message: `Input '${name}' expects a collection but the job provides class 'File'.`,
         keyword: "workflow_input_kind",
         params: { input: name, declaredType: declared.type, actualClass: job.class },
       },
     ];
   }
+  if (isCollection && DATASET_INPUT_TYPES.has(declared.type)) {
+    return [
+      {
+        path: jptr(pathParts),
+        message: `Input '${name}' is a dataset input; a${actualCollectionType ? ` '${actualCollectionType}'` : ""} collection maps the workflow over it.`,
+        keyword: MAP_OVER,
+        params: { input: name, declared: null, actual: actualCollectionType ?? null },
+        severity: "warning",
+      },
+    ];
+  }
 
-  const actualCollectionType = asString(job.collection_type);
   if (isCollection && declared.collectionType && actualCollectionType) {
     const accepted = new CollectionTypeDescription(declared.collectionType);
     const actual = new CollectionTypeDescription(actualCollectionType);
@@ -160,7 +176,7 @@ function checkInputKind(
         {
           path: jptr([...pathParts, "collection_type"]),
           message: `Input '${name}' declares collection_type '${declared.collectionType}'; a '${actualCollectionType}' collection would map over it.`,
-          keyword: "workflow_input_collection_map_over",
+          keyword: MAP_OVER,
           params,
           severity: "warning",
         },
@@ -205,7 +221,9 @@ function checkOutputKind(
   const expected = asRecord(assertion);
   if (resolved === undefined || !expected) return [];
   const name = declared.name;
-  const assertsCollection = expected.class === "Collection";
+  // planemo also treats `element_tests` without `class` as a collection assertion.
+  const assertsCollection =
+    expected.class === "Collection" || "element_tests" in expected || "elements" in expected;
 
   if (resolved === null && assertsCollection) {
     return [
