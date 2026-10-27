@@ -92,7 +92,8 @@ export function checkTestsAgainstWorkflow(
         continue;
       }
       shapesDiverge ||= divergesFromDeclaredShape(declared, value);
-      diagnostics.push(...checkInputKind([testIdx, "job", name], declared, value, options));
+      const kind = checkInputKind([testIdx, "job", name], declared, value, options);
+      if (kind) diagnostics.push(kind);
     }
 
     // Inputs: flag required ones missing from the job.
@@ -120,9 +121,10 @@ export function checkTestsAgainstWorkflow(
         });
         continue;
       }
-      if (!shapesDiverge) {
-        diagnostics.push(...checkOutputKind([testIdx, "outputs", name], declared, assertion));
-      }
+      const kind = shapesDiverge
+        ? undefined
+        : checkOutputKind([testIdx, "outputs", name], declared, assertion);
+      if (kind) diagnostics.push(kind);
     }
   }
 
@@ -138,131 +140,128 @@ function divergesFromDeclaredShape(declared: WorkflowInput, value: unknown): boo
   return asString(job.collection_type) !== (declared.collectionType ?? "list");
 }
 
+/** Kind, collection_type and filetype checks for one job binding. */
 function checkInputKind(
   pathParts: (string | number)[],
   declared: WorkflowInput,
   value: unknown,
   options: CrossCheckOptions,
-): TestFormatDiagnostic[] {
+): TestFormatDiagnostic | undefined {
   const job = asRecord(value);
-  if (!job) return [];
+  if (job?.class === "Collection") {
+    return checkCollectionInput(pathParts, declared, asString(job.collection_type));
+  }
+  if (job?.class === "File") {
+    return checkFileInput(pathParts, declared, asString(job.filetype), options.datatypes);
+  }
+  return undefined;
+}
+
+function checkCollectionInput(
+  pathParts: (string | number)[],
+  declared: WorkflowInput,
+  actualType: string | undefined,
+): TestFormatDiagnostic | undefined {
   const name = declared.name;
-  const isCollection = job.class === "Collection";
-  const isFile = job.class === "File";
-  const actualCollectionType = asString(job.collection_type);
+  if (DATA_INPUT_TYPES.has(declared.type)) {
+    return {
+      path: jptr(pathParts),
+      message: `Input '${name}' is a dataset input; a${actualType ? ` '${actualType}'` : ""} collection maps the workflow over it.`,
+      keyword: MAP_OVER,
+      params: { input: name, declared: null, actual: actualType ?? null },
+      severity: "warning",
+    };
+  }
+  if (!declared.collectionType || !actualType) return undefined;
+  const accepted = new CollectionTypeDescription(declared.collectionType);
+  const actual = new CollectionTypeDescription(actualType);
+  if (accepted.accepts(actual)) return undefined;
+  const path = jptr([...pathParts, "collection_type"]);
+  const params = { input: name, declared: declared.collectionType, actual: actualType };
+  if (actual.canMapOver(accepted)) {
+    return {
+      path,
+      message: `Input '${name}' declares collection_type '${declared.collectionType}'; a '${actualType}' collection would map over it.`,
+      keyword: MAP_OVER,
+      params,
+      severity: "warning",
+    };
+  }
+  return {
+    path,
+    message: `Input '${name}' declares collection_type '${declared.collectionType}' but the job provides '${actualType}'.`,
+    keyword: "workflow_input_collection_type",
+    params,
+  };
+}
 
-  if (isFile && COLLECTION_INPUT_TYPES.has(declared.type)) {
-    return [
-      {
-        path: jptr(pathParts),
-        message: `Input '${name}' expects a collection but the job provides class 'File'.`,
-        keyword: "workflow_input_kind",
-        params: { input: name, declaredType: declared.type, actualClass: job.class },
-      },
-    ];
+function checkFileInput(
+  pathParts: (string | number)[],
+  declared: WorkflowInput,
+  filetype: string | undefined,
+  datatypes: DatatypesMapperModel | undefined,
+): TestFormatDiagnostic | undefined {
+  const { name, format } = declared;
+  if (COLLECTION_INPUT_TYPES.has(declared.type)) {
+    return {
+      path: jptr(pathParts),
+      message: `Input '${name}' expects a collection but the job provides class 'File'.`,
+      keyword: "workflow_input_kind",
+      params: { input: name, declaredType: declared.type, actualClass: "File" },
+    };
   }
-  if (isCollection && DATA_INPUT_TYPES.has(declared.type)) {
-    return [
-      {
-        path: jptr(pathParts),
-        message: `Input '${name}' is a dataset input; a${actualCollectionType ? ` '${actualCollectionType}'` : ""} collection maps the workflow over it.`,
-        keyword: MAP_OVER,
-        params: { input: name, declared: null, actual: actualCollectionType ?? null },
-        severity: "warning",
-      },
-    ];
-  }
-
-  if (isCollection && declared.collectionType && actualCollectionType) {
-    const accepted = new CollectionTypeDescription(declared.collectionType);
-    const actual = new CollectionTypeDescription(actualCollectionType);
-    if (accepted.accepts(actual)) return [];
-    const params = { input: name, declared: declared.collectionType, actual: actualCollectionType };
-    if (actual.canMapOver(accepted)) {
-      return [
-        {
-          path: jptr([...pathParts, "collection_type"]),
-          message: `Input '${name}' declares collection_type '${declared.collectionType}'; a '${actualCollectionType}' collection would map over it.`,
-          keyword: MAP_OVER,
-          params,
-          severity: "warning",
-        },
-      ];
-    }
-    return [
-      {
-        path: jptr([...pathParts, "collection_type"]),
-        message: `Input '${name}' declares collection_type '${declared.collectionType}' but the job provides '${actualCollectionType}'.`,
-        keyword: "workflow_input_collection_type",
-        params,
-      },
-    ];
-  }
-
-  const filetype = asString(job.filetype);
-  const { datatypes } = options;
-  if (isFile && datatypes && declared.format && filetype && filetype !== "auto") {
-    if (declared.format.includes(filetype)) return [];
-    if (producesAcceptableDatatype(datatypes, declared.format, [filetype]).canAccept) return [];
-    const known = Object.hasOwn(datatypes.datatypesMapping.ext_to_class_name, filetype);
-    return [
-      {
-        path: jptr([...pathParts, "filetype"]),
-        message: known
-          ? `Input '${name}' accepts format(s) [${declared.format.join(", ")}] but the job provides filetype '${filetype}'.`
-          : `Input '${name}' has filetype '${filetype}', which is not a known Galaxy datatype.`,
-        keyword: "workflow_input_format",
-        params: { input: name, format: declared.format, filetype, known },
-        severity: "warning",
-      },
-    ];
-  }
-  return [];
+  if (!datatypes || !format || !filetype || filetype === "auto") return undefined;
+  if (format.includes(filetype)) return undefined;
+  if (producesAcceptableDatatype(datatypes, format, [filetype]).canAccept) return undefined;
+  const known = Object.hasOwn(datatypes.datatypesMapping.ext_to_class_name, filetype);
+  return {
+    path: jptr([...pathParts, "filetype"]),
+    message: known
+      ? `Input '${name}' accepts format(s) [${format.join(", ")}] but the job provides filetype '${filetype}'.`
+      : `Input '${name}' has filetype '${filetype}', which is not a known Galaxy datatype.`,
+    keyword: "workflow_input_format",
+    params: { input: name, format, filetype, known },
+    severity: "warning",
+  };
 }
 
 function checkOutputKind(
   pathParts: (string | number)[],
   declared: WorkflowOutput,
   assertion: unknown,
-): TestFormatDiagnostic[] {
+): TestFormatDiagnostic | undefined {
   const resolved = declared.collectionType;
   const expected = asRecord(assertion);
-  if (resolved === undefined || !expected) return [];
+  if (resolved === undefined || !expected) return undefined;
   const name = declared.name;
   // planemo also treats `element_tests` without `class` as a collection assertion.
   const assertsCollection =
     expected.class === "Collection" || "element_tests" in expected || "elements" in expected;
 
   if (resolved === null && assertsCollection) {
-    return [
-      {
-        path: jptr(pathParts),
-        message: `Output '${name}' is a dataset but is asserted as a collection.`,
-        keyword: "workflow_output_kind",
-        params: { output: name, collectionType: null },
-      },
-    ];
+    return {
+      path: jptr(pathParts),
+      message: `Output '${name}' is a dataset but is asserted as a collection.`,
+      keyword: "workflow_output_kind",
+      params: { output: name, collectionType: null },
+    };
   }
   if (resolved !== null && !assertsCollection) {
-    return [
-      {
-        path: jptr(pathParts),
-        message: `Output '${name}' is a '${resolved}' collection but is asserted as a dataset; use class: Collection.`,
-        keyword: "workflow_output_kind",
-        params: { output: name, collectionType: resolved },
-      },
-    ];
+    return {
+      path: jptr(pathParts),
+      message: `Output '${name}' is a '${resolved}' collection but is asserted as a dataset; use class: Collection.`,
+      keyword: "workflow_output_kind",
+      params: { output: name, collectionType: resolved },
+    };
   }
   const assertedType = asString(expected.collection_type);
   if (resolved !== null && assertedType && assertedType !== resolved) {
-    return [
-      {
-        path: jptr([...pathParts, "collection_type"]),
-        message: `Output '${name}' is a '${resolved}' collection but collection_type '${assertedType}' is asserted.`,
-        keyword: "workflow_output_collection_type",
-        params: { output: name, declared: resolved, actual: assertedType },
-      },
-    ];
+    return {
+      path: jptr([...pathParts, "collection_type"]),
+      message: `Output '${name}' is a '${resolved}' collection but collection_type '${assertedType}' is asserted.`,
+      keyword: "workflow_output_collection_type",
+      params: { output: name, declared: resolved, actual: assertedType },
+    };
   }
-  return [];
+  return undefined;
 }
