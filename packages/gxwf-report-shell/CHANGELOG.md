@@ -1,5 +1,12 @@
 # @galaxy-tool-util/gxwf-report-shell
 
+## 1.15.0
+
+### Patch Changes
+
+- Updated dependencies [[`47f5afc`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/47f5afc974a55377bb33a0c8212144d29f8880ee), [`4dcc34a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4dcc34a29f28cd1a78d0cabdff80f44e1aa15867), [`46afdbe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/46afdbe4b6b75546c55f8ba36b18058af052396e), [`5eb9202`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5eb9202d527c9079739863b68637e176b78476d7), [`81021b9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/81021b94160ef19ba18e9519c53fd2bfed694ede), [`a7a508c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a7a508cedad613c2e26a9c7381e0a575e8996467)]:
+  - @galaxy-tool-util/schema@1.15.0
+
 ## 1.14.0
 
 ### Patch Changes

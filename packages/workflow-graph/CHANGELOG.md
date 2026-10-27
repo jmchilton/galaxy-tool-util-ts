@@ -1,5 +1,13 @@
 # @galaxy-tool-util/workflow-graph
 
+## 1.15.0
+
+### Minor Changes
+
+- [#205](https://github.com/jmchilton/galaxy-tool-util-ts/pull/205) [`9ea1e0d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/9ea1e0d58f541d68f4f37c7f205cf0c54a63f454) Thanks [@jmchilton](https://github.com/jmchilton)! - Add the Galaxy client's `applyRules` and `colHeadersFor` to the rules DSL (column tracking, per-rule `error`/`warn`, upload metadata columns) so Galaxy's rule builder can consume them. Python expressions now go through `pyre-to-regexp`, as in Galaxy's client; it is the package's first runtime dependency.
+
+- [#205](https://github.com/jmchilton/galaxy-tool-util-ts/pull/205) [`187ee08`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/187ee082e18d17a34bb8f8705f77a105a84b8afb) Thanks [@jmchilton](https://github.com/jmchilton)! - Port Galaxy's rule builder DSL (`RuleSet`) to `workflow-graph`, checked against Galaxy's synced `rules_dsl_spec.yml`. Connection validation now types `collection_type_from_rules` outputs (e.g. `__APPLY_RULES__`) from the step's rules mapping, as Galaxy does, instead of skipping their edges ([#204](https://github.com/jmchilton/galaxy-tool-util-ts/issues/204)).
+
 ## 1.2.0
 
 ### Minor Changes

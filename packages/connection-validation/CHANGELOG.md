@@ -1,5 +1,16 @@
 # @galaxy-tool-util/connection-validation
 
+## 1.15.0
+
+### Patch Changes
+
+- [#205](https://github.com/jmchilton/galaxy-tool-util-ts/pull/205) [`187ee08`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/187ee082e18d17a34bb8f8705f77a105a84b8afb) Thanks [@jmchilton](https://github.com/jmchilton)! - Port Galaxy's rule builder DSL (`RuleSet`) to `workflow-graph`, checked against Galaxy's synced `rules_dsl_spec.yml`. Connection validation now types `collection_type_from_rules` outputs (e.g. `__APPLY_RULES__`) from the step's rules mapping, as Galaxy does, instead of skipping their edges ([#204](https://github.com/jmchilton/galaxy-tool-util-ts/issues/204)).
+
+- [#205](https://github.com/jmchilton/galaxy-tool-util-ts/pull/205) [`0aebee0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0aebee05c751fa845f93e918b54f03df6329178b) Thanks [@jmchilton](https://github.com/jmchilton)! - Treat a step's map-over as unknown when any of its edges is skipped, so downstream edges skip instead of reporting false `invalid` errors ([#204](https://github.com/jmchilton/galaxy-tool-util-ts/issues/204)).
+- Updated dependencies [[`47f5afc`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/47f5afc974a55377bb33a0c8212144d29f8880ee), [`4dcc34a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4dcc34a29f28cd1a78d0cabdff80f44e1aa15867), [`46afdbe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/46afdbe4b6b75546c55f8ba36b18058af052396e), [`5eb9202`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5eb9202d527c9079739863b68637e176b78476d7), [`9ea1e0d`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/9ea1e0d58f541d68f4f37c7f205cf0c54a63f454), [`187ee08`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/187ee082e18d17a34bb8f8705f77a105a84b8afb), [`81021b9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/81021b94160ef19ba18e9519c53fd2bfed694ede), [`a7a508c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a7a508cedad613c2e26a9c7381e0a575e8996467)]:
+  - @galaxy-tool-util/schema@1.15.0
+  - @galaxy-tool-util/workflow-graph@1.15.0
+
 ## 1.14.0
 
 ### Patch Changes

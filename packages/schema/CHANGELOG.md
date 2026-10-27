@@ -1,5 +1,23 @@
 # @galaxy-tool-util/schema
 
+## 1.15.0
+
+### Minor Changes
+
+- [#200](https://github.com/jmchilton/galaxy-tool-util-ts/pull/200) [`47f5afc`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/47f5afc974a55377bb33a0c8212144d29f8880ee) Thanks [@jmchilton](https://github.com/jmchilton)! - Support Galaxy `color` and `directory_uri` workflow parameter inputs: model both, convert them between native and Format2 (keeping `directory_uri` regex validators), lint non-string defaults, draw them as Mermaid parameter nodes, and reject validators on `color`, restrictions/suggestions on either, and `multiple` on either (port of galaxyproject/gxformat2#281).
+
+- [#199](https://github.com/jmchilton/galaxy-tool-util-ts/pull/199) [`5eb9202`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5eb9202d527c9079739863b68637e176b78476d7) Thanks [@jmchilton](https://github.com/jmchilton)! - Reject Format2 workflows missing `class: GalaxyWorkflow` at the root; inline `run:` subworkflows may still omit it (port of galaxyproject/gxformat2#278). Adds `withDecodeClass`.
+
+- [#199](https://github.com/jmchilton/galaxy-tool-util-ts/pull/199) [`81021b9`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/81021b94160ef19ba18e9519c53fd2bfed694ede) Thanks [@jmchilton](https://github.com/jmchilton)! - Support regex `validators` on Format2 text inputs: model them, keep them through native/Format2 conversion, and reject them on non-text inputs (port of galaxyproject/gxformat2#265).
+
+### Patch Changes
+
+- [#196](https://github.com/jmchilton/galaxy-tool-util-ts/pull/196) [`4dcc34a`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/4dcc34a29f28cd1a78d0cabdff80f44e1aa15867) Thanks [@jmchilton](https://github.com/jmchilton)! - Lint multiple text/int/float input defaults and native parameter input defaults; name the input and expected type in default type errors. Treat native `tool_state` that isn't a JSON object as empty instead of crashing lint.
+
+- [#195](https://github.com/jmchilton/galaxy-tool-util-ts/pull/195) [`46afdbe`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/46afdbe4b6b75546c55f8ba36b18058af052396e) Thanks [@jmchilton](https://github.com/jmchilton)! - Untyped parameter lint follows Galaxy's `${name}` semantics: renames referencing a declared parameter input label no longer warn, and each warning names the reference, the action and output, and the fix. Mirrors gxformat2.
+
+- [#198](https://github.com/jmchilton/galaxy-tool-util-ts/pull/198) [`a7a508c`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/a7a508cedad613c2e26a9c7381e0a575e8996467) Thanks [@jmchilton](https://github.com/jmchilton)! - Resync the user-defined tool schema from Galaxy `release_26.1`. `validate-tool-source` now accepts flat collection outputs (`collection_type` and `discover_datasets` on the output, as Galaxy 26.1 requires) and `discover_datasets` entries with only `pattern`. Previously it demanded the pre-26.1 `structure:` form and all ten discovery fields.
+
 ## 1.14.0
 
 ### Minor Changes
