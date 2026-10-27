@@ -88,6 +88,24 @@ A minimal hand-written equivalent of Galaxy's generated `components["schemas"]["
 
 Returns a `ConnectionAcceptable` (`{ canAccept, reason }`) describing whether any of `otherDatatypes` is acceptable for any of `inputDatatypes`, accounting for the `input` and `_sniff_` wildcards and the subtype hierarchy. Used by the connection validator to produce human-readable rejection reasons.
 
+### Datatypes snapshot (`@galaxy-tool-util/workflow-graph/datatypes-snapshot`)
+
+Galaxy's client builds `DatatypesMapperModel` from `GET /api/datatypes/types_and_mapping?upload_only=false`. Tooling without a server builds the same model from a committed copy of that response:
+
+```ts
+import {
+  DATATYPES_SNAPSHOT,
+  snapshotDatatypesMapper,
+} from "@galaxy-tool-util/workflow-graph/datatypes-snapshot";
+
+snapshotDatatypesMapper().isSubType("fastqsanger", "fastq"); // true
+DATATYPES_SNAPSHOT.source; // { galaxyUrl, path, versionMajor, versionMinor, fetchedAt }
+```
+
+A separate entry point so bundles that don't import it don't carry the ~250 KB of data. Refresh with `make sync-datatypes` (usegalaxy.org by default; `GALAXY_URL=...` for another server); `make check` verifies the committed file against its `.sha256`.
+
+The snapshot has the client's semantics, not the server's. Galaxy names `subclass="true"` datatypes and auto-compressed variants after their parent class (e.g. `galaxy.datatypes.registry.Text`), so `isSubType("fastqsanger.gz", "fastqsanger")` is true. Implicit conversions are not modeled.
+
 ## Rule builder DSL
 
 ### `RuleSet`

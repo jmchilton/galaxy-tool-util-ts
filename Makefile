@@ -1,4 +1,4 @@
-.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-user-tool-source-schema verify-user-tool-source-schema sync-workflow-fixtures sync-workflow-expectations sync-cytoscape-template sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-cytoscape-template check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-connection-type-cases check-sync-connection-type-cases sync-rules-dsl-spec check-sync-rules-dsl-spec sync-macro-expansion check-sync-macro-expansion sync-tool-parsing check-sync-tool-parsing sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all check-sync-draft-sentinel push-toolshed-search-fixtures
+.PHONY: all lint format typecheck test test-e2e check fix format-fix gen-skill sync-golden sync-param-spec sync-test-format-schema verify-test-format-schema sync-user-tool-source-schema verify-user-tool-source-schema sync-datatypes verify-datatypes-snapshot sync-workflow-fixtures sync-workflow-expectations sync-cytoscape-template sync-schema-rules sync-lint-profiles sync sync-schema-sources generate-schemas verify-golden check-sync check-sync-workflow-fixtures check-sync-workflow-expectations check-sync-cytoscape-template check-sync-schema-rules check-sync-lint-profiles sync-wfstate-fixtures sync-wfstate-expectations check-sync-wfstate-fixtures check-sync-wfstate-expectations sync-wfstate-templates check-sync-wfstate-templates sync-connection-workflows check-sync-connection-workflows sync-connection-type-cases check-sync-connection-type-cases sync-rules-dsl-spec check-sync-rules-dsl-spec sync-macro-expansion check-sync-macro-expansion sync-tool-parsing check-sync-tool-parsing sync-parsed-tools check-sync-parsed-tools sync-glossary build-glossary check-sync-all check-sync-draft-sentinel push-toolshed-search-fixtures
 
 all: check test
 
@@ -20,7 +20,7 @@ test:
 test-e2e:
 	pnpm --filter @galaxy-tool-util/gxwf-e2e test
 
-check: lint format typecheck verify-test-format-schema verify-user-tool-source-schema check-sync-parsed-tools check-sync-draft-sentinel
+check: lint format typecheck verify-test-format-schema verify-user-tool-source-schema verify-datatypes-snapshot check-sync-parsed-tools check-sync-draft-sentinel
 
 fix: format-fix
 	pnpm -r lint -- --fix
@@ -132,6 +132,29 @@ verify-user-tool-source-schema:
 		const actual = crypto.createHash("sha256").update(fs.readFileSync(json)).digest("hex"); \
 		if (actual !== expected) { console.error("FAIL user-tool-source schema checksum:\n  expected " + expected + "\n  actual   " + actual + "\nRe-run make sync-user-tool-source-schema."); process.exit(1); } \
 		console.log("user-tool-source schema: checksum OK."); \
+	'
+
+# Snapshot a Galaxy server's datatype hierarchy (types_and_mapping) into workflow-graph.
+# Network; refresh periodically.
+#   make sync-datatypes                                  # usegalaxy.org
+#   make sync-datatypes GALAXY_URL=https://usegalaxy.eu
+DATATYPES_SNAPSHOT_DST = packages/workflow-graph/src/datatypes-snapshot.generated.ts
+GALAXY_URL ?= https://usegalaxy.org
+
+sync-datatypes:
+	node scripts/sync-datatypes.mjs --galaxy-url "$(GALAXY_URL)"
+
+verify-datatypes-snapshot:
+	@node -e '\
+		const fs = require("fs"); \
+		const crypto = require("crypto"); \
+		const file = "$(DATATYPES_SNAPSHOT_DST)"; \
+		const shaFile = file + ".sha256"; \
+		if (!fs.existsSync(shaFile)) { console.error("FAIL: " + shaFile + " missing — run make sync-datatypes."); process.exit(1); } \
+		const expected = fs.readFileSync(shaFile, "utf-8").trim().split(/\s+/)[0]; \
+		const actual = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex"); \
+		if (actual !== expected) { console.error("FAIL datatypes snapshot checksum:\n  expected " + expected + "\n  actual   " + actual + "\nRe-run make sync-datatypes."); process.exit(1); } \
+		console.log("datatypes snapshot: checksum OK."); \
 	'
 
 # Sync fixture files from gxformat2 / Galaxy using rsync.
