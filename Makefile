@@ -138,24 +138,13 @@ verify-user-tool-source-schema:
 # Network; refresh periodically.
 #   make sync-datatypes                                  # usegalaxy.org
 #   make sync-datatypes DATATYPES_GALAXY_URL=https://usegalaxy.eu
-DATATYPES_SNAPSHOT_DST = packages/workflow-graph/src/datatypes-snapshot.generated.ts
 DATATYPES_GALAXY_URL ?= https://usegalaxy.org
 
 sync-datatypes:
 	node scripts/sync-datatypes.mjs --galaxy-url "$(DATATYPES_GALAXY_URL)"
 
 verify-datatypes-snapshot:
-	@node -e '\
-		const fs = require("fs"); \
-		const crypto = require("crypto"); \
-		const file = "$(DATATYPES_SNAPSHOT_DST)"; \
-		const shaFile = file + ".sha256"; \
-		if (!fs.existsSync(shaFile)) { console.error("FAIL: " + shaFile + " missing — run make sync-datatypes."); process.exit(1); } \
-		const expected = fs.readFileSync(shaFile, "utf-8").trim().split(/\s+/)[0]; \
-		const actual = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex"); \
-		if (actual !== expected) { console.error("FAIL datatypes snapshot checksum:\n  expected " + expected + "\n  actual   " + actual + "\nRe-run make sync-datatypes."); process.exit(1); } \
-		console.log("datatypes snapshot: checksum OK."); \
-	'
+	@node scripts/sync-datatypes.mjs --check
 
 # Sync fixture files from gxformat2 / Galaxy using rsync.
 # Mappings are declared in scripts/sync-manifest.json.
