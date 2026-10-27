@@ -11,14 +11,14 @@ import { buildWorkflowGraph } from "./graph-builder.js";
 export function resolveWorkflowOutputCollectionTypes(
   workflow: unknown,
   getToolInfo: GetToolInfo,
-): Record<string, string | null> {
+): Map<string, string | null> {
   const graph = buildWorkflowGraph(workflow, getToolInfo);
   const [, resolved] = validateConnectionGraph(graph);
-  const result: Record<string, string | null> = {};
+  const result = new Map<string, string | null>();
   for (const [label, [stepId, outputName]] of Object.entries(graph.outputMap ?? {})) {
     const desc = resolved[stepId]?.[outputName];
     if (!desc || isAnyDesc(desc)) continue;
-    result[label] = isNullDesc(desc) ? null : desc.collectionType;
+    result.set(label, isNullDesc(desc) ? null : desc.collectionType);
   }
   return result;
 }

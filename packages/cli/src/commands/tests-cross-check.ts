@@ -43,7 +43,7 @@ async function loadWorkflowShape(
   return {
     inputs: extractWorkflowInputs(dict, format),
     outputs: outputs.map((o) =>
-      o.name in collectionTypes ? { ...o, collectionType: collectionTypes[o.name] } : o,
+      collectionTypes.has(o.name) ? { ...o, collectionType: collectionTypes.get(o.name) } : o,
     ),
   };
 }
@@ -51,14 +51,14 @@ async function loadWorkflowShape(
 async function resolveOutputCollectionTypes(
   workflow: Record<string, unknown>,
   opts: TestsCrossCheckOptions,
-): Promise<Record<string, string | null>> {
+): Promise<Map<string, string | null>> {
   const { cache } = makeValidationResolver({ cacheDir: opts.cacheDir, offline: true });
   try {
     const getToolInfo = await buildGetToolInfo(workflow, cache);
     return resolveWorkflowOutputCollectionTypes(workflow, getToolInfo);
   } catch {
     // Unresolvable graph: output shape checks are skipped, label checks still run.
-    return {};
+    return new Map();
   }
 }
 

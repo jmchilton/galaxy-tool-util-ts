@@ -13,10 +13,12 @@ const noTools: GetToolInfo = { getToolInfo: () => undefined };
 
 describe("resolveWorkflowOutputCollectionTypes", () => {
   it("resolves labelled outputs; omits unknown ones", () => {
-    expect(resolveWorkflowOutputCollectionTypes(WORKFLOW, noTools)).toEqual({
-      mapped: "list",
-      single: null,
-      reads_out: "list",
-    });
+    expect(resolveWorkflowOutputCollectionTypes(WORKFLOW, noTools)).toEqual(
+      new Map([
+        ["mapped", "list"],
+        ["single", null],
+        ["reads_out", "list"],
+      ]),
+    );
   });
 });
