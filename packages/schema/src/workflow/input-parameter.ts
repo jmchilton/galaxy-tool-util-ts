@@ -47,9 +47,22 @@ export function inputParameterSchema(typeValue: string | null | undefined): Inpu
 
 /** Format2 input type strings whose specific schema declares `field`. */
 export function inputTypesDeclaring(field: string): ReadonlySet<string> {
+  return inputTypesWhere((schema) => Object.hasOwn(schema.fields, field));
+}
+
+/** Format2 input type aliases of a dataset input (`data`, `File`, ...). */
+export const DATA_INPUT_TYPES = inputTypesWhere((s) => s === WorkflowDataParameterSchema);
+/** Format2 input type aliases of a collection input (`collection`, ...). */
+export const COLLECTION_INPUT_TYPES = inputTypesWhere(
+  (s) => s === WorkflowCollectionParameterSchema,
+);
+
+function inputTypesWhere(
+  predicate: (schema: InputParameterSchema) => boolean,
+): ReadonlySet<string> {
   return new Set(
     Object.entries(INPUT_TYPE_TO_SCHEMA)
-      .filter(([, schema]) => Object.hasOwn(schema.fields, field))
+      .filter(([, schema]) => predicate(schema))
       .map(([type]) => type),
   );
 }

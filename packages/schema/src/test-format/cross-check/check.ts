@@ -4,6 +4,7 @@ import {
   type DatatypesMapperModel,
 } from "@galaxy-tool-util/workflow-graph";
 
+import { COLLECTION_INPUT_TYPES, DATA_INPUT_TYPES } from "../../workflow/input-parameter.js";
 import type { TestFormatDiagnostic } from "../validate.js";
 import { asRecord, asString } from "./coerce.js";
 import { isCompatibleType, jsTypeOf } from "./type-compat.js";
@@ -20,8 +21,6 @@ function jptr(parts: (string | number)[]): string {
   return "/" + parts.map((p) => jptrEscape(String(p))).join("/");
 }
 
-const DATASET_INPUT_TYPES = new Set(["data", "data_input", "File"]);
-const COLLECTION_INPUT_TYPES = new Set(["collection", "data_collection", "data_collection_input"]);
 const MAP_OVER = "workflow_input_collection_map_over";
 
 export interface WorkflowShape {
@@ -162,7 +161,7 @@ function checkInputKind(
       },
     ];
   }
-  if (isCollection && DATASET_INPUT_TYPES.has(declared.type)) {
+  if (isCollection && DATA_INPUT_TYPES.has(declared.type)) {
     return [
       {
         path: jptr(pathParts),
