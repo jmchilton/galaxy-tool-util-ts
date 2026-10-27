@@ -59,25 +59,26 @@ async function sync(galaxyUrl) {
     return response.json();
   }
 
-  const version = await getJson("/api/version");
-  const raw = await getJson(PATH);
+  const [version, raw] = await Promise.all([getJson("/api/version"), getJson(PATH)]);
   const { ext_to_class_name, class_to_classes } = raw.datatypes_mapping ?? {};
-  if (!Array.isArray(raw.datatypes) || raw.datatypes.length === 0 || !ext_to_class_name) {
+  if (
+    !Array.isArray(raw.datatypes) ||
+    raw.datatypes.length === 0 ||
+    !ext_to_class_name ||
+    !class_to_classes
+  ) {
     throw new Error(`Unexpected ${PATH} response from ${galaxyUrl}.`);
   }
   for (const ext of raw.datatypes) {
     const cls = ext_to_class_name[ext];
     if (!cls || !class_to_classes[cls]) throw new Error(`Datatype '${ext}' has no class mapping.`);
   }
+  const sortedClasses = Object.entries(class_to_classes).map(([cls, m]) => [cls, sortKeys(m)]);
   const typesAndMapping = {
     datatypes: raw.datatypes,
     datatypes_mapping: {
       ext_to_class_name: sortKeys(ext_to_class_name),
-      class_to_classes: Object.fromEntries(
-        Object.keys(class_to_classes)
-          .sort()
-          .map((cls) => [cls, sortKeys(class_to_classes[cls])]),
-      ),
+      class_to_classes: sortKeys(Object.fromEntries(sortedClasses)),
     },
   };
   const source = {
