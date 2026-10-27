@@ -137,12 +137,12 @@ verify-user-tool-source-schema:
 # Snapshot a Galaxy server's datatype hierarchy (types_and_mapping) into workflow-graph.
 # Network; refresh periodically.
 #   make sync-datatypes                                  # usegalaxy.org
-#   make sync-datatypes GALAXY_URL=https://usegalaxy.eu
+#   make sync-datatypes DATATYPES_GALAXY_URL=https://usegalaxy.eu
 DATATYPES_SNAPSHOT_DST = packages/workflow-graph/src/datatypes-snapshot.generated.ts
-GALAXY_URL ?= https://usegalaxy.org
+DATATYPES_GALAXY_URL ?= https://usegalaxy.org
 
 sync-datatypes:
-	node scripts/sync-datatypes.mjs --galaxy-url "$(GALAXY_URL)"
+	node scripts/sync-datatypes.mjs --galaxy-url "$(DATATYPES_GALAXY_URL)"
 
 verify-datatypes-snapshot:
 	@node -e '\

@@ -102,9 +102,9 @@ snapshotDatatypesMapper().isSubType("fastqsanger", "fastq"); // true
 DATATYPES_SNAPSHOT.source; // { galaxyUrl, path, versionMajor, versionMinor, fetchedAt }
 ```
 
-A separate entry point so bundles that don't import it don't carry the ~250 KB of data. Refresh with `make sync-datatypes` (usegalaxy.org by default; `GALAXY_URL=...` for another server); `make check` verifies the committed file against its `.sha256`.
+A separate entry point so bundles that don't import it don't carry the ~250 KB of data. Refresh with `make sync-datatypes` (usegalaxy.org by default; `DATATYPES_GALAXY_URL=...` for another server); mapping keys are sorted so a refresh diffs only on real changes. `make check` verifies the committed file against its `.sha256`.
 
-The snapshot has the client's semantics, not the server's. Galaxy names `subclass="true"` datatypes and auto-compressed variants after their parent class (e.g. `galaxy.datatypes.registry.Text`), so `isSubType("fastqsanger.gz", "fastqsanger")` is true. Implicit conversions are not modeled.
+The snapshot has the client's semantics, not the server's. Galaxy's mapping names every `subclass="true"` datatype after its parent class (e.g. `galaxy.datatypes.registry.Text`), so siblings collapse into one class: `isSubType("markdown", "source.py")` is true both ways. Compressed variants are real subclasses (`isSubType("fastqsanger.gz", "fastqsanger")` is true on the server too). Implicit conversions are not modeled.
 
 ## Rule builder DSL
 

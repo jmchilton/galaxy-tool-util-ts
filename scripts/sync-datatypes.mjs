@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 import * as prettier from "prettier";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -12,20 +13,47 @@ const DST = join(ROOT, "packages/workflow-graph/src/datatypes-snapshot.generated
 // The client's query; the default upload_only=true omits non-upload types.
 const PATH = "/api/datatypes/types_and_mapping?upload_only=false";
 
-const urlFlag = process.argv.indexOf("--galaxy-url");
-const galaxyUrl = (urlFlag >= 0 ? process.argv[urlFlag + 1] : "https://usegalaxy.org").replace(
-  /\/+$/,
-  "",
-);
+const { values } = parseArgs({
+  options: { "galaxy-url": { type: "string", default: "https://usegalaxy.org" } },
+});
+const galaxyUrl = values["galaxy-url"].replace(/\/+$/, "");
 
 async function getJson(path) {
-  const response = await fetch(galaxyUrl + path);
+  const response = await fetch(galaxyUrl + path, { signal: AbortSignal.timeout(60_000) });
   if (!response.ok) throw new Error(`GET ${galaxyUrl}${path}: HTTP ${response.status}`);
   return response.json();
 }
 
+// Galaxy builds these maps from Python sets; sort keys so re-syncs diff only on real changes.
+function sortKeys(record) {
+  return Object.fromEntries(
+    Object.keys(record)
+      .sort()
+      .map((k) => [k, record[k]]),
+  );
+}
+
 const version = await getJson("/api/version");
-const typesAndMapping = await getJson(PATH);
+const raw = await getJson(PATH);
+const { ext_to_class_name, class_to_classes } = raw.datatypes_mapping ?? {};
+if (!Array.isArray(raw.datatypes) || raw.datatypes.length === 0 || !ext_to_class_name) {
+  throw new Error(`Unexpected ${PATH} response from ${galaxyUrl}.`);
+}
+for (const ext of raw.datatypes) {
+  const cls = ext_to_class_name[ext];
+  if (!cls || !class_to_classes[cls]) throw new Error(`Datatype '${ext}' has no class mapping.`);
+}
+const typesAndMapping = {
+  datatypes: raw.datatypes,
+  datatypes_mapping: {
+    ext_to_class_name: sortKeys(ext_to_class_name),
+    class_to_classes: Object.fromEntries(
+      Object.keys(class_to_classes)
+        .sort()
+        .map((cls) => [cls, sortKeys(class_to_classes[cls])]),
+    ),
+  },
+};
 const source = {
   galaxyUrl,
   path: PATH,

@@ -42,8 +42,10 @@ describe("snapshotDatatypesMapper", () => {
     ["bed", "interval", true],
     ["bam", "fasta", false],
     ["fastqsanger", "fastqsanger.gz", false],
-    // Client-side mapping names compressed variants after their parent class.
     ["fastqsanger.gz", "fastqsanger", true],
+    // Client-only: `subclass="true"` siblings share one class name (`registry.Text`).
+    ["markdown", "source.py", true],
+    ["source.py", "markdown", true],
   ])("isSubType(%s, %s) is %s", (child, parent, expected) => {
     expect(mapper.isSubType(child, parent)).toBe(expected);
   });
