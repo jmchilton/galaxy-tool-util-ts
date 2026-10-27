@@ -50,8 +50,8 @@ export interface CrossCheckOptions {
  *   workflow_output_kind               dataset assertion on a collection output or vice versa
  *   workflow_output_collection_type    asserted collection_type differs from the resolved one
  *
- * Output shape checks are skipped for a test whose inputs map over: the
- * resolved shapes assume unmapped inputs.
+ * Output shape checks are skipped for a test whose job collections differ
+ * from the declared input collection types: resolved shapes assume them.
  */
 export function checkTestsAgainstWorkflow(
   testsDoc: unknown,
@@ -68,7 +68,7 @@ export function checkTestsAgainstWorkflow(
     if (!entry) continue;
     const job = asRecord(entry.job) ?? {};
     const outputs = asRecord(entry.outputs) ?? {};
-    let mapsOver = false;
+    let shapesDiverge = false;
 
     // Inputs: flag unknowns, check types.
     for (const [name, value] of Object.entries(job)) {
@@ -92,9 +92,8 @@ export function checkTestsAgainstWorkflow(
         });
         continue;
       }
-      const kindDiagnostics = checkInputKind([testIdx, "job", name], declared, value, options);
-      mapsOver ||= kindDiagnostics.some((d) => d.keyword === MAP_OVER);
-      diagnostics.push(...kindDiagnostics);
+      shapesDiverge ||= divergesFromDeclaredShape(declared, value);
+      diagnostics.push(...checkInputKind([testIdx, "job", name], declared, value, options));
     }
 
     // Inputs: flag required ones missing from the job.
@@ -122,13 +121,22 @@ export function checkTestsAgainstWorkflow(
         });
         continue;
       }
-      if (!mapsOver) {
+      if (!shapesDiverge) {
         diagnostics.push(...checkOutputKind([testIdx, "outputs", name], declared, assertion));
       }
     }
   }
 
   return diagnostics;
+}
+
+/** True when a job collection differs from the input type resolved output shapes assume. */
+function divergesFromDeclaredShape(declared: WorkflowInput, value: unknown): boolean {
+  const job = asRecord(value);
+  if (job?.class !== "Collection") return false;
+  if (!COLLECTION_INPUT_TYPES.has(declared.type)) return true;
+  // The connection graph resolves an untyped collection input as `list`.
+  return asString(job.collection_type) !== (declared.collectionType ?? "list");
 }
 
 function checkInputKind(
@@ -195,8 +203,9 @@ function checkInputKind(
   const filetype = asString(job.filetype);
   const { datatypes } = options;
   if (isFile && datatypes && declared.format && filetype && filetype !== "auto") {
+    if (declared.format.includes(filetype)) return [];
     if (producesAcceptableDatatype(datatypes, declared.format, [filetype]).canAccept) return [];
-    const known = filetype in datatypes.datatypesMapping.ext_to_class_name;
+    const known = Object.hasOwn(datatypes.datatypesMapping.ext_to_class_name, filetype);
     return [
       {
         path: jptr([...pathParts, "filetype"]),

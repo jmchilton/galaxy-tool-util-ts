@@ -152,7 +152,7 @@ gxwf validate-tests my-workflow-tests.yml --workflow my-workflow.gxwf.yml
 gxwf validate-tests my-workflow-tests.yml --json
 ```
 
-The cross-check flags unknown or missing inputs, value types, `class: File` on a collection input, input `collection_type` the input can't accept, and dataset vs collection form and `collection_type` on output assertions. Output shapes come from the connection graph. Inline user-defined tools and subworkflows need nothing extra; other tool steps need cached tools (`--cache-dir`), and outputs that can't be resolved are skipped. Warnings, which don't fail validation: `filetype` outside the input's declared `format` (checked against the bundled datatypes snapshot), and a collection that maps over a data or collection input. A test case whose inputs map over skips output shape checks. The JSON report lists warnings under `warnings`.
+The cross-check flags unknown or missing inputs, value types, `class: File` on a collection input, input `collection_type` the input can't accept, and dataset vs collection form and `collection_type` on output assertions. Output shapes come from the connection graph. Inline user-defined tools and subworkflows need nothing extra; other tool steps are read from the tool cache (the default one, or `--cache-dir`) and never fetched, and outputs that can't be resolved are skipped. Warnings, which don't fail validation: `filetype` outside the input's declared `format` (checked against the bundled datatypes snapshot), and a collection that maps over a data or collection input. A test case whose job collections differ from the declared input collection types skips output shape checks. The JSON report lists warnings under `warnings`.
 
 | Option | Description |
 |---|---|

@@ -21,6 +21,13 @@ inputs:
   reads:
     type: collection
     collection_type: list:paired
+  any_collection:
+    type: collection
+    optional: true
+  shed_typed:
+    type: data
+    format: myshedtype
+    optional: true
 outputs:
   bam_out:
     outputSource: mapper/bam
@@ -179,6 +186,18 @@ describe("checkTestsAgainstWorkflow — input kinds", () => {
     expect(d[0]!.path).toBe("/0/job/proteins/filetype");
   });
 
+  it("accepts a declared format missing from the snapshot and filetype auto", () => {
+    const k = keywords(`
+- job:
+    genome: {class: File, path: g.fa, filetype: auto}
+    proteins: {class: File, path: p.fa}
+    reads: {class: Collection, collection_type: "list:paired", elements: []}
+    shed_typed: {class: File, path: s.dat, filetype: myshedtype}
+  outputs: {}
+`);
+    expect(k).toEqual([]);
+  });
+
   it("skips filetype checks without a datatypes mapper", () => {
     const k = keywords(
       `
@@ -225,6 +244,28 @@ describe("checkTestsAgainstWorkflow — output kinds", () => {
     list_out: {class: Collection, collection_type: "list:list", element_tests: {}}
 `);
     expect(k).toEqual(["workflow_input_collection_map_over"]);
+  });
+
+  // Resolved shapes assume the declared input types; untyped collection inputs resolve as list.
+  it.each([
+    ["reads", "sample_sheet:paired"],
+    ["any_collection", "list:paired"],
+  ])("skips output shapes when %s gets accepted type %s", (input, collectionType) => {
+    const job: Record<string, string> = {
+      reads: `{class: Collection, collection_type: "list:paired", elements: []}`,
+      [input]: `{class: Collection, collection_type: "${collectionType}", elements: []}`,
+    };
+    const k = keywords(`
+- job:
+    genome: {class: File, path: g.fa}
+    proteins: {class: File, path: p.fa}
+${Object.entries(job)
+  .map(([name, value]) => `    ${name}: ${value}`)
+  .join("\n")}
+  outputs:
+    list_out: {class: Collection, collection_type: "list:list", element_tests: {}}
+`);
+    expect(k).toEqual([]);
   });
 
   it("flags a dataset assertion on a collection output", () => {

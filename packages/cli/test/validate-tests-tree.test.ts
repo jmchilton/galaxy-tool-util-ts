@@ -185,5 +185,36 @@ steps:
       expect(report.files[0].valid).toBe(true);
       expect(process.exitCode).toBe(0);
     });
+
+    it("reports warnings separately; they don't fail the file", async () => {
+      await writeFile(
+        join(dir, "fmt.gxwf.yml"),
+        `class: GalaxyWorkflow
+inputs:
+  genome: {type: data, format: fasta}
+outputs:
+  out: {outputSource: genome}
+steps: {}
+`,
+      );
+      await writeFile(
+        join(dir, "fmt.gxwf-tests.yml"),
+        `- doc: bam into fasta
+  job:
+    genome: {class: File, path: g.bam, filetype: bam}
+  outputs:
+    out: {ftype: bam}
+`,
+      );
+      await runValidateTestsTree(dir, { autoWorkflow: true, json: true });
+      const report = JSON.parse(logs.join("\n"));
+      expect(report.files[0].valid).toBe(true);
+      expect(report.files[0].errors).toEqual([]);
+      expect(report.files[0].warnings.map((w: { keyword: string }) => w.keyword)).toEqual([
+        "workflow_input_format",
+      ]);
+      expect(report.summary.ok).toBe(1);
+      expect(process.exitCode).toBe(0);
+    });
   });
 });
