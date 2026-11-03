@@ -41,9 +41,7 @@ import { buildConnectionReport } from "./connection-validation.js";
 import {
   embeddedToolDefinition,
   embeddedToolIdentity,
-  withEmbeddedToolChecks,
-  isEmbeddedTool,
-  resolveEmbeddedTool,
+  validateEmbeddedToolStep,
 } from "./embedded-tool.js";
 import type { ConnectionValidationReport } from "@galaxy-tool-util/schema";
 
@@ -382,18 +380,17 @@ function _validateEmbeddedNativeStep(
   cache: ToolCache | null,
 ): StepValidationResult {
   if (!cache) return _stateValidationDisabled(stepLabel, repr);
-  const tool = resolveEmbeddedTool(repr, stepLabel);
-  if (!isEmbeddedTool(tool)) return tool;
-  const result = _validateNativeState(
-    tool.bundle,
-    step.tool_state as Record<string, unknown>,
-    step.input_connections,
-    stepLabel,
-    tool.toolId,
-    tool.toolVersion,
-    step.when,
+  return validateEmbeddedToolStep(repr, stepLabel, (tool) =>
+    _validateNativeState(
+      tool.bundle,
+      step.tool_state as Record<string, unknown>,
+      step.input_connections,
+      stepLabel,
+      tool.toolId,
+      tool.toolVersion,
+      step.when,
+    ),
   );
-  return withEmbeddedToolChecks(result, repr);
 }
 
 function _stateValidationDisabled(
@@ -607,10 +604,9 @@ function _validateEmbeddedFormat2Step(
   cache: ToolCache | null,
 ): StepValidationResult {
   if (!cache) return _stateValidationDisabled(stepLabel, repr);
-  const tool = resolveEmbeddedTool(repr, stepLabel);
-  if (!isEmbeddedTool(tool)) return tool;
-  const result = _validateFormat2State(tool.bundle, step, stepLabel, tool.toolId, tool.toolVersion);
-  return withEmbeddedToolChecks(result, repr);
+  return validateEmbeddedToolStep(repr, stepLabel, (tool) =>
+    _validateFormat2State(tool.bundle, step, stepLabel, tool.toolId, tool.toolVersion),
+  );
 }
 
 function _validateFormat2State(

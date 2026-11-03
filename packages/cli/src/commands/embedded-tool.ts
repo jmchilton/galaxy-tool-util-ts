@@ -50,7 +50,7 @@ export function embeddedToolIdentity(repr: Record<string, unknown>): {
  * doesn't parse — it ships inside the workflow, so a broken one is the
  * workflow's defect.
  */
-export function resolveEmbeddedTool(
+function resolveEmbeddedTool(
   repr: Record<string, unknown>,
   stepLabel: string,
 ): EmbeddedTool | ValidationStepResult {
@@ -86,18 +86,25 @@ export function resolveEmbeddedTool(
   }
 }
 
-export function isEmbeddedTool(value: EmbeddedTool | ValidationStepResult): value is EmbeddedTool {
+function isEmbeddedTool(value: EmbeddedTool | ValidationStepResult): value is EmbeddedTool {
   return "bundle" in value;
 }
 
 /**
- * Fail an embedded tool's step result when its templates read `inputs.*`
- * members the job's inputs won't have; the tool would fail or misbehave at job time.
+ * Validate a step that embeds its tool: resolve the embedded tool, validate the
+ * step's state against it with `validateState`, and fail the step when the
+ * tool's templates read `inputs.*` members the job's inputs won't have (the
+ * tool would fail or misbehave at job time). Every validation mode goes through
+ * here, so none can skip the template check.
  */
-export function withEmbeddedToolChecks(
-  result: ValidationStepResult,
+export function validateEmbeddedToolStep(
   repr: Record<string, unknown>,
+  stepLabel: string,
+  validateState: (tool: EmbeddedTool) => ValidationStepResult,
 ): ValidationStepResult {
+  const tool = resolveEmbeddedTool(repr, stepLabel);
+  if (!isEmbeddedTool(tool)) return tool;
+  const result = validateState(tool);
   // Workflow validation doesn't run validateUserToolSource, so undeclared roots are reported here.
   const problems = checkInputPaths(repr, { undeclaredRoots: true }).map(
     (d) => `embedded GalaxyUserTool ${d.path}: ${d.message}`,

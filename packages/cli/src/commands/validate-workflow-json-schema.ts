@@ -46,12 +46,7 @@ import type {
 } from "./validate-workflow.js";
 import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
-import {
-  embeddedToolDefinition,
-  isEmbeddedTool,
-  resolveEmbeddedTool,
-  withEmbeddedToolChecks,
-} from "./embedded-tool.js";
+import { embeddedToolDefinition, validateEmbeddedToolStep } from "./embedded-tool.js";
 import { resolveStrictOptions } from "./strict-options.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
@@ -463,19 +458,18 @@ function _validateEmbeddedNativeStepJsonSchema(
   stepLabel: string,
   repr: Record<string, unknown>,
 ): StepValidationResult {
-  const tool = resolveEmbeddedTool(repr, stepLabel);
-  if (!isEmbeddedTool(tool)) return tool;
-  const result = _validateNativeStateJsonSchema(
-    tool.bundle,
-    step.tool_state as Record<string, unknown>,
-    { ...step.input_connections },
-    stepLabel,
-    tool.toolId,
-    tool.toolVersion,
-    embeddedValidators(tool.bundle),
-    step.when,
+  return validateEmbeddedToolStep(repr, stepLabel, (tool) =>
+    _validateNativeStateJsonSchema(
+      tool.bundle,
+      step.tool_state as Record<string, unknown>,
+      { ...step.input_connections },
+      stepLabel,
+      tool.toolId,
+      tool.toolVersion,
+      embeddedValidators(tool.bundle),
+      step.when,
+    ),
   );
-  return withEmbeddedToolChecks(result, repr);
 }
 
 /**
@@ -669,17 +663,16 @@ function _validateEmbeddedFormat2StepJsonSchema(
   stepLabel: string,
   repr: Record<string, unknown>,
 ): StepValidationResult {
-  const tool = resolveEmbeddedTool(repr, stepLabel);
-  if (!isEmbeddedTool(tool)) return tool;
-  const result = _validateFormat2StateJsonSchema(
-    tool.bundle,
-    step,
-    stepLabel,
-    tool.toolId,
-    tool.toolVersion,
-    embeddedValidators(tool.bundle),
+  return validateEmbeddedToolStep(repr, stepLabel, (tool) =>
+    _validateFormat2StateJsonSchema(
+      tool.bundle,
+      step,
+      stepLabel,
+      tool.toolId,
+      tool.toolVersion,
+      embeddedValidators(tool.bundle),
+    ),
   );
-  return withEmbeddedToolChecks(result, repr);
 }
 
 function _validateFormat2StateJsonSchema(
