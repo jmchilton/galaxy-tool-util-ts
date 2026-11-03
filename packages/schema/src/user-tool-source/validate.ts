@@ -12,12 +12,16 @@
  * citation DOI/BibTeX shape, blank-string rejection — live in
  * ``./semantic.ts`` because Pydantic ``model_validator`` rules don't render
  * into JSON Schema.
+ *
+ * ``./input-paths.ts`` goes further than Galaxy: it resolves each ``inputs.*``
+ * member path a template or output label reads against the job runtime model.
  */
 
 import Ajv2020Import from "ajv/dist/2020.js";
 import addFormatsImport from "ajv-formats";
 import type { ErrorObject, ValidateFunction } from "ajv";
 import { userToolSourceSchema } from "./schema.generated.js";
+import { checkInputPaths } from "./input-paths.js";
 import { runSemanticChecks } from "./semantic.js";
 
 const Ajv2020 = Ajv2020Import as unknown as typeof Ajv2020Import.default;
@@ -31,7 +35,7 @@ export interface UserToolSourceDiagnostic {
 }
 
 export interface ValidateUserToolSourceOptions {
-  /** Skip semantic (model_validator) checks; structural only. */
+  /** Skip the semantic checks (Galaxy's model_validator rules and input paths); structural only. */
   schemaOnly?: boolean;
 }
 
@@ -58,7 +62,7 @@ function toDiagnostic(err: ErrorObject): UserToolSourceDiagnostic {
 /**
  * Validate a parsed user-tool-source document. Returns structural errors plus,
  * unless ``schemaOnly`` is set, the semantic checks that mirror
- * ``UserToolSource``'s pydantic ``model_validator`` rules.
+ * ``UserToolSource``'s pydantic ``model_validator`` rules and the input path check.
  */
 export function validateUserToolSource(
   parsed: unknown,
@@ -72,7 +76,8 @@ export function validateUserToolSource(
   const errors = structuralOk ? [] : (validate.errors ?? []).map(toDiagnostic);
 
   if (!opts.schemaOnly && parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-    errors.push(...runSemanticChecks(parsed as Record<string, unknown>));
+    const doc = parsed as Record<string, unknown>;
+    errors.push(...runSemanticChecks(doc), ...checkInputPaths(doc));
   }
 
   return { valid: errors.length === 0, errors };

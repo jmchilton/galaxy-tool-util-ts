@@ -99,7 +99,7 @@ export function withEmbeddedToolChecks(
   repr: Record<string, unknown>,
 ): ValidationStepResult {
   const problems = checkInputPaths(repr).map(
-    (d) => `embedded GalaxyUserTool ${d.path}: ${d.message.replace(/^Value error, /, "")}`,
+    (d) => `embedded GalaxyUserTool ${d.path}: ${d.message}`,
   );
   if (problems.length === 0) return result;
   return { ...result, status: "fail", errors: [...result.errors, ...problems] };

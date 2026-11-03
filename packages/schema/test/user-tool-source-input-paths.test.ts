@@ -73,7 +73,7 @@ describe("inputs.* member paths in UDT templates", () => {
     );
     expect(errors).toEqual([
       expect.stringContaining(
-        "/shell_command: Value error, inputs.input.filepath: data input 'input' has no field 'filepath' at job runtime",
+        "/shell_command: inputs.input.filepath: data input 'input' has no field 'filepath' at job runtime",
       ),
     ]);
   });
@@ -216,29 +216,106 @@ describe("inputs.* member paths in UDT templates", () => {
     ]);
   });
 
-  it("skips what it can't resolve statically", () => {
+  const SKIP_INPUTS = [
+    READS,
+    { name: "any", type: "data_collection" },
+    { name: "rec", type: "data_collection", collection_type: "record" },
+    { name: "key", type: "text" },
+    // The TS YAML parser doesn't read sections; references into one are left alone.
+    { name: "opts", type: "section", parameters: [{ name: "ref", type: "data" }] },
+  ];
+
+  it.each([
+    ["an alias", "${ const r = inputs.reads; return r.whatever; }"],
+    ["a computed key", "$(inputs.reads[inputs.key])"],
+    ["a computed element key", "$(inputs.reads.elements[inputs.key].path)"],
+    ["an untyped collection's elements", "$(inputs.any.elements.anything)"],
+    ["a record's elements", "$(inputs.rec.elements.field.path)"],
+    ["an Object.prototype member", "$(inputs.reads.hasOwnProperty('x'))"],
+    ["an unparsed section", "$(inputs.opts.anything.path)"],
+    ["a body that isn't JavaScript", "$(cat not javascript)"],
+    ["an escaped $(", "\\$(inputs.reads.not_an_expression)"],
+    ["an escaped ${", "\\${inputs.reads.not_an_expression}"],
+  ])("skips %s", (_what, shell_command) => {
+    expect(pathErrors(tool({ inputs: SKIP_INPUTS, shell_command }))).toEqual([]);
+  });
+
+  // Each template holds one bad path; the scanner must find it as cwl_utils' scanner does.
+  it.each([
+    ["after a double backslash", "\\\\$(inputs.input.bad)"],
+    ["with ) inside quotes", "$(inputs.input.bad + ')')"],
+    ["in a ${} body with an object literal", "${ var o = {a: {b: 1}}; return inputs.input.bad; }"],
+    ["before a trailing // comment", "$(inputs.input.bad // trailing comment\n)"],
+    ["in a template literal with quotes", "$(`'${inputs.input.bad}'`)"],
+  ])("finds the expression %s", (_what, shell_command) => {
+    expect(pathErrors(tool({ inputs: [{ name: "input", type: "data" }], shell_command }))).toEqual([
+      expect.stringContaining("inputs.input.bad: data input 'input' has no field 'bad'"),
+    ]);
+  });
+
+  it("accepts a path any same-named conditional branch parameter has", () => {
+    const doc = (cmd: string) =>
+      tool({
+        inputs: [
+          {
+            name: "lib",
+            type: "conditional",
+            test_parameter: {
+              name: "layout",
+              type: "select",
+              options: [
+                { value: "single", label: "Single" },
+                { value: "paired", label: "Paired" },
+              ],
+            },
+            whens: [
+              { discriminator: "single", parameters: [{ name: "reads", type: "data" }] },
+              {
+                discriminator: "paired",
+                parameters: [{ name: "reads", type: "data_collection", collection_type: "paired" }],
+              },
+            ],
+          },
+        ],
+        shell_command: cmd,
+      });
+    expect(
+      pathErrors(
+        doc(
+          "$(inputs.lib.layout == 'paired' ? inputs.lib.reads.elements.forward.path : inputs.lib.reads.path)",
+        ),
+      ),
+    ).toEqual([]);
+    expect(pathErrors(doc("$(inputs.lib.reads.filename)"))).toEqual([
+      expect.stringContaining("inputs.lib.reads.filename: data input 'lib.reads' has no field"),
+    ]);
+  });
+
+  it("accepts dataset elements of a list where list:paired_or_unpaired is declared", () => {
+    const doc = (cmd: string) =>
+      tool({
+        inputs: [
+          { name: "r", type: "data_collection", collection_type: "list:paired_or_unpaired" },
+        ],
+        shell_command: cmd,
+      });
+    expect(
+      pathErrors(
+        doc("$(inputs.r.elements[0].path) $(inputs.r.elements[0].elements.unpaired.path)"),
+      ),
+    ).toEqual([]);
+    expect(pathErrors(doc("$(inputs.r.elements[0].filename)"))).toHaveLength(1);
+  });
+
+  it("accepts indexing a string", () => {
     expect(
       pathErrors(
         tool({
           inputs: [
-            READS,
-            { name: "any", type: "data_collection" },
-            { name: "rec", type: "data_collection", collection_type: "record" },
-            { name: "key", type: "text" },
-            // YAML tools don't parse sections; references into one are left alone.
-            { name: "opts", type: "section", parameters: [{ name: "ref", type: "data" }] },
+            { name: "t", type: "text" },
+            { name: "d", type: "data" },
           ],
-          shell_command: [
-            "${ const r = inputs.reads; return r.whatever; }",
-            "$(inputs.reads[inputs.key])",
-            "$(inputs.reads.elements[inputs.key].path)",
-            "$(inputs.any.elements.anything)",
-            "$(inputs.rec.elements.field.path)",
-            "$(inputs.reads.hasOwnProperty('x'))",
-            "$(inputs.opts.anything.path)",
-            "$(cat not javascript)",
-            "\\$(inputs.reads.not_an_expression)",
-          ].join(" "),
+          shell_command: "$(inputs.t[0]) $(inputs.d.path[0])",
         }),
       ),
     ).toEqual([]);
@@ -276,9 +353,36 @@ describe("inputs.* references in UDT output labels", () => {
           whens: [{ discriminator: true, parameters: [{ name: "tag", type: "text" }] }],
         },
         { name: "extra", type: "repeat", parameters: [{ name: "file", type: "data" }] },
+        { name: "files", type: "data", multiple: true },
+        {
+          name: "sel",
+          type: "select",
+          multiple: true,
+          options: [{ value: "a", label: "A" }],
+        },
       ],
       outputs: [{ type: "data", name: "out", from_work_dir: "out.txt", label }],
     });
+
+  it("accepts a reference any same-named conditional branch parameter fills in", () => {
+    const label = (ref: string) =>
+      tool({
+        inputs: [
+          {
+            name: "lib",
+            type: "conditional",
+            test_parameter: { name: "paired", type: "boolean" },
+            whens: [
+              { discriminator: false, parameters: [{ name: "reads", type: "data" }] },
+              { discriminator: true, parameters: [{ name: "reads", type: "data_collection" }] },
+            ],
+          },
+        ],
+        outputs: [{ type: "data", name: "out", from_work_dir: "out.txt", label: ref }],
+      });
+    expect(pathErrors(label("$(inputs.lib.reads.format)"))).toEqual([]);
+    expect(pathErrors(label("$(inputs.lib.reads.path)"))).toHaveLength(1);
+  });
 
   it("accepts the references Galaxy fills in", () => {
     expect(
@@ -290,21 +394,27 @@ describe("inputs.* references in UDT output labels", () => {
     ).toEqual([]);
   });
 
-  it("flags references Galaxy keeps as written", () => {
-    expect(
-      pathErrors(
-        doc(
-          "$(inputs.input.path) $(inputs.input) $(inputs.reads.format) $(inputs.opts.tag.length) $(inputs.opts.missing) $(inputs.extra) $(inputs.opts)",
+  it.each([
+    ["$(inputs.input.path)", "a data input in a label must end with one of"],
+    ["$(inputs.input)", "a data input in a label must end with one of"],
+    ["$(inputs.reads.format)", "a data_collection input in a label must end with one of"],
+    ["$(inputs.opts.tag.length)", "text input opts.tag has no fields"],
+    ["$(inputs.opts.missing)", "there is no 'missing' in opts"],
+    ["$(inputs.extra)", "a repeat can't be read in a label"],
+    ["$(inputs.opts)", "conditional opts is not text"],
+    ["$(inputs.files.name)", "multiple data input files can't be read in a label"],
+    ["$(inputs.sel)", "multiple select input sel can't be read in a label"],
+  ])("flags %s, which Galaxy keeps as written", (ref, reason) => {
+    expect(pathErrors(doc(ref))).toEqual([
+      expect.stringMatching(
+        new RegExp(
+          `^/outputs/0/label: label reference ${escape(ref)} is never filled in: ${escape(reason)}`,
         ),
       ),
-    ).toEqual([
-      "/outputs/0/label: Value error, label reference $(inputs.input.path) is never filled in: a data input in a label must end with one of element_identifier, format, name",
-      "/outputs/0/label: Value error, label reference $(inputs.input) is never filled in: a data input in a label must end with one of element_identifier, format, name",
-      "/outputs/0/label: Value error, label reference $(inputs.reads.format) is never filled in: a data_collection input in a label must end with one of element_identifier, name",
-      "/outputs/0/label: Value error, label reference $(inputs.opts.tag.length) is never filled in: text input opts.tag has no fields",
-      "/outputs/0/label: Value error, label reference $(inputs.opts.missing) is never filled in: there is no 'missing' in opts",
-      "/outputs/0/label: Value error, label reference $(inputs.extra) is never filled in: a repeat can't be read in a label",
-      "/outputs/0/label: Value error, label reference $(inputs.opts) is never filled in: conditional opts is not text; reference one of its inputs",
     ]);
   });
 });
+
+function escape(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

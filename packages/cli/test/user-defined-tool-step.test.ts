@@ -133,12 +133,17 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
     );
   });
 
-  it.each([false, true])(
-    "fails a template that reads an input member the job won't have (native: %s)",
-    async (native) => {
+  it.each([
+    ["effect", false],
+    ["effect", true],
+    ["json-schema", false],
+    ["json-schema", true],
+  ] as const)(
+    "fails a template that reads an input member the job won't have (%s, native: %s)",
+    async (mode, native) => {
       const wf = await userToolWorkflow();
       wf.steps.udt_cat.run.shell_command = "cat '$(inputs.input1.filepath)' > output.txt";
-      const report = await validate(native ? toNative(wf) : wf, { native });
+      const report = await validate(native ? toNative(wf) : wf, { mode, native });
 
       expect(report.results[0].status).toBe("fail");
       expect(report.results[0].errors).toEqual([

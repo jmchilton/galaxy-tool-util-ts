@@ -105,8 +105,9 @@ describe("UserToolSource validator — mirror of test_user_tool_source_validatio
       doc({
         shell_command: "echo $(inputs.my_repeat[0].x) $(inputs.my_section.y) > out.txt",
         inputs: [
+          // Galaxy's case leaves the repeat empty; the input path check needs `x` declared.
           { type: "repeat", name: "my_repeat", parameters: [{ type: "integer", name: "x" }] },
-          { type: "section", name: "my_section", parameters: [{ type: "integer", name: "y" }] },
+          { type: "section", name: "my_section", parameters: [] },
         ],
       }),
     );
