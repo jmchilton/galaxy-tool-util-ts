@@ -5,6 +5,7 @@
  * embedded definition, so these steps validate without a tool cache lookup.
  */
 import {
+  checkInputPaths,
   isGalaxyUserToolRun,
   parseInlineTool,
   type ToolParameterBundleModel,
@@ -87,4 +88,19 @@ export function resolveEmbeddedTool(
 
 export function isEmbeddedTool(value: EmbeddedTool | ValidationStepResult): value is EmbeddedTool {
   return "bundle" in value;
+}
+
+/**
+ * Fail an embedded tool's step result when its templates read `inputs.*`
+ * members the job's inputs won't have; the tool would fail or misbehave at job time.
+ */
+export function withEmbeddedToolChecks(
+  result: ValidationStepResult,
+  repr: Record<string, unknown>,
+): ValidationStepResult {
+  const problems = checkInputPaths(repr).map(
+    (d) => `embedded GalaxyUserTool ${d.path}: ${d.message.replace(/^Value error, /, "")}`,
+  );
+  if (problems.length === 0) return result;
+  return { ...result, status: "fail", errors: [...result.errors, ...problems] };
 }

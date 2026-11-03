@@ -105,8 +105,8 @@ describe("UserToolSource validator — mirror of test_user_tool_source_validatio
       doc({
         shell_command: "echo $(inputs.my_repeat[0].x) $(inputs.my_section.y) > out.txt",
         inputs: [
-          { type: "repeat", name: "my_repeat", parameters: [] },
-          { type: "section", name: "my_section", parameters: [] },
+          { type: "repeat", name: "my_repeat", parameters: [{ type: "integer", name: "x" }] },
+          { type: "section", name: "my_section", parameters: [{ type: "integer", name: "y" }] },
         ],
       }),
     );

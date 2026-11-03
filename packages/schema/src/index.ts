@@ -479,6 +479,8 @@ export {
   userToolSourceSchema,
   /** Run only the semantic (model_validator) checks — internal helper, exposed for tests. */
   runSemanticChecks,
+  /** Check `inputs.*` member paths in templates and output labels against the job runtime model. */
+  checkInputPaths,
   type UserToolSourceDiagnostic,
   type ValidateUserToolSourceOptions,
 } from "./user-tool-source/index.js";

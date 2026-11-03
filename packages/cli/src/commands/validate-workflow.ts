@@ -41,6 +41,7 @@ import { buildConnectionReport } from "./connection-validation.js";
 import {
   embeddedToolDefinition,
   embeddedToolIdentity,
+  withEmbeddedToolChecks,
   isEmbeddedTool,
   resolveEmbeddedTool,
 } from "./embedded-tool.js";
@@ -383,7 +384,7 @@ function _validateEmbeddedNativeStep(
   if (!cache) return _stateValidationDisabled(stepLabel, repr);
   const tool = resolveEmbeddedTool(repr, stepLabel);
   if (!isEmbeddedTool(tool)) return tool;
-  return _validateNativeState(
+  const result = _validateNativeState(
     tool.bundle,
     step.tool_state as Record<string, unknown>,
     step.input_connections,
@@ -392,6 +393,7 @@ function _validateEmbeddedNativeStep(
     tool.toolVersion,
     step.when,
   );
+  return withEmbeddedToolChecks(result, repr);
 }
 
 function _stateValidationDisabled(
@@ -607,7 +609,8 @@ function _validateEmbeddedFormat2Step(
   if (!cache) return _stateValidationDisabled(stepLabel, repr);
   const tool = resolveEmbeddedTool(repr, stepLabel);
   if (!isEmbeddedTool(tool)) return tool;
-  return _validateFormat2State(tool.bundle, step, stepLabel, tool.toolId, tool.toolVersion);
+  const result = _validateFormat2State(tool.bundle, step, stepLabel, tool.toolId, tool.toolVersion);
+  return withEmbeddedToolChecks(result, repr);
 }
 
 function _validateFormat2State(

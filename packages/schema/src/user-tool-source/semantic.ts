@@ -10,6 +10,7 @@
  * hand-port of ``test/unit/tool_util/test_user_tool_source_validation.py``.
  */
 
+import { checkInputPaths } from "./input-paths.js";
 import type { UserToolSourceDiagnostic } from "./validate.js";
 
 const TEMPLATE_BLOCK_RE = /\$\(([\s\S]*?)\)/g;
@@ -174,6 +175,7 @@ export function runSemanticChecks(doc: Record<string, unknown>): UserToolSourceD
   return [
     ...checkBlankRequiredFields(doc),
     ...checkInputRefsAndOutputs(doc),
+    ...checkInputPaths(doc),
     ...checkCitations(doc),
   ];
 }

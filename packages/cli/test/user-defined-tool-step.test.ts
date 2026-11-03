@@ -133,6 +133,23 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
     );
   });
 
+  it.each([false, true])(
+    "fails a template that reads an input member the job won't have (native: %s)",
+    async (native) => {
+      const wf = await userToolWorkflow();
+      wf.steps.udt_cat.run.shell_command = "cat '$(inputs.input1.filepath)' > output.txt";
+      const report = await validate(native ? toNative(wf) : wf, { native });
+
+      expect(report.results[0].status).toBe("fail");
+      expect(report.results[0].errors).toEqual([
+        expect.stringMatching(
+          /^embedded GalaxyUserTool \/shell_command: inputs\.input1\.filepath: data input 'input1' has no field 'filepath' at job runtime/,
+        ),
+      ]);
+      expect(process.exitCode).toBe(1);
+    },
+  );
+
   it("skips a native tool_representation that is not a GalaxyUserTool, and --strict-state rejects it", async () => {
     const native = toNative(await userToolWorkflow()) as Record<string, any>;
     native.steps["1"].tool_representation = {
@@ -205,6 +222,23 @@ describe("gxwf draft commands: embedded GalaxyUserTool step", () => {
     expect(report.topology_errors).toEqual([]);
     expect(report.concrete?.tool_state?.summary).toMatchObject({ ok: 1, fail: 0 });
     expect(process.exitCode).toBe(0);
+  });
+
+  it("draft-validate --concrete fails a template that reads an input member the job won't have", async () => {
+    const path = await stageDraft();
+    const wf = YAML.parse(await readFile(path, "utf-8"));
+    wf.steps.udt_cat.run.shell_command = "cat '$(inputs.input1.filepath)' > output.txt";
+    await writeFile(path, YAML.stringify(wf));
+    await runDraftValidate(path, {
+      concrete: true,
+      cacheDir: ctx.tmpDir,
+      offline: true,
+      json: true,
+    });
+    const report = jsonOutput(ctx) as SingleDraftValidationReport;
+
+    expect(report.concrete?.tool_state?.summary).toMatchObject({ ok: 0, fail: 1 });
+    expect(report.concrete?.ok).toBe(false);
   });
 
   it("draft-extract keeps the workflow output sourced from the embedded tool", async () => {
