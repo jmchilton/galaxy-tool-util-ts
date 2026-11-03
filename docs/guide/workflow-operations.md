@@ -331,6 +331,8 @@ gxwf validate-tests-tree ./workflows/ --auto-workflow
 
 Validate a user-defined Galaxy tool source YAML (`class: GalaxyUserTool` / `GalaxyTool`) against the Galaxy `DynamicToolSources` schema plus the [#22615](https://github.com/galaxyproject/galaxy/pull/22615) semantic checks.
 
+The semantic checks also resolve every `inputs.*` member path in `shell_command` and `configfiles` expressions against the value Galaxy gives that input when the job runs. A `paired_or_unpaired` collection's reads are `inputs.reads.elements.forward.path`, so `inputs.reads.forward.path` is an error. Output label references are checked against what Galaxy fills in: a dataset reference ends with `name`, `element_identifier` or `format`. `gxwf validate` and `draft-validate` apply the same check to embedded `GalaxyUserTool` steps.
+
 ```bash
 gxwf validate-tool-source my-tool.yml
 gxwf validate-tool-source my-tool.yml --schema-only   # structural JSON Schema only, skip semantic checks
