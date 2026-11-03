@@ -21,11 +21,10 @@
  * reported once; callers that don't run it ask for them with `undeclaredRoots`.
  */
 
-import { parse as parseJs } from "acorn";
 import type { ToolParameterModel } from "../schema/bundle-types.js";
 import { parseInputs } from "../user-tool-parse/inputs.js";
 import { jobRuntimeSchema } from "./job-runtime.schema.generated.js";
-import { templateExpressions, type TemplateExpression } from "./template-scanner.js";
+import { templateChains, type InputsChain, type Segment } from "./template-chains.js";
 import type { UserToolSourceDiagnostic } from "./validate.js";
 
 const KEYWORD = "input_path";
@@ -211,127 +210,6 @@ function childShapes(
 }
 
 // --------------------------------------------------------------------------
-// `inputs.*` member chains
-// --------------------------------------------------------------------------
-
-/** One step of a member chain: a property name, or null for a computed key. */
-type Segment = string | null;
-
-interface AstNode {
-  type: string;
-  [key: string]: unknown;
-}
-
-function isNode(value: unknown): value is AstNode {
-  return !!value && typeof value === "object" && typeof (value as AstNode).type === "string";
-}
-
-function memberSegment(node: AstNode): Segment {
-  const property = node.property as AstNode;
-  if (!node.computed) return property.name as string;
-  if (
-    property.type === "Literal" &&
-    (typeof property.value === "string" || typeof property.value === "number")
-  ) {
-    return String(property.value);
-  }
-  return null;
-}
-
-/** The segments after `inputs` when `node` is a member chain rooted at the `inputs` identifier. */
-function inputsChain(node: AstNode): Segment[] | null {
-  const segments: Segment[] = [];
-  let current: AstNode = node;
-  while (current.type === "MemberExpression") {
-    segments.unshift(memberSegment(current));
-    current = current.object as AstNode;
-  }
-  return current.type === "Identifier" && current.name === "inputs" ? segments : null;
-}
-
-/** Identifiers a binding pattern (`x`, `{a, b: [c]}`, `...rest`, `d = 1`) declares. */
-function patternNames(pattern: unknown): string[] {
-  if (!isNode(pattern)) return [];
-  switch (pattern.type) {
-    case "Identifier":
-      return [pattern.name as string];
-    case "ObjectPattern":
-      return (pattern.properties as AstNode[]).flatMap((p) =>
-        patternNames(p.type === "RestElement" ? p : p.value),
-      );
-    case "ArrayPattern":
-      return (pattern.elements as unknown[]).flatMap(patternNames);
-    case "RestElement":
-      return patternNames(pattern.argument);
-    case "AssignmentPattern":
-      return patternNames(pattern.left);
-    default:
-      return [];
-  }
-}
-
-/** Whether the expression declares its own `inputs` (a parameter, variable or function). */
-function bindsInputs(node: AstNode): boolean {
-  const bound: unknown[] = [];
-  switch (node.type) {
-    case "FunctionDeclaration":
-    case "FunctionExpression":
-    case "ArrowFunctionExpression":
-      bound.push(node.id, ...(node.params as unknown[]));
-      break;
-    case "VariableDeclarator":
-      bound.push(node.id);
-      break;
-    case "CatchClause":
-      bound.push(node.param);
-      break;
-    case "ClassDeclaration":
-      bound.push(node.id);
-      break;
-  }
-  if (bound.some((b) => patternNames(b).includes("inputs"))) return true;
-  return Object.values(node).some((value) =>
-    Array.isArray(value)
-      ? value.some((v) => isNode(v) && bindsInputs(v))
-      : isNode(value) && bindsInputs(value),
-  );
-}
-
-/** Every maximal `inputs...` member chain in `root`. */
-function collectChains(root: AstNode): Segment[][] {
-  const chains: Segment[][] = [];
-  const visit = (node: AstNode): void => {
-    if (node.type === "MemberExpression") {
-      const chain = inputsChain(node);
-      if (chain) {
-        chains.push(chain);
-        // Computed keys inside the chain (`inputs.a[inputs.b]`) are chains of their own.
-        for (let m: AstNode = node; m.type === "MemberExpression"; m = m.object as AstNode) {
-          if (m.computed) visit(m.property as AstNode);
-        }
-        return;
-      }
-    }
-    for (const value of Object.values(node)) {
-      if (Array.isArray(value)) value.forEach((v) => isNode(v) && visit(v));
-      else if (isNode(value)) visit(value);
-    }
-  };
-  visit(root);
-  return chains;
-}
-
-function parseExpression(expr: TemplateExpression): AstNode | null {
-  const source = expr.kind === "paren" ? `(${expr.body}\n)` : `(function(){${expr.body}\n})`;
-  try {
-    return parseJs(source, { ecmaVersion: "latest" }) as unknown as AstNode;
-  } catch {
-    // Not valid JavaScript; nothing to resolve.
-    return null;
-  }
-}
-
-// --------------------------------------------------------------------------
 // Resolving chains
 // --------------------------------------------------------------------------
 
@@ -367,7 +245,7 @@ function undeclaredMessage(name: string): string {
  * null when it can, or when the runtime shape isn't known statically.
  */
 function resolveChain(
-  chain: readonly Segment[],
+  chain: InputsChain,
   inputs: ReadonlyMap<string, RuntimeShape>,
   undeclared: UndeclaredRoots,
 ): string | null {
@@ -379,7 +257,7 @@ function resolveChain(
 }
 
 /** Why `chain[i...]` can't be read from `shape`, or null when it can. */
-function resolveFrom(chain: readonly Segment[], i: number, shape: RuntimeShape): string | null {
+function resolveFrom(chain: InputsChain, i: number, shape: RuntimeShape): string | null {
   if (i >= chain.length) return null;
   const seg = chain[i];
   const path = render(chain.slice(0, i + 1));
@@ -508,14 +386,9 @@ function checkTemplate(
 ): UserToolSourceDiagnostic[] {
   if (typeof template !== "string") return [];
   const problems = new Set<string>();
-  for (const expr of templateExpressions(template)) {
-    const ast = parseExpression(expr);
-    // An expression that rebinds `inputs` reads its own values, not the job's.
-    if (!ast || bindsInputs(ast)) continue;
-    for (const chain of collectChains(ast)) {
-      const problem = resolveChain(chain, inputs, undeclared);
-      if (problem) problems.add(problem);
-    }
+  for (const chain of templateChains(template)) {
+    const problem = resolveChain(chain, inputs, undeclared);
+    if (problem) problems.add(problem);
   }
   return [...problems].map((m) => diag(pointer, m));
 }
