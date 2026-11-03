@@ -481,6 +481,7 @@ export {
   runSemanticChecks,
   /** Check `inputs.*` member paths in templates and output labels against the job runtime model. */
   checkInputPaths,
+  type CheckInputPathsOptions,
   type UserToolSourceDiagnostic,
   type ValidateUserToolSourceOptions,
 } from "./user-tool-source/index.js";

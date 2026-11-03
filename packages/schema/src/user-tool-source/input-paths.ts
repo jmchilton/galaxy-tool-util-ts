@@ -16,8 +16,9 @@
  * as written.
  *
  * This is stricter than Galaxy: its model validators only check that each
- * referenced root input is declared. Unknown root names are left to that
- * mirrored check (`./semantic.ts`), so each mistake is reported once.
+ * referenced root input is declared. `validateUserToolSource` leaves unknown
+ * root names to that mirrored check (`./semantic.ts`), so each mistake is
+ * reported once; callers that don't run it ask for them with `undeclaredRoots`.
  */
 
 import { parse as parseJs } from "acorn";
@@ -248,10 +249,55 @@ function inputsChain(node: AstNode): Segment[] | null {
   return current.type === "Identifier" && current.name === "inputs" ? segments : null;
 }
 
-/**
- * Every maximal `inputs...` member chain in `root`. Any `inputs` identifier
- * counts as the job's inputs; templates that shadow it with a local are not expected.
- */
+/** Identifiers a binding pattern (`x`, `{a, b: [c]}`, `...rest`, `d = 1`) declares. */
+function patternNames(pattern: unknown): string[] {
+  if (!isNode(pattern)) return [];
+  switch (pattern.type) {
+    case "Identifier":
+      return [pattern.name as string];
+    case "ObjectPattern":
+      return (pattern.properties as AstNode[]).flatMap((p) =>
+        patternNames(p.type === "RestElement" ? p : p.value),
+      );
+    case "ArrayPattern":
+      return (pattern.elements as unknown[]).flatMap(patternNames);
+    case "RestElement":
+      return patternNames(pattern.argument);
+    case "AssignmentPattern":
+      return patternNames(pattern.left);
+    default:
+      return [];
+  }
+}
+
+/** Whether the expression declares its own `inputs` (a parameter, variable or function). */
+function bindsInputs(node: AstNode): boolean {
+  const bound: unknown[] = [];
+  switch (node.type) {
+    case "FunctionDeclaration":
+    case "FunctionExpression":
+    case "ArrowFunctionExpression":
+      bound.push(node.id, ...(node.params as unknown[]));
+      break;
+    case "VariableDeclarator":
+      bound.push(node.id);
+      break;
+    case "CatchClause":
+      bound.push(node.param);
+      break;
+    case "ClassDeclaration":
+      bound.push(node.id);
+      break;
+  }
+  if (bound.some((b) => patternNames(b).includes("inputs"))) return true;
+  return Object.values(node).some((value) =>
+    Array.isArray(value)
+      ? value.some((v) => isNode(v) && bindsInputs(v))
+      : isNode(value) && bindsInputs(value),
+  );
+}
+
+/** Every maximal `inputs...` member chain in `root`. */
 function collectChains(root: AstNode): Segment[][] {
   const chains: Segment[][] = [];
   const visit = (node: AstNode): void => {
@@ -307,17 +353,29 @@ function fieldList(names: Iterable<string>): string {
 }
 
 /**
+ * Root names to report as undeclared: those no input declares, when the caller
+ * doesn't also run the undeclared input check that mirrors Galaxy; else none.
+ */
+type UndeclaredRoots = (name: string) => boolean;
+
+function undeclaredMessage(name: string): string {
+  return `inputs.${name}: no input named '${name}' is declared`;
+}
+
+/**
  * Why `chain` (root input name first) can't be read from the job's inputs, or
  * null when it can, or when the runtime shape isn't known statically.
  */
 function resolveChain(
   chain: readonly Segment[],
   inputs: ReadonlyMap<string, RuntimeShape>,
+  undeclared: UndeclaredRoots,
 ): string | null {
   const root = chain[0];
-  // Unknown roots are reported by the undeclared input check.
-  const shape = root === null ? undefined : inputs.get(root);
-  return shape ? resolveFrom(chain, 1, shape) : null;
+  if (root === null) return null;
+  const shape = inputs.get(root);
+  if (shape) return resolveFrom(chain, 1, shape);
+  return undeclared(root) ? undeclaredMessage(root) : null;
 }
 
 /** Why `chain[i...]` can't be read from `shape`, or null when it can. */
@@ -373,9 +431,10 @@ const COLLECTION_LABEL_KEYS = ["element_identifier", "name"];
 function resolveLabelReference(
   keys: readonly string[],
   params: readonly ToolParameterModel[],
+  undeclared: UndeclaredRoots,
 ): string | null {
-  // Root names are left to the undeclared input check.
-  return params.some((p) => p.name === keys[0]) ? resolveLabelFrom(keys, 0, params) : null;
+  if (params.some((p) => p.name === keys[0])) return resolveLabelFrom(keys, 0, params);
+  return undeclared(keys[0]) ? `no input named '${keys[0]}' is declared` : null;
 }
 
 /**
@@ -445,14 +504,16 @@ function checkTemplate(
   template: unknown,
   pointer: string,
   inputs: ReadonlyMap<string, RuntimeShape>,
+  undeclared: UndeclaredRoots,
 ): UserToolSourceDiagnostic[] {
   if (typeof template !== "string") return [];
   const problems = new Set<string>();
   for (const expr of templateExpressions(template)) {
     const ast = parseExpression(expr);
-    if (!ast) continue;
+    // An expression that rebinds `inputs` reads its own values, not the job's.
+    if (!ast || bindsInputs(ast)) continue;
     for (const chain of collectChains(ast)) {
-      const problem = resolveChain(chain, inputs);
+      const problem = resolveChain(chain, inputs, undeclared);
       if (problem) problems.add(problem);
     }
   }
@@ -463,32 +524,47 @@ function checkLabel(
   label: unknown,
   pointer: string,
   params: readonly ToolParameterModel[],
+  undeclared: UndeclaredRoots,
 ): UserToolSourceDiagnostic[] {
   if (typeof label !== "string") return [];
   const errors: UserToolSourceDiagnostic[] = [];
   for (const m of label.matchAll(LABEL_REFERENCE_RE)) {
     if (m[1] === undefined) continue;
     const keys = [m[1], ...m[2].split(".").slice(1)];
-    const problem = resolveLabelReference(keys, params);
+    const problem = resolveLabelReference(keys, params, undeclared);
     if (problem)
       errors.push(diag(pointer, `label reference ${m[0]} is never filled in: ${problem}`));
   }
   return errors;
 }
 
+export interface CheckInputPathsOptions {
+  /**
+   * Also report references to inputs no input declares. `validateUserToolSource`
+   * leaves those to the undeclared input check that mirrors Galaxy.
+   */
+  undeclaredRoots?: boolean;
+}
+
 /**
  * Report `inputs.*` member paths in `shell_command`, `configfiles[].content`
  * and output `label`s that the job's inputs won't have, or that Galaxy never fills in.
  */
-export function checkInputPaths(doc: Record<string, unknown>): UserToolSourceDiagnostic[] {
+export function checkInputPaths(
+  doc: Record<string, unknown>,
+  opts: CheckInputPathsOptions = {},
+): UserToolSourceDiagnostic[] {
   const params = parseEachInput(doc.inputs);
   const inputs = childShapes(params, null);
-  const errors = checkTemplate(doc.shell_command, "/shell_command", inputs);
+  // An input the parser skipped is still declared.
+  const declared = new Set(declaredNames(doc.inputs));
+  const undeclared: UndeclaredRoots = (name) => !!opts.undeclaredRoots && !declared.has(name);
+  const errors = checkTemplate(doc.shell_command, "/shell_command", inputs, undeclared);
   if (Array.isArray(doc.configfiles)) {
     doc.configfiles.forEach((cf, idx) => {
       if (cf && typeof cf === "object") {
         const content = (cf as Record<string, unknown>).content;
-        errors.push(...checkTemplate(content, `/configfiles/${idx}/content`, inputs));
+        errors.push(...checkTemplate(content, `/configfiles/${idx}/content`, inputs, undeclared));
       }
     });
   }
@@ -496,17 +572,28 @@ export function checkInputPaths(doc: Record<string, unknown>): UserToolSourceDia
     doc.outputs.forEach((out, idx) => {
       if (out && typeof out === "object") {
         const label = (out as Record<string, unknown>).label;
-        errors.push(...checkLabel(label, `/outputs/${idx}/label`, params));
+        errors.push(...checkLabel(label, `/outputs/${idx}/label`, params, undeclared));
       }
     });
   }
   return errors;
 }
 
+function declaredNames(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((input) =>
+    input && typeof input === "object" && typeof (input as { name?: unknown }).name === "string"
+      ? [(input as { name: string }).name]
+      : [],
+  );
+}
+
 /**
- * Parse each top-level input on its own, so one the parser rejects (a YAML
- * `section`, a malformed entry the structural schema reports) leaves the others checked.
- * References to a skipped input are left alone.
+ * Parse each top-level input on its own, so one the parser rejects leaves the
+ * others checked: a malformed entry the structural schema reports, or a YAML
+ * `section` (the TS YAML parser doesn't read sections, though Galaxy's
+ * `CanonicalYamlInputSource` does), anywhere inside the input. References to a
+ * skipped input are left alone.
  */
 function parseEachInput(raw: unknown): ToolParameterModel[] {
   if (!Array.isArray(raw)) return [];

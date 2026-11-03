@@ -155,6 +155,17 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
     },
   );
 
+  it("fails a template that reads an undeclared input", async () => {
+    const wf = await userToolWorkflow();
+    wf.steps.udt_cat.run.shell_command = "cat '$(inputs.missing.path)' > output.txt";
+    const report = await validate(wf);
+
+    expect(report.results[0].status).toBe("fail");
+    expect(report.results[0].errors).toEqual([
+      "embedded GalaxyUserTool /shell_command: inputs.missing: no input named 'missing' is declared",
+    ]);
+  });
+
   it("skips a native tool_representation that is not a GalaxyUserTool, and --strict-state rejects it", async () => {
     const native = toNative(await userToolWorkflow()) as Record<string, any>;
     native.steps["1"].tool_representation = {

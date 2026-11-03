@@ -98,7 +98,8 @@ export function withEmbeddedToolChecks(
   result: ValidationStepResult,
   repr: Record<string, unknown>,
 ): ValidationStepResult {
-  const problems = checkInputPaths(repr).map(
+  // Workflow validation doesn't run validateUserToolSource, so undeclared roots are reported here.
+  const problems = checkInputPaths(repr, { undeclaredRoots: true }).map(
     (d) => `embedded GalaxyUserTool ${d.path}: ${d.message}`,
   );
   if (problems.length === 0) return result;

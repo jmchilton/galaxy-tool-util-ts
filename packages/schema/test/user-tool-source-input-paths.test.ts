@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateUserToolSource } from "../src/user-tool-source/index.js";
+import { checkInputPaths, validateUserToolSource } from "../src/user-tool-source/index.js";
 
 function tool(overrides: Record<string, unknown>): Record<string, unknown> {
   return {
@@ -235,6 +235,14 @@ describe("inputs.* member paths in UDT templates", () => {
     ["an unparsed section", "$(inputs.opts.anything.path)"],
     ["a body that isn't JavaScript", "$(cat not javascript)"],
     ["an escaped $(", "\\$(inputs.reads.not_an_expression)"],
+    [
+      "an expression whose arrow function rebinds inputs",
+      "${ return [{reads: {custom: 'ok'}}].map(inputs => inputs.reads.custom).join(''); }",
+    ],
+    [
+      "an expression that declares its own inputs",
+      "${ var {inputs} = {inputs: {x: 1}}; return inputs.x; }",
+    ],
     ["an escaped ${", "\\${inputs.reads.not_an_expression}"],
   ])("skips %s", (_what, shell_command) => {
     expect(pathErrors(tool({ inputs: SKIP_INPUTS, shell_command }))).toEqual([]);
@@ -325,6 +333,21 @@ describe("inputs.* member paths in UDT templates", () => {
     const result = validateUserToolSource(tool({ shell_command: "cat $(inputs.missing.path)" }));
     expect(result.errors.map((e) => e.message)).toEqual([
       "Value error, references inputs.missing but no input named 'missing' is declared",
+    ]);
+  });
+
+  it("reports undeclared roots only when asked, and not for inputs the parser skipped", () => {
+    const doc = tool({
+      inputs: [{ name: "opts", type: "section", parameters: [] }],
+      shell_command: "$(inputs.missing.path) $(inputs.opts.x)",
+      outputs: [{ type: "data", name: "out", from_work_dir: "o", label: "$(inputs.gone.name)" }],
+    });
+    expect(checkInputPaths(doc)).toEqual([]);
+    expect(
+      checkInputPaths(doc, { undeclaredRoots: true }).map((d) => `${d.path}: ${d.message}`),
+    ).toEqual([
+      "/shell_command: inputs.missing: no input named 'missing' is declared",
+      "/outputs/0/label: label reference $(inputs.gone.name) is never filled in: no input named 'gone' is declared",
     ]);
   });
 
