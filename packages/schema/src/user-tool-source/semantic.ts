@@ -35,6 +35,16 @@ function topLevelInputName(input: unknown): string | undefined {
   return undefined;
 }
 
+/** The names of the document's top-level inputs. */
+export function declaredInputNames(doc: Record<string, unknown>): Set<string> {
+  const declared = new Set<string>();
+  for (const i of Array.isArray(doc.inputs) ? doc.inputs : []) {
+    const n = topLevelInputName(i);
+    if (n !== undefined) declared.add(n);
+  }
+  return declared;
+}
+
 function isBlank(v: unknown): boolean {
   return typeof v === "string" && v.trim().length === 0;
 }
@@ -59,12 +69,7 @@ function checkBlankRequiredFields(doc: Record<string, unknown>): UserToolSourceD
 
 function checkInputRefsAndOutputs(doc: Record<string, unknown>): UserToolSourceDiagnostic[] {
   const errors: UserToolSourceDiagnostic[] = [];
-  const inputs = Array.isArray(doc.inputs) ? doc.inputs : [];
-  const declared = new Set<string>();
-  for (const i of inputs) {
-    const n = topLevelInputName(i);
-    if (n !== undefined) declared.add(n);
-  }
+  const declared = declaredInputNames(doc);
 
   const referenced = new Set<string>();
   for (const r of commandInputRefs(doc.shell_command)) referenced.add(r);

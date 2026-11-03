@@ -25,6 +25,7 @@ import type { ToolParameterModel } from "../schema/bundle-types.js";
 import { parseInputs } from "../user-tool-parse/inputs.js";
 import { jobRuntimeSchema } from "./job-runtime.schema.generated.js";
 import { templateChains, type InputsChain, type Segment } from "./template-chains.js";
+import { declaredInputNames } from "./semantic.js";
 import type { UserToolSourceDiagnostic } from "./validate.js";
 
 const KEYWORD = "input_path";
@@ -231,29 +232,15 @@ function fieldList(names: Iterable<string>): string {
 }
 
 /**
- * Root names to report as undeclared: those no input declares, when the caller
- * doesn't also run the undeclared input check that mirrors Galaxy; else none.
- */
-type UndeclaredRoots = (name: string) => boolean;
-
-function undeclaredMessage(name: string): string {
-  return `inputs.${name}: no input named '${name}' is declared`;
-}
-
-/**
  * Why `chain` (root input name first) can't be read from the job's inputs, or
  * null when it can, or when the runtime shape isn't known statically.
  */
 function resolveChain(
   chain: InputsChain,
   inputs: ReadonlyMap<string, RuntimeShape>,
-  undeclared: UndeclaredRoots,
 ): string | null {
-  const root = chain[0];
-  if (root === null) return null;
-  const shape = inputs.get(root);
-  if (shape) return resolveFrom(chain, 1, shape);
-  return undeclared(root) ? undeclaredMessage(root) : null;
+  const shape = chain[0] === null ? undefined : inputs.get(chain[0]);
+  return shape ? resolveFrom(chain, 1, shape) : null;
 }
 
 /** Why `chain[i...]` can't be read from `shape`, or null when it can. */
@@ -309,10 +296,8 @@ const COLLECTION_LABEL_KEYS = ["element_identifier", "name"];
 function resolveLabelReference(
   keys: readonly string[],
   params: readonly ToolParameterModel[],
-  undeclared: UndeclaredRoots,
 ): string | null {
-  if (params.some((p) => p.name === keys[0])) return resolveLabelFrom(keys, 0, params);
-  return undeclared(keys[0]) ? `no input named '${keys[0]}' is declared` : null;
+  return params.some((p) => p.name === keys[0]) ? resolveLabelFrom(keys, 0, params) : null;
 }
 
 /**
@@ -378,33 +363,48 @@ function diag(path: string, message: string): UserToolSourceDiagnostic {
   return { path, message, keyword: KEYWORD, params: {} };
 }
 
+/** A tool's inputs, as the references in its templates and labels see them. */
+interface ToolInputs {
+  /** Every top-level input name, including those the parser skipped. */
+  declared: ReadonlySet<string>;
+  params: readonly ToolParameterModel[];
+  shapes: ReadonlyMap<string, RuntimeShape>;
+  reportUndeclared: boolean;
+}
+
+function undeclared(name: string): string {
+  return `no input named '${name}' is declared`;
+}
+
 function checkTemplate(
   template: unknown,
   pointer: string,
-  inputs: ReadonlyMap<string, RuntimeShape>,
-  undeclared: UndeclaredRoots,
+  tool: ToolInputs,
 ): UserToolSourceDiagnostic[] {
   if (typeof template !== "string") return [];
   const problems = new Set<string>();
   for (const chain of templateChains(template)) {
-    const problem = resolveChain(chain, inputs, undeclared);
+    const root = chain[0];
+    if (root !== null && !tool.declared.has(root)) {
+      if (tool.reportUndeclared) problems.add(`inputs.${root}: ${undeclared(root)}`);
+      continue;
+    }
+    const problem = resolveChain(chain, tool.shapes);
     if (problem) problems.add(problem);
   }
   return [...problems].map((m) => diag(pointer, m));
 }
 
-function checkLabel(
-  label: unknown,
-  pointer: string,
-  params: readonly ToolParameterModel[],
-  undeclared: UndeclaredRoots,
-): UserToolSourceDiagnostic[] {
+function checkLabel(label: unknown, pointer: string, tool: ToolInputs): UserToolSourceDiagnostic[] {
   if (typeof label !== "string") return [];
   const errors: UserToolSourceDiagnostic[] = [];
   for (const m of label.matchAll(LABEL_REFERENCE_RE)) {
     if (m[1] === undefined) continue;
     const keys = [m[1], ...m[2].split(".").slice(1)];
-    const problem = resolveLabelReference(keys, params, undeclared);
+    if (!tool.declared.has(keys[0]) && !tool.reportUndeclared) continue;
+    const problem = tool.declared.has(keys[0])
+      ? resolveLabelReference(keys, tool.params)
+      : undeclared(keys[0]);
     if (problem)
       errors.push(diag(pointer, `label reference ${m[0]} is never filled in: ${problem}`));
   }
@@ -428,16 +428,18 @@ export function checkInputPaths(
   opts: CheckInputPathsOptions = {},
 ): UserToolSourceDiagnostic[] {
   const params = parseEachInput(doc.inputs);
-  const inputs = childShapes(params, null);
-  // An input the parser skipped is still declared.
-  const declared = new Set(declaredNames(doc.inputs));
-  const undeclared: UndeclaredRoots = (name) => !!opts.undeclaredRoots && !declared.has(name);
-  const errors = checkTemplate(doc.shell_command, "/shell_command", inputs, undeclared);
+  const tool: ToolInputs = {
+    declared: declaredInputNames(doc),
+    params,
+    shapes: childShapes(params, null),
+    reportUndeclared: !!opts.undeclaredRoots,
+  };
+  const errors = checkTemplate(doc.shell_command, "/shell_command", tool);
   if (Array.isArray(doc.configfiles)) {
     doc.configfiles.forEach((cf, idx) => {
       if (cf && typeof cf === "object") {
         const content = (cf as Record<string, unknown>).content;
-        errors.push(...checkTemplate(content, `/configfiles/${idx}/content`, inputs, undeclared));
+        errors.push(...checkTemplate(content, `/configfiles/${idx}/content`, tool));
       }
     });
   }
@@ -445,20 +447,11 @@ export function checkInputPaths(
     doc.outputs.forEach((out, idx) => {
       if (out && typeof out === "object") {
         const label = (out as Record<string, unknown>).label;
-        errors.push(...checkLabel(label, `/outputs/${idx}/label`, params, undeclared));
+        errors.push(...checkLabel(label, `/outputs/${idx}/label`, tool));
       }
     });
   }
   return errors;
-}
-
-function declaredNames(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.flatMap((input) =>
-    input && typeof input === "object" && typeof (input as { name?: unknown }).name === "string"
-      ? [(input as { name: string }).name]
-      : [],
-  );
 }
 
 /**
