@@ -351,6 +351,27 @@ describe("gxwf validate --json: step labels", () => {
     expect(report.results.map((r) => r.label)).toEqual(["cat", "nested/inner_cat"]);
   });
 
+  it.each(["effect", "json-schema"] as const)(
+    "joins every level of nesting, or none if a level is unlabelled (%s)",
+    async (mode) => {
+      const nest = (steps: unknown) => ({
+        run: { class: "GalaxyWorkflow", inputs: { reads: { type: "data" } }, outputs: {}, steps },
+        in: { reads: "reads" },
+        out: [],
+      });
+      const steps = {
+        labelled: nest({ mid: inlineSubworkflow("inner_cat") }),
+        gap: nest([inlineSubworkflow("inner_cat")]),
+      };
+      const report = await validate({ ...workflow, steps }, { mode });
+
+      expect(report.results.map((r) => [r.step, r.label])).toEqual([
+        ["0.0.0", "labelled/mid/inner_cat"],
+        ["1.0.0", undefined],
+      ]);
+    },
+  );
+
   it.each(["effect", "json-schema"] as const)("omits an absent label (%s)", async (mode) => {
     const report = await validate({ ...workflow, steps: [dataStep()] }, { mode });
 

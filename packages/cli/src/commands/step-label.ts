@@ -1,21 +1,22 @@
 import type { ValidationStepResult } from "@galaxy-tool-util/schema";
 
-/**
- * Report label for a step: slash-joined from the outermost workflow. `parent` is
- * undefined at the top level and null under an unlabelled step, whose children get
- * no label either, since `inner` alone could be mistaken for a top-level step.
- */
-export function stepLabelPath(
-  parent: string | null | undefined,
-  label: string | null | undefined,
-): string | null {
-  if (parent === null || !label) return null;
-  return parent === undefined ? label : `${parent}/${label}`;
-}
-
 export function withStepLabel(
   result: ValidationStepResult,
-  label: string | null,
+  label: string | null | undefined,
 ): ValidationStepResult {
-  return label === null ? result : { ...result, label };
+  return label ? { ...result, label } : result;
+}
+
+/**
+ * Qualify a subworkflow step's results as `outer/inner`. Under an unlabelled step
+ * they lose their label instead, since `inner` alone could be mistaken for a
+ * top-level step.
+ */
+export function withParentLabel(
+  results: ValidationStepResult[],
+  parent: string | null | undefined,
+): ValidationStepResult[] {
+  return results.map(({ label, ...result }) =>
+    parent && label ? { ...result, label: `${parent}/${label}` } : result,
+  );
 }

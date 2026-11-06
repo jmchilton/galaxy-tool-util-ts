@@ -49,7 +49,7 @@ import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
 import { embeddedToolDefinition, isEmbeddedTool, resolveEmbeddedTool } from "./embedded-tool.js";
 import { resolveStrictOptions } from "./strict-options.js";
-import { stepLabelPath, withStepLabel } from "./step-label.js";
+import { withParentLabel, withStepLabel } from "./step-label.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
 
@@ -372,13 +372,11 @@ async function _validateNativeWorkflowJsonSchema(
   cache: ToolCache,
   toolSchemaDir: string | undefined,
   prefix: string,
-  parentLabel?: string | null,
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
   for (const [key, step] of Object.entries(wf.steps)) {
     const stepLabel = prefix ? `${prefix}${key}` : key;
-    const label = stepLabelPath(parentLabel, step.label);
 
     if (step.type === "subworkflow" && step.subworkflow) {
       const subResults = await _validateNativeWorkflowJsonSchema(
@@ -386,16 +384,15 @@ async function _validateNativeWorkflowJsonSchema(
         cache,
         toolSchemaDir,
         `${stepLabel}.`,
-        label,
       );
-      results.push(...subResults);
+      results.push(...withParentLabel(subResults, step.label));
       continue;
     }
 
     const embedded = embeddedToolDefinition(step);
     if (embedded) {
       results.push(
-        withStepLabel(_validateEmbeddedNativeStepJsonSchema(step, stepLabel, embedded), label),
+        withStepLabel(_validateEmbeddedNativeStepJsonSchema(step, stepLabel, embedded), step.label),
       );
       continue;
     }
@@ -412,7 +409,7 @@ async function _validateNativeWorkflowJsonSchema(
       cache,
       toolSchemaDir,
     );
-    results.push(withStepLabel(result, label));
+    results.push(withStepLabel(result, step.label));
   }
 
   return results;
@@ -590,14 +587,13 @@ async function _validateFormat2WorkflowJsonSchema(
   cache: ToolCache,
   toolSchemaDir: string | undefined,
   prefix: string,
-  parentLabel?: string | null,
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
   for (let i = 0; i < wf.steps.length; i++) {
     const step = wf.steps[i];
     const stepLabel = prefix ? `${prefix}${i}` : String(i);
-    const label = stepLabelPath(parentLabel, nativeStepLabel(step));
+    const label = nativeStepLabel(step);
 
     if (isGalaxyUserToolRun(step.run)) {
       results.push(
@@ -612,9 +608,8 @@ async function _validateFormat2WorkflowJsonSchema(
         cache,
         toolSchemaDir,
         `${stepLabel}.`,
-        label,
       );
-      results.push(...subResults);
+      results.push(...withParentLabel(subResults, label));
       continue;
     }
 
