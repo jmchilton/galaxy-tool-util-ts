@@ -23,7 +23,11 @@ import {
 
 import { runDraftValidate, type DraftValidateOptions } from "../src/commands/draft-validate.js";
 import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
-import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
+import {
+  createCliTestContext,
+  jsonOutput,
+  type CliTestContext,
+} from "./helpers/cli-test-context.js";
 import { seedAllTools, DATA_TOOL_ID } from "./helpers/fixtures.js";
 
 const COLLECTION_TOOL_ID = "toolshed.g2.bx.psu.edu/repos/test/coll/coll_tool";
@@ -121,11 +125,7 @@ describe("draft-validate --concrete: concrete_errors", () => {
     const path = join(ctx.tmpDir, "wf.gxwf.yml");
     await writeFile(path, YAML.stringify(doc));
     await runDraftValidate(path, { json: true, concrete: true, cacheDir: ctx.tmpDir, ...opts });
-    const out = ctx.logSpy.mock.calls
-      .map((c) => c[0])
-      .find((s) => typeof s === "string" && s.startsWith("{"));
-    expect(out).toBeDefined();
-    return JSON.parse(out as string) as SingleDraftValidationReport;
+    return jsonOutput(ctx) as SingleDraftValidationReport;
   }
 
   it("collects a tool-state failure and leaves the existing report fields alone", async () => {
@@ -326,11 +326,7 @@ describe("gxwf validate --json: step labels", () => {
     const path = join(ctx.tmpDir, opts.native ? "wf.ga" : "wf.gxwf.yml");
     await writeFile(path, opts.native ? JSON.stringify(doc) : YAML.stringify(doc));
     await runValidateWorkflow(path, { cacheDir: ctx.tmpDir, json: true, mode: opts.mode });
-    const out = ctx.logSpy.mock.calls
-      .map((c) => c[0])
-      .find((s) => typeof s === "string" && s.startsWith("{"));
-    expect(out).toBeDefined();
-    return JSON.parse(out as string) as SingleValidationReport;
+    return jsonOutput(ctx) as SingleValidationReport;
   }
 
   const workflow = {
