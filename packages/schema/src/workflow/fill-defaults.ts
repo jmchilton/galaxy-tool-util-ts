@@ -28,6 +28,11 @@ import {
 } from "../schema/parameter-defaults.js";
 import { SKIP_VALUE, walkNativeState } from "./walker.js";
 
+export interface ExpandDefaultsOptions {
+  /** Flat state paths (`a|b`, `rep_0|x`) fed by connections; left absent rather than defaulted. */
+  connectedPaths?: ReadonlySet<string>;
+}
+
 /**
  * Return a new tool state dict with defaults filled in for any parameter
  * absent from `currentState`. Does not validate.
@@ -46,13 +51,17 @@ import { SKIP_VALUE, walkNativeState } from "./walker.js";
 export function expandToolStateDefaults(
   toolInputs: ToolParameterModel[],
   currentState: Record<string, unknown>,
+  options: ExpandDefaultsOptions = {},
 ): Record<string, unknown> {
+  const connected = options.connectedPaths ?? new Set<string>();
+  const connections = Object.fromEntries([...connected].map((p) => [p, true]));
   return walkNativeState(
-    {},
+    connections,
     toolInputs,
     currentState,
-    (param, value) => {
+    (param, value, statePath) => {
       if (value === undefined) {
+        if (connected.has(statePath)) return SKIP_VALUE;
         const def = scalarParameterDefault(param);
         if (def === NO_DEFAULT) return SKIP_VALUE;
         return def;

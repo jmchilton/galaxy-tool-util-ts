@@ -41,7 +41,6 @@ export interface WalkNativeOptions {
   /**
    * Switch repeat handling to `_initialize_repeat_state` semantics (default: false).
    * When true:
-   *   - inputConnections are ignored for instance count,
    *   - instance count is padded to `repeat.min` (never shrinks existing state),
    *   - the repeat key is always written to output, even when empty (`[]`).
    * Used by expand-defaults, which must surface every declared repeat as a
@@ -114,13 +113,9 @@ export function walkNativeState(
       const stateArray = Array.isArray(repeatState)
         ? (repeatState as Record<string, unknown>[])
         : [];
-      let instanceCount: number;
-      if (repeatMinPad) {
-        instanceCount = Math.max(stateArray.length, repeat.min ?? 0);
-      } else {
-        const connectionInstances = repeatInputsToArray(statePath, inputConnections);
-        instanceCount = Math.max(stateArray.length, connectionInstances.length);
-      }
+      const connectionInstances = repeatInputsToArray(statePath, inputConnections);
+      let instanceCount = Math.max(stateArray.length, connectionInstances.length);
+      if (repeatMinPad) instanceCount = Math.max(instanceCount, repeat.min ?? 0);
 
       const instances: Record<string, unknown>[] = [];
       for (let i = 0; i < instanceCount; i++) {
