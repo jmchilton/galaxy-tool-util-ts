@@ -16,8 +16,6 @@ import {
   isGalaxyUserToolRun,
   buildSingleValidationReport,
   nativeStepLabel,
-  stepLabelPath,
-  withStepLabel,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
   type NormalizedFormat2Step,
@@ -35,6 +33,7 @@ import {
   describeResolveError,
   makeValidationResolver,
 } from "./resolve-tool.js";
+import { stepLabelPath, withStepLabel } from "./step-label.js";
 import { createDefaultResolver } from "./url-resolver.js";
 import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";

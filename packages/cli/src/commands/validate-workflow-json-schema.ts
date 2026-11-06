@@ -39,8 +39,6 @@ import {
   SKIP_STATUSES,
   nativeConnectionsFromFormat2In,
   nativeStepLabel,
-  stepLabelPath,
-  withStepLabel,
 } from "@galaxy-tool-util/schema";
 import type {
   ValidateWorkflowOptions,
@@ -51,6 +49,7 @@ import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
 import { embeddedToolDefinition, isEmbeddedTool, resolveEmbeddedTool } from "./embedded-tool.js";
 import { resolveStrictOptions } from "./strict-options.js";
+import { stepLabelPath, withStepLabel } from "./step-label.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
 

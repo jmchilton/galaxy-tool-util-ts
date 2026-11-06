@@ -196,6 +196,7 @@ export {
   toFormat2,
   /** Convert Format2 workflow to normalized native. */
   toNative,
+  /** The label `toNative` gives a Format2 step; null when it has none. */
   nativeStepLabel,
   /** Stateful native → format2 conversion using cached tool definitions. */
   toFormat2Stateful,
@@ -426,8 +427,6 @@ export {
   buildSingleLintReport,
   buildSingleCleanReport,
   buildSingleDraftValidationReport,
-  stepLabelPath,
-  withStepLabel,
   buildSingleDraftExtractReport,
   buildWorkflowValidationResult,
   buildLintWorkflowResult,

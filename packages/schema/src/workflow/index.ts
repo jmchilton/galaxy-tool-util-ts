@@ -351,8 +351,6 @@ export {
   buildSingleLintReport,
   buildSingleCleanReport,
   buildSingleDraftValidationReport,
-  stepLabelPath,
-  withStepLabel,
   buildSingleDraftExtractReport,
   buildWorkflowValidationResult,
   buildLintWorkflowResult,

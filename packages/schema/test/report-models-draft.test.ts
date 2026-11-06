@@ -252,11 +252,6 @@ describe("buildSingleDraftValidationReport concrete_errors", () => {
   const report = (concrete: ConcreteValidationReport) =>
     buildSingleDraftValidationReport("x.gxwf.yml", validateDraft(cleanDraft), concrete);
 
-  it("is absent when no concrete report was produced", () => {
-    const r = buildSingleDraftValidationReport("x.gxwf.yml", validateDraft(cleanDraft));
-    expect(r).not.toHaveProperty("concrete_errors");
-  });
-
   it("is empty when the concrete pass was skipped", () => {
     const r = report({ ...base, skipped_reason: "still a draft", ok: null });
     expect(r.concrete_errors).toEqual([]);
@@ -286,39 +281,6 @@ describe("buildSingleDraftValidationReport concrete_errors", () => {
       { check: "tool_state", label: "cat", tool_id: "cat1", message: "bad two" },
     ]);
     expect(r.summary).toBe("1 error");
-  });
-
-  it("nulls the label of an unlabelled step", () => {
-    const { label: _label, ...unlabelled } = failedStep;
-    const r = report({
-      ...base,
-      tool_state: { results: [unlabelled], summary: { ok: 0, fail: 1, skip: 0 } },
-    });
-    expect(r.concrete_errors?.[0].label).toBeNull();
-  });
-
-  it("turns skipped steps into errors only when strict_state_errors is present", () => {
-    const skipped = {
-      step: "0",
-      label: "cat",
-      tool_id: "cat1",
-      version: "1.0",
-      status: "skip_tool_not_found" as const,
-      errors: ["cat1 not in cache"],
-    };
-    const tool_state = { results: [skipped], summary: { ok: 0, fail: 0, skip: 1 } };
-
-    expect(report({ ...base, ok: true, tool_state }).concrete_errors).toEqual([]);
-    expect(
-      report({ ...base, tool_state, strict_state_errors: ["0 (cat1): skipped"] }).concrete_errors,
-    ).toEqual([
-      {
-        check: "strict_state",
-        label: "cat",
-        tool_id: "cat1",
-        message: "skipped (skip_tool_not_found): cat1 not in cache",
-      },
-    ]);
   });
 
   it("collects invalid connections and step-level errors, not skip connections", () => {

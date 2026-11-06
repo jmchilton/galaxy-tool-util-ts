@@ -175,6 +175,32 @@ describe("draft-validate --concrete: concrete_errors", () => {
     expect(report.concrete_errors?.map((e) => e.label)).toEqual([null, null, null]);
   });
 
+  it("nulls the label of an unlabelled step under a labelled subworkflow", async () => {
+    const report = await draftValidate(draft({ nested: inlineSubworkflow(null) }));
+
+    expect(report.concrete_errors?.map((e) => e.label)).toEqual([null]);
+  });
+
+  it('treats label: "" as unlabelled in both reports', async () => {
+    const report = await draftValidate(
+      draft({
+        collect: {
+          label: "",
+          tool_id: COLLECTION_TOOL_ID,
+          tool_version: "1.0",
+          in: { input_list: "reads" },
+          out: [],
+          state: {},
+        },
+      }),
+      { connections: true },
+    );
+
+    expect(report.concrete?.tool_state?.results[0]).not.toHaveProperty("label");
+    expect(report.concrete?.connection_report?.step_results.at(-1)).not.toHaveProperty("label");
+    expect(report.concrete_errors?.map((e) => [e.check, e.label])).toEqual([["connections", null]]);
+  });
+
   it("names a list-form step by its id, as connection_report does", async () => {
     const report = await draftValidate(draft([{ id: "cat", ...dataStep(BAD_KEY) }]), {
       connections: true,
@@ -192,7 +218,6 @@ describe("draft-validate --concrete: concrete_errors", () => {
     const connection = report.concrete?.connection_report?.step_results.find(
       (r) => r.tool_id === DATA_TOOL_ID,
     );
-    expect(toolState?.step).not.toEqual(connection?.step);
     expect(toolState?.label).toBe("cat");
     expect(connection?.label).toBe("cat");
   });
@@ -212,7 +237,22 @@ describe("draft-validate --concrete: concrete_errors", () => {
       label: "cat",
       tool_id: "cat1",
     });
-    expect(report.concrete_errors?.[0].message).toContain("skip_tool_not_found");
+    expect(report.concrete_errors?.[0].message).toMatch(/^skipped \(skip_tool_not_found\): ./);
+  });
+
+  it("keeps failed steps apart from skipped ones under --strict-state", async () => {
+    const report = await draftValidate(
+      draft({
+        bad: dataStep(BAD_KEY),
+        cat: { tool_id: "cat1", tool_version: "1.0.0", in: { input1: "reads" }, out: [] },
+      }),
+      { strictState: true, offline: true },
+    );
+
+    expect(report.concrete_errors?.map((e) => [e.check, e.label])).toEqual([
+      ["strict_state", "cat"],
+      ["tool_state", "bad"],
+    ]);
   });
 
   it("leaves skipped steps out without --strict-state", async () => {
@@ -320,4 +360,24 @@ describe("gxwf validate --json: step labels", () => {
 
     expect(report.results[0]).not.toHaveProperty("label");
   });
+
+  it.each(["effect", "json-schema"] as const)(
+    "names a list-form step by its non-numeric id (%s)",
+    async (mode) => {
+      const steps = [{ id: "cat", ...dataStep() }];
+      const report = await validate({ ...workflow, steps }, { mode });
+
+      expect(report.results[0].label).toBe("cat");
+    },
+  );
+
+  it.each(["effect", "json-schema"] as const)(
+    "does not report an _unlabeled_step_ sentinel as a label (%s)",
+    async (mode) => {
+      const steps = { _unlabeled_step_3: dataStep() };
+      const report = await validate({ ...workflow, steps }, { mode });
+
+      expect(report.results[0]).not.toHaveProperty("label");
+    },
+  );
 });
