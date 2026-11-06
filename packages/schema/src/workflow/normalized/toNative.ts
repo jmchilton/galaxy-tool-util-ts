@@ -762,7 +762,7 @@ export function nativeInputLabel(inp: NormalizedFormat2Input, orderIndex: number
  * numeric ids are auto-assigned indices. Sentinel labels (`_unlabeled_*`) are
  * cleared to null.
  */
-export function nativeStepLabel(step: NormalizedFormat2Step): string | null | undefined {
+export function nativeStepLabel(step: NormalizedFormat2Step): string | null {
   if (step.label != null) {
     if (isUnlabeled(step.label)) return null;
     return step.label;

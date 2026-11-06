@@ -720,7 +720,7 @@ function collectConcreteErrors(c: ConcreteValidationReport): ConcreteError[] {
   const stepResults = c.tool_state?.results ?? [];
   const forStep = (
     check: ConcreteErrorCheck,
-    step: { label?: string | null; tool_id: string | null },
+    step: Pick<ConnectionStepResult, "label" | "tool_id">,
     message: string,
   ): ConcreteError => ({ check, label: step.label ?? null, tool_id: step.tool_id, message });
 
