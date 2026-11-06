@@ -76,8 +76,7 @@ function _resolveStep(
   step: NormalizedNativeStep,
   getToolInfo: GetToolInfo,
 ): ResolvedStep {
-  // Native workflows spell "no label" as "" as well as null.
-  const label = step.label || null;
+  const label = step.label ?? null;
   const stepType = step.type ?? "tool";
   let resolved: ResolvedStep;
   if (

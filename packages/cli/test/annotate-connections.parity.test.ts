@@ -63,6 +63,19 @@ describe("resolveEdgeAnnotationsWithCache (lifted helper parity)", () => {
     expect(ann!.targetStep).toBe("t1");
   });
 
+  it('keys a step with label: "" as the diagram builders look it up', async () => {
+    const cache = makeNodeToolCache({ cacheDir: ctx.tmpDir });
+    await cache.index.load();
+    const workflow = {
+      ...chainWorkflow,
+      steps: { ...chainWorkflow.steps, "1": { ...chainWorkflow.steps["1"], label: "" } },
+    };
+
+    const annotations = await resolveEdgeAnnotationsWithCache(workflow, cache);
+
+    expect([...annotations.keys()]).toEqual(["in|output->|input_file"]);
+  });
+
   it("resolveEdgeAnnotationsAndSpecsWithCache returns annotations + tool specs in parallel", async () => {
     const cache = makeNodeToolCache({ cacheDir: ctx.tmpDir });
     await cache.index.load();

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as S from "effect/Schema";
 import * as YAML from "yaml";
@@ -18,10 +18,14 @@ import {
   ParsedTool,
   toNative,
   type SingleDraftValidationReport,
+  type SingleLintReport,
   type SingleValidationReport,
+  type TreeValidationReport,
 } from "@galaxy-tool-util/schema";
 
 import { runDraftValidate, type DraftValidateOptions } from "../src/commands/draft-validate.js";
+import { runLint } from "../src/commands/lint.js";
+import { runValidateTree } from "../src/commands/validate-tree.js";
 import { runValidateWorkflow } from "../src/commands/validate-workflow.js";
 import {
   createCliTestContext,
@@ -305,6 +309,30 @@ describe("draft-validate --concrete: concrete_errors", () => {
     expect(report.concrete?.connection_report?.valid).toBe(true);
     expect(report.concrete_errors).toEqual([]);
   });
+
+  it("explains a strict-structure failure", async () => {
+    const report = await draftValidate(draft({ cat: { ...dataStep(), bogus_key: 1 } }), {
+      strictStructure: true,
+    });
+
+    expect(report.concrete?.ok).toBe(false);
+    const errors = report.concrete_errors ?? [];
+    expect(errors.some((e) => e.message.includes("bogus_key"))).toBe(true);
+    for (const e of errors) expect(e).toMatchObject({ check: "strict_structure", label: null });
+  });
+
+  it("explains a strict-encoding failure", async () => {
+    const { state: _state, ...step } = dataStep();
+    const report = await draftValidate(draft([{ ...step, tool_state: "{}" }]), {
+      strictEncoding: true,
+      toolState: false,
+    });
+
+    expect(report.concrete?.ok).toBe(false);
+    expect(report.concrete_errors?.map((e) => [e.check, e.label])).toEqual([
+      ["strict_encoding", null],
+    ]);
+  });
 });
 
 describe("gxwf validate --json: step labels", () => {
@@ -397,4 +425,28 @@ describe("gxwf validate --json: step labels", () => {
       expect(report.results[0]).not.toHaveProperty("label");
     },
   );
+
+  it("reaches validate-tree results, but not its failures summary", async () => {
+    const dir = join(ctx.tmpDir, "tree");
+    await mkdir(dir);
+    await writeFile(
+      join(dir, "wf.gxwf.yml"),
+      YAML.stringify({ ...workflow, steps: { cat: dataStep(BAD_KEY) } }),
+    );
+    await runValidateTree(dir, { cacheDir: ctx.tmpDir, json: true });
+
+    const { workflows } = jsonOutput(ctx) as TreeValidationReport;
+    expect(workflows[0].results[0].label).toBe("cat");
+    expect(workflows[0].failures?.[0].message).toBe(UNKNOWN_KEY_ERROR);
+    expect(workflows[0].failures?.[0]).not.toHaveProperty("label");
+  });
+
+  it("reaches lint results", async () => {
+    const path = join(ctx.tmpDir, "wf.gxwf.yml");
+    await writeFile(path, YAML.stringify({ ...workflow, steps: { cat: dataStep() } }));
+    await runLint(path, { cacheDir: ctx.tmpDir, json: true });
+
+    const report = jsonOutput(ctx) as SingleLintReport;
+    expect(report.results[0].label).toBe("cat");
+  });
 });
