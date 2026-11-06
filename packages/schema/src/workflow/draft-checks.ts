@@ -808,9 +808,10 @@ export function nextDraftStep(workflow: unknown): NextStepResult {
 
 function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): NextStepResult {
   const ordered = topoOrderedSteps(workflow);
-  const stepLabels = collectStepLabels(workflow);
-  const outputRefs = collectOutputRefs(workflow.outputs, stepLabels);
-  const consumers = collectStepConsumers(workflow, stepLabels);
+  const knownLabels = collectStepLabels(workflow);
+  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) knownLabels.add(label);
+  const outputRefs = collectOutputRefs(workflow.outputs, knownLabels);
+  const consumers = collectStepConsumers(workflow, knownLabels);
 
   for (const [label, step] of ordered) {
     if (!isRecord(step)) continue;
@@ -918,12 +919,12 @@ function addPortRef(index: PortRefIndex, stepLabel: string, port: string, ref: s
 }
 
 /** Workflow output labels referencing each step port. */
-function collectOutputRefs(outputs: unknown, stepLabels: StepLabelSet): PortRefIndex {
+function collectOutputRefs(outputs: unknown, knownLabels: Set<string>): PortRefIndex {
   const index: PortRefIndex = new Map();
   for (const [label, output] of iterateOutputs(outputs)) {
     const ref = readOutputSource(output);
     if (ref == null) continue;
-    const [stepLabel, port] = splitSourceRef(ref, stepLabels);
+    const [stepLabel, port] = splitSourceRef(ref, knownLabels);
     if (port != null) addPortRef(index, stepLabel, port, label);
   }
   return index;
@@ -932,14 +933,14 @@ function collectOutputRefs(outputs: unknown, stepLabels: StepLabelSet): PortRefI
 /** `<step>/<input>` of the step inputs each step port feeds. */
 function collectStepConsumers(
   workflow: Record<string, unknown>,
-  stepLabels: StepLabelSet,
+  knownLabels: Set<string>,
 ): PortRefIndex {
   const index: PortRefIndex = new Map();
   for (const [consumer, step] of iterateSteps(workflow)) {
     if (!isRecord(step)) continue;
     for (const [inKey, inValue] of iterateStepInputEntries(step.in)) {
       for (const ref of extractSourceRefs(inValue)) {
-        const [stepLabel, port] = splitSourceRef(ref, stepLabels);
+        const [stepLabel, port] = splitSourceRef(ref, knownLabels);
         if (port != null) addPortRef(index, stepLabel, port, `${consumer}/${inKey}`);
       }
     }
