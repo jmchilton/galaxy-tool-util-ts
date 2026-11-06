@@ -808,16 +808,13 @@ export function nextDraftStep(workflow: unknown): NextStepResult {
 
 function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): NextStepResult {
   const ordered = topoOrderedSteps(workflow);
-  const knownLabels = collectStepLabels(workflow);
-  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) knownLabels.add(label);
-  const outputRefs = collectOutputRefs(workflow.outputs, knownLabels);
-  const consumers = collectStepConsumers(workflow, knownLabels);
+  const portEdges = collectPortEdges(workflow);
 
   for (const [label, step] of ordered) {
     if (!isRecord(step)) continue;
     const stepPath = [...prefix, label];
 
-    const work = stepWorkItems(step, label, outputRefs, consumers);
+    const work = stepWorkItems(step, portEdges.get(label) ?? new Map());
     if (work.length > 0) {
       return { draft: true, step: stepPath, work };
     }
@@ -901,55 +898,53 @@ function topoOrderedSteps(workflow: Record<string, unknown>): Array<[string, unk
   return ordered;
 }
 
-/** stepLabel -> port -> what references that port. */
-type PortRefIndex = Map<string, Map<string, Set<string>>>;
-
-function addPortRef(index: PortRefIndex, stepLabel: string, port: string, ref: string): void {
-  let perPort = index.get(stepLabel);
-  if (perPort == null) {
-    perPort = new Map();
-    index.set(stepLabel, perPort);
-  }
-  let refs = perPort.get(port);
-  if (refs == null) {
-    refs = new Set();
-    perPort.set(port, refs);
-  }
-  refs.add(ref);
+interface PortEdges {
+  workflowOutputs: Set<string>;
+  consumers: Set<string>;
 }
 
-/** Workflow output labels referencing each step port. */
-function collectOutputRefs(outputs: unknown, knownLabels: Set<string>): PortRefIndex {
-  const index: PortRefIndex = new Map();
-  for (const [label, output] of iterateOutputs(outputs)) {
+function newPortEdges(): PortEdges {
+  return { workflowOutputs: new Set(), consumers: new Set() };
+}
+
+/** label -> port -> what references it, resolving refs against the labels validation uses. */
+function collectPortEdges(workflow: Record<string, unknown>): Map<string, Map<string, PortEdges>> {
+  const knownLabels = collectStepLabels(workflow);
+  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) knownLabels.add(label);
+  const index = new Map<string, Map<string, PortEdges>>();
+
+  const edgesAt = (ref: string): PortEdges => {
+    const [label, port] = resolveSourceReference(ref, knownLabels);
+    let perPort = index.get(label);
+    if (perPort == null) {
+      perPort = new Map();
+      index.set(label, perPort);
+    }
+    let edges = perPort.get(port);
+    if (edges == null) {
+      edges = newPortEdges();
+      perPort.set(port, edges);
+    }
+    return edges;
+  };
+
+  for (const [label, output] of iterateOutputs(workflow.outputs)) {
     const ref = readOutputSource(output);
-    if (ref == null) continue;
-    const [stepLabel, port] = splitSourceRef(ref, knownLabels);
-    if (port != null) addPortRef(index, stepLabel, port, label);
+    if (ref != null) edgesAt(ref).workflowOutputs.add(label);
   }
-  return index;
-}
-
-/** `<step>/<input>` of the step inputs each step port feeds. */
-function collectStepConsumers(
-  workflow: Record<string, unknown>,
-  knownLabels: Set<string>,
-): PortRefIndex {
-  const index: PortRefIndex = new Map();
   for (const [consumer, step] of iterateSteps(workflow)) {
     if (!isRecord(step)) continue;
     for (const [inKey, inValue] of iterateStepInputEntries(step.in)) {
       for (const ref of extractSourceRefs(inValue)) {
-        const [stepLabel, port] = splitSourceRef(ref, knownLabels);
-        if (port != null) addPortRef(index, stepLabel, port, `${consumer}/${inKey}`);
+        edgesAt(ref).consumers.add(`${consumer}/${inKey}`);
       }
     }
   }
   return index;
 }
 
-function quoted(values: Iterable<string>): string {
-  return [...values].map((value) => `'${value}'`).join(", ");
+function quoted(values: string[]): string {
+  return values.map((value) => `'${value}'`).join(", ");
 }
 
 function inPortEdges(inValue: unknown): string {
@@ -958,12 +953,32 @@ function inPortEdges(inValue: unknown): string {
   return hasDefaultValue(inValue) ? "no source: default value" : "no source: unwired";
 }
 
-function stepWorkItems(
-  step: Record<string, unknown>,
-  stepLabel: string,
-  outputRefs: PortRefIndex,
-  consumers: PortRefIndex,
-): string[] {
+function outPortEdges(edges: PortEdges): string[] {
+  const parts: string[] = [];
+  if (edges.workflowOutputs.size > 0) {
+    const word = edges.workflowOutputs.size === 1 ? "output" : "outputs";
+    const labels = [...edges.workflowOutputs].sort(codePointCompare);
+    parts.push(`referenced by workflow ${word} ${quoted(labels)}`);
+  }
+  if (edges.consumers.size > 0) {
+    parts.push(`consumed by ${quoted([...edges.consumers].sort(codePointCompare))}`);
+  }
+  return parts;
+}
+
+function portWorkItem(
+  location: string,
+  portKind: string,
+  sentinel: string,
+  edges: string[],
+): string {
+  const hint = sentinelHint(sentinel);
+  const parts = [...(hint != null ? [`semantic hint: '${hint}'`] : []), ...edges];
+  const fragment = parts.length > 0 ? ` (${parts.join("; ")})` : "";
+  return `TODO[${location}.${sentinel}]: assign the real wrapper ${portKind} port name${fragment}`;
+}
+
+function stepWorkItems(step: Record<string, unknown>, portEdges: Map<string, PortEdges>): string[] {
   const work: string[] = [];
 
   if (isTodoSentinel(step.tool_id)) {
@@ -974,33 +989,14 @@ function stepWorkItems(
   }
 
   for (const [key, inValue] of iterateStepInputEntries(step.in)) {
-    if (!isTodoSentinel(key)) continue;
-    const hint = sentinelHint(key);
-    const hintFragment = hint != null ? `semantic hint: '${hint}'; ` : "";
-    work.push(
-      `TODO[in.${key}]: assign the real wrapper input port name (${hintFragment}${inPortEdges(inValue)})`,
-    );
+    if (isTodoSentinel(key)) work.push(portWorkItem("in", "input", key, [inPortEdges(inValue)]));
   }
 
-  const stepOutputRefs = outputRefs.get(stepLabel);
-  const stepConsumers = consumers.get(stepLabel);
   for (const id of iterateStepOutIds(step.out)) {
-    if (!isTodoSentinel(id)) continue;
-    const hint = sentinelHint(id);
-    const refs = stepOutputRefs?.get(id);
-    const parts: string[] = [];
-    if (hint != null) parts.push(`semantic hint: '${hint}'`);
-    if (refs != null && refs.size > 0) {
-      const labels = [...refs].sort(codePointCompare);
-      const word = labels.length === 1 ? "output" : "outputs";
-      parts.push(`referenced by workflow ${word} ${quoted(labels)}`);
+    if (isTodoSentinel(id)) {
+      const edges = outPortEdges(portEdges.get(id) ?? newPortEdges());
+      work.push(portWorkItem("out", "output", id, edges));
     }
-    const portConsumers = stepConsumers?.get(id);
-    if (portConsumers != null) {
-      parts.push(`consumed by ${quoted([...portConsumers].sort(codePointCompare))}`);
-    }
-    const hintFragment = parts.length > 0 ? ` (${parts.join("; ")})` : "";
-    work.push(`TODO[out.${id}]: assign the real wrapper output port name${hintFragment}`);
   }
 
   for (const field of PLAN_FIELDS) {
