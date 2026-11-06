@@ -26,7 +26,7 @@ The draft format draws a hard line between **topology** (always concrete) and th
 - Workflow input labels and their types. (The input `type` is sentinel-checked; the collection shape is part of the workflow's settled topology.)
 - Workflow output labels.
 - Step labels and step types (`tool`, `subworkflow`, `pause`, `pick_value`).
-- The producer→consumer edge set: every `step/port` reference in a step input or an output `outputSource` must resolve to a declared step and one of its declared ports. (A `TODO_<hint>` port counts as declared if it appears in that step's `out:`.) A `TODO_<hint>` input port must have a source or a `default`; `TODO_x: {}` is a topology error.
+- The producer→consumer edge set: every `step/port` reference in a step input or an output `outputSource` must resolve to a declared step and one of its declared ports. (A `TODO_<hint>` port counts as declared if it appears in that step's `out:`.) A `TODO_<hint>` input port must have a source or a non-null `default`; `TODO_x: {}` is a topology error.
 
 **May defer to a `TODO` sentinel:**
 
@@ -121,7 +121,7 @@ TODO[out.TODO_trimmed_paired]: assign the real wrapper output port name
   (semantic hint: 'trimmed_paired'; referenced by workflow output 'trimmed'; consumed by 'dedup/TODO_input')
 ```
 
-Port items show the edges around the port. Renaming a port only replaces a key, because the edges stay put, so this tells a reader what depends on the port without opening the YAML. The `consumed by` list is the only place to see a downstream step before it is offered: a step isn't offered while an upstream step still has work. An in port with no edge reads `no source: default value`, or `no source: unwired` on a draft `validateDraft` rejects.
+Port items show the edges around the port. Naming an in port only replaces a key. Naming an out port also means updating every ref listed under `referenced by` and `consumed by`. Those lists are the only place in the work list to see what's downstream: cycles aside, a step isn't offered while a step feeding it through `in:` still has work. An in port with no edge reads `no source: default value`, or `no source: unwired` on a draft `validateDraft` rejects.
 
 It is pure and idempotent — same draft in, byte-identical work list out — so it drives an agent loop (resolve → re-run → repeat) or an IDE "outstanding tasks" panel without any hidden state.
 

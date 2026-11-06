@@ -399,7 +399,7 @@ export interface DraftValidationResult {
  *                    resolve to a declared step + declared port (TODO_*
  *                    ports count if declared in the step's `out:`; an
  *                    embedded `GalaxyUserTool` also declares its outputs). A
- *                    TODO_* input port needs a source or a default.
+ *                    TODO_* input port needs a source or a non-null default.
  *   semanticErrors   TODO-shaped strings (start with `TODO`) that don't
  *                    match the canonical sentinel form (e.g. `TODO-foo`,
  *                    `TODOfoo`, `TODO_` trailing).
@@ -615,7 +615,7 @@ function walkDraftValidation(
           semanticErrors,
         );
       }
-      if (isTodoSentinel(inKey) && refs.length === 0 && !inputHasDefault(inValue)) {
+      if (isTodoSentinel(inKey) && refs.length === 0 && !hasDefaultValue(inValue)) {
         topologyErrors.push({
           path: stepPath,
           message: `step input "${inKey}" has no source or default; wire the port or remove it`,
@@ -756,6 +756,10 @@ function extractSourceRefs(value: unknown): string[] {
     return [];
   }
   return [];
+}
+
+function hasDefaultValue(inValue: unknown): boolean {
+  return isRecord(inValue) && inValue.default != null;
 }
 
 function iterateMapOrArrayLabeled(value: unknown): Iterable<[string, unknown]> {
@@ -950,7 +954,7 @@ function quoted(values: Iterable<string>): string {
 function inPortEdges(inValue: unknown): string {
   const refs = extractSourceRefs(inValue);
   if (refs.length > 0) return `sourced from ${quoted(refs)}`;
-  return inputHasDefault(inValue) ? "no source: default value" : "no source: unwired";
+  return hasDefaultValue(inValue) ? "no source: default value" : "no source: unwired";
 }
 
 function stepWorkItems(
@@ -1347,7 +1351,8 @@ function checkStepCascade(
 }
 
 function inputHasDefault(value: unknown): boolean {
-  return isRecord(value) && "default" in value;
+  if (isRecord(value) && "default" in value) return true;
+  return false;
 }
 
 interface InputSourceShape {
