@@ -15,6 +15,9 @@ import {
   scanToolState,
   isGalaxyUserToolRun,
   buildSingleValidationReport,
+  nativeStepLabel,
+  stepLabelPath,
+  withStepLabel,
   type NormalizedNativeStep,
   type NormalizedNativeWorkflow,
   type NormalizedFormat2Step,
@@ -294,11 +297,13 @@ async function _validateNativeWorkflow(
   cache: ToolCache | null,
   prefix: string,
   service?: ToolInfoService,
+  parentLabel?: string | null,
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
   for (const [key, step] of Object.entries(wf.steps)) {
     const stepLabel = prefix ? `${prefix}${key}` : key;
+    const label = stepLabelPath(parentLabel, step.label);
 
     // Recurse into subworkflows
     if (step.type === "subworkflow" && step.subworkflow) {
@@ -307,6 +312,7 @@ async function _validateNativeWorkflow(
         cache,
         `${stepLabel}.`,
         service,
+        label,
       );
       results.push(...subResults);
       continue;
@@ -315,7 +321,9 @@ async function _validateNativeWorkflow(
     // An embedded definition wins over tool_id, matching connection validation.
     const embedded = embeddedToolDefinition(step);
     if (embedded) {
-      results.push(_validateEmbeddedNativeStep(step, stepLabel, embedded, cache));
+      results.push(
+        withStepLabel(_validateEmbeddedNativeStep(step, stepLabel, embedded, cache), label),
+      );
       continue;
     }
 
@@ -324,7 +332,7 @@ async function _validateNativeWorkflow(
     const toolVersion = step.tool_version ?? null;
 
     const result = await _validateNativeStep(step, stepLabel, toolId, toolVersion, cache, service);
-    results.push(result);
+    results.push(withStepLabel(result, label));
   }
 
   return results;
@@ -528,15 +536,19 @@ async function _validateFormat2Workflow(
   cache: ToolCache | null,
   prefix: string,
   service?: ToolInfoService,
+  parentLabel?: string | null,
 ): Promise<StepValidationResult[]> {
   const results: StepValidationResult[] = [];
 
   for (let i = 0; i < wf.steps.length; i++) {
     const step = wf.steps[i];
     const stepLabel = prefix ? `${prefix}${i}` : String(i);
+    const label = stepLabelPath(parentLabel, nativeStepLabel(step));
 
     if (isGalaxyUserToolRun(step.run)) {
-      results.push(_validateEmbeddedFormat2Step(step, stepLabel, step.run, cache));
+      results.push(
+        withStepLabel(_validateEmbeddedFormat2Step(step, stepLabel, step.run, cache), label),
+      );
       continue;
     }
 
@@ -547,6 +559,7 @@ async function _validateFormat2Workflow(
         cache,
         `${stepLabel}.`,
         service,
+        label,
       );
       results.push(...subResults);
       continue;
@@ -557,7 +570,7 @@ async function _validateFormat2Workflow(
     const toolVersion = step.tool_version ?? null;
 
     const result = await _validateFormat2Step(step, stepLabel, toolId, toolVersion, cache, service);
-    results.push(result);
+    results.push(withStepLabel(result, label));
   }
 
   return results;

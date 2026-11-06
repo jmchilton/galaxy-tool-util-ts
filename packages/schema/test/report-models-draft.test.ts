@@ -7,6 +7,7 @@ import {
   promoteFullyConcreteDrafts,
   stripPlanFields,
   validateDraft,
+  type ConcreteValidationReport,
 } from "../src/workflow/index.js";
 
 describe("buildSingleDraftValidationReport", () => {
@@ -224,6 +225,150 @@ describe("buildSingleDraftValidationReport", () => {
       // is fine, we just couldn't run the concrete projection.
       expect(r.ok).toBe(true);
     });
+  });
+});
+
+describe("buildSingleDraftValidationReport concrete_errors", () => {
+  const cleanDraft = {
+    class: DRAFT_CLASS,
+    inputs: {},
+    outputs: {},
+    steps: {},
+  };
+  const base = {
+    class_after: "GalaxyWorkflow" as const,
+    skipped_reason: null,
+    structure_errors: [],
+    ok: false,
+  };
+  const failedStep = {
+    step: "0",
+    label: "cat",
+    tool_id: "cat1",
+    version: "1.0",
+    status: "fail" as const,
+    errors: ["bad one", "bad two"],
+  };
+  const report = (concrete: ConcreteValidationReport) =>
+    buildSingleDraftValidationReport("x.gxwf.yml", validateDraft(cleanDraft), concrete);
+
+  it("is absent when no concrete report was produced", () => {
+    const r = buildSingleDraftValidationReport("x.gxwf.yml", validateDraft(cleanDraft));
+    expect(r).not.toHaveProperty("concrete_errors");
+  });
+
+  it("is empty when the concrete pass was skipped", () => {
+    const r = report({ ...base, skipped_reason: "still a draft", ok: null });
+    expect(r.concrete_errors).toEqual([]);
+  });
+
+  it("gives step-less checks a null label and tool_id", () => {
+    const r = report({
+      ...base,
+      structure_errors: ["s"],
+      strict_structure_errors: ["ss"],
+      strict_encoding_errors: ["se"],
+    });
+    expect(r.concrete_errors).toEqual([
+      { check: "structure", label: null, tool_id: null, message: "s" },
+      { check: "strict_structure", label: null, tool_id: null, message: "ss" },
+      { check: "strict_encoding", label: null, tool_id: null, message: "se" },
+    ]);
+  });
+
+  it("emits one entry per tool-state error while summary counts the failing step once", () => {
+    const r = report({
+      ...base,
+      tool_state: { results: [failedStep], summary: { ok: 0, fail: 1, skip: 0 } },
+    });
+    expect(r.concrete_errors).toEqual([
+      { check: "tool_state", label: "cat", tool_id: "cat1", message: "bad one" },
+      { check: "tool_state", label: "cat", tool_id: "cat1", message: "bad two" },
+    ]);
+    expect(r.summary).toBe("1 error");
+  });
+
+  it("nulls the label of an unlabelled step", () => {
+    const { label: _label, ...unlabelled } = failedStep;
+    const r = report({
+      ...base,
+      tool_state: { results: [unlabelled], summary: { ok: 0, fail: 1, skip: 0 } },
+    });
+    expect(r.concrete_errors?.[0].label).toBeNull();
+  });
+
+  it("turns skipped steps into errors only when strict_state_errors is present", () => {
+    const skipped = {
+      step: "0",
+      label: "cat",
+      tool_id: "cat1",
+      version: "1.0",
+      status: "skip_tool_not_found" as const,
+      errors: ["cat1 not in cache"],
+    };
+    const tool_state = { results: [skipped], summary: { ok: 0, fail: 0, skip: 1 } };
+
+    expect(report({ ...base, ok: true, tool_state }).concrete_errors).toEqual([]);
+    expect(
+      report({ ...base, tool_state, strict_state_errors: ["0 (cat1): skipped"] }).concrete_errors,
+    ).toEqual([
+      {
+        check: "strict_state",
+        label: "cat",
+        tool_id: "cat1",
+        message: "skipped (skip_tool_not_found): cat1 not in cache",
+      },
+    ]);
+  });
+
+  it("collects invalid connections and step-level errors, not skip connections", () => {
+    const connection = {
+      source_step: "0",
+      source_output: "output",
+      target_step: "1",
+      target_input: "input1",
+      mapping: null,
+    };
+    const r = report({
+      ...base,
+      connection_report: {
+        valid: false,
+        has_details: true,
+        summary: { ok: 0, invalid: 1, skip: 1 },
+        step_results: [
+          {
+            step: "1",
+            label: "cat",
+            tool_id: "cat1",
+            version: "1.0",
+            step_type: "tool",
+            map_over: null,
+            resolved_outputs: [],
+            errors: ["Incompatible map-over types: list vs paired"],
+            connections: [
+              { ...connection, status: "invalid", errors: ["Incompatible types"] },
+              { ...connection, status: "skip", errors: ["Cannot resolve input"] },
+              { ...connection, status: "ok", errors: [] },
+            ],
+          },
+        ],
+      },
+    });
+    expect(r.concrete_errors).toEqual([
+      {
+        check: "connections",
+        label: "cat",
+        tool_id: "cat1",
+        message: "Incompatible map-over types: list vs paired",
+      },
+      {
+        check: "connections",
+        label: "cat",
+        tool_id: "cat1",
+        message: "input1: Incompatible types",
+      },
+    ]);
+    expect(r.summary).toBe("1 error");
   });
 });
 

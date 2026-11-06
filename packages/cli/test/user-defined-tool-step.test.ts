@@ -67,7 +67,14 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
       const report = await validate(await userToolWorkflow(), { mode });
 
       expect(report.results).toEqual([
-        { step: "0", tool_id: "cat_user_defined", version: "0.1", status: "ok", errors: [] },
+        {
+          step: "0",
+          label: "udt_cat",
+          tool_id: "cat_user_defined",
+          version: "0.1",
+          status: "ok",
+          errors: [],
+        },
       ]);
       expect(process.exitCode).toBe(0);
     },
@@ -80,7 +87,14 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
       const report = await validate(native, { mode, native: true });
 
       expect(report.results).toEqual([
-        { step: "1", tool_id: "cat_user_defined", version: "0.1", status: "ok", errors: [] },
+        {
+          step: "1",
+          label: "udt_cat",
+          tool_id: "cat_user_defined",
+          version: "0.1",
+          status: "ok",
+          errors: [],
+        },
       ]);
       expect(process.exitCode).toBe(0);
     },
@@ -92,6 +106,7 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
     expect(results).toEqual([
       {
         step: "0",
+        label: "udt_cat",
         tool_id: "cat_user_defined",
         version: "0.1",
         status: "skip_no_tool_state",
