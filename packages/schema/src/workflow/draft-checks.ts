@@ -398,7 +398,8 @@ export interface DraftValidationResult {
  *                    cannot be TODO sentinels. Step/port edge refs must
  *                    resolve to a declared step + declared port (TODO_*
  *                    ports count if declared in the step's `out:`; an
- *                    embedded `GalaxyUserTool` also declares its outputs).
+ *                    embedded `GalaxyUserTool` also declares its outputs). A
+ *                    TODO_* input port needs a source or a default.
  *   semanticErrors   TODO-shaped strings (start with `TODO`) that don't
  *                    match the canonical sentinel form (e.g. `TODO-foo`,
  *                    `TODOfoo`, `TODO_` trailing).
@@ -601,7 +602,8 @@ function walkDraftValidation(
 
     // Step input edges.
     for (const [inKey, inValue] of iterateStepInputEntries(step.in)) {
-      for (const ref of extractSourceRefs(inValue)) {
+      const refs = extractSourceRefs(inValue);
+      for (const ref of refs) {
         checkEdgeRef(
           ref,
           stepPath,
@@ -612,6 +614,12 @@ function walkDraftValidation(
           topologyErrors,
           semanticErrors,
         );
+      }
+      if (isTodoSentinel(inKey) && refs.length === 0 && !inputHasDefault(inValue)) {
+        topologyErrors.push({
+          path: stepPath,
+          message: `step input "${inKey}" has no source or default; wire the port or remove it`,
+        });
       }
     }
 
@@ -796,13 +804,15 @@ export function nextDraftStep(workflow: unknown): NextStepResult {
 
 function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): NextStepResult {
   const ordered = topoOrderedSteps(workflow);
-  const outputRefs = collectOutputRefs(workflow.outputs, collectStepLabels(workflow));
+  const stepLabels = collectStepLabels(workflow);
+  const outputRefs = collectOutputRefs(workflow.outputs, stepLabels);
+  const consumers = collectStepConsumers(workflow, stepLabels);
 
   for (const [label, step] of ordered) {
     if (!isRecord(step)) continue;
     const stepPath = [...prefix, label];
 
-    const work = stepWorkItems(step, label, outputRefs);
+    const work = stepWorkItems(step, label, outputRefs, consumers);
     if (work.length > 0) {
       return { draft: true, step: stepPath, work };
     }
@@ -886,37 +896,68 @@ function topoOrderedSteps(workflow: Record<string, unknown>): Array<[string, unk
   return ordered;
 }
 
-interface OutputRefIndex {
-  /** stepLabel -> port -> set of workflow output labels referencing it. */
-  byStepPort: Map<string, Map<string, Set<string>>>;
+/** stepLabel -> port -> what references that port. */
+type PortRefIndex = Map<string, Map<string, Set<string>>>;
+
+function addPortRef(index: PortRefIndex, stepLabel: string, port: string, ref: string): void {
+  let perPort = index.get(stepLabel);
+  if (perPort == null) {
+    perPort = new Map();
+    index.set(stepLabel, perPort);
+  }
+  let refs = perPort.get(port);
+  if (refs == null) {
+    refs = new Set();
+    perPort.set(port, refs);
+  }
+  refs.add(ref);
 }
 
-function collectOutputRefs(outputs: unknown, stepLabels: StepLabelSet): OutputRefIndex {
-  const byStepPort = new Map<string, Map<string, Set<string>>>();
+/** Workflow output labels referencing each step port. */
+function collectOutputRefs(outputs: unknown, stepLabels: StepLabelSet): PortRefIndex {
+  const index: PortRefIndex = new Map();
   for (const [label, output] of iterateOutputs(outputs)) {
     const ref = readOutputSource(output);
     if (ref == null) continue;
     const [stepLabel, port] = splitSourceRef(ref, stepLabels);
-    if (port == null) continue;
-    let perPort = byStepPort.get(stepLabel);
-    if (perPort == null) {
-      perPort = new Map();
-      byStepPort.set(stepLabel, perPort);
-    }
-    let set = perPort.get(port);
-    if (set == null) {
-      set = new Set();
-      perPort.set(port, set);
-    }
-    set.add(label);
+    if (port != null) addPortRef(index, stepLabel, port, label);
   }
-  return { byStepPort };
+  return index;
+}
+
+/** `<step>/<input>` of the step inputs each step port feeds. */
+function collectStepConsumers(
+  workflow: Record<string, unknown>,
+  stepLabels: StepLabelSet,
+): PortRefIndex {
+  const index: PortRefIndex = new Map();
+  for (const [consumer, step] of iterateSteps(workflow)) {
+    if (!isRecord(step)) continue;
+    for (const [inKey, inValue] of iterateStepInputEntries(step.in)) {
+      for (const ref of extractSourceRefs(inValue)) {
+        const [stepLabel, port] = splitSourceRef(ref, stepLabels);
+        if (port != null) addPortRef(index, stepLabel, port, `${consumer}/${inKey}`);
+      }
+    }
+  }
+  return index;
+}
+
+function quoted(values: Iterable<string>): string {
+  return [...values].map((value) => `'${value}'`).join(", ");
+}
+
+function inPortEdges(inValue: unknown): string {
+  const refs = extractSourceRefs(inValue);
+  if (refs.length > 0) return `sourced from ${quoted(refs)}`;
+  return inputHasDefault(inValue) ? "no source: default value" : "no source: unwired";
 }
 
 function stepWorkItems(
   step: Record<string, unknown>,
   stepLabel: string,
-  outputRefs: OutputRefIndex,
+  outputRefs: PortRefIndex,
+  consumers: PortRefIndex,
 ): string[] {
   const work: string[] = [];
 
@@ -927,14 +968,17 @@ function stepWorkItems(
     work.push("TODO[tool_version]: pick the wrapper version");
   }
 
-  for (const [key] of iterateStepInputEntries(step.in)) {
+  for (const [key, inValue] of iterateStepInputEntries(step.in)) {
     if (!isTodoSentinel(key)) continue;
     const hint = sentinelHint(key);
-    const hintFragment = hint != null ? ` (semantic hint: '${hint}')` : "";
-    work.push(`TODO[in.${key}]: assign the real wrapper input port name${hintFragment}`);
+    const hintFragment = hint != null ? `semantic hint: '${hint}'; ` : "";
+    work.push(
+      `TODO[in.${key}]: assign the real wrapper input port name (${hintFragment}${inPortEdges(inValue)})`,
+    );
   }
 
-  const stepOutputRefs = outputRefs.byStepPort.get(stepLabel);
+  const stepOutputRefs = outputRefs.get(stepLabel);
+  const stepConsumers = consumers.get(stepLabel);
   for (const id of iterateStepOutIds(step.out)) {
     if (!isTodoSentinel(id)) continue;
     const hint = sentinelHint(id);
@@ -943,9 +987,12 @@ function stepWorkItems(
     if (hint != null) parts.push(`semantic hint: '${hint}'`);
     if (refs != null && refs.size > 0) {
       const labels = [...refs].sort(codePointCompare);
-      const refStr = labels.map((l) => `'${l}'`).join(", ");
       const word = labels.length === 1 ? "output" : "outputs";
-      parts.push(`referenced by workflow ${word} ${refStr}`);
+      parts.push(`referenced by workflow ${word} ${quoted(labels)}`);
+    }
+    const portConsumers = stepConsumers?.get(id);
+    if (portConsumers != null) {
+      parts.push(`consumed by ${quoted([...portConsumers].sort(codePointCompare))}`);
     }
     const hintFragment = parts.length > 0 ? ` (${parts.join("; ")})` : "";
     work.push(`TODO[out.${id}]: assign the real wrapper output port name${hintFragment}`);
@@ -1300,8 +1347,7 @@ function checkStepCascade(
 }
 
 function inputHasDefault(value: unknown): boolean {
-  if (isRecord(value) && "default" in value) return true;
-  return false;
+  return isRecord(value) && "default" in value;
 }
 
 interface InputSourceShape {
