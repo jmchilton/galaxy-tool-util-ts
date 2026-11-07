@@ -179,10 +179,36 @@ describe("draft-validate --concrete: concrete_errors", () => {
     expect(report.concrete_errors?.map((e) => e.label)).toEqual([null, null, null]);
   });
 
-  it("nulls the label of an unlabelled step under a labelled subworkflow", async () => {
+  it("names an unlabelled step under a labelled subworkflow by its id", async () => {
     const report = await draftValidate(draft({ nested: inlineSubworkflow(null) }));
 
-    expect(report.concrete_errors?.map((e) => e.label)).toEqual([null]);
+    expect(report.concrete_errors?.map((e) => e.label)).toEqual(["nested/1"]);
+  });
+
+  it("tells unlabelled inner steps apart by the id the draft gave them", async () => {
+    const steps = [
+      { tool_id: "TODO", in: {}, out: [] },
+      dataStep({ input_file: "sub_reads", not_a_param: "sub_reads" }),
+      dataStep({ input_file: "sub_reads", not_a_param: "sub_reads" }),
+    ];
+    const nested = {
+      run: {
+        class: "GalaxyWorkflowDraft",
+        inputs: { sub_reads: { type: "data" } },
+        outputs: {},
+        steps,
+      },
+      in: { sub_reads: "reads" },
+      out: [],
+    };
+    const report = await draftValidate(draft({ nested }));
+
+    // Extraction drops the TODO; `step` shifts, the ids `in:` refers to don't.
+    expect(report.concrete?.tool_state?.results.map((r) => [r.step, r.label])).toEqual([
+      ["0.0", "nested/2"],
+      ["0.1", "nested/3"],
+    ]);
+    expect(report.concrete_errors?.map((e) => e.label)).toEqual(["nested/2", "nested/3"]);
   });
 
   it('treats label: "" as unlabelled in both reports', async () => {
@@ -380,7 +406,7 @@ describe("gxwf validate --json: step labels", () => {
   });
 
   it.each(["effect", "json-schema"] as const)(
-    "joins every level of nesting, or none if a level is unlabelled (%s)",
+    "joins every level of nesting, using ids for unlabelled inner levels (%s)",
     async (mode) => {
       const nest = (steps: unknown) => ({
         run: { class: "GalaxyWorkflow", inputs: { reads: { type: "data" } }, outputs: {}, steps },
@@ -390,13 +416,45 @@ describe("gxwf validate --json: step labels", () => {
       const steps = {
         labelled: nest({ mid: inlineSubworkflow("inner_cat") }),
         gap: nest([inlineSubworkflow("inner_cat")]),
+        leaf: nest({ mid: inlineSubworkflow(null) }),
       };
       const report = await validate({ ...workflow, steps }, { mode });
 
       expect(report.results.map((r) => [r.step, r.label])).toEqual([
         ["0.0.0", "labelled/mid/inner_cat"],
-        ["1.0.0", undefined],
+        ["1.0.0", "gap/1/inner_cat"],
+        ["2.0.0", "leaf/mid/1"],
       ]);
+    },
+  );
+
+  it.each(["effect", "json-schema"] as const)(
+    "gives no label under an unlabelled top-level subworkflow (%s)",
+    async (mode) => {
+      const steps = [inlineSubworkflow("inner_cat"), inlineSubworkflow(null)];
+      const report = await validate({ ...workflow, steps }, { mode });
+
+      expect(report.results.map((r) => r.label)).toEqual([undefined, undefined]);
+    },
+  );
+
+  it.each(["effect", "json-schema"] as const)(
+    "names an unlabelled inner native step by its key (%s)",
+    async (mode) => {
+      const doc = toNative({ ...workflow, steps: { nested: inlineSubworkflow(null) } });
+      const report = await validate(doc, { mode, native: true });
+
+      expect(report.results.map((r) => r.label)).toEqual(["nested/1"]);
+    },
+  );
+
+  it.each(["effect", "json-schema"] as const)(
+    "reports an inner _unlabeled_step_ sentinel by its number (%s)",
+    async (mode) => {
+      const nested = inlineSubworkflow("_unlabeled_step_1");
+      const report = await validate({ ...workflow, steps: { nested } }, { mode });
+
+      expect(report.results.map((r) => r.label)).toEqual(["nested/1"]);
     },
   );
 

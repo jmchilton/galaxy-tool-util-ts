@@ -198,6 +198,7 @@ export {
   toNative,
   /** The label `toNative` gives a Format2 step; null when it has none. */
   nativeStepLabel,
+  UNLABELED_STEP_PREFIX,
   /** Stateful native → format2 conversion using cached tool definitions. */
   toFormat2Stateful,
   /** Stateful format2 → native conversion using cached tool definitions. */

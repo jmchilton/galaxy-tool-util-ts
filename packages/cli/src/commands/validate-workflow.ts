@@ -33,7 +33,7 @@ import {
   describeResolveError,
   makeValidationResolver,
 } from "./resolve-tool.js";
-import { withParentLabel, withStepLabel } from "./step-label.js";
+import { stepName, withParentLabel, withStepLabel } from "./step-label.js";
 import { createDefaultResolver } from "./url-resolver.js";
 import { renderStepResults } from "./render-results.js";
 import { readWorkflowFile, resolveFormat } from "./workflow-io.js";
@@ -301,6 +301,7 @@ async function _validateNativeWorkflow(
 
   for (const [key, step] of Object.entries(wf.steps)) {
     const stepLabel = prefix ? `${prefix}${key}` : key;
+    const name = stepName(step.label, key, prefix);
 
     // Recurse into subworkflows
     if (step.type === "subworkflow" && step.subworkflow) {
@@ -310,7 +311,7 @@ async function _validateNativeWorkflow(
         `${stepLabel}.`,
         service,
       );
-      results.push(...withParentLabel(subResults, step.label));
+      results.push(...withParentLabel(subResults, name));
       continue;
     }
 
@@ -318,7 +319,7 @@ async function _validateNativeWorkflow(
     const embedded = embeddedToolDefinition(step);
     if (embedded) {
       results.push(
-        withStepLabel(_validateEmbeddedNativeStep(step, stepLabel, embedded, cache), step.label),
+        withStepLabel(_validateEmbeddedNativeStep(step, stepLabel, embedded, cache), name),
       );
       continue;
     }
@@ -328,7 +329,7 @@ async function _validateNativeWorkflow(
     const toolVersion = step.tool_version ?? null;
 
     const result = await _validateNativeStep(step, stepLabel, toolId, toolVersion, cache, service);
-    results.push(withStepLabel(result, step.label));
+    results.push(withStepLabel(result, name));
   }
 
   return results;
@@ -538,11 +539,11 @@ async function _validateFormat2Workflow(
   for (let i = 0; i < wf.steps.length; i++) {
     const step = wf.steps[i];
     const stepLabel = prefix ? `${prefix}${i}` : String(i);
-    const label = nativeStepLabel(step);
+    const name = stepName(nativeStepLabel(step), step.id, prefix);
 
     if (isGalaxyUserToolRun(step.run)) {
       results.push(
-        withStepLabel(_validateEmbeddedFormat2Step(step, stepLabel, step.run, cache), label),
+        withStepLabel(_validateEmbeddedFormat2Step(step, stepLabel, step.run, cache), name),
       );
       continue;
     }
@@ -555,7 +556,7 @@ async function _validateFormat2Workflow(
         `${stepLabel}.`,
         service,
       );
-      results.push(...withParentLabel(subResults, label));
+      results.push(...withParentLabel(subResults, name));
       continue;
     }
 
@@ -564,7 +565,7 @@ async function _validateFormat2Workflow(
     const toolVersion = step.tool_version ?? null;
 
     const result = await _validateFormat2Step(step, stepLabel, toolId, toolVersion, cache, service);
-    results.push(withStepLabel(result, label));
+    results.push(withStepLabel(result, name));
   }
 
   return results;
