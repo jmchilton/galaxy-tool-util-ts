@@ -94,6 +94,16 @@ steps:
     expect(process.exitCode).toBe(1);
   });
 
+  it("rejects a TODO input port with no source or default (exit 1)", async () => {
+    const wfPath = await stagedFixture(ctx, "synthetic-draft-bad-unwired-port.gxwf.yml");
+    await runDraftValidate(wfPath, {});
+
+    expect(joined(ctx.logSpy)).toContain(
+      'map_form: step input "TODO_empty" has no source or default; wire the port or remove it',
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
   it("rejects a GalaxyWorkflow (non-draft class) with exit 2 + class-mismatch diagnostic", async () => {
     const wf = `class: GalaxyWorkflow
 label: not a draft

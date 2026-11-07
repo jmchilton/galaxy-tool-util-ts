@@ -538,7 +538,7 @@ describe("nextDraftStep", () => {
     expect(result.work).toEqual([
       "TODO[tool_id]: pick a Galaxy Tool Shed wrapper for this step",
       "TODO[tool_version]: pick the wrapper version",
-      "TODO[in.TODO_input]: assign the real wrapper input port name (semantic hint: 'input')",
+      "TODO[in.TODO_input]: assign the real wrapper input port name (semantic hint: 'input'; sourced from 'reads')",
       "TODO[out.TODO_trimmed_paired]: assign the real wrapper output port name (semantic hint: 'trimmed_paired'; referenced by workflow output 'trimmed')",
       "TODO[out.TODO_html_report]: assign the real wrapper output port name (semantic hint: 'html_report')",
       expect.stringMatching(/^_plan_state: Adapter trimming on/),
@@ -680,7 +680,7 @@ describe("nextDraftStep", () => {
     expect(result.work).toEqual([
       "TODO[tool_id]: pick a Galaxy Tool Shed wrapper for this step",
       "TODO[tool_version]: pick the wrapper version",
-      "TODO[in.TODO]: assign the real wrapper input port name",
+      "TODO[in.TODO]: assign the real wrapper input port name (sourced from 'reads')",
       "TODO[out.TODO]: assign the real wrapper output port name",
     ]);
   });
