@@ -148,11 +148,11 @@ One-pass step-focused survey collecting every TODO sentinel and `_plan_*` hit wi
 
 ### `validateDraft(workflow): DraftValidationResult`
 
-Collects all draft diagnostics into structured arrays — does not throw. Pipeline: lax structural decode against `GalaxyWorkflowDraftSchema`, concrete-topology checks (workflow input/output/step labels and step types cannot be TODO sentinels; every `step/port` edge ref must resolve), sentinel-form checks (TODO-shaped strings that don't match the canonical pattern → semantic error), and warnings (bare `TODO` in port positions; top-level `_plan_*`).
+Collects all draft diagnostics into structured arrays — does not throw. Pipeline: lax structural decode against `GalaxyWorkflowDraftSchema`, concrete-topology checks (workflow input/output/step labels and step types cannot be TODO sentinels; every `step/port` edge ref must resolve; a `TODO_*` input port needs a source or a non-null `default`), sentinel-form checks (TODO-shaped strings that don't match the canonical pattern → semantic error), and warnings (bare `TODO` in port positions; top-level `_plan_*`).
 
 ### `nextDraftStep(workflow): NextStepResult`
 
-Pure, idempotent function that picks the next step a downstream agent should work on. Topological walk with alphabetical tie-break; first step carrying any TODO or `_plan_*` is returned with a prompt-shaped `work[]` array in the locked-decision order (`tool_id → tool_version → in.* → out.* → _plan_state → _plan_context → _plan_in → _plan_out`). Subworkflow-aware: descends into draft `run:` blocks only after the outer step is itself fully concrete.
+Pure, idempotent function that picks the next step a downstream agent should work on. Topological walk with alphabetical tie-break; first step carrying any TODO or `_plan_*` is returned with a prompt-shaped `work[]` array in the locked-decision order (`tool_id → tool_version → in.* → out.* → _plan_state → _plan_context → _plan_in → _plan_out`). Port items carry the port's edges: an in port's sources, and the workflow outputs and steps consuming an out port. Subworkflow-aware: descends into draft `run:` blocks only after the outer step is itself fully concrete.
 
 ### `extractConcreteSubset(workflow): ExtractResult`
 
