@@ -1,4 +1,5 @@
 import { parseToolState } from "../../workflow/tool-state-io.js";
+import { extractInputMetadata } from "./check-input-metadata.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
 
 const INPUT_STEP_TYPES = new Set(["data_input", "data_collection_input", "parameter_input"]);
@@ -49,7 +50,7 @@ export function extractNativeInputs(parsed: unknown): WorkflowInput[] {
     if (!name) continue;
     const toolState = parseToolState(step.tool_state);
     const type = inputTypeFor(stepType, toolState);
-    const input: WorkflowInput = { name, type };
+    const input: WorkflowInput = { name, type, ...extractInputMetadata(toolState, type) };
     const doc = asString(step.annotation);
     if (doc) input.doc = doc;
     if (typeof toolState.optional === "boolean") input.optional = toolState.optional;

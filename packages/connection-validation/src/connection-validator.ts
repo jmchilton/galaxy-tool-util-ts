@@ -83,6 +83,7 @@ export function validateConnectionGraph(
     };
 
     if (Object.keys(step.connections).length === 0) {
+      if (step.innerGraph) _resolveSubworkflowOutputs(step, resolvedOutputTypes);
       stepResults.push(stepResult);
       continue;
     }

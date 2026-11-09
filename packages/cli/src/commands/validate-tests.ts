@@ -12,15 +12,12 @@ import { readFile } from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
 import {
   checkTestsAgainstWorkflow,
-  extractWorkflowInputs,
-  extractWorkflowOutputs,
-  resolveFormat,
   validateTestsFile,
   type TestFormatDiagnostic,
-  type WorkflowShape,
 } from "@galaxy-tool-util/schema";
+import { loadWorkflowTestShape, type WorkflowTestMetadataOptions } from "./workflow-test-shape.js";
 
-export interface ValidateTestsOptions {
+export interface ValidateTestsOptions extends WorkflowTestMetadataOptions {
   json?: boolean;
   workflow?: string;
 }
@@ -29,21 +26,6 @@ export interface ValidateTestsReport {
   file: string;
   valid: boolean;
   errors: TestFormatDiagnostic[];
-}
-
-async function loadWorkflowShape(path: string): Promise<WorkflowShape> {
-  const raw = await readFile(path, "utf-8");
-  const parsed: unknown =
-    path.endsWith(".ga") || path.endsWith(".json") ? JSON.parse(raw) : parseYaml(raw);
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`Workflow ${path} did not parse to an object.`);
-  }
-  const dict = parsed as Record<string, unknown>;
-  const format = resolveFormat(dict);
-  return {
-    inputs: extractWorkflowInputs(dict, format),
-    outputs: extractWorkflowOutputs(dict, format),
-  };
 }
 
 export async function runValidateTests(
@@ -77,7 +59,7 @@ export async function runValidateTests(
 
   if (opts.workflow) {
     try {
-      const shape = await loadWorkflowShape(opts.workflow);
+      const shape = await loadWorkflowTestShape(opts.workflow, opts);
       allErrors.push(...checkTestsAgainstWorkflow(parsed, shape));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

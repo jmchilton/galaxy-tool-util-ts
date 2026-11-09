@@ -48,6 +48,7 @@
     "@galaxy-tool-util/schema": "workspace:*",
     "@galaxy-tool-util/search": "workspace:*",
     "@galaxy-tool-util/tool-xml": "workspace:*",
+    "@galaxy-tool-util/workflow-graph": "workspace:*",
     "ajv": "^8.18.0",
     "commander": "^14.0.0",
     "effect": "^3.21.0",
