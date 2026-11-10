@@ -239,7 +239,7 @@ function validateFrameReferences(ctx: LintContext, nf2: NormalizedFormat2Workflo
 }
 
 function lintEmptyFrames(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
-  format2CommentList((nf2 as Record<string, unknown>).comments).forEach((comment, index) => {
+  format2CommentList(nf2).forEach((comment, index) => {
     if (comment.type !== "frame") return;
     if (isNonEmptyArray(comment.contains_steps) || isNonEmptyArray(comment.contains_comments)) {
       return;

@@ -100,7 +100,8 @@ export function unflattenCommentData(
 }
 
 /** Format2 comments as a list; dict-form keys become labels unless one is set. */
-export function format2CommentList(comments: unknown): Record<string, unknown>[] {
+export function format2CommentList(wf: NormalizedFormat2Workflow): Record<string, unknown>[] {
+  const comments = (wf as Record<string, unknown>).comments;
   if (Array.isArray(comments)) return comments as Record<string, unknown>[];
   if (comments && typeof comments === "object") {
     return Object.entries(comments as Record<string, unknown>).map(([label, comment]) => ({
@@ -133,7 +134,7 @@ export function frameDescription(frame: Record<string, unknown>, commentIndex: n
 export function unresolvedFrameReferences(
   wf: NormalizedFormat2Workflow,
 ): UnresolvedFrameReference[] {
-  const comments = format2CommentList((wf as Record<string, unknown>).comments);
+  const comments = format2CommentList(wf);
   const stepLabels = format2StepLabelIndices(wf);
   const commentLabels = new Set(
     comments.map((c) => c.label).filter((l) => typeof l === "string" && l),

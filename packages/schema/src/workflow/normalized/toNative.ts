@@ -678,7 +678,7 @@ function _buildNativeComments(
   wf: NormalizedFormat2Workflow,
   ctx: ConversionContext,
 ): Record<string, unknown>[] | undefined {
-  const rawComments = format2CommentList((wf as Record<string, unknown>).comments);
+  const rawComments = format2CommentList(wf);
   if (rawComments.length === 0) return undefined;
   const unresolved = unresolvedFrameReferences(wf);
   if (unresolved.length > 0) throw new Error(unresolved[0].message);
