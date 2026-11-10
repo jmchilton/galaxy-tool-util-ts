@@ -12,6 +12,7 @@ import {
   type StepConversionStatus,
   type WorkflowFormat,
 } from "@galaxy-tool-util/schema";
+import type { ToolCache } from "@galaxy-tool-util/core";
 import { dirname } from "node:path";
 import { loadToolInputsForWorkflow, resolveConversionCache } from "./stateful-tool-inputs.js";
 import { createDefaultResolver } from "./url-resolver.js";
@@ -71,52 +72,16 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
     return;
   }
 
-  let result: Record<string, unknown>;
-  let stepStatuses: StepConversionStatus[] | null = null;
-
   const cache = await resolveConversionCache(opts);
-
+  let converted: ConversionResult;
   try {
-    if (cache) {
-      const expansionOpts: ExpansionOptions = {
-        resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
-      };
-      const { resolver, status: toolStatus } = await loadToolInputsForWorkflow(
-        data,
-        sourceFormat,
-        cache,
-        expansionOpts,
-      );
-      for (const s of toolStatus) {
-        if (!s.loaded) {
-          const ver = s.toolVersion ? `@${s.toolVersion}` : "";
-          console.error(`  tool ${s.toolId}${ver}: ${s.error}`);
-        }
-      }
-
-      if (targetFormat === "format2") {
-        const r = toFormat2Stateful(data, resolver);
-        result = r.workflow as unknown as Record<string, unknown>;
-        stepStatuses = r.steps;
-        if (opts.compact) stripPositionInfo(result);
-      } else {
-        const r = toNativeStateful(data, resolver);
-        result = r.workflow as unknown as Record<string, unknown>;
-        stepStatuses = r.steps;
-      }
-    } else if (targetFormat === "format2") {
-      result = toFormat2(data) as unknown as Record<string, unknown>;
-      if (opts.compact) {
-        stripPositionInfo(result);
-      }
-    } else {
-      result = toNative(data) as unknown as Record<string, unknown>;
-    }
+    converted = await convertWorkflow(data, filePath, sourceFormat, targetFormat, cache, opts);
   } catch (error) {
     console.error(`Conversion failed: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
     return;
   }
+  const { result, stepStatuses } = converted;
 
   const output = serializeWorkflow(result, targetFormat, { json: opts.json, yaml: opts.yaml });
   await writeWorkflowOutput(output, opts.output, "Converted workflow");
@@ -133,6 +98,60 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
       }
     }
   }
+}
+
+interface ConversionResult {
+  result: Record<string, unknown>;
+  stepStatuses: StepConversionStatus[] | null;
+}
+
+async function convertWorkflow(
+  data: Record<string, unknown>,
+  filePath: string,
+  sourceFormat: WorkflowFormat,
+  targetFormat: WorkflowFormat,
+  cache: ToolCache | null,
+  opts: ConvertOptions,
+): Promise<ConversionResult> {
+  let result: Record<string, unknown>;
+  let stepStatuses: StepConversionStatus[] | null = null;
+
+  if (cache) {
+    const expansionOpts: ExpansionOptions = {
+      resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
+    };
+    const { resolver, status: toolStatus } = await loadToolInputsForWorkflow(
+      data,
+      sourceFormat,
+      cache,
+      expansionOpts,
+    );
+    for (const s of toolStatus) {
+      if (!s.loaded) {
+        const ver = s.toolVersion ? `@${s.toolVersion}` : "";
+        console.error(`  tool ${s.toolId}${ver}: ${s.error}`);
+      }
+    }
+
+    if (targetFormat === "format2") {
+      const r = toFormat2Stateful(data, resolver);
+      result = r.workflow as unknown as Record<string, unknown>;
+      stepStatuses = r.steps;
+      if (opts.compact) stripPositionInfo(result);
+    } else {
+      const r = toNativeStateful(data, resolver);
+      result = r.workflow as unknown as Record<string, unknown>;
+      stepStatuses = r.steps;
+    }
+  } else if (targetFormat === "format2") {
+    result = toFormat2(data) as unknown as Record<string, unknown>;
+    if (opts.compact) {
+      stripPositionInfo(result);
+    }
+  } else {
+    result = toNative(data) as unknown as Record<string, unknown>;
+  }
+  return { result, stepStatuses };
 }
 
 function reportStepStatuses(statuses: StepConversionStatus[]): void {
