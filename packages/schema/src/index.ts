@@ -338,6 +338,8 @@ export {
   type LinterRef,
   type EmitOptions,
   /** Lint rule classes (one per rule id). */
+  FrameIsEmpty,
+  FrameReferenceNotFound,
   NativeStepKeyNotInteger,
   StepLabelNotUnique,
   /** Lint profile catalog loader — parses `lint_profiles.yml`. */

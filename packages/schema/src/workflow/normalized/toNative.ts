@@ -12,7 +12,7 @@ import type {
   NormalizedFormat2StepOutput,
 } from "./format2.js";
 import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
-import { unflattenCommentData } from "./comments.js";
+import { format2CommentList, unflattenCommentData, unresolvedFrameReferences } from "./comments.js";
 import { isUnlabeled, resolveSourceReference } from "./labels.js";
 import { INPUT_TYPES, inputParameterSchema, inputTypesDeclaring } from "../input-parameter.js";
 import {
@@ -686,22 +686,10 @@ function _buildNativeComments(
   wf: NormalizedFormat2Workflow,
   ctx: ConversionContext,
 ): Record<string, unknown>[] | undefined {
-  const rawCommentsValue = (wf as Record<string, unknown>).comments;
-  if (!rawCommentsValue) return undefined;
-
-  // Normalize dict-style comments to array
-  let rawComments: Record<string, unknown>[];
-  if (Array.isArray(rawCommentsValue)) {
-    if (rawCommentsValue.length === 0) return undefined;
-    rawComments = rawCommentsValue as Record<string, unknown>[];
-  } else if (typeof rawCommentsValue === "object") {
-    rawComments = Object.entries(rawCommentsValue as Record<string, unknown>).map(
-      ([label, comment]) => ({ ...(comment as Record<string, unknown>), label }),
-    );
-    if (rawComments.length === 0) return undefined;
-  } else {
-    return undefined;
-  }
+  const rawComments = format2CommentList((wf as Record<string, unknown>).comments);
+  if (rawComments.length === 0) return undefined;
+  const unresolved = unresolvedFrameReferences(wf);
+  if (unresolved.length > 0) throw new Error(unresolved[0].message);
 
   const commentLabelMap = new Map<string, number>();
   for (let i = 0; i < rawComments.length; i++) {
@@ -724,15 +712,7 @@ function _buildNativeComments(
 
     if (nativeComment.child_comments && Array.isArray(nativeComment.child_comments)) {
       nativeComment.child_comments = (nativeComment.child_comments as (string | number)[]).map(
-        (ref) => {
-          if (typeof ref === "string") {
-            if (!commentLabelMap.has(ref)) {
-              throw new Error(`contains_comments references unknown comment label '${ref}'`);
-            }
-            return commentLabelMap.get(ref)!;
-          }
-          return ref;
-        },
+        (ref) => (typeof ref === "string" ? commentLabelMap.get(ref)! : ref),
       );
     }
 

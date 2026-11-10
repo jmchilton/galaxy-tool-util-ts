@@ -76,40 +76,46 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
 
   const cache = await resolveConversionCache(opts);
 
-  if (cache) {
-    const expansionOpts: ExpansionOptions = {
-      resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
-    };
-    const { resolver, status: toolStatus } = await loadToolInputsForWorkflow(
-      data,
-      sourceFormat,
-      cache,
-      expansionOpts,
-    );
-    for (const s of toolStatus) {
-      if (!s.loaded) {
-        const ver = s.toolVersion ? `@${s.toolVersion}` : "";
-        console.error(`  tool ${s.toolId}${ver}: ${s.error}`);
+  try {
+    if (cache) {
+      const expansionOpts: ExpansionOptions = {
+        resolver: createDefaultResolver({ workflowDirectory: dirname(filePath) }),
+      };
+      const { resolver, status: toolStatus } = await loadToolInputsForWorkflow(
+        data,
+        sourceFormat,
+        cache,
+        expansionOpts,
+      );
+      for (const s of toolStatus) {
+        if (!s.loaded) {
+          const ver = s.toolVersion ? `@${s.toolVersion}` : "";
+          console.error(`  tool ${s.toolId}${ver}: ${s.error}`);
+        }
       }
-    }
 
-    if (targetFormat === "format2") {
-      const r = toFormat2Stateful(data, resolver);
-      result = r.workflow as unknown as Record<string, unknown>;
-      stepStatuses = r.steps;
-      if (opts.compact) stripPositionInfo(result);
+      if (targetFormat === "format2") {
+        const r = toFormat2Stateful(data, resolver);
+        result = r.workflow as unknown as Record<string, unknown>;
+        stepStatuses = r.steps;
+        if (opts.compact) stripPositionInfo(result);
+      } else {
+        const r = toNativeStateful(data, resolver);
+        result = r.workflow as unknown as Record<string, unknown>;
+        stepStatuses = r.steps;
+      }
+    } else if (targetFormat === "format2") {
+      result = toFormat2(data) as unknown as Record<string, unknown>;
+      if (opts.compact) {
+        stripPositionInfo(result);
+      }
     } else {
-      const r = toNativeStateful(data, resolver);
-      result = r.workflow as unknown as Record<string, unknown>;
-      stepStatuses = r.steps;
+      result = toNative(data) as unknown as Record<string, unknown>;
     }
-  } else if (targetFormat === "format2") {
-    result = toFormat2(data) as unknown as Record<string, unknown>;
-    if (opts.compact) {
-      stripPositionInfo(result);
-    }
-  } else {
-    result = toNative(data) as unknown as Record<string, unknown>;
+  } catch (error) {
+    console.error(`Conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+    return;
   }
 
   const output = serializeWorkflow(result, targetFormat, { json: opts.json, yaml: opts.yaml });

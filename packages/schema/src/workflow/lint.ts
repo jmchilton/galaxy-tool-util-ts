@@ -15,7 +15,17 @@ import { LintContext, type LintResult } from "./linting.js";
 import { format2InputStepType, nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
 import { resolveSourceReference } from "./normalized/labels.js";
 import { nativeInputToFormat2Type } from "./normalized/toFormat2.js";
-import { NativeStepKeyNotInteger, StepLabelNotUnique } from "./lint-rules.js";
+import {
+  format2CommentList,
+  frameDescription,
+  unresolvedFrameReferences,
+} from "./normalized/comments.js";
+import {
+  FrameIsEmpty,
+  FrameReferenceNotFound,
+  NativeStepKeyNotInteger,
+  StepLabelNotUnique,
+} from "./lint-rules.js";
 
 export {
   LintContext,
@@ -217,6 +227,36 @@ function validateOutputSources(ctx: LintContext, nf2: NormalizedFormat2Workflow)
   }
 }
 
+function validateFrameReferences(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
+  for (const ref of unresolvedFrameReferences(nf2)) {
+    ctx
+      .child("comments")
+      .child(String(ref.commentIndex))
+      .child(ref.field)
+      .child(String(ref.entryIndex))
+      .error(ref.message, { linter: FrameReferenceNotFound });
+  }
+}
+
+function lintEmptyFrames(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
+  format2CommentList((nf2 as Record<string, unknown>).comments).forEach((comment, index) => {
+    if (comment.type !== "frame") return;
+    if (isNonEmptyArray(comment.contains_steps) || isNonEmptyArray(comment.contains_comments)) {
+      return;
+    }
+    ctx
+      .child("comments")
+      .child(String(index))
+      .warn(`${frameDescription(comment, index)} contains no steps or comments.`, {
+        linter: FrameIsEmpty,
+      });
+  });
+}
+
+function isNonEmptyArray(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0;
+}
+
 type GalaxyInputType = string | string[] | null | undefined;
 
 function validateInputTypes(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
@@ -358,6 +398,7 @@ function lintFormat2Workflow(
   }
 
   validateOutputSources(ctx, nf2);
+  validateFrameReferences(ctx, nf2);
   validateInputTypes(ctx, nf2);
   validateReport(ctx, nf2.report);
 }
@@ -628,6 +669,7 @@ export function lintBestPracticesFormat2(workflowDict: Record<string, unknown>):
   }
   if (nf2) {
     lintWorkflowTopLevel(ctx, nf2, workflowDict);
+    lintEmptyFrames(ctx, nf2);
     const inputTypes = nf2.inputs
       .filter((inp) => inp.id)
       .map((inp) => [inp.id as string, format2InputStepType(inp)] as const);
