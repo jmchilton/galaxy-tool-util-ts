@@ -425,7 +425,7 @@ function reachableFrom(start: string, deps: Map<string, Set<string>>): Set<strin
     const label = pending.pop()!;
     if (seen.has(label)) continue;
     seen.add(label);
-    pending.push(...(deps.get(label) ?? []));
+    pending.push(...deps.get(label)!);
   }
   return seen;
 }
