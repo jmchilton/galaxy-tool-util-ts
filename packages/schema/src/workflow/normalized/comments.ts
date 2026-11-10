@@ -5,6 +5,7 @@
  */
 
 import type { NormalizedFormat2Workflow } from "./format2.js";
+import { format2StepLabelIndices } from "./labels.js";
 
 // Mapping from native comment data.* field names to Format2 top-level field names.
 const COMMENT_DATA_FIELDS: Record<string, Record<string, string>> = {
@@ -133,12 +134,7 @@ export function unresolvedFrameReferences(
   wf: NormalizedFormat2Workflow,
 ): UnresolvedFrameReference[] {
   const comments = format2CommentList((wf as Record<string, unknown>).comments);
-  const stepLabels = new Set<string>();
-  for (const inp of wf.inputs) if (inp.id) stepLabels.add(inp.id);
-  for (const step of wf.steps) {
-    const label = step.label ?? step.id;
-    if (label) stepLabels.add(label);
-  }
+  const stepLabels = format2StepLabelIndices(wf);
   const commentLabels = new Set(
     comments.map((c) => c.label).filter((l) => typeof l === "string" && l),
   );

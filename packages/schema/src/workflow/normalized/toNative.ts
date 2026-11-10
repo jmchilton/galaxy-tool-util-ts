@@ -13,7 +13,7 @@ import type {
 } from "./format2.js";
 import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
 import { format2CommentList, unflattenCommentData, unresolvedFrameReferences } from "./comments.js";
-import { isUnlabeled, resolveSourceReference } from "./labels.js";
+import { format2StepLabelIndices, isUnlabeled, resolveSourceReference } from "./labels.js";
 import { INPUT_TYPES, inputParameterSchema, inputTypesDeclaring } from "../input-parameter.js";
 import {
   WorkflowCollectionParameterSchema,
@@ -133,15 +133,7 @@ export function toNative(raw: unknown, options?: ToNativeOptions): NormalizedNat
 }
 
 function _registerLabels(wf: NormalizedFormat2Workflow, ctx: ConversionContext): void {
-  for (let i = 0; i < wf.inputs.length; i++) {
-    const inp = wf.inputs[i];
-    if (inp.id) ctx.labels.set(inp.id, i);
-  }
-  for (let j = 0; j < wf.steps.length; j++) {
-    const idx = wf.inputs.length + j;
-    const label = wf.steps[j].label ?? wf.steps[j].id;
-    if (label) ctx.labels.set(label, idx);
-  }
+  for (const [label, idx] of format2StepLabelIndices(wf)) ctx.labels.set(label, idx);
 }
 
 // --- Workflow building ---

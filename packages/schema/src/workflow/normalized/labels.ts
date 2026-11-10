@@ -4,6 +4,8 @@
  * Port of gxformat2/_labels.py.
  */
 
+import type { NormalizedFormat2Workflow } from "./format2.js";
+
 export const UNLABELED_INPUT_PREFIX = "_unlabeled_input_";
 export const UNLABELED_STEP_PREFIX = "_unlabeled_step_";
 
@@ -117,4 +119,17 @@ export function resolveSourceReference(
     return [value.slice(0, idx), value.slice(idx + 1)];
   }
   return [value, "output"];
+}
+
+/** Order index of each input (by `id`) and step (by `label ?? id`) that conversion resolves references against. */
+export function format2StepLabelIndices(wf: NormalizedFormat2Workflow): Map<string, number> {
+  const labels = new Map<string, number>();
+  wf.inputs.forEach((inp, i) => {
+    if (inp.id) labels.set(inp.id, i);
+  });
+  wf.steps.forEach((step, j) => {
+    const label = step.label ?? step.id;
+    if (label) labels.set(label, wf.inputs.length + j);
+  });
+  return labels;
 }
