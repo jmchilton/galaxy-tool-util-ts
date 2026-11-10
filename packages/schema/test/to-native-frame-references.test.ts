@@ -27,4 +27,15 @@ describe("toNative frame references", () => {
     };
     expect(() => toNative(parent)).toThrow(/Frame 'Typo' references unknown step/);
   });
+
+  it("rejects unknown contains_comments labels on non-frame comments", () => {
+    const wf = {
+      class: "GalaxyWorkflow",
+      inputs: {},
+      outputs: {},
+      steps: {},
+      comments: [{ type: "text", text: "x", contains_comments: ["missing"] }],
+    };
+    expect(() => toNative(wf)).toThrow(/unknown comment label 'missing'/);
+  });
 });

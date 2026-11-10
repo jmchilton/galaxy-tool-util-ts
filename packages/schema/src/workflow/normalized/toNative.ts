@@ -704,7 +704,14 @@ function _buildNativeComments(
 
     if (nativeComment.child_comments && Array.isArray(nativeComment.child_comments)) {
       nativeComment.child_comments = (nativeComment.child_comments as (string | number)[]).map(
-        (ref) => (typeof ref === "string" ? commentLabelMap.get(ref)! : ref),
+        (ref) => {
+          if (typeof ref !== "string") return ref;
+          const idx = commentLabelMap.get(ref);
+          if (idx === undefined) {
+            throw new Error(`contains_comments references unknown comment label '${ref}'`);
+          }
+          return idx;
+        },
       );
     }
 
