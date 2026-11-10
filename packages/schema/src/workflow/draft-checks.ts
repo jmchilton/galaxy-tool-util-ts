@@ -371,6 +371,66 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 // -----------------------------------------------------------------------------
+// Step graph
+// -----------------------------------------------------------------------------
+
+/** Labels a source ref resolves against: steps and workflow inputs. */
+function sourceLabels(workflow: Record<string, unknown>): Set<string> {
+  const labels = collectStepLabels(workflow);
+  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) labels.add(label);
+  return labels;
+}
+
+/** Step label -> labels of the steps its inputs source from, itself included. */
+function stepDependencies(workflow: Record<string, unknown>): Map<string, Set<string>> {
+  const stepLabels = collectStepLabels(workflow);
+  const knownLabels = sourceLabels(workflow);
+  const deps = new Map<string, Set<string>>();
+  for (const [label, step] of iterateSteps(workflow)) {
+    const stepDeps = new Set<string>();
+    if (isRecord(step)) {
+      for (const [, inValue] of iterateStepInputEntries(step.in)) {
+        for (const ref of extractSourceRefs(inValue)) {
+          const [depLabel] = resolveSourceReference(ref, knownLabels);
+          if (stepLabels.has(depLabel)) stepDeps.add(depLabel);
+        }
+      }
+    }
+    deps.set(label, stepDeps);
+  }
+  return deps;
+}
+
+/** Group steps on cycles by mutual reachability; sorted label lists ordered by first label. */
+function stepCycles(deps: Map<string, Set<string>>): string[][] {
+  const reachable = new Map<string, Set<string>>();
+  for (const label of deps.keys()) reachable.set(label, reachableFrom(label, deps));
+  const cycles: string[][] = [];
+  const placed = new Set<string>();
+  for (const label of [...deps.keys()].sort(codePointCompare)) {
+    if (placed.has(label) || !reachable.get(label)!.has(label)) continue;
+    const members = [...reachable.get(label)!]
+      .filter((other) => reachable.get(other)!.has(label))
+      .sort(codePointCompare);
+    for (const member of members) placed.add(member);
+    cycles.push(members);
+  }
+  return cycles;
+}
+
+function reachableFrom(start: string, deps: Map<string, Set<string>>): Set<string> {
+  const seen = new Set<string>();
+  const pending = [...deps.get(start)!];
+  while (pending.length > 0) {
+    const label = pending.pop()!;
+    if (seen.has(label)) continue;
+    seen.add(label);
+    pending.push(...(deps.get(label) ?? []));
+  }
+  return seen;
+}
+
+// -----------------------------------------------------------------------------
 // validateDraft
 // -----------------------------------------------------------------------------
 
@@ -562,15 +622,7 @@ function walkDraftValidation(
     }
   }
 
-  for (const members of stepCycles(stepDependencies(workflow))) {
-    topologyErrors.push({
-      path: prefix,
-      message:
-        members.length === 1
-          ? `step "${members[0]}" sources its own output`
-          : `steps ${members.map((m) => `"${m}"`).join(", ")} depend on each other through a cycle`,
-    });
-  }
+  topologyErrors.push(...cycleDiagnostics(workflow, prefix));
 
   // Steps: labels, types, edge refs, sentinel-form on every TODO-shaped string.
   for (const [label, step] of iterateSteps(workflow)) {
@@ -655,6 +707,20 @@ function walkDraftValidation(
       walkDraftValidation(step.run, stepPath, topologyErrors, semanticErrors, warnings);
     }
   }
+}
+
+/** One topology error per group of steps that depend on each other. */
+function cycleDiagnostics(
+  workflow: Record<string, unknown>,
+  prefix: StepPath,
+): DraftValidationDiagnostic[] {
+  return stepCycles(stepDependencies(workflow)).map((members) => ({
+    path: prefix,
+    message:
+      members.length === 1
+        ? `step "${members[0]}" sources its own output`
+        : `steps ${members.map((m) => `"${m}"`).join(", ")} depend on each other through a cycle`,
+  }));
 }
 
 function stepHasAnyTodo(step: Record<string, unknown>): boolean {
@@ -839,62 +905,6 @@ function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): N
   }
 
   return { draft: false };
-}
-
-/** Labels a source ref resolves against: steps and workflow inputs. */
-function sourceLabels(workflow: Record<string, unknown>): Set<string> {
-  const labels = collectStepLabels(workflow);
-  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) labels.add(label);
-  return labels;
-}
-
-/** Step label -> labels of the steps its inputs source from, itself included. */
-function stepDependencies(workflow: Record<string, unknown>): Map<string, Set<string>> {
-  const stepLabels = collectStepLabels(workflow);
-  const knownLabels = sourceLabels(workflow);
-  const deps = new Map<string, Set<string>>();
-  for (const [label, step] of iterateSteps(workflow)) {
-    const stepDeps = new Set<string>();
-    if (isRecord(step)) {
-      for (const [, inValue] of iterateStepInputEntries(step.in)) {
-        for (const ref of extractSourceRefs(inValue)) {
-          const [depLabel] = resolveSourceReference(ref, knownLabels);
-          if (stepLabels.has(depLabel)) stepDeps.add(depLabel);
-        }
-      }
-    }
-    deps.set(label, stepDeps);
-  }
-  return deps;
-}
-
-/** Group steps on cycles by mutual reachability; sorted label lists ordered by first label. */
-function stepCycles(deps: Map<string, Set<string>>): string[][] {
-  const reachable = new Map<string, Set<string>>();
-  for (const label of deps.keys()) reachable.set(label, reachableFrom(label, deps));
-  const cycles: string[][] = [];
-  const placed = new Set<string>();
-  for (const label of [...deps.keys()].sort(codePointCompare)) {
-    if (placed.has(label) || !reachable.get(label)!.has(label)) continue;
-    const members = [...reachable.get(label)!]
-      .filter((other) => reachable.get(other)!.has(label))
-      .sort(codePointCompare);
-    for (const member of members) placed.add(member);
-    cycles.push(members);
-  }
-  return cycles;
-}
-
-function reachableFrom(start: string, deps: Map<string, Set<string>>): Set<string> {
-  const seen = new Set<string>();
-  const pending = [...deps.get(start)!];
-  while (pending.length > 0) {
-    const label = pending.pop()!;
-    if (seen.has(label)) continue;
-    seen.add(label);
-    pending.push(...(deps.get(label) ?? []));
-  }
-  return seen;
 }
 
 /**
