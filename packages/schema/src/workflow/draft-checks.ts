@@ -567,8 +567,8 @@ function walkDraftValidation(
       path: prefix,
       message:
         members.length === 1
-          ? `step "${members[0]}" sources its own output; break that edge`
-          : `steps ${members.map((m) => `"${m}"`).join(", ")} form a cycle; break one of its edges`,
+          ? `step "${members[0]}" sources its own output`
+          : `steps ${members.map((m) => `"${m}"`).join(", ")} depend on each other through a cycle`,
     });
   }
 
@@ -868,7 +868,7 @@ function stepDependencies(workflow: Record<string, unknown>): Map<string, Set<st
   return deps;
 }
 
-/** Steps on each dependency cycle, as sorted label lists ordered by first label. */
+/** Group steps on cycles by mutual reachability; sorted label lists ordered by first label. */
 function stepCycles(deps: Map<string, Set<string>>): string[][] {
   const reachable = new Map<string, Set<string>>();
   for (const label of deps.keys()) reachable.set(label, reachableFrom(label, deps));
