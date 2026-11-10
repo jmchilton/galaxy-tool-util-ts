@@ -908,18 +908,14 @@ function reachableFrom(start: string, deps: Map<string, Set<string>>): Set<strin
 function topoOrderedSteps(workflow: Record<string, unknown>): Array<[string, unknown]> {
   const entries = [...iterateSteps(workflow)];
   const deps = stepDependencies(workflow);
-  const inDegree = new Map<string, number>();
-  for (const [label, stepDeps] of deps) {
-    stepDeps.delete(label);
-    inDegree.set(label, stepDeps.size);
-  }
+  for (const [label, stepDeps] of deps) stepDeps.delete(label);
 
   // Stable: process levels by alphabetical label order.
   const ordered: Array<[string, unknown]> = [];
   const byLabel = new Map(entries);
   const remaining = new Set(entries.map(([l]) => l));
   while (remaining.size > 0) {
-    const ready = [...remaining].filter((l) => (inDegree.get(l) ?? 0) === 0).sort(codePointCompare);
+    const ready = [...remaining].filter((l) => deps.get(l)!.size === 0).sort(codePointCompare);
     if (ready.length === 0) {
       // A cycle: drain alphabetically so this stays total; validateDraft reports it.
       for (const label of [...remaining].sort(codePointCompare)) {
@@ -930,12 +926,7 @@ function topoOrderedSteps(workflow: Record<string, unknown>): Array<[string, unk
     for (const label of ready) {
       ordered.push([label, byLabel.get(label)]);
       remaining.delete(label);
-      for (const [other, otherDeps] of deps) {
-        if (otherDeps.has(label)) {
-          otherDeps.delete(label);
-          inDegree.set(other, (inDegree.get(other) ?? 0) - 1);
-        }
-      }
+      for (const otherDeps of deps.values()) otherDeps.delete(label);
     }
   }
   return ordered;
