@@ -841,11 +841,17 @@ function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): N
   return { draft: false };
 }
 
+/** Labels a source ref resolves against: steps and workflow inputs. */
+function sourceLabels(workflow: Record<string, unknown>): Set<string> {
+  const labels = collectStepLabels(workflow);
+  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) labels.add(label);
+  return labels;
+}
+
 /** Step label -> labels of the steps its inputs source from, itself included. */
 function stepDependencies(workflow: Record<string, unknown>): Map<string, Set<string>> {
   const stepLabels = collectStepLabels(workflow);
-  const knownLabels = new Set(stepLabels);
-  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) knownLabels.add(label);
+  const knownLabels = sourceLabels(workflow);
   const deps = new Map<string, Set<string>>();
   for (const [label, step] of iterateSteps(workflow)) {
     const stepDeps = new Set<string>();
@@ -946,8 +952,7 @@ function newPortEdges(): PortEdges {
 
 /** label -> port -> what references it, resolving refs against the labels validation uses. */
 function collectPortEdges(workflow: Record<string, unknown>): Map<string, Map<string, PortEdges>> {
-  const knownLabels = collectStepLabels(workflow);
-  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) knownLabels.add(label);
+  const knownLabels = sourceLabels(workflow);
   const index = new Map<string, Map<string, PortEdges>>();
 
   const edgesAt = (ref: string): PortEdges => {
