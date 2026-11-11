@@ -10,6 +10,7 @@ import { runCleanTree } from "../commands/clean-tree.js";
 import { runDraftExtract } from "../commands/draft-extract.js";
 import { runDraftNextStep } from "../commands/draft-next-step.js";
 import { runDraftValidate } from "../commands/draft-validate.js";
+import { runDiff } from "../commands/diff.js";
 import { runConvert } from "../commands/convert.js";
 import { runConvertTree } from "../commands/convert-tree.js";
 import { runRoundtrip } from "../commands/roundtrip.js";
@@ -39,6 +40,7 @@ const handlers: HandlerRegistry = {
   draftExtract: runDraftExtract,
   draftNextStep: runDraftNextStep,
   draftValidate: runDraftValidate,
+  diff: runDiff,
   lint: runLint,
   convert: runConvert,
   roundtrip: runRoundtrip,
