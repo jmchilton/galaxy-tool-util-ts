@@ -6,9 +6,16 @@
  * count as changes. Only the top level is compared.
  */
 
-import { isDraftWorkflow, iterateSteps, presentPlanFields } from "./draft-checks.js";
 import {
+  isDraftWorkflow,
+  iterateSteps,
+  presentPlanFields,
+  type PlanField,
+} from "./draft-checks.js";
+import {
+  inferredStepType,
   normalizedFormat2,
+  NormalizedFormat2StepOutputSchema,
   type NormalizedFormat2Input,
   type NormalizedFormat2Step,
 } from "./normalized/format2.js";
@@ -42,21 +49,18 @@ const INPUT_MODEL_LIST_FIELDS = new Set<string>([
   "fields",
   "column_definitions",
 ]);
-const OUTPUT_ACTIONS = [
-  "add_tags",
-  "change_datatype",
-  "delete_intermediate_datasets",
-  "hide",
-  "remove_tags",
-  "rename",
-  "set_columns",
-] as const;
+// Declared `out` fields other than `id`; undeclared extras (e.g. `_plan_*`) are not actions.
+const OUTPUT_ACTIONS = Object.keys(NormalizedFormat2StepOutputSchema.fields).filter(
+  (field) => field !== "id",
+);
 const STATE_SEPARATOR = "|";
 const INPUT_PORT = "output";
 
 // --- Result shape -------------------------------------------------------------
 
 /** A value that differs between BEFORE and AFTER. */
+type PlanFields = Partial<Record<PlanField, string>>;
+
 export interface ValueChange {
   before: unknown;
   after: unknown;
@@ -91,7 +95,7 @@ export interface StepSummary {
   type: string;
   tool_id: string | null;
   tool_version: string | null;
-  plan_fields: Record<string, string>;
+  plan_fields: PlanFields;
   upstream: string[];
   downstream: string[];
   workflow_outputs: string[];
@@ -109,8 +113,8 @@ export interface StepChange {
   connections_out: SetChange;
   upstream: SetChange;
   downstream: SetChange;
-  plan_fields_before: Record<string, string>;
-  plan_fields_after: Record<string, string>;
+  plan_fields_before: PlanFields;
+  plan_fields_after: PlanFields;
 }
 
 /**
@@ -163,7 +167,7 @@ interface StepView {
   state: Map<string, unknown>;
   inDefaults: Map<string, unknown>;
   outActions: Map<string, Record<string, unknown>>;
-  planFields: Record<string, string>;
+  planFields: PlanFields;
 }
 
 /** One workflow reduced to what the diff compares; maps keep workflow order. */
@@ -328,7 +332,7 @@ function stepView(step: NormalizedFormat2Step, rawStep: unknown): StepView {
   const raw = isRecord(rawStep) ? rawStep : {};
   const fields = new Map<string, unknown>([
     ["label", step.label ?? null],
-    ["type", step.type ?? "tool"],
+    ["type", inferredStepType(step)],
     ["tool_id", step.tool_id ?? null],
     ["tool_version", step.tool_version ?? null],
     ["when", step.when ?? null],
@@ -338,7 +342,7 @@ function stepView(step: NormalizedFormat2Step, rawStep: unknown): StepView {
   for (const inp of step.in) {
     if (inp.id != null && inp.default != null) inDefaults.set(inp.id, inp.default);
   }
-  const planFields: Record<string, string> = {};
+  const planFields: PlanFields = {};
   for (const field of presentPlanFields(raw)) planFields[field] = raw[field] as string;
   const state = step.state != null ? step.state : step.tool_state;
   return {
@@ -476,7 +480,7 @@ function summary(side: Side, key: string): StepSummary {
     upstream: [...edges.upstream].sort(),
     downstream: [...edges.downstream].sort(),
     workflow_outputs: outputsFrom(side, key),
-    connections: [...edges.connectionsIn, ...edges.connectionsOut].sort(),
+    connections: [...new Set([...edges.connectionsIn, ...edges.connectionsOut])].sort(),
   };
 }
 

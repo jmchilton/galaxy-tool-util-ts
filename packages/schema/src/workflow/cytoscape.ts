@@ -30,7 +30,7 @@ import type {
   NormalizedFormat2Step,
   NormalizedFormat2Workflow,
 } from "./normalized/format2.js";
-import { isGalaxyUserToolRun } from "./normalized/format2.js";
+import { inferredStepType } from "./normalized/format2.js";
 import {
   isUnlabeledStep,
   resolveSourceReference,
@@ -190,10 +190,7 @@ function _stepNode(
   overlay: DraftOverlay | undefined,
 ): CytoscapeNode {
   const stepId = stepRenderIdentity(step);
-  // An embedded GalaxyUserTool run is a tool, while workflow runs are subworkflows.
-  const stepType = isGalaxyUserToolRun(step.run)
-    ? "tool"
-    : step.type || (step.run != null ? "subworkflow" : "tool");
+  const stepType = inferredStepType(step);
 
   let strippedToolId = step.tool_id ?? null;
   if (strippedToolId && strippedToolId.startsWith(MAIN_TS_PREFIX)) {

@@ -98,6 +98,12 @@ export function isGalaxyUserToolRun(run: unknown): run is GalaxyUserToolStub {
   );
 }
 
+/** A step's type, inferred when unset: a user-tool run is a tool, any other run a subworkflow. */
+export function inferredStepType(step: { type?: string | null; run?: unknown }): string {
+  if (isGalaxyUserToolRun(step.run)) return "tool";
+  return step.type || (step.run != null ? "subworkflow" : "tool");
+}
+
 // Workflow defined first; step uses suspend for forward ref
 export const NormalizedFormat2WorkflowSchema = Schema.Struct({
   class: Schema.Literal("GalaxyWorkflow"),

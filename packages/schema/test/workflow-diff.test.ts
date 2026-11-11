@@ -102,6 +102,44 @@ describe("diffWorkflows input handling", () => {
     });
   });
 
+  it("lists a self-sourcing edge of a removed step once", () => {
+    const withLoop = (loop: boolean) => ({
+      class: "GalaxyWorkflow",
+      inputs: { reads: "data" },
+      steps: loop
+        ? { loop: { tool_id: "cat1", in: { input1: "reads", input2: "loop/out_file1" } } }
+        : {},
+    });
+    expect(diffWorkflows(withLoop(true), withLoop(false)).steps.removed.loop.connections).toEqual([
+      "loop/out_file1 -> loop/input2",
+      "reads -> loop/input1",
+    ]);
+  });
+
+  it("infers the subworkflow type of an untyped step with a run", () => {
+    const withNested = (nested: Record<string, unknown> | null) => ({
+      class: "GalaxyWorkflow",
+      steps: nested ? { nested } : {},
+    });
+    const inline = { run: { class: "GalaxyWorkflow", inputs: {}, steps: {} } };
+    expect(diffWorkflows(withNested(null), withNested(inline)).steps.added.nested.type).toBe(
+      "subworkflow",
+    );
+    const typed = { ...inline, type: "subworkflow" };
+    expect(diffWorkflows(withNested(inline), withNested(typed)).has_changes).toBe(false);
+    const linked = withNested({ run: "sub.gxwf.yml" });
+    expect(diffWorkflows(withNested(null), linked).steps.added.nested.type).toBe("subworkflow");
+  });
+
+  it("ignores undeclared keys on out entries", () => {
+    const withOut = (out: Record<string, unknown>) => ({
+      class: "GalaxyWorkflow",
+      steps: { keep: { tool_id: "cat1", out: { out_file1: out } } },
+    });
+    const diff = diffWorkflows(withOut({ hide: true }), withOut({ hide: true, _plan_note: "x" }));
+    expect(diff.has_changes).toBe(false);
+  });
+
   it("resolves input type aliases in list-form inputs", () => {
     const withType = (type: string) => ({
       class: "GalaxyWorkflow",
