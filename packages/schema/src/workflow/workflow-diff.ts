@@ -34,6 +34,14 @@ const INPUT_FIELD_ABSENT_VALUES: Record<string, unknown> = {
   optional: false,
   restrictOnConnections: false,
 };
+// Lists of pydantic models in Python, whose dumps fill unset keys with null; an explicit null key is unset.
+const INPUT_MODEL_LIST_FIELDS = new Set<string>([
+  "restrictions",
+  "suggestions",
+  "validators",
+  "fields",
+  "column_definitions",
+]);
 const OUTPUT_ACTIONS = [
   "add_tags",
   "change_datatype",
@@ -300,11 +308,20 @@ function inputFields(inp: NormalizedFormat2Input): Map<string, unknown> {
   const raw = inp as Record<string, unknown>;
   const fields = new Map<string, unknown>();
   for (const field of INPUT_FIELDS) {
-    fields.set(field, raw[field] ?? INPUT_FIELD_ABSENT_VALUES[field] ?? null);
+    const value = raw[field] ?? INPUT_FIELD_ABSENT_VALUES[field] ?? null;
+    fields.set(
+      field,
+      INPUT_MODEL_LIST_FIELDS.has(field) && Array.isArray(value) ? value.map(withoutNulls) : value,
+    );
   }
   const format = fields.get("format");
   if (typeof format === "string") fields.set("format", [format]);
   return fields;
+}
+
+function withoutNulls(item: unknown): unknown {
+  if (!isRecord(item)) return item;
+  return Object.fromEntries(Object.entries(item).filter(([, value]) => value != null));
 }
 
 function stepView(step: NormalizedFormat2Step, rawStep: unknown): StepView {

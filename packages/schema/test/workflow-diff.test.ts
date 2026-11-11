@@ -110,4 +110,21 @@ describe("diffWorkflows input handling", () => {
     });
     expect(diffWorkflows(withType("File"), withType("data")).has_changes).toBe(false);
   });
+
+  it("treats explicit null keys in validators and restrictions as unset", () => {
+    const withText = (
+      validator: Record<string, unknown>,
+      restriction: Record<string, unknown>,
+    ) => ({
+      class: "GalaxyWorkflow",
+      inputs: { t: { type: "text", validators: [validator], restrictions: [restriction] } },
+      steps: {},
+    });
+    const regex = { type: "regex", expression: "^x$" };
+    const bare = withText(regex, { value: "x" });
+    const explicitNulls = withText({ ...regex, negate: null }, { value: "x", label: null });
+    expect(diffWorkflows(bare, explicitNulls).has_changes).toBe(false);
+    const negated = withText({ ...regex, negate: true }, { value: "x" });
+    expect(Object.keys(diffWorkflows(bare, negated).inputs.changed.t)).toEqual(["validators"]);
+  });
 });
