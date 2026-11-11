@@ -12,9 +12,17 @@ import * as YAML from "yaml";
 export { resolveFormat, serializeWorkflow } from "@galaxy-tool-util/schema";
 export type { SerializeWorkflowOptions } from "@galaxy-tool-util/schema";
 
-/** Read and parse a workflow file, auto-detecting JSON vs YAML by extension. */
+/** Read and parse a workflow file, auto-detecting JSON vs YAML by extension; `null` on failure. */
 export async function readWorkflowFile(filePath: string): Promise<Record<string, unknown> | null> {
-  const raw = await readFile(filePath, "utf-8");
+  let raw: string;
+  try {
+    raw = await readFile(filePath, "utf-8");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`Failed to read ${filePath}: ${msg}`);
+    process.exitCode = 1;
+    return null;
+  }
   try {
     if (filePath.endsWith(".ga") || filePath.endsWith(".json")) {
       return JSON.parse(raw);

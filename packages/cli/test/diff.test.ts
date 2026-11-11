@@ -77,4 +77,14 @@ describe("gxwf diff", () => {
     expect(ctx.logSpy).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(2);
   });
+
+  it("exits 2 when a workflow file cannot be read", async () => {
+    const missing = join(ctx.tmpDir, "missing.gxwf.yml");
+    await runDiff(missing, BASE, {});
+    expect(ctx.errSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("\n")).toContain(
+      `Failed to read ${missing}`,
+    );
+    expect(ctx.logSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(2);
+  });
 });
