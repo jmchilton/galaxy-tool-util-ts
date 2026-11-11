@@ -336,10 +336,10 @@ steps:
     });
 
     it.each([
-      ["tabular", true],
-      ["bam", false],
-      ["custom", true],
-    ])("checks input filetype %s with a datatype registry", async (filetype, valid) => {
+      ["tabular", []],
+      ["bam", ["workflow_input_format"]],
+      ["custom", ["workflow_input_format"]],
+    ])("checks input filetype %s with a datatype registry", async (filetype, warnings) => {
       const wf = join(dir, "input.gxwf.yml");
       await writeFile(wf, "class: GalaxyWorkflow\ninputs:\n  source: {type: File, format: txt}\n");
       const tests = join(dir, "input-tests.yml");
@@ -363,11 +363,40 @@ steps:
       );
       await runValidateTests(tests, { workflow: wf, datatypes, json: true });
       const report = JSON.parse(logs.join("\n"));
-      expect(report.valid).toBe(valid);
-      expect(report.errors.map((error: { keyword: string }) => error.keyword)).toEqual(
-        valid ? [] : ["workflow_input_format"],
+      expect(report.valid).toBe(true);
+      expect(report.errors).toEqual([]);
+      expect(report.warnings.map((warning: { keyword: string }) => warning.keyword)).toEqual(
+        warnings,
       );
     });
+
+    it.each([
+      ["fastqsanger", []],
+      ["bam", ["workflow_input_format"]],
+    ])(
+      "checks input filetype %s against the bundled datatypes snapshot by default",
+      async (filetype, warnings) => {
+        const wf = join(dir, "reads.gxwf.yml");
+        await writeFile(
+          wf,
+          "class: GalaxyWorkflow\ninputs:\n  reads: {type: File, format: fastq}\n",
+        );
+        const tests = join(dir, "reads-tests.yml");
+        await writeFile(
+          tests,
+          `- job:
+    reads: {class: File, path: reads.fq, filetype: ${filetype}}
+  outputs: {}
+`,
+        );
+        await runValidateTests(tests, { workflow: wf, json: true });
+        const report = JSON.parse(logs.join("\n"));
+        expect(report.valid).toBe(true);
+        expect(report.warnings.map((warning: { keyword: string }) => warning.keyword)).toEqual(
+          warnings,
+        );
+      },
+    );
 
     it("uses a cached Galaxy wrapper without treating conditional output formats as fixed", async () => {
       const contents = await readFile(

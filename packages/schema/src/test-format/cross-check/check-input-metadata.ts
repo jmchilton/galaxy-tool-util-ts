@@ -1,6 +1,8 @@
 import {
   CollectionTypeDescription,
   isValidCollectionTypeStr,
+  producesAcceptableDatatype,
+  type DatatypesMapperModel,
 } from "@galaxy-tool-util/workflow-graph";
 
 import { COLLECTION_INPUT_TYPES, DATA_INPUT_TYPES } from "../../workflow/input-parameter.js";
@@ -10,7 +12,8 @@ import type { WorkflowInput } from "./types.js";
 export const MAP_OVER_KEYWORD = "workflow_input_collection_map_over";
 
 export interface InputMetadataOptions {
-  inputFormatAccepts?: (expected: readonly string[], actual: string) => boolean | undefined;
+  /** Galaxy's datatype hierarchy; without it, filetypes aren't checked. */
+  datatypes?: DatatypesMapperModel;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -99,26 +102,51 @@ export function checkInputMetadata(
     return diagnostic ? [diagnostic] : [];
   }
 
+  const diagnostic = checkFiletype(declared, entry?.filetype, path, options.datatypes);
+  return diagnostic ? [diagnostic] : [];
+}
+
+/**
+ * A filetype outside the input's declared formats is a warning: Galaxy may
+ * still run the test (an implicit conversion, or a format list narrower than
+ * the tool's). A filetype Galaxy doesn't know is a warning too, since the
+ * upload would fail. Formats the registry doesn't know aren't judged.
+ */
+function checkFiletype(
+  declared: WorkflowInput,
+  filetype: unknown,
+  path: string,
+  datatypes: DatatypesMapperModel | undefined,
+): TestFormatDiagnostic | undefined {
   const expectedFormats = declared.formats;
-  const actualFormat = entry?.filetype;
-  // The format hierarchy comes from Galaxy's datatype registry. Without it, a
-  // string mismatch doesn't prove incompatibility (txt and tabular, for example).
-  if (
-    expectedFormats !== undefined &&
-    typeof actualFormat === "string" &&
-    !expectedFormats.includes(actualFormat) &&
-    options.inputFormatAccepts?.(expectedFormats, actualFormat) === false
-  ) {
-    return [
-      {
-        path: `${path}/filetype`,
-        message: `Input '${declared.name}' expects format '${expectedFormats.join(", ")}' but the test declares '${actualFormat}'.`,
-        keyword: "workflow_input_format",
-        params: { input: declared.name, expectedFormats, actualFormat },
-      },
-    ];
+  if (!datatypes || !expectedFormats || typeof filetype !== "string" || filetype === "auto") {
+    return undefined;
   }
-  return [];
+  if (expectedFormats.includes(filetype)) return undefined;
+  const mapping = datatypes.datatypesMapping;
+  const known = (type: string) =>
+    Object.hasOwn(mapping.ext_to_class_name, type) || Object.hasOwn(mapping.class_to_classes, type);
+  const diagnostic = (message: string, knownFiletype: boolean): TestFormatDiagnostic => ({
+    path: `${path}/filetype`,
+    message,
+    keyword: "workflow_input_format",
+    params: { input: declared.name, expectedFormats, actualFormat: filetype, known: knownFiletype },
+    severity: "warning",
+  });
+  if (!Object.hasOwn(mapping.ext_to_class_name, filetype)) {
+    return diagnostic(
+      `Input '${declared.name}' has filetype '${filetype}', which is not a known Galaxy datatype.`,
+      false,
+    );
+  }
+  if (!expectedFormats.every(known)) return undefined;
+  if (producesAcceptableDatatype(datatypes, [...expectedFormats], [filetype]).canAccept) {
+    return undefined;
+  }
+  return diagnostic(
+    `Input '${declared.name}' expects format '${expectedFormats.join(", ")}' but the test declares '${filetype}'.`,
+    true,
+  );
 }
 
 /**

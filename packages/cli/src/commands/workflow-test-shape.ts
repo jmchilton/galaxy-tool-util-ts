@@ -15,6 +15,7 @@ import {
   type WorkflowShape,
 } from "@galaxy-tool-util/schema";
 import { DatatypesMapperModel, type DatatypesCombinedMap } from "@galaxy-tool-util/workflow-graph";
+import { snapshotDatatypesMapper } from "@galaxy-tool-util/workflow-graph/datatypes-snapshot";
 import { parseXmlToTree } from "@galaxy-tool-util/tool-xml";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
 
@@ -30,7 +31,9 @@ export function partitionDiagnostics(diagnostics: TestFormatDiagnostic[]): {
 }
 
 export interface WorkflowTestMetadataOptions {
+  /** Tool cache read (never fetched) to resolve tool-step output shapes and formats. */
   cacheDir?: string;
+  /** Galaxy `types_and_mapping` JSON to use instead of the bundled usegalaxy.org snapshot. */
   datatypes?: string;
 }
 
@@ -63,26 +66,10 @@ export async function loadWorkflowTestShape(
   const format = resolveFormat(dict);
   const inputs = extractWorkflowInputs(dict, format);
   const outputs = extractWorkflowOutputs(dict, format);
-  const registry = opts.datatypes ? await loadDatatypeRegistry(opts.datatypes) : undefined;
   const inputMetadataOptions: WorkflowShape["inputMetadataOptions"] = {
-    inputFormatAccepts: registry
-      ? (expected, actual) => {
-          const mapping = registry.datatypesMapping;
-          const actualClass = mapping.ext_to_class_name[actual];
-          if (!actualClass || !Object.hasOwn(mapping.class_to_classes, actualClass))
-            return undefined;
-          if (registry.isSubTypeOfAny(actual, [...expected])) return true;
-          if (
-            expected.every(
-              (type) =>
-                Object.hasOwn(mapping.ext_to_class_name, type) ||
-                Object.hasOwn(mapping.class_to_classes, type),
-            )
-          )
-            return false;
-          return undefined;
-        }
-      : undefined,
+    datatypes: opts.datatypes
+      ? await loadDatatypeRegistry(opts.datatypes)
+      : snapshotDatatypesMapper(),
   };
   if (!outputs.length) return { inputs, outputs, inputMetadataOptions };
   const resolved = await resolveOutputs(dict, opts);

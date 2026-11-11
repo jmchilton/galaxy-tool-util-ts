@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import { DatatypesMapperModel } from "@galaxy-tool-util/workflow-graph";
 import { checkInputMetadata } from "../src/test-format/cross-check/check-input-metadata.js";
 import {
   extractWorkflowInputs,
@@ -220,16 +221,41 @@ describe.each([
     ]);
   });
 
-  it("uses Galaxy datatype knowledge when supplied and leaves unknown formats unchecked", () => {
+  it("warns on filetypes outside the declared formats; leaves unknown formats unjudged", () => {
     const reads = inputs[0]!;
-    const value = { class: "File", path: "reads.bam", filetype: "bam" };
+    const datatypes = new DatatypesMapperModel({
+      datatypes: ["fasta", "fastqsanger", "fastq", "bam"],
+      datatypes_mapping: {
+        ext_to_class_name: {
+          fasta: "Fasta",
+          fastqsanger: "FastqSanger",
+          fastq: "Fastq",
+          bam: "Bam",
+        },
+        class_to_classes: {
+          Fasta: { Fasta: true },
+          Fastq: { Fastq: true },
+          FastqSanger: { FastqSanger: true, Fastq: true },
+          Bam: { Bam: true },
+        },
+      },
+    });
+    const file = (filetype: string) => ({ class: "File", path: "reads", filetype });
     const path = "/0/job/reads";
-    expect(checkInputMetadata(reads, value, path)).toEqual([]);
-    expect(
-      checkInputMetadata(reads, value, path, { inputFormatAccepts: () => false }),
-    ).toMatchObject([{ keyword: "workflow_input_format", path: "/0/job/reads/filetype" }]);
-    expect(checkInputMetadata(reads, value, path, { inputFormatAccepts: () => undefined })).toEqual(
-      [],
-    );
+    expect(checkInputMetadata(reads, file("bam"), path)).toEqual([]);
+    expect(checkInputMetadata(reads, file("bam"), path, { datatypes })).toMatchObject([
+      {
+        keyword: "workflow_input_format",
+        path: "/0/job/reads/filetype",
+        severity: "warning",
+        params: { known: true },
+      },
+    ]);
+    expect(checkInputMetadata(reads, file("fastqsanger"), path, { datatypes })).toEqual([]);
+    expect(checkInputMetadata(reads, file("fastqillumina"), path, { datatypes })).toMatchObject([
+      { keyword: "workflow_input_format", severity: "warning", params: { known: false } },
+    ]);
+    const custom = { ...reads, formats: ["custom"] };
+    expect(checkInputMetadata(custom, file("bam"), path, { datatypes })).toEqual([]);
   });
 });

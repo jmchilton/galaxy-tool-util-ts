@@ -90,7 +90,7 @@
       "options": [
         {
           "flags": "--datatypes <file>",
-          "description": "Use Galaxy datatype registry JSON (types_and_mapping) to check input filetypes"
+          "description": "Galaxy datatype registry JSON (types_and_mapping) to check filetypes against, instead of the bundled usegalaxy.org snapshot"
         },
         {
           "flags": "--cache-dir <dir>",
@@ -679,7 +679,7 @@
       "options": [
         {
           "flags": "--datatypes <file>",
-          "description": "Use Galaxy datatype registry JSON (types_and_mapping) to check input filetypes"
+          "description": "Galaxy datatype registry JSON (types_and_mapping) to check filetypes against, instead of the bundled usegalaxy.org snapshot"
         },
         {
           "flags": "--cache-dir <dir>",
