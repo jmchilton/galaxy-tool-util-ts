@@ -143,7 +143,7 @@ export async function loadWorkflowTestShape(
     if (isResolveError(resolved)) return null;
     const { tool, key } = resolved;
     const source = await cache.loadToolSource(key);
-    // В кеше по умолчанию хранится формат до применения условных правил XML.
+    // The cached tool keeps an output's format from before the XML's conditional rules apply.
     const outputDefinitions =
       source?.language === "xml" && source.macrosExpanded
         ? parseXmlToTree(source.contents).findChild("outputs")?.findChildren("data")
@@ -179,7 +179,7 @@ export async function loadWorkflowTestShape(
       const descriptor = resolvedTypes[stepId]?.[port];
       const datatype = outputFormat(step, graph, stepId, port);
       const entry: Partial<WorkflowOutput> = { format: datatype };
-      // При неоднозначном map-over сохраняем неизвестный тип выхода.
+      // When map-over is ambiguous, leave the output's shape unknown.
       if (connectionResult.valid && descriptor && !isAnyDesc(descriptor)) {
         if (!isNullDesc(descriptor) && descriptor.collectionType) {
           entry.kind = "collection";

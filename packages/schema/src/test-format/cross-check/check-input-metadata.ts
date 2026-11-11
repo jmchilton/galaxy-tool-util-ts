@@ -35,7 +35,7 @@ export function extractInputMetadata(
 function concreteCollectionTypeAccepts(expected: string, actual: string): boolean | undefined {
   const choices = expected.split(",").map((entry) => entry.trim());
   if (choices.includes(actual)) return true;
-  // Без правил Galaxy сравниваем только однозначные типы коллекций.
+  // Without Galaxy's rules, compare only unambiguous collection types.
   const concrete = /^(?:list|paired|record)(?::(?:list|paired|record))*$/;
   return concrete.test(actual) && choices.every((choice) => concrete.test(choice))
     ? false
@@ -92,8 +92,8 @@ export function checkInputMetadata(
 
   const expectedFormats = declared.formats;
   const actualFormat = entry?.filetype;
-  // Иерархия форматов зависит от реестра Galaxy. Без него несовпадение строк
-  // не доказывает несовместимость, например для txt и tabular.
+  // The format hierarchy comes from Galaxy's datatype registry. Without it, a
+  // string mismatch doesn't prove incompatibility (txt and tabular, for example).
   if (
     actualClass === "File" &&
     expectedFormats !== undefined &&
