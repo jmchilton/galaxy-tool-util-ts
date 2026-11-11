@@ -41,13 +41,14 @@ const INPUT_FIELD_ABSENT_VALUES: Record<string, unknown> = {
   optional: false,
   restrictOnConnections: false,
 };
-// Lists of pydantic models in Python, whose dumps fill unset keys with null; an explicit null key is unset.
-const INPUT_MODEL_LIST_FIELDS = new Set<string>([
-  "restrictions",
-  "suggestions",
-  "validators",
-  "fields",
-  "column_definitions",
+// Lists of pydantic models in Python, whose dumps fill unset keys with null (an explicit null key is unset)
+// or with these model defaults, which the TS schemas don't carry.
+const INPUT_MODEL_DEFAULTS = new Map<string, Record<string, unknown>>([
+  ["restrictions", {}],
+  ["suggestions", {}],
+  ["validators", { type: "regex" }],
+  ["fields", { type: "File" }],
+  ["column_definitions", { type: "string" }],
 ]);
 // Declared `out` fields other than `id`; undeclared extras (e.g. `_plan_*`) are not actions.
 const OUTPUT_ACTIONS = Object.keys(NormalizedFormat2StepOutputSchema.fields).filter(
@@ -313,9 +314,12 @@ function inputFields(inp: NormalizedFormat2Input): Map<string, unknown> {
   const fields = new Map<string, unknown>();
   for (const field of INPUT_FIELDS) {
     const value = raw[field] ?? INPUT_FIELD_ABSENT_VALUES[field] ?? null;
+    const defaults = INPUT_MODEL_DEFAULTS.get(field);
     fields.set(
       field,
-      INPUT_MODEL_LIST_FIELDS.has(field) && Array.isArray(value) ? value.map(withoutNulls) : value,
+      defaults && Array.isArray(value)
+        ? value.map((item) => withModelDefaults(item, defaults))
+        : value,
     );
   }
   const format = fields.get("format");
@@ -323,9 +327,12 @@ function inputFields(inp: NormalizedFormat2Input): Map<string, unknown> {
   return fields;
 }
 
-function withoutNulls(item: unknown): unknown {
+function withModelDefaults(item: unknown, defaults: Record<string, unknown>): unknown {
   if (!isRecord(item)) return item;
-  return Object.fromEntries(Object.entries(item).filter(([, value]) => value != null));
+  return {
+    ...defaults,
+    ...Object.fromEntries(Object.entries(item).filter(([, value]) => value != null)),
+  };
 }
 
 function stepView(step: NormalizedFormat2Step, rawStep: unknown): StepView {
@@ -427,30 +434,37 @@ function differingKeys(before: Map<string, unknown>, after: Map<string, unknown>
   );
 }
 
+/** A record from entries; unlike assignment, `fromEntries` keeps a `__proto__` key as an own key. */
+function keyed<T>(entries: Iterable<readonly [string, T]>): Record<string, T> {
+  return Object.fromEntries(entries);
+}
+
 function valueChanges(
   before: Map<string, unknown>,
   after: Map<string, unknown>,
 ): Record<string, ValueChange> {
-  const changes: Record<string, ValueChange> = {};
-  for (const key of differingKeys(before, after)) {
-    changes[key] = { before: before.get(key) ?? null, after: after.get(key) ?? null };
-  }
-  return changes;
+  return keyed(
+    differingKeys(before, after).map((key) => [
+      key,
+      { before: before.get(key) ?? null, after: after.get(key) ?? null },
+    ]),
+  );
 }
 
 function stateChanges(
   before: Map<string, unknown>,
   after: Map<string, unknown>,
 ): Record<string, StateChange> {
-  const changes: Record<string, StateChange> = {};
-  for (const path of differingKeys(before, after)) {
-    changes[path] = {
-      kind: !before.has(path) ? "added" : !after.has(path) ? "removed" : "changed",
-      before: before.get(path) ?? null,
-      after: after.get(path) ?? null,
-    };
-  }
-  return changes;
+  return keyed(
+    differingKeys(before, after).map((path) => [
+      path,
+      {
+        kind: !before.has(path) ? "added" : !after.has(path) ? "removed" : "changed",
+        before: before.get(path) ?? null,
+        after: after.get(path) ?? null,
+      },
+    ]),
+  );
 }
 
 function setChange(before: Set<string>, after: Set<string>): SetChange {
@@ -528,41 +542,46 @@ export function diffWorkflows(before: unknown, after: unknown): WorkflowDiff {
   const bSide = buildSide(loadWorkflow(before));
   const aSide = buildSide(loadWorkflow(after));
 
-  const inputs: InputsDiff = {
-    added: onlyIn(aSide.inputs.keys(), bSide.inputs),
-    removed: onlyIn(bSide.inputs.keys(), aSide.inputs),
-    changed: {},
-  };
+  const inputChanges: Array<[string, Record<string, ValueChange>]> = [];
   for (const [inputId, bFields] of bSide.inputs) {
     const aFields = aSide.inputs.get(inputId);
     if (aFields == null) continue;
     const changed = valueChanges(bFields, aFields);
-    if (Object.keys(changed).length > 0) inputs.changed[inputId] = changed;
+    if (Object.keys(changed).length > 0) inputChanges.push([inputId, changed]);
   }
-
-  const outputs: OutputsDiff = {
-    added: onlyIn(aSide.outputs.keys(), bSide.outputs),
-    removed: onlyIn(bSide.outputs.keys(), aSide.outputs),
-    changed: {},
+  const inputs: InputsDiff = {
+    added: onlyIn(aSide.inputs.keys(), bSide.inputs),
+    removed: onlyIn(bSide.inputs.keys(), aSide.inputs),
+    changed: keyed(inputChanges),
   };
+
+  const outputChanges: Array<[string, ValueChange]> = [];
   // Refs compare structurally: step `a/b` and port `b` of step `a` render alike.
   for (const [outputId, ref] of bSide.outputs) {
     if (!aSide.outputs.has(outputId)) continue;
     const aRef = aSide.outputs.get(outputId)!;
     if (!sameRef(ref, aRef))
-      outputs.changed[outputId] = { before: refText(ref), after: refText(aRef) };
+      outputChanges.push([outputId, { before: refText(ref), after: refText(aRef) }]);
   }
+  const outputs: OutputsDiff = {
+    added: onlyIn(aSide.outputs.keys(), bSide.outputs),
+    removed: onlyIn(bSide.outputs.keys(), aSide.outputs),
+    changed: keyed(outputChanges),
+  };
 
-  const steps: StepsDiff = { added: {}, removed: {}, changed: {} };
-  for (const key of onlyIn(aSide.steps.keys(), bSide.steps)) steps.added[key] = summary(aSide, key);
-  for (const key of onlyIn(bSide.steps.keys(), aSide.steps)) {
-    steps.removed[key] = summary(bSide, key);
-  }
+  const stepChanges: Array<[string, StepChange]> = [];
   for (const key of aSide.steps.keys()) {
     if (!bSide.steps.has(key)) continue;
     const change = stepChange(bSide, aSide, key);
-    if (change != null) steps.changed[key] = change;
+    if (change != null) stepChanges.push([key, change]);
   }
+  const steps: StepsDiff = {
+    added: keyed(onlyIn(aSide.steps.keys(), bSide.steps).map((key) => [key, summary(aSide, key)])),
+    removed: keyed(
+      onlyIn(bSide.steps.keys(), aSide.steps).map((key) => [key, summary(bSide, key)]),
+    ),
+    changed: keyed(stepChanges),
+  };
 
   const fed = new Set(aSide.edges.filter(isFromInput).map((edge) => edge.source.node));
   const warnings: string[] = [];

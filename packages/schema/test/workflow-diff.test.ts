@@ -165,4 +165,44 @@ describe("diffWorkflows input handling", () => {
     const negated = withText({ ...regex, negate: true }, { value: "x" });
     expect(Object.keys(diffWorkflows(bare, negated).inputs.changed.t)).toEqual(["validators"]);
   });
+
+  it("fills Python model defaults for validator, record field and column types", () => {
+    const withInput = (input: Record<string, unknown>) => ({
+      class: "GalaxyWorkflow",
+      inputs: { x: input },
+      steps: {},
+    });
+    const record = { type: "collection", collection_type: "record" };
+    const sheet = { type: "collection", collection_type: "sample_sheet" };
+    const pairs = [
+      [
+        { type: "text", validators: [{ expression: "^x$" }] },
+        { type: "text", validators: [{ type: "regex", expression: "^x$" }] },
+      ],
+      [
+        { ...record, fields: [{ name: "a" }] },
+        { ...record, fields: [{ name: "a", type: "File" }] },
+      ],
+      [
+        { ...sheet, column_definitions: [{ name: "c", optional: false }] },
+        { ...sheet, column_definitions: [{ name: "c", type: "string", optional: false }] },
+      ],
+    ];
+    for (const [before, after] of pairs) {
+      expect(diffWorkflows(withInput(before), withInput(after)).has_changes).toBe(false);
+    }
+  });
+
+  it("reports ids and step keys named __proto__", () => {
+    // JSON.parse makes __proto__ an own key, as YAML parsing does.
+    const after = JSON.parse(
+      '{"class": "GalaxyWorkflow", "inputs": {"__proto__": {"type": "data"}},' +
+        ' "steps": {"__proto__": {"tool_id": "cat1", "in": {"input1": "__proto__"}}}}',
+    );
+    const diff = diffWorkflows({ class: "GalaxyWorkflow", steps: {} }, after);
+    expect(diff.has_changes).toBe(true);
+    expect(diff.inputs.added).toEqual(["__proto__"]);
+    expect(Object.keys(diff.steps.added)).toEqual(["__proto__"]);
+    expect(JSON.parse(JSON.stringify(diff)).steps.added.__proto__.tool_id).toBe("cat1");
+  });
 });
