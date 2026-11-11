@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./datatypes-snapshot": {
+      "types": "./dist/datatypes-snapshot.d.ts",
+      "import": "./dist/datatypes-snapshot.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
