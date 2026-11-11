@@ -46,6 +46,7 @@ import {
   nextDraftStep,
   extractConcreteSubset,
 } from "../src/workflow/draft-checks.js";
+import { diffWorkflows } from "../src/workflow/workflow-diff.js";
 
 // --- Directories ---
 
@@ -116,6 +117,7 @@ const OPERATIONS: Record<string, Operation> = {
   next_draft_step: (raw: unknown) => nextDraftStep(raw),
   extract_draft_subset: (raw: unknown) => extractConcreteSubset(raw),
   linked_subworkflow_descriptor_urls: linkedSubworkflowDescriptorUrls,
+  diff_workflows: (before: unknown, after?: unknown) => diffWorkflows(before, after),
 };
 
 const UNSUPPORTED_OPERATIONS = new Set<string>([]);

@@ -222,7 +222,13 @@ function _normalizeInputs(raw: unknown): NormalizedFormat2Input[] {
   if (Array.isArray(raw)) {
     return raw.map((item) => {
       const obj = item as Record<string, unknown>;
-      return { ...obj, id: obj.id as string, doc: _joinDoc(obj.doc) } as NormalizedFormat2Input;
+      const type = typeof obj.type === "string" ? _resolveInputType(obj.type) : obj.type;
+      return {
+        ...obj,
+        id: obj.id as string,
+        type,
+        doc: _joinDoc(obj.doc),
+      } as NormalizedFormat2Input;
     });
   }
   // Dict form: {key: value} where value is string shorthand or object

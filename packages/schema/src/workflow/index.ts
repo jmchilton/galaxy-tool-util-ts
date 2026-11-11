@@ -235,6 +235,20 @@ export {
 } from "./promote-draft.js";
 
 export {
+  diffWorkflows,
+  renderWorkflowDiff,
+  type WorkflowDiff,
+  type InputsDiff,
+  type OutputsDiff,
+  type StepsDiff,
+  type StepSummary,
+  type StepChange,
+  type StateChange,
+  type ValueChange,
+  type SetChange,
+} from "./workflow-diff.js";
+
+export {
   withClass,
   withDecodeClass,
   validateFormat2,

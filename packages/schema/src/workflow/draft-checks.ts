@@ -250,12 +250,17 @@ function collectStepPlanFields(
   path: StepPath,
   planFields: PlanHit[],
 ): void {
-  for (const field of PLAN_FIELDS) {
-    const value = step[field];
-    if (typeof value === "string" && value.length > 0) {
-      planFields.push({ path, field, value });
-    }
+  for (const field of presentPlanFields(step)) {
+    planFields.push({ path, field, value: step[field] as string });
   }
+}
+
+/** The non-empty `_plan_*` field names on `doc`, in `PLAN_FIELDS` order. */
+export function presentPlanFields(doc: Record<string, unknown>): PlanField[] {
+  return PLAN_FIELDS.filter((field) => {
+    const value = doc[field];
+    return typeof value === "string" && value.length > 0;
+  });
 }
 
 function inputsOffset(workflow: Record<string, unknown>): number {
@@ -271,7 +276,8 @@ function listStepKey(step: Record<string, unknown>, index: number, offset: numbe
   return String(index + offset);
 }
 
-function* iterateSteps(workflow: Record<string, unknown>): Iterable<[string, unknown]> {
+/** Yield `[step key, step]` for dict- or list-form steps; the key is what source refs name. */
+export function* iterateSteps(workflow: Record<string, unknown>): Iterable<[string, unknown]> {
   const steps = workflow.steps;
   if (Array.isArray(steps)) {
     const offset = inputsOffset(workflow);
@@ -691,9 +697,7 @@ function walkDraftValidation(
     // steps (subworkflow / pause / pick_value) are allowed in v1 — the locked
     // decision keeps modeling simple until usage shows we need to tighten.
     if (isToolStep(step) && !stepHasAnyTodo(step)) {
-      const planFieldsPresent = PLAN_FIELDS.filter(
-        (f) => typeof step[f] === "string" && (step[f] as string).length > 0,
-      );
+      const planFieldsPresent = presentPlanFields(step);
       if (planFieldsPresent.length > 0) {
         semanticErrors.push({
           path: stepPath,
