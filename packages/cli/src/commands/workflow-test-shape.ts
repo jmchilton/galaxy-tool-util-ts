@@ -2,68 +2,21 @@ import { readFile } from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
 import {
   buildGetToolInfo,
-  buildWorkflowGraph,
-  isAnyDesc,
-  isNullDesc,
-  validateConnectionGraph,
-  type WorkflowGraph,
+  resolveWorkflowOutputs,
+  type GetToolInfo,
+  type ResolvedWorkflowOutput,
 } from "@galaxy-tool-util/connection-validation";
 import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 import {
   extractWorkflowInputs,
   extractWorkflowOutputs,
-  normalizedNative,
   resolveFormat,
-  toNative,
-  type NormalizedNativeStep,
   type TestFormatDiagnostic,
-  type WorkflowOutput,
   type WorkflowShape,
 } from "@galaxy-tool-util/schema";
-import {
-  DatatypesMapperModel,
-  isValidCollectionTypeStr,
-  type DatatypesCombinedMap,
-} from "@galaxy-tool-util/workflow-graph";
+import { DatatypesMapperModel, type DatatypesCombinedMap } from "@galaxy-tool-util/workflow-graph";
 import { parseXmlToTree } from "@galaxy-tool-util/tool-xml";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
-
-function fixedFormat(format: unknown): string | undefined {
-  if (
-    typeof format !== "string" ||
-    !format ||
-    isValidCollectionTypeStr(format) ||
-    /^(data|input|auto|sniff|_sniff_|collection|data_collection)$/.test(format)
-  ) {
-    return undefined;
-  }
-  return format;
-}
-
-function outputFormat(
-  step: NormalizedNativeStep,
-  graph: WorkflowGraph,
-  stepId: string,
-  outputName: string,
-): string | undefined {
-  for (const action of Object.values(step.post_job_actions)) {
-    if (action.action_type === "ChangeDatatypeAction" && action.output_name === outputName) {
-      return fixedFormat(action.action_arguments?.newtype);
-    }
-  }
-
-  const resolved = graph.steps[stepId];
-  const source = resolved?.subworkflowOutputMap[outputName];
-  if (source && resolved.innerGraph && step.subworkflow) {
-    const [innerId, innerName] = source;
-    const inner = step.subworkflow.steps[innerId] as NormalizedNativeStep | undefined;
-    return inner && outputFormat(inner, resolved.innerGraph, innerId, innerName);
-  }
-
-  const output = resolved?.outputs[outputName];
-  if (output?.type !== "data" || output.formatSource) return undefined;
-  return fixedFormat(output.format);
-}
 
 /** Split diagnostics into errors (severity absent or `error`) and warnings. */
 export function partitionDiagnostics(diagnostics: TestFormatDiagnostic[]): {
@@ -132,10 +85,36 @@ export async function loadWorkflowTestShape(
       : undefined,
   };
   if (!outputs.length) return { inputs, outputs, inputMetadataOptions };
+  const resolved = await resolveOutputs(dict, opts);
+  return {
+    inputs,
+    outputs: outputs.map((output) => ({ ...output, ...resolved.get(output.name) })),
+    inputMetadataOptions,
+  };
+}
 
-  const native = format === "format2" ? toNative(dict) : normalizedNative(dict);
-  const cache = makeNodeToolCache({ cacheDir: opts.cacheDir });
-  const tools = await buildGetToolInfo(native, async (id, version) => {
+/**
+ * Output shapes and fixed formats from the connection graph, reading tools
+ * from the local cache only. A graph that can't be built leaves every output
+ * unresolved; the label checks still run.
+ */
+async function resolveOutputs(
+  workflow: Record<string, unknown>,
+  opts: WorkflowTestMetadataOptions,
+): Promise<Map<string, ResolvedWorkflowOutput>> {
+  try {
+    return resolveWorkflowOutputs(workflow, await cachedToolInfo(workflow, opts.cacheDir));
+  } catch {
+    return new Map();
+  }
+}
+
+async function cachedToolInfo(
+  workflow: Record<string, unknown>,
+  cacheDir: string | undefined,
+): Promise<GetToolInfo> {
+  const cache = makeNodeToolCache({ cacheDir });
+  const tools = await buildGetToolInfo(workflow, async (id, version) => {
     const resolved = await resolveTool(cache, id, version);
     if (isResolveError(resolved)) return null;
     const { tool, key } = resolved;
@@ -159,47 +138,10 @@ export async function loadWorkflowTestShape(
       ),
     };
   });
-  const graph = buildWorkflowGraph(native, {
+  return {
     getToolInfo: (id, version) => {
       const tool = tools.getToolInfo(id, version);
       return version && tool?.version !== version ? undefined : tool;
     },
-  });
-  const [connectionResult, resolvedTypes] = validateConnectionGraph(graph);
-  const metadata = new Map<string, Partial<WorkflowOutput>>();
-  for (const [stepId, rawStep] of Object.entries(native.steps)) {
-    const step = rawStep as NormalizedNativeStep;
-    const resolved = graph.steps[stepId];
-    for (const exposed of step.workflow_outputs) {
-      const name = exposed.label ?? exposed.output_name;
-      const port = exposed.output_name;
-      const descriptor = resolvedTypes[stepId]?.[port];
-      const datatype = outputFormat(step, graph, stepId, port);
-      const entry: Partial<WorkflowOutput> = { format: datatype };
-      // When map-over is ambiguous, leave the output's shape unknown.
-      if (connectionResult.valid && descriptor && !isAnyDesc(descriptor)) {
-        if (!isNullDesc(descriptor) && descriptor.collectionType) {
-          entry.kind = "collection";
-          entry.collectionType = descriptor.collectionType;
-        } else if (
-          isNullDesc(descriptor) &&
-          (resolved.outputs[port]?.type === "data" || datatype)
-        ) {
-          entry.kind = "dataset";
-        }
-      } else if (resolved.outputs[port]?.type === "collection") {
-        entry.kind = "collection";
-      }
-      if (metadata.has(name)) {
-        metadata.set(name, {});
-      } else {
-        metadata.set(name, entry);
-      }
-    }
-  }
-  return {
-    inputs,
-    outputs: outputs.map((output) => ({ ...output, ...metadata.get(output.name) })),
-    inputMetadataOptions,
   };
 }

@@ -1,0 +1,73 @@
+class: GalaxyWorkflow
+inputs:
+  genome:
+    type: data
+    format: fasta
+  reads:
+    type: collection
+    collection_type: list
+outputs:
+  mapped:
+    outputSource: inner/inner_out
+  single:
+    outputSource: on_genome/output1
+  reads_out:
+    outputSource: reads
+  unresolved:
+    outputSource: unknown_tool/out_file
+steps:
+  inner:
+    run:
+      class: GalaxyWorkflow
+      inputs:
+        inner_in: data
+      outputs:
+        inner_out:
+          outputSource: the_udt/output1
+      steps:
+        the_udt:
+          run:
+            class: GalaxyUserTool
+            id: cat_user_defined
+            name: cat_user_defined
+            version: "0.1"
+            container: busybox
+            shell_command: cat '$(inputs.input1.path)' > output.txt
+            inputs:
+              - name: input1
+                type: data
+                format: txt
+            outputs:
+              - name: output1
+                type: data
+                format: txt
+                from_work_dir: output.txt
+          state: {}
+          in:
+            input1: inner_in
+    in:
+      inner_in: reads
+  on_genome:
+    run:
+      class: GalaxyUserTool
+      id: cat_user_defined
+      name: cat_user_defined
+      version: "0.1"
+      container: busybox
+      shell_command: cat '$(inputs.input1.path)' > output.txt
+      inputs:
+        - name: input1
+          type: data
+          format: txt
+      outputs:
+        - name: output1
+          type: data
+          format: txt
+          from_work_dir: output.txt
+    state: {}
+    in:
+      input1: genome
+  unknown_tool:
+    tool_id: not_in_cache
+    in:
+      input: genome

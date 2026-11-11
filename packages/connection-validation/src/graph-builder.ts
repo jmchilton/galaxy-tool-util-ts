@@ -40,14 +40,15 @@ interface RawConnection {
 }
 
 export function buildWorkflowGraph(workflow: unknown, getToolInfo: GetToolInfo): WorkflowGraph {
-  const native = _coerceNormalizedNative(workflow);
+  const native = coerceNormalizedNative(workflow);
   // Wrap once at the top so per-step parse results are memoized across the
   // whole walk (including subworkflow recursion). Idempotent — if the caller
   // already wrapped, we re-use their cache.
   return _buildFromNormalized(native, ensureInlineResolver(getToolInfo));
 }
 
-function _coerceNormalizedNative(workflow: unknown): NormalizedNativeWorkflow {
+/** Normalized native form of a format2 or native workflow dict. */
+export function coerceNormalizedNative(workflow: unknown): NormalizedNativeWorkflow {
   if (workflow == null || typeof workflow !== "object") {
     throw new Error("buildWorkflowGraph: workflow must be an object");
   }
