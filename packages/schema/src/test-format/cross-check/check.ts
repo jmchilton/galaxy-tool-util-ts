@@ -1,5 +1,9 @@
 import type { TestFormatDiagnostic } from "../validate.js";
-import { checkInputMetadata, type InputMetadataOptions } from "./check-input-metadata.js";
+import {
+  checkInputMetadata,
+  mapsOverDeclaredInput,
+  type InputMetadataOptions,
+} from "./check-input-metadata.js";
 import { isCompatibleType, jsTypeOf } from "./type-compat.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
 
@@ -31,10 +35,20 @@ export interface WorkflowShape {
  * one diagnostic per violation with a JSON-pointer path into the tests doc
  * (matches Ajv's `instancePath`). Keywords:
  *
- *   workflow_input_undefined  job key not declared in workflow
- *   workflow_input_required   required workflow input missing from job (and no default)
- *   workflow_input_type       job value's JS type incompatible with declared type
- *   workflow_output_undefined output assertion name not declared in workflow
+ *   workflow_input_undefined           job key not declared in workflow
+ *   workflow_input_required            required workflow input missing from job (and no default)
+ *   workflow_input_type                job value's JS type incompatible with declared type
+ *   workflow_input_kind                File bound to a collection input
+ *   workflow_input_collection_type     collection type the input can't accept or map over
+ *   workflow_input_collection_map_over (warning) a collection maps the workflow over the input
+ *   workflow_input_format              filetype outside the declared format
+ *   workflow_output_undefined          output assertion name not declared in workflow
+ *   workflow_output_kind               dataset assertion on a collection output, or the reverse
+ *   workflow_output_collection_type    asserted collection type differs from the resolved one
+ *   workflow_output_datatype           asserted ftype differs from the output's fixed format
+ *
+ * Output shape and format checks are skipped for a test that maps over a
+ * declared input: the resolved output shapes assume the declared inputs.
  */
 export function checkTestsAgainstWorkflow(
   testsDoc: unknown,
@@ -50,6 +64,7 @@ export function checkTestsAgainstWorkflow(
     if (!entry) continue;
     const job = asRecord(entry.job) ?? {};
     const outputs = asRecord(entry.outputs) ?? {};
+    let mapsOver = false;
 
     // Inputs: flag unknowns, check types.
     for (const [name, value] of Object.entries(job)) {
@@ -72,6 +87,7 @@ export function checkTestsAgainstWorkflow(
           params: { input: name, declaredType: declared.type, actualType },
         });
       } else {
+        mapsOver ||= mapsOverDeclaredInput(declared, value);
         diagnostics.push(
           ...checkInputMetadata(
             declared,
@@ -109,7 +125,7 @@ export function checkTestsAgainstWorkflow(
         continue;
       }
       const assertion = asRecord(value);
-      if (!assertion) continue;
+      if (!assertion || mapsOver) continue;
       const actualKind = assertion.class === "Collection" ? "collection" : "dataset";
       if (declared.kind && actualKind !== declared.kind) {
         diagnostics.push({

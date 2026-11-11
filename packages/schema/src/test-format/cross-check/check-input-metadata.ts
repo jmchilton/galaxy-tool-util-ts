@@ -1,9 +1,15 @@
+import {
+  CollectionTypeDescription,
+  isValidCollectionTypeStr,
+} from "@galaxy-tool-util/workflow-graph";
+
 import { COLLECTION_INPUT_TYPES, DATA_INPUT_TYPES } from "../../workflow/input-parameter.js";
 import type { TestFormatDiagnostic } from "../validate.js";
 import type { WorkflowInput } from "./types.js";
 
+export const MAP_OVER_KEYWORD = "workflow_input_collection_map_over";
+
 export interface InputMetadataOptions {
-  collectionTypeAccepts?: (expected: string, actual: string) => boolean | undefined;
   inputFormatAccepts?: (expected: readonly string[], actual: string) => boolean | undefined;
 }
 
@@ -33,14 +39,19 @@ export function extractInputMetadata(
   return formats.length > 0 ? { formats } : {};
 }
 
-function concreteCollectionTypeAccepts(expected: string, actual: string): boolean | undefined {
-  const choices = expected.split(",").map((entry) => entry.trim());
-  if (choices.includes(actual)) return true;
-  // Without Galaxy's rules, compare only unambiguous collection types.
-  const concrete = /^(?:list|paired|record)(?::(?:list|paired|record))*$/;
-  return concrete.test(actual) && choices.every((choice) => concrete.test(choice))
-    ? false
-    : undefined;
+/**
+ * True when a job binding differs from the input shape the workflow declares,
+ * so Galaxy maps the workflow over it. Output shapes resolved from the
+ * workflow assume the declared inputs, so they don't hold for such a test.
+ */
+export function mapsOverDeclaredInput(declared: WorkflowInput, value: unknown): boolean {
+  const entry = asRecord(value);
+  if (declared.multiple || entry?.class !== "Collection") return false;
+  if (DATA_INPUT_TYPES.has(declared.type)) return true;
+  if (!COLLECTION_INPUT_TYPES.has(declared.type) || declared.collectionType === undefined) {
+    return false;
+  }
+  return entry.collection_type !== declared.collectionType;
 }
 
 export function checkInputMetadata(
@@ -58,6 +69,20 @@ export function checkInputMetadata(
       ? "File"
       : undefined;
   if (!expectedClass || (actualClass !== "File" && actualClass !== "Collection")) return [];
+  const actualCollection =
+    typeof entry?.collection_type === "string" ? entry.collection_type : undefined;
+  if (actualClass === "Collection" && expectedClass === "File") {
+    const described = actualCollection ? ` '${actualCollection}'` : "";
+    return [
+      {
+        path: `${path}/class`,
+        message: `Input '${declared.name}' is a dataset input; a${described} collection maps the workflow over it.`,
+        keyword: MAP_OVER_KEYWORD,
+        params: { input: declared.name, expectedClass, actualClass, actualCollection },
+        severity: "warning",
+      },
+    ];
+  }
   if (actualClass !== expectedClass) {
     return [
       {
@@ -69,25 +94,9 @@ export function checkInputMetadata(
     ];
   }
 
-  const expectedCollection = declared.collectionType;
-  const actualCollection = entry?.collection_type;
-  if (
-    actualClass === "Collection" &&
-    expectedCollection !== undefined &&
-    typeof actualCollection === "string" &&
-    (options.collectionTypeAccepts ?? concreteCollectionTypeAccepts)(
-      expectedCollection,
-      actualCollection,
-    ) === false
-  ) {
-    return [
-      {
-        path: `${path}/collection_type`,
-        message: `Input '${declared.name}' expects collection type '${expectedCollection}' but the test declares '${actualCollection}'.`,
-        keyword: "workflow_input_collection_type",
-        params: { input: declared.name, expectedCollection, actualCollection },
-      },
-    ];
+  if (actualClass === "Collection") {
+    const diagnostic = checkCollectionType(declared, actualCollection, path);
+    return diagnostic ? [diagnostic] : [];
   }
 
   const expectedFormats = declared.formats;
@@ -95,7 +104,6 @@ export function checkInputMetadata(
   // The format hierarchy comes from Galaxy's datatype registry. Without it, a
   // string mismatch doesn't prove incompatibility (txt and tabular, for example).
   if (
-    actualClass === "File" &&
     expectedFormats !== undefined &&
     typeof actualFormat === "string" &&
     !expectedFormats.includes(actualFormat) &&
@@ -111,4 +119,42 @@ export function checkInputMetadata(
     ];
   }
   return [];
+}
+
+/**
+ * A collection the input accepts passes. One that maps over the input is a
+ * warning: Galaxy runs the workflow once per subcollection. Anything else is
+ * an error.
+ */
+function checkCollectionType(
+  declared: WorkflowInput,
+  actualCollection: string | undefined,
+  path: string,
+): TestFormatDiagnostic | undefined {
+  const expectedCollection = declared.collectionType;
+  if (expectedCollection === undefined || actualCollection === undefined) return undefined;
+  const choices = expectedCollection.split(",").map((choice) => choice.trim());
+  if (choices.includes(actualCollection)) return undefined;
+  if (!isValidCollectionTypeStr(actualCollection) || !choices.every(isValidCollectionTypeStr)) {
+    return undefined;
+  }
+  const actual = new CollectionTypeDescription(actualCollection);
+  const accepted = choices.map((choice) => new CollectionTypeDescription(choice));
+  if (accepted.some((choice) => choice.accepts(actual))) return undefined;
+  const params = { input: declared.name, expectedCollection, actualCollection };
+  if (accepted.some((choice) => actual.canMapOver(choice))) {
+    return {
+      path: `${path}/collection_type`,
+      message: `Input '${declared.name}' expects collection type '${expectedCollection}'; a '${actualCollection}' collection maps the workflow over it.`,
+      keyword: MAP_OVER_KEYWORD,
+      params,
+      severity: "warning",
+    };
+  }
+  return {
+    path: `${path}/collection_type`,
+    message: `Input '${declared.name}' expects collection type '${expectedCollection}' but the test declares '${actualCollection}'.`,
+    keyword: "workflow_input_collection_type",
+    params,
+  };
 }

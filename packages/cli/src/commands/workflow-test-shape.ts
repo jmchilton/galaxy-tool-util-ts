@@ -16,11 +16,11 @@ import {
   resolveFormat,
   toNative,
   type NormalizedNativeStep,
+  type TestFormatDiagnostic,
   type WorkflowOutput,
   type WorkflowShape,
 } from "@galaxy-tool-util/schema";
 import {
-  CollectionTypeDescription,
   DatatypesMapperModel,
   isValidCollectionTypeStr,
   type DatatypesCombinedMap,
@@ -65,22 +65,20 @@ function outputFormat(
   return fixedFormat(output.format);
 }
 
+/** Split diagnostics into errors (severity absent or `error`) and warnings. */
+export function partitionDiagnostics(diagnostics: TestFormatDiagnostic[]): {
+  errors: TestFormatDiagnostic[];
+  warnings: TestFormatDiagnostic[];
+} {
+  return {
+    errors: diagnostics.filter((d) => d.severity !== "warning"),
+    warnings: diagnostics.filter((d) => d.severity === "warning"),
+  };
+}
+
 export interface WorkflowTestMetadataOptions {
   cacheDir?: string;
   datatypes?: string;
-}
-
-function collectionTypeAccepts(expected: string, actual: string): boolean | undefined {
-  const types = expected.split(",").map((type) => type.trim());
-  if (types.includes(actual)) return true;
-  if (
-    !actual ||
-    !isValidCollectionTypeStr(actual) ||
-    !types.every((type) => type && isValidCollectionTypeStr(type))
-  )
-    return undefined;
-  const provided = new CollectionTypeDescription(actual);
-  return types.some((type) => new CollectionTypeDescription(type).accepts(provided));
 }
 
 async function loadDatatypeRegistry(path: string): Promise<DatatypesMapperModel> {
@@ -114,7 +112,6 @@ export async function loadWorkflowTestShape(
   const outputs = extractWorkflowOutputs(dict, format);
   const registry = opts.datatypes ? await loadDatatypeRegistry(opts.datatypes) : undefined;
   const inputMetadataOptions: WorkflowShape["inputMetadataOptions"] = {
-    collectionTypeAccepts,
     inputFormatAccepts: registry
       ? (expected, actual) => {
           const mapping = registry.datatypesMapping;

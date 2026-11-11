@@ -167,12 +167,18 @@ describe.each([
     expect(inputs[4]!.collectionType).toBeUndefined();
   });
 
-  it("reports a collection passed to a file input and a file passed to a collection input", () => {
+  it("warns on a collection mapped over a file input and reports a file passed to a collection input", () => {
     const reads = inputs[0]!;
     const pairs = inputs[1]!;
     expect(
       checkInputMetadata(reads, { class: "Collection", collection_type: "list" }, "/0/job/reads"),
-    ).toMatchObject([{ keyword: "workflow_input_kind", path: "/0/job/reads/class" }]);
+    ).toMatchObject([
+      {
+        keyword: "workflow_input_collection_map_over",
+        path: "/0/job/reads/class",
+        severity: "warning",
+      },
+    ]);
     expect(
       checkInputMetadata(pairs, { class: "File", path: "reads.fasta" }, "/0/job/pairs"),
     ).toMatchObject([{ keyword: "workflow_input_kind", path: "/0/job/pairs/class" }]);
@@ -195,6 +201,23 @@ describe.each([
         "/0/job/pairs",
       ),
     ).toEqual([]);
+  });
+
+  it("warns on a collection that maps over a collection input", () => {
+    const pairs = inputs[1]!;
+    expect(
+      checkInputMetadata(
+        pairs,
+        { class: "Collection", collection_type: "list:list:paired" },
+        "/0/job/pairs",
+      ),
+    ).toMatchObject([
+      {
+        keyword: "workflow_input_collection_map_over",
+        path: "/0/job/pairs/collection_type",
+        severity: "warning",
+      },
+    ]);
   });
 
   it("uses Galaxy datatype knowledge when supplied and leaves unknown formats unchecked", () => {

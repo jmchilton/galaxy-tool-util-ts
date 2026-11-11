@@ -251,6 +251,55 @@ steps:
       expect(process.exitCode).toBe(keyword ? 1 : 0);
     });
 
+    it("warns when a job maps over an input and skips that test's output checks", async () => {
+      const wf = join(dir, "map-over.gxwf.yml");
+      await writeFile(
+        wf,
+        `class: GalaxyWorkflow
+inputs:
+  reads: {type: collection, collection_type: list}
+outputs:
+  result: {outputSource: copy/output1}
+steps:
+  copy:
+    run:
+      class: GalaxyUserTool
+      id: copy_input
+      name: Copy input
+      version: '0.1'
+      container: busybox
+      shell_command: echo example > output.txt
+      inputs:
+        - {name: input1, type: data, format: txt}
+      outputs:
+        - {name: output1, type: data, format: txt, from_work_dir: output.txt}
+    in: {input1: reads}
+    state: {}
+`,
+      );
+      const tests = join(dir, "map-over-tests.yml");
+      await writeFile(
+        tests,
+        `- job:
+    reads: {class: Collection, collection_type: "list:list", elements: []}
+  outputs:
+    result: {class: Collection, collection_type: "list:list"}
+`,
+      );
+      await runValidateTests(tests, { workflow: wf, json: true });
+      const report = JSON.parse(logs.join("\n"));
+      expect(report.valid).toBe(true);
+      expect(report.errors).toEqual([]);
+      expect(report.warnings).toMatchObject([
+        {
+          path: "/0/job/reads/collection_type",
+          keyword: "workflow_input_collection_map_over",
+          severity: "warning",
+        },
+      ]);
+      expect(process.exitCode).toBe(0);
+    });
+
     it.each([
       ["tabular", true],
       ["bam", false],

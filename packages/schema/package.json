@@ -39,6 +39,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@galaxy-tool-util/workflow-graph": "workspace:*",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
     "effect": "^3.21.0",

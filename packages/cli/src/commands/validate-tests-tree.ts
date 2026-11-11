@@ -20,7 +20,11 @@ import {
   validateTestsFile,
   type TestFormatDiagnostic,
 } from "@galaxy-tool-util/schema";
-import { loadWorkflowTestShape, type WorkflowTestMetadataOptions } from "./workflow-test-shape.js";
+import {
+  loadWorkflowTestShape,
+  partitionDiagnostics,
+  type WorkflowTestMetadataOptions,
+} from "./workflow-test-shape.js";
 
 export interface ValidateTestsTreeOptions extends WorkflowTestMetadataOptions {
   json?: boolean;
@@ -31,6 +35,7 @@ export interface TestsTreeFileReport {
   path: string;
   valid: boolean;
   errors: TestFormatDiagnostic[];
+  warnings: TestFormatDiagnostic[];
   workflow?: string;
 }
 
@@ -129,10 +134,11 @@ async function validateOne(
       errors: [
         { path: "(root)", message: `YAML parse error: ${msg}`, keyword: "yaml", params: {} },
       ],
+      warnings: [],
     };
   }
-  const { valid: schemaValid, errors } = validateTestsFile(parsed);
-  const allErrors: TestFormatDiagnostic[] = [...errors];
+  const { valid: schemaValid, errors: schemaErrors } = validateTestsFile(parsed);
+  const diagnostics: TestFormatDiagnostic[] = [...schemaErrors];
   let pairedWorkflow: string | undefined;
   if (opts.autoWorkflow) {
     const sibling = await findSiblingWorkflow(path);
@@ -140,10 +146,10 @@ async function validateOne(
       pairedWorkflow = relative(root, sibling);
       try {
         const shape = await loadWorkflowTestShape(sibling, opts);
-        allErrors.push(...checkTestsAgainstWorkflow(parsed, shape));
+        diagnostics.push(...checkTestsAgainstWorkflow(parsed, shape));
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        allErrors.push({
+        diagnostics.push({
           path: "(root)",
           message: `Failed to load workflow ${pairedWorkflow}: ${msg}`,
           keyword: "workflow_load_error",
@@ -152,8 +158,9 @@ async function validateOne(
       }
     }
   }
-  const valid = schemaValid && allErrors.length === 0;
-  const report: TestsTreeFileReport = { path: rel, valid, errors: allErrors };
+  const { errors, warnings } = partitionDiagnostics(diagnostics);
+  const valid = schemaValid && errors.length === 0;
+  const report: TestsTreeFileReport = { path: rel, valid, errors, warnings };
   if (pairedWorkflow) report.workflow = pairedWorkflow;
   return report;
 }
@@ -177,8 +184,8 @@ export async function runValidateTestsTree(
 
   const report: ValidateTestsTreeReport = {
     root: dir,
-    files: files.map(({ path, valid, errors, workflow }) => {
-      const entry: TestsTreeFileReport = { path, valid, errors };
+    files: files.map(({ path, valid, errors, warnings, workflow }) => {
+      const entry: TestsTreeFileReport = { path, valid, errors, warnings };
       if (workflow) entry.workflow = workflow;
       return entry;
     }),
@@ -199,6 +206,9 @@ export async function runValidateTestsTree(
         for (const e of f.errors) {
           console.error(`    ${e.path}: ${e.message} [${e.keyword}]`);
         }
+      }
+      for (const w of f.warnings) {
+        console.error(`    warning ${w.path}: ${w.message} [${w.keyword}]`);
       }
     }
     const s = summary;

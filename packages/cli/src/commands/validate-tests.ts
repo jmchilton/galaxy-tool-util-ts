@@ -5,7 +5,9 @@
  *
  * With ``--workflow <path>`` also cross-checks inputs/outputs against the
  * referenced workflow: unknown job keys, missing required inputs, type
- * mismatches, unknown output assertions.
+ * mismatches, input and output shapes, and unknown output assertions.
+ * Collections that map the workflow over an input are warnings, which don't
+ * make the file invalid.
  */
 
 import { readFile } from "node:fs/promises";
@@ -15,7 +17,11 @@ import {
   validateTestsFile,
   type TestFormatDiagnostic,
 } from "@galaxy-tool-util/schema";
-import { loadWorkflowTestShape, type WorkflowTestMetadataOptions } from "./workflow-test-shape.js";
+import {
+  loadWorkflowTestShape,
+  partitionDiagnostics,
+  type WorkflowTestMetadataOptions,
+} from "./workflow-test-shape.js";
 
 export interface ValidateTestsOptions extends WorkflowTestMetadataOptions {
   json?: boolean;
@@ -26,6 +32,7 @@ export interface ValidateTestsReport {
   file: string;
   valid: boolean;
   errors: TestFormatDiagnostic[];
+  warnings: TestFormatDiagnostic[];
 }
 
 export async function runValidateTests(
@@ -45,6 +52,7 @@ export async function runValidateTests(
         errors: [
           { path: "(root)", message: `YAML parse error: ${msg}`, keyword: "yaml", params: {} },
         ],
+        warnings: [],
       };
       console.log(JSON.stringify(report, null, 2));
     } else {
@@ -54,16 +62,16 @@ export async function runValidateTests(
     return;
   }
 
-  const { valid: schemaValid, errors } = validateTestsFile(parsed);
-  const allErrors = [...errors];
+  const { valid: schemaValid, errors: schemaErrors } = validateTestsFile(parsed);
+  const diagnostics = [...schemaErrors];
 
   if (opts.workflow) {
     try {
       const shape = await loadWorkflowTestShape(opts.workflow, opts);
-      allErrors.push(...checkTestsAgainstWorkflow(parsed, shape));
+      diagnostics.push(...checkTestsAgainstWorkflow(parsed, shape));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      allErrors.push({
+      diagnostics.push({
         path: "(root)",
         message: `Failed to load workflow ${opts.workflow}: ${msg}`,
         keyword: "workflow_load_error",
@@ -72,17 +80,23 @@ export async function runValidateTests(
     }
   }
 
-  const valid = schemaValid && allErrors.length === 0;
+  const { errors, warnings } = partitionDiagnostics(diagnostics);
+  const valid = schemaValid && errors.length === 0;
 
   if (opts.json) {
-    const report: ValidateTestsReport = { file: filePath, valid, errors: allErrors };
+    const report: ValidateTestsReport = { file: filePath, valid, errors, warnings };
     console.log(JSON.stringify(report, null, 2));
-  } else if (valid) {
-    console.log(`${filePath}: OK`);
   } else {
-    console.error(`${filePath}: ${allErrors.length} validation error(s)`);
-    for (const e of allErrors) {
-      console.error(`  ${e.path}: ${e.message} [${e.keyword}]`);
+    if (valid) {
+      console.log(`${filePath}: OK`);
+    } else {
+      console.error(`${filePath}: ${errors.length} validation error(s)`);
+      for (const e of errors) {
+        console.error(`  ${e.path}: ${e.message} [${e.keyword}]`);
+      }
+    }
+    for (const w of warnings) {
+      console.error(`  warning ${w.path}: ${w.message} [${w.keyword}]`);
     }
   }
 
