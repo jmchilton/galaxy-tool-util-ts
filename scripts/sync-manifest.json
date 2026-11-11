@@ -16,6 +16,11 @@
           "patterns": ["synthetic-draft-*.gxwf.yml"]
         },
         {
+          "src": "gxformat2/examples/format2/diff/",
+          "dst": "packages/schema/test/fixtures/workflows/format2/diff/",
+          "patterns": ["synthetic-diff-*.gxwf.yml"]
+        },
+        {
           "src": "gxformat2/examples/native/",
           "dst": "packages/schema/test/fixtures/workflows/native/",
           "patterns": ["synthetic-*.ga", "real-*.ga"]

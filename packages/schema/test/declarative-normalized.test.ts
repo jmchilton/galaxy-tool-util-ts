@@ -69,7 +69,8 @@ function linkedSubworkflowDescriptorUrls(raw: unknown): Record<string, string | 
   return result;
 }
 
-type Operation = (raw: unknown) => unknown | Promise<unknown>;
+// Two-workflow operations also receive the case's `fixture_after`.
+type Operation = (raw: unknown, after?: unknown) => unknown | Promise<unknown>;
 
 const OPERATIONS: Record<string, Operation> = {
   normalized_format2: normalizedFormat2,
@@ -172,11 +173,14 @@ const ALL_CASES = loadExpectations(EXPECTATIONS_DIR);
 describe("declarative normalized workflow tests", () => {
   for (const [testId, testCase] of ALL_CASES) {
     const { fixture, operation } = testCase;
+    const fixtureNames =
+      testCase.fixture_after == null ? [fixture] : [fixture, testCase.fixture_after];
     const expectError = testCase.expect_error ?? false;
     const assertions = testCase.assertions ?? [];
 
-    if (!fixtureExists(fixture)) {
-      it.skip(`${testId} (fixture not synced: ${fixture})`, () => {});
+    const missing = fixtureNames.find((name) => !fixtureExists(name));
+    if (missing != null) {
+      it.skip(`${testId} (fixture not synced: ${missing})`, () => {});
       continue;
     }
 
@@ -203,12 +207,12 @@ describe("declarative normalized workflow tests", () => {
     }
 
     it(testId, async () => {
-      const raw = loadWorkflow(fixture);
+      const workflows = fixtureNames.map(loadWorkflow);
 
       if (expectError) {
         let result: unknown;
         try {
-          result = OPERATIONS[operation](raw);
+          result = OPERATIONS[operation](...workflows);
         } catch {
           // Sync throw — test passes
           return;
@@ -224,7 +228,7 @@ describe("declarative normalized workflow tests", () => {
         return;
       }
 
-      const wf = await Promise.resolve(OPERATIONS[operation](raw));
+      const wf = await Promise.resolve(OPERATIONS[operation](...workflows));
 
       runAssertions(wf, assertions);
       for (const property of testCase.graph_properties ?? []) {
