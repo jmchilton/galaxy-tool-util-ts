@@ -251,6 +251,41 @@ steps:
       expect(process.exitCode).toBe(keyword ? 1 : 0);
     });
 
+    it("treats element_tests without class as a collection assertion, as planemo does", async () => {
+      const wf = join(dir, "element-tests.gxwf.yml");
+      await writeFile(
+        wf,
+        `class: GalaxyWorkflow
+inputs:
+  reads: {type: collection, collection_type: list}
+  genome: {type: data}
+outputs:
+  reads_out: {outputSource: reads}
+  genome_out: {outputSource: genome}
+`,
+      );
+      const tests = join(dir, "element-tests-tests.yml");
+      await writeFile(
+        tests,
+        `- job:
+    reads: {class: Collection, collection_type: list, elements: []}
+    genome: {class: File, path: genome.fa}
+  outputs:
+    reads_out: {element_tests: {}}
+    genome_out: {element_tests: {}}
+`,
+      );
+      await runValidateTests(tests, { workflow: wf, json: true });
+      const report = JSON.parse(logs.join("\n"));
+      // Galaxy's tests schema requires `class` with `element_tests`; only cross-check results matter here.
+      const crossCheck = report.errors.filter((e: { keyword: string }) =>
+        e.keyword.startsWith("workflow_"),
+      );
+      expect(crossCheck).toMatchObject([
+        { path: "/0/outputs/genome_out", keyword: "workflow_output_kind" },
+      ]);
+    });
+
     it("warns when a job maps over an input and skips that test's output checks", async () => {
       const wf = join(dir, "map-over.gxwf.yml");
       await writeFile(

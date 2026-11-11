@@ -126,7 +126,11 @@ export function checkTestsAgainstWorkflow(
       }
       const assertion = asRecord(value);
       if (!assertion || mapsOver) continue;
-      const actualKind = assertion.class === "Collection" ? "collection" : "dataset";
+      // planemo treats `element_tests` or `elements` without `class` as a collection assertion.
+      const actualKind =
+        assertion.class === "Collection" || "element_tests" in assertion || "elements" in assertion
+          ? "collection"
+          : "dataset";
       if (declared.kind && actualKind !== declared.kind) {
         diagnostics.push({
           path: jptr(path),
