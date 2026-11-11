@@ -86,6 +86,17 @@ describe("gxwf lint", () => {
     expect(process.exitCode).toBe(2);
   });
 
+  it("reports an unreadable file on one line with exit 1, like a parse failure", async () => {
+    const wfPath = join(ctx.tmpDir, "missing.gxwf.yml");
+    await runLint(wfPath, {});
+
+    const errors = ctx.errSpy.mock.calls.map((c) => String(c[0]));
+    expect(errors).toHaveLength(1);
+    expect(errors[0].startsWith(`Failed to read ${wfPath}: ENOENT`)).toBe(true);
+    expect(ctx.logSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
   it("--skip-best-practices suppresses those warnings", async () => {
     const workflow = {
       class: "GalaxyWorkflow",
