@@ -459,9 +459,9 @@ function stateChanges(
     differingKeys(before, after).map((path) => [
       path,
       {
-        kind: !before.has(path) ? "added" : !after.has(path) ? "removed" : "changed",
         before: before.get(path) ?? null,
         after: after.get(path) ?? null,
+        kind: !before.has(path) ? "added" : !after.has(path) ? "removed" : "changed",
       },
     ]),
   );

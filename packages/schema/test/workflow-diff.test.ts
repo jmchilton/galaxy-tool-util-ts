@@ -193,6 +193,18 @@ describe("diffWorkflows input handling", () => {
     }
   });
 
+  it("orders state change keys as Python dumps them", () => {
+    const diff = diffWorkflows(
+      diffFixture("synthetic-diff-explicit-false-bare.gxwf.yml"),
+      diffFixture("synthetic-diff-explicit-state.gxwf.yml"),
+    );
+    const keyOrders = Object.values(diff.steps.changed.cat.state).map((change) =>
+      Object.keys(change),
+    );
+    expect(keyOrders.length).toBeGreaterThan(0);
+    expect(keyOrders).toEqual(keyOrders.map(() => ["before", "after", "kind"]));
+  });
+
   it("reports ids and step keys named __proto__", () => {
     // JSON.parse makes __proto__ an own key, as YAML parsing does.
     const after = JSON.parse(
