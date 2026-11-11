@@ -18,8 +18,10 @@ import {
   NormalizedFormat2StepOutputSchema,
   type NormalizedFormat2Input,
   type NormalizedFormat2Step,
+  type NormalizedFormat2StepOutput,
 } from "./normalized/format2.js";
 import { resolveSourceReference } from "./normalized/labels.js";
+import { isPythonTruthy } from "./coercions.js";
 
 const INPUT_FIELDS = [
   "type",
@@ -50,9 +52,10 @@ const INPUT_MODEL_DEFAULTS = new Map<string, Record<string, unknown>>([
   ["fields", { type: "File" }],
   ["column_definitions", { type: "string" }],
 ]);
+type OutputAction = Exclude<keyof NormalizedFormat2StepOutput, "id">;
 // Declared `out` fields other than `id`; undeclared extras (e.g. `_plan_*`) are not actions.
 const OUTPUT_ACTIONS = Object.keys(NormalizedFormat2StepOutputSchema.fields).filter(
-  (field) => field !== "id",
+  (field): field is OutputAction => field !== "id",
 );
 const STATE_SEPARATOR = "|";
 const INPUT_PORT = "output";
@@ -162,13 +165,30 @@ interface Neighborhood {
   downstream: Set<string>;
 }
 
+/** Step fields compared by value, in Python's order. */
+interface StepFields {
+  label: string | null;
+  type: string;
+  tool_id: string | null;
+  tool_version: string | null;
+  when: string | null;
+  run: string | Record<string, string> | null;
+}
+
 /** One step reduced to the values the diff compares. */
 interface StepView {
-  fields: Map<string, unknown>;
+  fields: StepFields;
   state: Map<string, unknown>;
   inDefaults: Map<string, unknown>;
   outActions: Map<string, Record<string, unknown>>;
   planFields: PlanFields;
+}
+
+/** A raw step paired with its normalized form. */
+interface AlignedStep {
+  key: string;
+  rawStep: unknown;
+  step: NormalizedFormat2Step;
 }
 
 /** One workflow reduced to what the diff compares; maps keep workflow order. */
@@ -226,19 +246,14 @@ function loadWorkflow(workflow: unknown): Record<string, unknown> {
 
 function buildSide(raw: Record<string, unknown>): Side {
   const nf2 = normalizedFormat2(raw);
-  const rawSteps = [...iterateSteps(raw)];
-  const nf2Steps = nf2.steps as readonly NormalizedFormat2Step[];
-  if (rawSteps.length !== nf2Steps.length) {
-    throw new Error("could not align raw steps with normalized steps");
-  }
+  const aligned = alignSteps(raw, nf2.steps as readonly NormalizedFormat2Step[]);
   const listForm = Array.isArray(raw.steps);
   const inputIds = new Set(nf2.inputs.map((inp) => inp.id).filter((id) => id));
-  const resolve = sourceResolver(rawSteps, nf2Steps, inputIds);
+  const resolve = sourceResolver(aligned, inputIds);
 
   const steps = new Map<string, StepView>();
   const edges: Edge[] = [];
-  rawSteps.forEach(([key, rawStep], index) => {
-    const step = nf2Steps[index];
+  for (const { key, rawStep, step } of aligned) {
     steps.set(key, stepView(step, rawStep));
     for (const stepInput of step.in) {
       if (stepInput.source == null || stepInput.id == null) continue;
@@ -247,7 +262,7 @@ function buildSide(raw: Record<string, unknown>): Side {
         edges.push({ source: resolve(String(source)), target: key, targetPort: stepInput.id });
       }
     }
-  });
+  }
 
   const inputs = new Map<string, Map<string, unknown>>();
   for (const inp of nf2.inputs) {
@@ -265,9 +280,20 @@ function buildSide(raw: Record<string, unknown>): Side {
     steps,
     edges,
     unlabeledSteps: listForm
-      ? rawSteps.filter(([, rawStep]) => !hasIdentity(rawStep)).map(([key]) => key)
+      ? aligned.filter(({ rawStep }) => !hasIdentity(rawStep)).map(({ key }) => key)
       : [],
   };
+}
+
+function alignSteps(
+  raw: Record<string, unknown>,
+  nf2Steps: readonly NormalizedFormat2Step[],
+): AlignedStep[] {
+  const rawSteps = [...iterateSteps(raw)];
+  if (rawSteps.length !== nf2Steps.length) {
+    throw new Error("could not align raw steps with normalized steps");
+  }
+  return rawSteps.map(([key, rawStep], index) => ({ key, rawStep, step: nf2Steps[index] }));
 }
 
 function hasIdentity(rawStep: unknown): boolean {
@@ -285,20 +311,18 @@ function stepId(rawStep: unknown, step: NormalizedFormat2Step): string {
 
 /** Resolve a source to a step key and port, or an input id with no port; longest label first. */
 function sourceResolver(
-  rawSteps: Array<[string, unknown]>,
-  nf2Steps: readonly NormalizedFormat2Step[],
+  aligned: readonly AlignedStep[],
   inputIds: Set<string>,
 ): (source: string) => Ref {
   const aliases = new Map<string, string>();
   const setDefault = (alias: string, key: string) => {
     if (!aliases.has(alias)) aliases.set(alias, key);
   };
-  rawSteps.forEach(([key, rawStep], index) => {
-    const step = nf2Steps[index];
+  for (const { key, rawStep, step } of aligned) {
     setDefault(stepId(rawStep, step), key);
     if (step.label) setDefault(step.label, key);
     aliases.set(key, key);
-  });
+  }
   const knownLabels = new Set([...aliases.keys(), ...inputIds]);
 
   return (source: string): Ref => {
@@ -337,14 +361,14 @@ function withModelDefaults(item: unknown, defaults: Record<string, unknown>): un
 
 function stepView(step: NormalizedFormat2Step, rawStep: unknown): StepView {
   const raw = isRecord(rawStep) ? rawStep : {};
-  const fields = new Map<string, unknown>([
-    ["label", step.label ?? null],
-    ["type", inferredStepType(step)],
-    ["tool_id", step.tool_id ?? null],
-    ["tool_version", step.tool_version ?? null],
-    ["when", step.when ?? null],
-    ["run", runReference(raw.run)],
-  ]);
+  const fields: StepFields = {
+    label: step.label ?? null,
+    type: inferredStepType(step),
+    tool_id: step.tool_id ?? null,
+    tool_version: step.tool_version ?? null,
+    when: step.when ?? null,
+    run: runReference(raw.run),
+  };
   const inDefaults = new Map<string, unknown>();
   for (const inp of step.in) {
     if (inp.id != null && inp.default != null) inDefaults.set(inp.id, inp.default);
@@ -384,21 +408,13 @@ function runReference(run: unknown): string | Record<string, string> | null {
   return null;
 }
 
-/** Python truthiness: `null`, `false`, `0`, `""`, `[]` and `{}` are falsy. */
-function isTruthy(value: unknown): boolean {
-  if (Array.isArray(value)) return value.length > 0;
-  if (isRecord(value)) return Object.keys(value).length > 0;
-  return Boolean(value);
-}
-
 /** Set output actions per declared `out` port; false and empty values mean no action. */
 function outActions(step: NormalizedFormat2Step): Map<string, Record<string, unknown>> {
   const actions = new Map<string, Record<string, unknown>>();
   for (const out of step.out) {
-    const raw = out as Record<string, unknown>;
     const set: Record<string, unknown> = {};
     for (const action of OUTPUT_ACTIONS) {
-      if (isTruthy(raw[action])) set[action] = raw[action];
+      if (isPythonTruthy(out[action])) set[action] = out[action];
     }
     if (out.id != null && Object.keys(set).length > 0) actions.set(out.id, set);
   }
@@ -485,11 +501,12 @@ function onlyIn<T>(keys: Iterable<T>, other: { has(key: T): boolean }): T[] {
 function summary(side: Side, key: string): StepSummary {
   const view = side.steps.get(key)!;
   const edges = neighborhood(side, key);
+  const { label, type, tool_id, tool_version } = view.fields;
   return {
-    label: view.fields.get("label") as string | null,
-    type: view.fields.get("type") as string,
-    tool_id: view.fields.get("tool_id") as string | null,
-    tool_version: view.fields.get("tool_version") as string | null,
+    label,
+    type,
+    tool_id,
+    tool_version,
     plan_fields: view.planFields,
     upstream: [...edges.upstream].sort(),
     downstream: [...edges.downstream].sort(),
@@ -498,14 +515,18 @@ function summary(side: Side, key: string): StepSummary {
   };
 }
 
+function fieldMap(fields: StepFields): Map<string, unknown> {
+  return new Map(Object.entries(fields));
+}
+
 function stepChange(before: Side, after: Side, key: string): StepChange | null {
   const bView = before.steps.get(key)!;
   const aView = after.steps.get(key)!;
   const bEdges = neighborhood(before, key);
   const aEdges = neighborhood(after, key);
   const change: StepChange = {
-    label: aView.fields.get("label") as string | null,
-    fields: valueChanges(bView.fields, aView.fields),
+    label: aView.fields.label,
+    fields: valueChanges(fieldMap(bView.fields), fieldMap(aView.fields)),
     state: stateChanges(bView.state, aView.state),
     in_defaults: valueChanges(bView.inDefaults, aView.inDefaults),
     out_actions: valueChanges(bView.outActions, aView.outActions),

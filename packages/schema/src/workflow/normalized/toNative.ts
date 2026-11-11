@@ -15,6 +15,7 @@ import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
 import { unflattenCommentData } from "./comments.js";
 import { isUnlabeled, resolveSourceReference } from "./labels.js";
 import { INPUT_TYPES, inputParameterSchema, inputTypesDeclaring } from "../input-parameter.js";
+import { isPythonTruthy } from "../coercions.js";
 import {
   WorkflowCollectionParameterSchema,
   WorkflowDataParameterSchema,
@@ -620,7 +621,7 @@ function _buildPostJobActions(
         actionValue = actionDef.defaultVal;
       }
       // Truthy check (matches Python behavior: empty dict/array/false → skip)
-      if (_isTruthy(actionValue)) {
+      if (isPythonTruthy(actionValue)) {
         const actionName = actionDef.actionClass + outputName;
         postJobActions[actionName] = {
           action_type: actionDef.actionClass,
@@ -645,13 +646,6 @@ function _buildPostJobActions(
   }
 
   return postJobActions as NormalizedNativeStep["post_job_actions"];
-}
-
-function _isTruthy(val: unknown): boolean {
-  if (val === false || val === null || val === undefined) return false;
-  if (Array.isArray(val)) return val.length > 0;
-  if (typeof val === "object") return Object.keys(val as Record<string, unknown>).length > 0;
-  return !!val;
 }
 
 // --- Workflow output wiring ---
