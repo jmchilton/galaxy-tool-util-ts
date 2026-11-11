@@ -1,3 +1,4 @@
+import { COLLECTION_INPUT_TYPES, DATA_INPUT_TYPES } from "../../workflow/input-parameter.js";
 import type { TestFormatDiagnostic } from "../validate.js";
 import type { WorkflowInput } from "./types.js";
 
@@ -17,12 +18,12 @@ export function extractInputMetadata(
   type: WorkflowInput["type"],
 ): Pick<WorkflowInput, "collectionType" | "formats" | "multiple"> {
   if (Array.isArray(raw.type) || raw.multiple === true) return { multiple: true };
-  if (type === "collection") {
+  if (COLLECTION_INPUT_TYPES.has(type)) {
     const collectionType = raw.collection_type;
     if (collectionType === undefined) return { collectionType: "list" };
     return typeof collectionType === "string" && collectionType ? { collectionType } : {};
   }
-  if (type !== "data" && type !== "File") return {};
+  if (!DATA_INPUT_TYPES.has(type)) return {};
   const format = raw.format;
   const entries = typeof format === "string" ? format.split(",") : format;
   if (!Array.isArray(entries) || !entries.every((entry) => typeof entry === "string")) {
@@ -51,12 +52,11 @@ export function checkInputMetadata(
   if (declared.multiple) return [];
   const entry = asRecord(value);
   const actualClass = entry?.class;
-  const expectedClass =
-    declared.type === "collection"
-      ? "Collection"
-      : declared.type === "data" || declared.type === "File"
-        ? "File"
-        : undefined;
+  const expectedClass = COLLECTION_INPUT_TYPES.has(declared.type)
+    ? "Collection"
+    : DATA_INPUT_TYPES.has(declared.type)
+      ? "File"
+      : undefined;
   if (!expectedClass || (actualClass !== "File" && actualClass !== "Collection")) return [];
   if (actualClass !== expectedClass) {
     return [

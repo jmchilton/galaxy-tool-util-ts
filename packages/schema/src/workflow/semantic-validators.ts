@@ -11,7 +11,7 @@
  * Format2 rules.
  */
 
-import { inputTypesDeclaring } from "./input-parameter.js";
+import { COLLECTION_INPUT_TYPES, inputTypesDeclaring } from "./input-parameter.js";
 
 const COLUMN_NAME_RE = /^[\w\-_ ?]*$/;
 
@@ -24,7 +24,6 @@ const PARAMETER_FIELD_TYPE_VALUES = new Map(
     inputTypesDeclaring(field),
   ]),
 );
-const COLLECTION_TYPE_VALUES = new Set(["collection", "data_collection", "data_collection_input"]);
 
 function _columnDefaultMatchesType(columnType: unknown, value: unknown): boolean {
   if (value == null) return true;
@@ -82,7 +81,7 @@ export function validateInputParameter(inputParam: unknown): void {
   const data = inputParam as Record<string, unknown>;
   const typeValues = _typeList(data.type);
   const isCollectionOnly =
-    typeValues.length > 0 && typeValues.every((t) => COLLECTION_TYPE_VALUES.has(t));
+    typeValues.length > 0 && typeValues.every((t) => COLLECTION_INPUT_TYPES.has(t));
   if (Array.isArray(data.type) && typeValues.some((t) => SCALAR_ONLY_TYPE_VALUES.has(t))) {
     throw new Error(`multiple values are not supported for type=${JSON.stringify(data.type)}`);
   }
