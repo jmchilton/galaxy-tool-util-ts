@@ -450,6 +450,40 @@ steps:
       ]);
     });
 
+    it("leaves unresolved outputs named like Object members unchecked", async () => {
+      const wf = join(dir, "proto.gxwf.yml");
+      await writeFile(
+        wf,
+        `class: GalaxyWorkflow
+inputs:
+  genome: {type: data}
+outputs:
+  constructor: {outputSource: uncached/out_file1}
+  toString: {outputSource: uncached/out_file1}
+steps:
+  uncached:
+    tool_id: not_a_cached_tool
+    tool_version: "1.0"
+    in: {input1: genome}
+`,
+      );
+      const tests = join(dir, "proto-tests.yml");
+      await writeFile(
+        tests,
+        `- doc: dataset assertions on unresolved outputs
+  job:
+    genome: {class: File, path: g.fa}
+  outputs:
+    constructor: {ftype: txt}
+    toString: {ftype: txt}
+`,
+      );
+      await runValidateTests(tests, { workflow: wf, json: true, cacheDir: dir });
+      const report = JSON.parse(logs.join("\n"));
+      expect(report.errors).toEqual([]);
+      expect(report.valid).toBe(true);
+    });
+
     it("reports a readable error when workflow file is missing", async () => {
       const tests = join(dir, "ok-tests.yml");
       await writeFile(tests, `- doc: x\n  job: {}\n  outputs: {}\n`);
