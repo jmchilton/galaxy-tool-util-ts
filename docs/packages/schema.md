@@ -148,7 +148,7 @@ One-pass step-focused survey collecting every TODO sentinel and `_plan_*` hit wi
 
 ### `validateDraft(workflow): DraftValidationResult`
 
-Collects all draft diagnostics into structured arrays — does not throw. Pipeline: lax structural decode against `GalaxyWorkflowDraftSchema`, concrete-topology checks (workflow input/output/step labels and step types cannot be TODO sentinels; every `step/port` edge ref must resolve; a `TODO_*` input port needs a source or a non-null `default`), sentinel-form checks (TODO-shaped strings that don't match the canonical pattern → semantic error), and warnings (bare `TODO` in port positions; top-level `_plan_*`).
+Collects all draft diagnostics into structured arrays — does not throw. Pipeline: lax structural decode against `GalaxyWorkflowDraftSchema`, concrete-topology checks (workflow input/output/step labels and step types cannot be TODO sentinels; every `step/port` edge ref must resolve; a `TODO_*` input port needs a source or a non-null `default`; steps must not form a cycle), sentinel-form checks (TODO-shaped strings that don't match the canonical pattern → semantic error), and warnings (bare `TODO` in port positions; top-level `_plan_*`).
 
 ### `nextDraftStep(workflow): NextStepResult`
 

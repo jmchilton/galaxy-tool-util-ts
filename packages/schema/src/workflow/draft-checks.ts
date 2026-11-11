@@ -371,6 +371,66 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 // -----------------------------------------------------------------------------
+// Step graph
+// -----------------------------------------------------------------------------
+
+/** Labels a source ref resolves against: steps and workflow inputs. */
+function sourceLabels(workflow: Record<string, unknown>): Set<string> {
+  const labels = collectStepLabels(workflow);
+  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) labels.add(label);
+  return labels;
+}
+
+/** Step label -> labels of the steps its inputs source from, itself included. */
+function stepDependencies(workflow: Record<string, unknown>): Map<string, Set<string>> {
+  const stepLabels = collectStepLabels(workflow);
+  const knownLabels = sourceLabels(workflow);
+  const deps = new Map<string, Set<string>>();
+  for (const [label, step] of iterateSteps(workflow)) {
+    const stepDeps = new Set<string>();
+    if (isRecord(step)) {
+      for (const [, inValue] of iterateStepInputEntries(step.in)) {
+        for (const ref of extractSourceRefs(inValue)) {
+          const [depLabel] = resolveSourceReference(ref, knownLabels);
+          if (stepLabels.has(depLabel)) stepDeps.add(depLabel);
+        }
+      }
+    }
+    deps.set(label, stepDeps);
+  }
+  return deps;
+}
+
+/** Group steps on cycles by mutual reachability; sorted label lists ordered by first label. */
+function stepCycles(deps: Map<string, Set<string>>): string[][] {
+  const reachable = new Map<string, Set<string>>();
+  for (const label of deps.keys()) reachable.set(label, reachableFrom(label, deps));
+  const cycles: string[][] = [];
+  const placed = new Set<string>();
+  for (const label of [...deps.keys()].sort(codePointCompare)) {
+    if (placed.has(label) || !reachable.get(label)!.has(label)) continue;
+    const members = [...reachable.get(label)!]
+      .filter((other) => reachable.get(other)!.has(label))
+      .sort(codePointCompare);
+    for (const member of members) placed.add(member);
+    cycles.push(members);
+  }
+  return cycles;
+}
+
+function reachableFrom(start: string, deps: Map<string, Set<string>>): Set<string> {
+  const seen = new Set<string>();
+  const pending = [...deps.get(start)!];
+  while (pending.length > 0) {
+    const label = pending.pop()!;
+    if (seen.has(label)) continue;
+    seen.add(label);
+    pending.push(...deps.get(label)!);
+  }
+  return seen;
+}
+
+// -----------------------------------------------------------------------------
 // validateDraft
 // -----------------------------------------------------------------------------
 
@@ -400,6 +460,7 @@ export interface DraftValidationResult {
  *                    ports count if declared in the step's `out:`; an
  *                    embedded `GalaxyUserTool` also declares its outputs). A
  *                    TODO_* input port needs a source or a non-null default.
+ *                    Steps must not form a dependency cycle.
  *   semanticErrors   TODO-shaped strings (start with `TODO`) that don't
  *                    match the canonical sentinel form (e.g. `TODO-foo`,
  *                    `TODOfoo`, `TODO_` trailing).
@@ -561,6 +622,8 @@ function walkDraftValidation(
     }
   }
 
+  topologyErrors.push(...cycleDiagnostics(workflow, prefix));
+
   // Steps: labels, types, edge refs, sentinel-form on every TODO-shaped string.
   for (const [label, step] of iterateSteps(workflow)) {
     if (!isRecord(step)) continue;
@@ -644,6 +707,20 @@ function walkDraftValidation(
       walkDraftValidation(step.run, stepPath, topologyErrors, semanticErrors, warnings);
     }
   }
+}
+
+/** One topology error per group of steps that depend on each other. */
+function cycleDiagnostics(
+  workflow: Record<string, unknown>,
+  prefix: StepPath,
+): DraftValidationDiagnostic[] {
+  return stepCycles(stepDependencies(workflow)).map((members) => ({
+    path: prefix,
+    message:
+      members.length === 1
+        ? `step "${members[0]}" sources its own output`
+        : `steps ${members.map((m) => `"${m}"`).join(", ")} depend on each other through a cycle`,
+  }));
 }
 
 function stepHasAnyTodo(step: Record<string, unknown>): boolean {
@@ -839,46 +916,18 @@ function nextDraftStepIn(workflow: Record<string, unknown>, prefix: StepPath): N
  * iterateSteps would have yielded.
  */
 function topoOrderedSteps(workflow: Record<string, unknown>): Array<[string, unknown]> {
-  const entries: Array<[string, unknown]> = [];
-  const stepLabels = new Set<string>();
-  for (const entry of iterateSteps(workflow)) {
-    entries.push(entry);
-    stepLabels.add(entry[0]);
-  }
-
-  // step label -> in-degree count (only counting deps on other declared steps)
-  const inDegree = new Map<string, number>();
-  const deps = new Map<string, Set<string>>();
-  for (const [label, step] of entries) {
-    if (!isRecord(step)) {
-      inDegree.set(label, 0);
-      deps.set(label, new Set());
-      continue;
-    }
-    const seen = new Set<string>();
-    for (const [, inValue] of iterateStepInputEntries(step.in)) {
-      for (const ref of extractSourceRefs(inValue)) {
-        const [depLabel, port] = splitSourceRef(ref, stepLabels);
-        if (port == null) continue; // workflow-input ref — not a step edge
-        if (depLabel !== label && stepLabels.has(depLabel)) {
-          seen.add(depLabel);
-        }
-      }
-    }
-    inDegree.set(label, seen.size);
-    deps.set(label, seen);
-  }
+  const entries = [...iterateSteps(workflow)];
+  const deps = stepDependencies(workflow);
+  for (const [label, stepDeps] of deps) stepDeps.delete(label);
 
   // Stable: process levels by alphabetical label order.
   const ordered: Array<[string, unknown]> = [];
   const byLabel = new Map(entries);
   const remaining = new Set(entries.map(([l]) => l));
   while (remaining.size > 0) {
-    const ready = [...remaining].filter((l) => (inDegree.get(l) ?? 0) === 0).sort(codePointCompare);
+    const ready = [...remaining].filter((l) => deps.get(l)!.size === 0).sort(codePointCompare);
     if (ready.length === 0) {
-      // Cycle (or unresolvable refs). Drain the rest in alphabetical order
-      // so the function stays total — validateDraft is responsible for
-      // surfacing cycle/dangling-edge errors separately.
+      // A cycle: drain alphabetically so this stays total; validateDraft reports it.
       for (const label of [...remaining].sort(codePointCompare)) {
         ordered.push([label, byLabel.get(label)]);
       }
@@ -887,12 +936,7 @@ function topoOrderedSteps(workflow: Record<string, unknown>): Array<[string, unk
     for (const label of ready) {
       ordered.push([label, byLabel.get(label)]);
       remaining.delete(label);
-      for (const [other, otherDeps] of deps) {
-        if (otherDeps.has(label)) {
-          otherDeps.delete(label);
-          inDegree.set(other, (inDegree.get(other) ?? 0) - 1);
-        }
-      }
+      for (const otherDeps of deps.values()) otherDeps.delete(label);
     }
   }
   return ordered;
@@ -909,8 +953,7 @@ function newPortEdges(): PortEdges {
 
 /** label -> port -> what references it, resolving refs against the labels validation uses. */
 function collectPortEdges(workflow: Record<string, unknown>): Map<string, Map<string, PortEdges>> {
-  const knownLabels = collectStepLabels(workflow);
-  for (const [label] of iterateMapOrArrayLabeled(workflow.inputs)) knownLabels.add(label);
+  const knownLabels = sourceLabels(workflow);
   const index = new Map<string, Map<string, PortEdges>>();
 
   const edgesAt = (ref: string): PortEdges => {
