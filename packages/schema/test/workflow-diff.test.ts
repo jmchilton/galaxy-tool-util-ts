@@ -39,17 +39,31 @@ describe("renderWorkflowDiff", () => {
     expect(text.endsWith("AFTER inputs feeding no step: min_quality")).toBe(true);
   });
 
-  it("lists plan fields of a removed draft step", () => {
+  it("renders a draft against its final workflow, plan fields included", () => {
     const text = renderWorkflowDiff(
       diffWorkflows(
         diffFixture("synthetic-diff-draft-before.gxwf.yml"),
         diffFixture("synthetic-diff-draft-after.gxwf.yml"),
       ),
     );
-    expect(text).toContain(
-      "Step removed: chr_filter (keep only requested chromosomes) [TODO TODO]",
+    // Same bytes as gxformat2 gxwf-diff on this pair.
+    expect(text).toBe(
+      [
+        "Output changed: fastq source: to_fastq/TODO_fastq -> to_fastq/output",
+        "Step removed: chr_filter (keep only requested chromosomes) [TODO TODO]",
+        "    upstream: chr, reads",
+        "    downstream: to_fastq",
+        "    has _plan_state",
+        "    has _plan_context",
+        "Step changed: to_fastq (convert BAM to FASTQ)",
+        "    tool_id: TODO -> toolshed.g2.bx.psu.edu/repos/iuc/samtools_fastx/samtools_fastx/1.15.1+galaxy2",
+        "    tool_version: TODO -> 1.15.1+galaxy2",
+        "    state output_fmt: added fastqsanger",
+        "    - chr_filter/TODO_filtered -> to_fastq/TODO_input",
+        "    + reads -> to_fastq/input",
+        "AFTER inputs feeding no step: chr",
+      ].join("\n"),
     );
-    expect(text).toContain("    has _plan_state\n    has _plan_context");
   });
 
   it("spells out unset state values", () => {
