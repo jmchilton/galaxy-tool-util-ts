@@ -152,9 +152,20 @@ gxwf validate-tests my-workflow-tests.yml --workflow my-workflow.gxwf.yml
 gxwf validate-tests my-workflow-tests.yml --json
 ```
 
+The cross-check reports, as errors: unknown or missing inputs and wrong value types; `class: File` on a collection input; a collection type the input neither accepts nor maps over; and, on output assertions, dataset vs collection form, `collection_type`, and an `ftype` that differs from the output's fixed format. An `element_tests` or `elements` assertion without `class` counts as a collection assertion, as in planemo.
+
+Output shapes and fixed formats come from the connection graph. Inline user-defined tools and subworkflows need nothing extra. Other tool steps are read from the tool cache (the default one, or `--cache-dir`) and never fetched; outputs that can't be resolved aren't checked. An output that can be skipped (its step has `when`, or is downstream of one) gets no fixed format, since Galaxy writes skipped outputs as `expression.json`.
+
+Warnings don't fail validation and are listed under `warnings` in the JSON report:
+
+- a collection that maps the workflow over an input (a collection on a data input, or `list:list` on a `list` input). That test's output checks are skipped, because resolved output shapes assume the declared inputs;
+- a `filetype` outside the input's declared `format`, or one Galaxy doesn't know. Datatypes come from the bundled usegalaxy.org snapshot, or from `--datatypes`.
+
 | Option | Description |
 |---|---|
 | `--workflow <path>` | Cross-check job inputs + output assertions against a workflow (`.ga` / `.gxwf.yml`) |
+| `--cache-dir <dir>` | Tool cache read (never fetched) to resolve tool-step output shapes and formats |
+| `--datatypes <file>` | Galaxy `types_and_mapping` JSON to check filetypes against, instead of the bundled usegalaxy.org snapshot |
 | `--json` | Output structured JSON report |
 
 ### `clean <file>`
@@ -506,6 +517,8 @@ gxwf validate-tests-tree ./workflows/ --json
 |---|---|
 | `--json` | Output structured JSON report |
 | `--auto-workflow` | Pair each tests file with a sibling workflow by filename convention (`foo.gxwf-tests.yml` ↔ `foo.gxwf.yml` / `foo.ga`) and cross-check inputs/outputs |
+| `--cache-dir <dir>` | As for `validate-tests` |
+| `--datatypes <file>` | As for `validate-tests` |
 
 ### Tool Shed discovery commands
 
