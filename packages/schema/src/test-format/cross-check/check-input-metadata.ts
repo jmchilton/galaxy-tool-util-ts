@@ -8,18 +8,13 @@ import {
 import { COLLECTION_INPUT_TYPES, DATA_INPUT_TYPES } from "../../workflow/input-parameter.js";
 import type { TestFormatDiagnostic } from "../validate.js";
 import type { WorkflowInput } from "./types.js";
+import { asRecord } from "./coerce.js";
 
 export const MAP_OVER_KEYWORD = "workflow_input_collection_map_over";
 
 export interface InputMetadataOptions {
   /** Galaxy's datatype hierarchy; without it, filetypes aren't checked. */
   datatypes?: DatatypesMapperModel;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
 }
 
 export function extractInputMetadata(

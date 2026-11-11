@@ -1,18 +1,9 @@
 import { parseToolState } from "../../workflow/tool-state-io.js";
 import { extractInputMetadata } from "./check-input-metadata.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
+import { asRecord, asString } from "./coerce.js";
 
 const INPUT_STEP_TYPES = new Set(["data_input", "data_collection_input", "parameter_input"]);
-
-function asRecord(v: unknown): Record<string, unknown> | undefined {
-  return v && typeof v === "object" && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : undefined;
-}
-
-function asString(v: unknown): string | undefined {
-  return typeof v === "string" ? v : undefined;
-}
 
 function inputTypeFor(stepType: string, toolState: Record<string, unknown>): string {
   if (stepType === "data_input") return "data";

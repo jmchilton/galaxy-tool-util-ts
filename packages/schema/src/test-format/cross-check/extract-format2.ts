@@ -1,15 +1,6 @@
 import { extractInputMetadata } from "./check-input-metadata.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
-
-function asRecord(v: unknown): Record<string, unknown> | undefined {
-  return v && typeof v === "object" && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : undefined;
-}
-
-function asString(v: unknown): string | undefined {
-  return typeof v === "string" ? v : undefined;
-}
+import { asRecord, asString } from "./coerce.js";
 
 function parseInputEntry(name: string, raw: unknown): WorkflowInput {
   // Shorthand: `name: File` or `name: int` — a bare string is the type.

@@ -6,6 +6,7 @@ import {
 } from "./check-input-metadata.js";
 import { isCompatibleType, jsTypeOf } from "./type-compat.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
+import { asRecord } from "./coerce.js";
 
 /**
  * JSON-pointer escaping per RFC 6901 — `~` → `~0`, `/` → `~1`.
@@ -16,12 +17,6 @@ function jptrEscape(s: string): string {
 
 function jptr(parts: (string | number)[]): string {
   return "/" + parts.map((p) => jptrEscape(String(p))).join("/");
-}
-
-function asRecord(v: unknown): Record<string, unknown> | undefined {
-  return v && typeof v === "object" && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : undefined;
 }
 
 export interface WorkflowShape {
