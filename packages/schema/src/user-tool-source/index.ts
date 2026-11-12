@@ -4,4 +4,4 @@ export {
   type UserToolSourceDiagnostic,
   type ValidateUserToolSourceOptions,
 } from "./validate.js";
-export { runSemanticChecks } from "./semantic.js";
+export { runSecurityChecks, runSemanticChecks } from "./semantic.js";

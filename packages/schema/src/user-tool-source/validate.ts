@@ -18,7 +18,7 @@ import Ajv2020Import from "ajv/dist/2020.js";
 import addFormatsImport from "ajv-formats";
 import type { ErrorObject, ValidateFunction } from "ajv";
 import { userToolSourceSchema } from "./schema.generated.js";
-import { runSemanticChecks } from "./semantic.js";
+import { runSecurityChecks, runSemanticChecks } from "./semantic.js";
 
 const Ajv2020 = Ajv2020Import as unknown as typeof Ajv2020Import.default;
 const addFormats = addFormatsImport as unknown as typeof addFormatsImport.default;
@@ -33,6 +33,8 @@ export interface UserToolSourceDiagnostic {
 export interface ValidateUserToolSourceOptions {
   /** Skip semantic (model_validator) checks; structural only. */
   schemaOnly?: boolean;
+  /** Check agent-authored executable surfaces for direct free-text interpolation. */
+  security?: boolean;
 }
 
 let _validator: ValidateFunction | undefined;
@@ -73,6 +75,7 @@ export function validateUserToolSource(
 
   if (!opts.schemaOnly && parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
     errors.push(...runSemanticChecks(parsed as Record<string, unknown>));
+    if (opts.security) errors.push(...runSecurityChecks(parsed as Record<string, unknown>));
   }
 
   return { valid: errors.length === 0, errors };

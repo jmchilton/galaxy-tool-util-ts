@@ -13,6 +13,7 @@ import { validateUserToolSource, type UserToolSourceDiagnostic } from "@galaxy-t
 export interface ValidateToolSourceTreeOptions {
   json?: boolean;
   schemaOnly?: boolean;
+  security?: boolean;
 }
 
 export interface ToolSourceTreeFileReport {
@@ -66,6 +67,7 @@ async function validateOne(
   path: string,
   root: string,
   schemaOnly: boolean,
+  security: boolean,
 ): Promise<(ToolSourceTreeFileReport & { loadError?: boolean; skipped?: boolean }) | undefined> {
   const rel = relative(root, path);
   let parsed: unknown;
@@ -90,7 +92,7 @@ async function validateOne(
   if (typeof cls !== "string" || !TOOL_CLASSES.has(cls)) {
     return undefined;
   }
-  const { valid, errors } = validateUserToolSource(parsed, { schemaOnly });
+  const { valid, errors } = validateUserToolSource(parsed, { schemaOnly, security });
   return { path: rel, valid, errors };
 }
 
@@ -101,7 +103,7 @@ export async function runValidateToolSourceTree(
   const paths = await discoverYamlFiles(dir);
   const files: (ToolSourceTreeFileReport & { loadError?: boolean })[] = [];
   for (const p of paths) {
-    const result = await validateOne(p, dir, opts.schemaOnly === true);
+    const result = await validateOne(p, dir, opts.schemaOnly === true, opts.security === true);
     if (result) files.push(result);
   }
 

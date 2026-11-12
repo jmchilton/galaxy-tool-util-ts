@@ -195,4 +195,88 @@ describe("UserToolSource validator — mirror of test_user_tool_source_validatio
     });
     expect(result.valid).toBe(true);
   });
+
+  it("security checks are opt-in", () => {
+    const unsafe = doc({
+      shell_command: "printf '%s' '$(inputs.label)' > out.txt",
+      inputs: [{ type: "text", name: "label" }],
+    });
+    expect(validateUserToolSource(unsafe).valid).toBe(true);
+    const result = validateUserToolSource(unsafe, { security: true });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual({
+      path: "/shell_command",
+      keyword: "dynamic_tool.unsafe_text_interpolation",
+      message:
+        "free-text input 'inputs.label' is substituted as executable text; serialize it into a config file with JSON.stringify and read it as data",
+      params: { input: "label" },
+    });
+  });
+
+  it("security accepts serialized text in a data config", () => {
+    const result = validateUserToolSource(
+      doc({
+        shell_command: "python script.py params.json > out.txt",
+        inputs: [{ type: "text", name: "label" }],
+        configfiles: [
+          {
+            name: "params",
+            filename: "params.json",
+            content: '{"label": $(JSON.stringify(inputs.label))}',
+            eval_engine: "ecmascript",
+          },
+          {
+            name: "script",
+            filename: "script.py",
+            content: "import json\nprint(json.load(open('params.json'))['label'])",
+            eval_engine: "ecmascript",
+          },
+        ],
+      }),
+      { security: true },
+    );
+    expect(result.valid, flatten(result.errors)).toBe(true);
+  });
+
+  it("security rejects direct text in an executable config", () => {
+    const result = validateUserToolSource(
+      doc({
+        shell_command: "python script.py > out.txt",
+        inputs: [{ type: "text", name: "label" }],
+        configfiles: [
+          {
+            name: "script",
+            filename: "script.py",
+            content: "print('$(inputs.label)')",
+            eval_engine: "ecmascript",
+          },
+        ],
+      }),
+      { security: true },
+    );
+    expect(result.errors[0]?.path).toBe("/configfiles/0/content");
+    expect(result.errors[0]?.keyword).toBe("dynamic_tool.unsafe_text_interpolation");
+  });
+
+  it("security ignores typed values and non-executable configs", () => {
+    const result = validateUserToolSource(
+      doc({
+        shell_command: "head -n $(inputs.count) params.txt > out.txt",
+        inputs: [
+          { type: "integer", name: "count" },
+          { type: "text", name: "label" },
+        ],
+        configfiles: [
+          {
+            name: "params",
+            filename: "params.txt",
+            content: "$(inputs.label)",
+            eval_engine: "ecmascript",
+          },
+        ],
+      }),
+      { security: true },
+    );
+    expect(result.valid, flatten(result.errors)).toBe(true);
+  });
 });

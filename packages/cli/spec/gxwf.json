@@ -697,6 +697,10 @@
         {
           "flags": "--schema-only",
           "description": "Skip semantic (model_validator) checks; structural JSON-Schema validation only"
+        },
+        {
+          "flags": "--security",
+          "description": "Check executable surfaces for direct free-text interpolation"
         }
       ]
     },
@@ -718,6 +722,10 @@
         {
           "flags": "--schema-only",
           "description": "Skip semantic (model_validator) checks; structural JSON-Schema validation only"
+        },
+        {
+          "flags": "--security",
+          "description": "Check executable surfaces for direct free-text interpolation"
         }
       ]
     },

@@ -14,7 +14,9 @@ import type { UserToolSourceDiagnostic } from "./validate.js";
 
 const TEMPLATE_BLOCK_RE = /\$\(([\s\S]*?)\)/g;
 const INPUTS_REF_RE = /\binputs\.([A-Za-z_][A-Za-z0-9_]*)/g;
+const DIRECT_INPUT_EXPR_RE = /^\s*inputs\.([A-Za-z_][A-Za-z0-9_]*)\s*$/;
 const DOI_RE = /^10\.\d{4,9}\/.+$/;
+const SCRIPT_SUFFIXES = [".bash", ".cjs", ".js", ".mjs", ".pl", ".py", ".r", ".rb", ".sh"];
 
 function commandInputRefs(text: unknown): Set<string> {
   const refs = new Set<string>();
@@ -33,6 +35,16 @@ function topLevelInputName(input: unknown): string | undefined {
     if (typeof name === "string") return name;
   }
   return undefined;
+}
+
+function directInputRefs(text: unknown): Set<string> {
+  const refs = new Set<string>();
+  if (typeof text !== "string") return refs;
+  for (const block of text.matchAll(TEMPLATE_BLOCK_RE)) {
+    const match = DIRECT_INPUT_EXPR_RE.exec(block[1]);
+    if (match) refs.add(match[1]);
+  }
+  return refs;
 }
 
 function isBlank(v: unknown): boolean {
@@ -165,6 +177,42 @@ function checkCitations(doc: Record<string, unknown>): UserToolSourceDiagnostic[
           "semantic",
         ),
       );
+    }
+  });
+  return errors;
+}
+
+export function runSecurityChecks(doc: Record<string, unknown>): UserToolSourceDiagnostic[] {
+  const inputs = Array.isArray(doc.inputs) ? doc.inputs : [];
+  const textInputs = new Set<string>();
+  for (const input of inputs) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) continue;
+    const record = input as Record<string, unknown>;
+    if (record.type === "text" && typeof record.name === "string") textInputs.add(record.name);
+  }
+
+  const errors: UserToolSourceDiagnostic[] = [];
+  const check = (value: unknown, path: string): void => {
+    for (const name of directInputRefs(value)) {
+      if (!textInputs.has(name)) continue;
+      errors.push({
+        path,
+        keyword: "dynamic_tool.unsafe_text_interpolation",
+        message: `free-text input 'inputs.${name}' is substituted as executable text; serialize it into a config file with JSON.stringify and read it as data`,
+        params: { input: name },
+      });
+    }
+  };
+
+  check(doc.shell_command, "/shell_command");
+  const configfiles = Array.isArray(doc.configfiles) ? doc.configfiles : [];
+  configfiles.forEach((configfile, index) => {
+    if (!configfile || typeof configfile !== "object" || Array.isArray(configfile)) return;
+    const record = configfile as Record<string, unknown>;
+    if (typeof record.filename !== "string") return;
+    const filename = record.filename.toLowerCase();
+    if (SCRIPT_SUFFIXES.some((suffix) => filename.endsWith(suffix))) {
+      check(record.content, `/configfiles/${index}/content`);
     }
   });
   return errors;

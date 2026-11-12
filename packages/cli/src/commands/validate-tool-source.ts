@@ -14,6 +14,7 @@ import { validateUserToolSource, type UserToolSourceDiagnostic } from "@galaxy-t
 export interface ValidateToolSourceOptions {
   json?: boolean;
   schemaOnly?: boolean;
+  security?: boolean;
 }
 
 export interface ValidateToolSourceReport {
@@ -48,7 +49,10 @@ export async function runValidateToolSource(
     return;
   }
 
-  const { valid, errors } = validateUserToolSource(parsed, { schemaOnly: opts.schemaOnly });
+  const { valid, errors } = validateUserToolSource(parsed, {
+    schemaOnly: opts.schemaOnly,
+    security: opts.security,
+  });
 
   if (opts.json) {
     const report: ValidateToolSourceReport = { file: filePath, valid, errors };
