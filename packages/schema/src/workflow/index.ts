@@ -268,7 +268,12 @@ export {
   type EmitOptions,
 } from "./lint.js";
 
-export { NativeStepKeyNotInteger, StepLabelNotUnique } from "./lint-rules.js";
+export {
+  FrameIsEmpty,
+  FrameReferenceNotFound,
+  NativeStepKeyNotInteger,
+  StepLabelNotUnique,
+} from "./lint-rules.js";
 
 export {
   parseLintProfiles,

@@ -138,6 +138,23 @@ describe("gxwf convert", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("reports a conversion error without a stack trace", async () => {
+    const wfPath = join(ctx.tmpDir, "bad-frame.gxwf.yml");
+    const badFrame = {
+      ...format2Workflow,
+      comments: [{ type: "frame", title: "Typo", contains_steps: ["step2"] }],
+    };
+    await writeFile(wfPath, YAML.stringify(badFrame));
+    await runConvert(wfPath, { to: "native" });
+
+    const errors = ctx.errSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(errors).toBe(
+      "Conversion failed: Frame 'Typo' references unknown step or input label 'step2' in contains_steps",
+    );
+    expect(ctx.stdoutSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
   it("writes to --output file", async () => {
     const wfPath = join(ctx.tmpDir, "out.ga");
     const outPath = join(ctx.tmpDir, "converted.gxwf.yml");

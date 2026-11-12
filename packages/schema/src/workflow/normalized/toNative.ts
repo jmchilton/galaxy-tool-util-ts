@@ -12,8 +12,8 @@ import type {
   NormalizedFormat2StepOutput,
 } from "./format2.js";
 import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
-import { unflattenCommentData } from "./comments.js";
-import { isUnlabeled, resolveSourceReference } from "./labels.js";
+import { format2CommentList, unflattenCommentData, unresolvedFrameReferences } from "./comments.js";
+import { format2StepLabelIndices, isUnlabeled, resolveSourceReference } from "./labels.js";
 import { INPUT_TYPES, inputParameterSchema, inputTypesDeclaring } from "../input-parameter.js";
 import {
   WorkflowCollectionParameterSchema,
@@ -133,15 +133,7 @@ export function toNative(raw: unknown, options?: ToNativeOptions): NormalizedNat
 }
 
 function _registerLabels(wf: NormalizedFormat2Workflow, ctx: ConversionContext): void {
-  for (let i = 0; i < wf.inputs.length; i++) {
-    const inp = wf.inputs[i];
-    if (inp.id) ctx.labels.set(inp.id, i);
-  }
-  for (let j = 0; j < wf.steps.length; j++) {
-    const idx = wf.inputs.length + j;
-    const label = wf.steps[j].label ?? wf.steps[j].id;
-    if (label) ctx.labels.set(label, idx);
-  }
+  for (const [label, idx] of format2StepLabelIndices(wf)) ctx.labels.set(label, idx);
 }
 
 // --- Workflow building ---
@@ -686,22 +678,10 @@ function _buildNativeComments(
   wf: NormalizedFormat2Workflow,
   ctx: ConversionContext,
 ): Record<string, unknown>[] | undefined {
-  const rawCommentsValue = (wf as Record<string, unknown>).comments;
-  if (!rawCommentsValue) return undefined;
-
-  // Normalize dict-style comments to array
-  let rawComments: Record<string, unknown>[];
-  if (Array.isArray(rawCommentsValue)) {
-    if (rawCommentsValue.length === 0) return undefined;
-    rawComments = rawCommentsValue as Record<string, unknown>[];
-  } else if (typeof rawCommentsValue === "object") {
-    rawComments = Object.entries(rawCommentsValue as Record<string, unknown>).map(
-      ([label, comment]) => ({ ...(comment as Record<string, unknown>), label }),
-    );
-    if (rawComments.length === 0) return undefined;
-  } else {
-    return undefined;
-  }
+  const rawComments = format2CommentList(wf);
+  if (rawComments.length === 0) return undefined;
+  const unresolved = unresolvedFrameReferences(wf);
+  if (unresolved.length > 0) throw new Error(unresolved[0].message);
 
   const commentLabelMap = new Map<string, number>();
   for (let i = 0; i < rawComments.length; i++) {
@@ -725,13 +705,12 @@ function _buildNativeComments(
     if (nativeComment.child_comments && Array.isArray(nativeComment.child_comments)) {
       nativeComment.child_comments = (nativeComment.child_comments as (string | number)[]).map(
         (ref) => {
-          if (typeof ref === "string") {
-            if (!commentLabelMap.has(ref)) {
-              throw new Error(`contains_comments references unknown comment label '${ref}'`);
-            }
-            return commentLabelMap.get(ref)!;
+          if (typeof ref !== "string") return ref;
+          const idx = commentLabelMap.get(ref);
+          if (idx === undefined) {
+            throw new Error(`contains_comments references unknown comment label '${ref}'`);
           }
-          return ref;
+          return idx;
         },
       );
     }

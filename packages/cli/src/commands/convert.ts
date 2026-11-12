@@ -12,6 +12,7 @@ import {
   type StepConversionStatus,
   type WorkflowFormat,
 } from "@galaxy-tool-util/schema";
+import type { ToolCache } from "@galaxy-tool-util/core";
 import { dirname } from "node:path";
 import { loadToolInputsForWorkflow, resolveConversionCache } from "./stateful-tool-inputs.js";
 import { createDefaultResolver } from "./url-resolver.js";
@@ -71,10 +72,49 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
     return;
   }
 
+  const cache = await resolveConversionCache(opts);
+  let converted: ConversionResult;
+  try {
+    converted = await convertWorkflow(data, filePath, sourceFormat, targetFormat, cache, opts);
+  } catch (error) {
+    console.error(`Conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+    return;
+  }
+  const { result, stepStatuses } = converted;
+
+  const output = serializeWorkflow(result, targetFormat, { json: opts.json, yaml: opts.yaml });
+  await writeWorkflowOutput(output, opts.output, "Converted workflow");
+
+  if (stepStatuses !== null) {
+    reportStepStatuses(stepStatuses);
+    // --strict-state: require all steps to convert successfully
+    if (strict.strictState) {
+      const hasFailures = stepStatuses.some((s) => !s.converted);
+      if (hasFailures) {
+        console.error("Strict state: all steps must convert successfully");
+        process.exitCode = 2;
+        return;
+      }
+    }
+  }
+}
+
+interface ConversionResult {
+  result: Record<string, unknown>;
+  stepStatuses: StepConversionStatus[] | null;
+}
+
+async function convertWorkflow(
+  data: Record<string, unknown>,
+  filePath: string,
+  sourceFormat: WorkflowFormat,
+  targetFormat: WorkflowFormat,
+  cache: ToolCache | null,
+  opts: ConvertOptions,
+): Promise<ConversionResult> {
   let result: Record<string, unknown>;
   let stepStatuses: StepConversionStatus[] | null = null;
-
-  const cache = await resolveConversionCache(opts);
 
   if (cache) {
     const expansionOpts: ExpansionOptions = {
@@ -111,22 +151,7 @@ export async function runConvert(filePath: string, opts: ConvertOptions): Promis
   } else {
     result = toNative(data) as unknown as Record<string, unknown>;
   }
-
-  const output = serializeWorkflow(result, targetFormat, { json: opts.json, yaml: opts.yaml });
-  await writeWorkflowOutput(output, opts.output, "Converted workflow");
-
-  if (stepStatuses !== null) {
-    reportStepStatuses(stepStatuses);
-    // --strict-state: require all steps to convert successfully
-    if (strict.strictState) {
-      const hasFailures = stepStatuses.some((s) => !s.converted);
-      if (hasFailures) {
-        console.error("Strict state: all steps must convert successfully");
-        process.exitCode = 2;
-        return;
-      }
-    }
-  }
+  return { result, stepStatuses };
 }
 
 function reportStepStatuses(statuses: StepConversionStatus[]): void {
