@@ -13,7 +13,11 @@ import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./normalize
 import { detectFormat } from "./detect-format.js";
 import { LintContext, type LintResult } from "./linting.js";
 import { format2InputStepType, nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
-import { resolveSourceReference } from "./normalized/labels.js";
+import {
+  format2StepLabelIndices,
+  resolveSourceReference,
+  unresolvedFormat2Sources,
+} from "./normalized/labels.js";
 import { nativeInputToFormat2Type } from "./normalized/toFormat2.js";
 import {
   format2CommentList,
@@ -196,32 +200,24 @@ function lintNativeWorkflow(
 // Format2 workflow linting
 // ---------------------------------------------------------------------------
 
-function validateOutputSources(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
-  if (!nf2.outputs || nf2.outputs.length === 0) return;
-
-  // Collect known labels: step labels/ids + input ids
-  const knownLabels = new Set<string>();
-  for (const inp of nf2.inputs) {
-    if (inp.id) knownLabels.add(inp.id);
-    if (inp.label) knownLabels.add(inp.label);
-  }
-  for (const step of nf2.steps) {
-    if (step.id) knownLabels.add(step.id);
-    if (step.label) knownLabels.add(step.label);
-  }
-
-  for (const output of nf2.outputs) {
-    const outputSource = output.outputSource;
-    if (!outputSource || typeof outputSource !== "string") continue;
-
-    // outputSource is "step_label/output_name" — extract step ref
-    const slashIdx = outputSource.indexOf("/");
-    const stepRef = slashIdx >= 0 ? outputSource.slice(0, slashIdx) : outputSource;
-    if (!knownLabels.has(stepRef)) {
-      const outputId = output.id || "?";
+/**
+ * Check every step input source and workflow `outputSource` the way Format2 →
+ * native conversion resolves them (`unresolvedFormat2Sources`), so a source
+ * conversion cannot resolve is an error here rather than a failed conversion.
+ * Subworkflows are linted by the caller's own recursion.
+ */
+function validateSources(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
+  for (const u of unresolvedFormat2Sources(nf2)) {
+    if (u.step !== null) {
+      ctx.error(`Step '${u.step}' input '${u.input}': ${u.message}`);
+    } else if (u.hint.stepLabel != null || u.hint.inputId != null) {
+      ctx.error(`Output '${u.input}': ${u.message}`);
+    } else {
+      // Kept word for word: gxformat2's lint reports an unknown outputSource this way.
+      const [stepRef] = resolveSourceReference(u.source, format2StepLabelIndices(nf2));
       ctx.error(
-        `Output '${outputId}' references step '${stepRef}' via outputSource ` +
-          `'${outputSource}', but no step or input with that label exists`,
+        `Output '${u.input}' references step '${stepRef}' via outputSource ` +
+          `'${u.source}', but no step or input with that label exists`,
       );
     }
   }
@@ -397,7 +393,7 @@ function lintFormat2Workflow(
     }
   }
 
-  validateOutputSources(ctx, nf2);
+  validateSources(ctx, nf2);
   validateFrameReferences(ctx, nf2);
   validateInputTypes(ctx, nf2);
   validateReport(ctx, nf2.report);

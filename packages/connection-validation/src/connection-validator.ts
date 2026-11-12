@@ -129,12 +129,43 @@ export function validateConnectionGraph(
     stepResults.push(stepResult);
   }
 
+  _attachUnresolvedSources(stepResults, graph);
+
   const result: WorkflowConnectionResult = {
     stepResults,
     valid: _isValid(stepResults),
     summary: _summary(stepResults),
   };
   return [result, resolvedOutputTypes];
+}
+
+/**
+ * Report each source conversion could not resolve as an error on the step
+ * holding it (for a subworkflow, on the subworkflow step), so the workflow is
+ * invalid even though the missing edge was left out of the graph.
+ */
+function _attachUnresolvedSources(stepResults: StepConnectionResult[], graph: WorkflowGraph): void {
+  for (const u of graph.unresolvedSources ?? []) {
+    const holder = u.path[0] ?? u.step;
+    const where =
+      u.path.length > 0 ? `In subworkflow '${u.path.join("/")}', step '${u.step}': ` : "";
+    const message = `${where}input '${u.input}': ${u.message}`;
+    const sr = stepResults.find((r) => r.label === holder);
+    if (sr) {
+      sr.errors.push(message);
+    } else {
+      stepResults.push({
+        stepId: holder ?? "?",
+        label: holder,
+        toolId: null,
+        toolVersion: null,
+        stepType: "unknown",
+        mapOver: null,
+        connections: [],
+        errors: [message],
+      });
+    }
+  }
 }
 
 /** A skipped edge leaves map-over unknown, so every output could be any collection. */

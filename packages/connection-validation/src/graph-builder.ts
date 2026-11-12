@@ -6,7 +6,8 @@
  */
 
 import { normalizedNative } from "@galaxy-tool-util/schema";
-import { toNative } from "@galaxy-tool-util/schema";
+import { normalizedFormat2, toNative, unresolvedFormat2Sources } from "@galaxy-tool-util/schema";
+import type { UnresolvedSource } from "@galaxy-tool-util/schema";
 import type { NormalizedNativeStep, NormalizedNativeWorkflow } from "@galaxy-tool-util/schema";
 import type { ConditionalParameterModel, ToolParameterModel } from "@galaxy-tool-util/schema";
 import { RuleSet, type RuleSetDict } from "@galaxy-tool-util/workflow-graph";
@@ -44,7 +45,17 @@ export function buildWorkflowGraph(workflow: unknown, getToolInfo: GetToolInfo):
   // Wrap once at the top so per-step parse results are memoized across the
   // whole walk (including subworkflow recursion). Idempotent — if the caller
   // already wrapped, we re-use their cache.
-  return _buildFromNormalized(native, ensureInlineResolver(getToolInfo));
+  const graph = _buildFromNormalized(native, ensureInlineResolver(getToolInfo));
+  const unresolved = _unresolvedStepSources(workflow as Record<string, unknown>);
+  return unresolved.length > 0 ? { ...graph, unresolvedSources: unresolved } : graph;
+}
+
+/** Format2 step input sources conversion left out (workflow outputs are not connections). */
+function _unresolvedStepSources(obj: Record<string, unknown>): UnresolvedSource[] {
+  if (obj.class !== "GalaxyWorkflow") return [];
+  return unresolvedFormat2Sources(normalizedFormat2(obj), { recurse: true }).filter(
+    (u) => u.step !== null,
+  );
 }
 
 function _coerceNormalizedNative(workflow: unknown): NormalizedNativeWorkflow {
@@ -53,7 +64,7 @@ function _coerceNormalizedNative(workflow: unknown): NormalizedNativeWorkflow {
   }
   const obj = workflow as Record<string, unknown>;
   if (obj.class === "GalaxyWorkflow") {
-    return toNative(obj);
+    return toNative(obj, { unresolvedSources: "drop" });
   }
   // Already native-shaped (raw .ga or already normalized).
   return normalizedNative(obj);
