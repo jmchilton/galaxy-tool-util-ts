@@ -1,4 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import * as YAML from "yaml";
 
 import { lintFormat2, toNative, UnresolvedSourceError } from "../src/workflow/index.js";
 
@@ -20,6 +24,11 @@ function labelShadowsId(source = "first/out_file1"): Record<string, unknown> {
     },
   };
 }
+
+const FORMAT2_FIXTURES = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "fixtures/workflows/format2",
+);
 
 function lintErrors(wf: Record<string, unknown>): string[] {
   return lintFormat2(wf).errors.map((e) => e.message);
@@ -107,6 +116,14 @@ describe("lintFormat2 source references", () => {
         "'First concatenation', and sources resolve by label. Reference it as " +
         "'First concatenation/out_file1', or set its label to 'first'",
     ]);
+  });
+
+  it("accepts an outputSource through a step label containing '/'", () => {
+    const text = readFileSync(
+      join(FORMAT2_FIXTURES, "synthetic-slash-in-step-label.gxwf.yml"),
+      "utf-8",
+    );
+    expect(lintErrors(YAML.parse(text))).toEqual([]);
   });
 
   it("accepts sources by label, by numeric id and the runtime placeholder", () => {
