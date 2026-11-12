@@ -127,9 +127,9 @@ export function frameDescription(frame: Record<string, unknown>, commentIndex: n
 }
 
 /**
- * Frame string entries matching no step/input label (or comment label) at this level.
+ * Frame entries matching no label, or indexing past the steps/inputs (or comments) at this level.
  *
- * Integer entries and all-digit `contains_steps` strings are indices and pass through.
+ * Labels win; `contains_steps` indices (ints, digit strings) are native step ids: inputs first.
  */
 export function unresolvedFrameReferences(
   wf: NormalizedFormat2Workflow,
@@ -139,31 +139,44 @@ export function unresolvedFrameReferences(
   const commentLabels = new Set(
     comments.map((c) => c.label).filter((l) => typeof l === "string" && l),
   );
+  const checks = [
+    [
+      "contains_steps",
+      "step or input",
+      "step",
+      stepLabels,
+      wf.inputs.length + wf.steps.length,
+      true,
+    ],
+    ["contains_comments", "comment", "comment", commentLabels, comments.length, false],
+  ] as const;
 
   const unresolved: UnresolvedFrameReference[] = [];
   comments.forEach((comment, commentIndex) => {
     if (comment.type !== "frame") return;
     const frame = frameDescription(comment, commentIndex);
-    entries(comment.contains_steps).forEach((ref, entryIndex) => {
-      if (typeof ref === "string" && !stepLabels.has(ref) && !/^\d+$/.test(ref)) {
-        unresolved.push({
-          commentIndex,
-          field: "contains_steps",
-          entryIndex,
-          message: `${frame} references unknown step or input label '${ref}' in contains_steps`,
-        });
-      }
-    });
-    entries(comment.contains_comments).forEach((ref, entryIndex) => {
-      if (typeof ref === "string" && !commentLabels.has(ref)) {
-        unresolved.push({
-          commentIndex,
-          field: "contains_comments",
-          entryIndex,
-          message: `${frame} references unknown comment label '${ref}' in contains_comments`,
-        });
-      }
-    });
+    for (const [field, kind, indexKind, labels, count, digitsIndex] of checks) {
+      entries(comment[field]).forEach((ref, entryIndex) => {
+        let problem: string | null = null;
+        if (typeof ref === "string" && !labels.has(ref)) {
+          if (!(digitsIndex && /^[0-9]+$/.test(ref))) {
+            problem = `unknown ${kind} label '${ref}'`;
+          } else if (Number(ref) >= count) {
+            problem = `out-of-range ${indexKind} index '${ref}'`;
+          }
+        } else if (typeof ref === "number" && !(ref >= 0 && ref < count)) {
+          problem = `out-of-range ${indexKind} index '${ref}'`;
+        }
+        if (problem) {
+          unresolved.push({
+            commentIndex,
+            field,
+            entryIndex,
+            message: `${frame} references ${problem} in ${field}`,
+          });
+        }
+      });
+    }
   });
   return unresolved;
 }

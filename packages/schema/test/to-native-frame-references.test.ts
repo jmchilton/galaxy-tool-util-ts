@@ -17,6 +17,17 @@ describe("toNative frame references", () => {
     );
   });
 
+  it("names the frame and index for an out-of-range contains_steps entry", () => {
+    expect(() => toNative(loadFixture("synthetic-frame-index-out-of-range.gxwf.yml"))).toThrow(
+      /^Frame 'Range' references out-of-range step index '2' in contains_steps$/,
+    );
+  });
+
+  it("resolves an all-digit step label as a label even past the index range", () => {
+    const native = toNative(loadFixture("synthetic-frame-digit-label.gxwf.yml"));
+    expect((native.comments as Record<string, unknown>[])[0].child_steps).toEqual([1, 0]);
+  });
+
   it("checks frames inside a subworkflow against that subworkflow's labels", () => {
     const wf = loadFixture("synthetic-frame-unknown-step.gxwf.yml");
     const parent = {
