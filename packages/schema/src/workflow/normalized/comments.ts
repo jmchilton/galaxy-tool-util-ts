@@ -5,7 +5,7 @@
  */
 
 import type { NormalizedFormat2Workflow } from "./format2.js";
-import { format2StepLabelIndices } from "./labels.js";
+import { format2StepLabelIndices, format2StepReferenceIndex } from "./labels.js";
 
 // Mapping from native comment data.* field names to Format2 top-level field names.
 const COMMENT_DATA_FIELDS: Record<string, Record<string, string>> = {
@@ -145,7 +145,7 @@ export function unresolvedFrameReferences(
     if (comment.type !== "frame") return;
     const frame = frameDescription(comment, commentIndex);
     entries(comment.contains_steps).forEach((ref, entryIndex) => {
-      if (typeof ref === "string" && !stepLabels.has(ref) && !/^\d+$/.test(ref)) {
+      if (typeof ref === "string" && format2StepReferenceIndex(ref, stepLabels) === undefined) {
         unresolved.push({
           commentIndex,
           field: "contains_steps",

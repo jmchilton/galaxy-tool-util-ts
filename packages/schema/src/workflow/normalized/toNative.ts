@@ -16,6 +16,7 @@ import { format2CommentList, unflattenCommentData, unresolvedFrameReferences } f
 import {
   format2ShadowedStepIds,
   format2StepLabelIndices,
+  format2StepReferenceIndex,
   isUnlabeled,
   resolveSourceReference,
   UnresolvedSourceError,
@@ -53,8 +54,8 @@ class ConversionContext {
 
   stepId(labelOrId: string | number, source?: string): number {
     const key = String(labelOrId);
-    if (this.labels.has(key)) return this.labels.get(key)!;
-    if (/^\d+$/.test(key)) return parseInt(key, 10);
+    const index = format2StepReferenceIndex(key, this.labels);
+    if (index !== undefined) return index;
     throw new UnresolvedSourceError(source ?? key, key, this.shadowedIds.get(key) ?? null);
   }
 

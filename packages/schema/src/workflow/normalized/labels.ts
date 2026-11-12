@@ -180,3 +180,13 @@ export function format2StepLabelIndices(wf: NormalizedFormat2Workflow): Map<stri
   });
   return labels;
 }
+
+/** Order index a step reference resolves to: a known label, else an all-digit index. */
+export function format2StepReferenceIndex(
+  ref: string,
+  labels: ReadonlyMap<string, number>,
+): number | undefined {
+  const index = labels.get(ref);
+  if (index !== undefined) return index;
+  return /^\d+$/.test(ref) ? parseInt(ref, 10) : undefined;
+}

@@ -16,6 +16,7 @@ import { format2InputStepType, nativeInputLabel, nativeStepLabel } from "./norma
 import {
   format2ShadowedStepIds,
   format2StepLabelIndices,
+  format2StepReferenceIndex,
   resolveSourceReference,
   unresolvedSourceMessage,
 } from "./normalized/labels.js";
@@ -213,7 +214,7 @@ function validateSources(ctx: LintContext, nf2: NormalizedFormat2Workflow): void
   const shadowed = format2ShadowedStepIds(nf2);
   const unresolvedRef = (source: string): string | null => {
     const [ref] = resolveSourceReference(source, known);
-    return known.has(ref) || /^\d+$/.test(ref) ? null : ref;
+    return format2StepReferenceIndex(ref, known) === undefined ? ref : null;
   };
 
   for (const step of nf2.steps) {
