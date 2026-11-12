@@ -67,6 +67,18 @@ describe("toNative source references", () => {
     });
   });
 
+  it("resolves an input labelled like the runtime placeholder", () => {
+    const native = toNative({
+      class: "GalaxyWorkflow",
+      inputs: { runtime_value: "data" },
+      outputs: {},
+      steps: { s: { tool_id: "cat1", in: { input1: "runtime_value" } } },
+    });
+    expect(native.steps["1"]?.input_connections).toEqual({
+      input1: [{ id: 0, output_name: "output" }],
+    });
+  });
+
   it("checks sources inside a subworkflow against that subworkflow's labels", () => {
     const parent = {
       class: "GalaxyWorkflow",

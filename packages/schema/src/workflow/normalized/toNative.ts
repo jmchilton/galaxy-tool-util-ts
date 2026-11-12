@@ -61,7 +61,7 @@ class ConversionContext {
   stepOutput(value: string): [number, string] {
     // shortcut: the runtime placeholder keeps its old NaN (`null`) step id; it has
     // no native connection, and stateful conversion owns how it should round-trip.
-    if (value === RUNTIME_VALUE_SOURCE) return [NaN, "output"];
+    if (value === RUNTIME_VALUE_SOURCE && !this.labels.has(value)) return [NaN, "output"];
     const [labelOrId, outputName] = resolveSourceReference(value, this.labels);
     return [this.stepId(labelOrId, value), outputName];
   }
