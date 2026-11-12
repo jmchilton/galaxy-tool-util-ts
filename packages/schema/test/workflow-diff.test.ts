@@ -258,4 +258,22 @@ describe("diffWorkflows input handling", () => {
     const after = diffFixture("synthetic-diff-inline-subworkflow-removed-step.gxwf.yml");
     expect(() => diffWorkflows(before, after)).toThrow(/nested\/first/);
   });
+
+  it("rejects a nested key colliding with an unchanged slash-keyed step", () => {
+    type Steps = { steps: Record<string, unknown> };
+    const before = diffFixture("synthetic-diff-inline-subworkflow.gxwf.yml") as Steps;
+    const after = diffFixture("synthetic-diff-inline-subworkflow-removed-step.gxwf.yml") as Steps;
+    for (const workflow of [before, after]) {
+      workflow.steps["nested/first"] = { tool_id: "cat1", in: { input1: "reads" } };
+    }
+    expect(() => diffWorkflows(before, after)).toThrow(/nested\/first/);
+  });
+
+  it("rejects a nested input colliding with a slash-keyed input", () => {
+    const before = diffFixture("synthetic-diff-inline-subworkflow.gxwf.yml") as {
+      inputs: Record<string, unknown>;
+    };
+    before.inputs["nested/inner_reads"] = "data";
+    expect(() => diffWorkflows(before, before)).toThrow(/nested\/inner_reads/);
+  });
 });

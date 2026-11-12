@@ -642,13 +642,28 @@ function uniqueIds(side: Side): Map<string, string> {
   );
 }
 
-function merge<T>(target: Record<string, T>, entries: Iterable<readonly [string, T]>): void {
-  for (const [key, value] of entries) {
-    if (Object.hasOwn(target, key)) {
+/** Record one level's step keys and input and output ids; throw on one another level already holds. */
+function claimKeys(taken: Map<string, Set<string>>, bSide: Side, aSide: Side): void {
+  for (const [kind, maps] of [
+    ["step", [bSide.steps, aSide.steps]],
+    ["input", [bSide.inputs, aSide.inputs]],
+    ["output", [bSide.outputs, aSide.outputs]],
+  ] as const) {
+    const keys = new Set<string>(maps.flatMap((map) => [...map.keys()]));
+    const seen = taken.get(kind) ?? new Set<string>();
+    const clash = [...keys].filter((key) => seen.has(key)).sort();
+    if (clash.length > 0) {
       throw new Error(
-        `diff key ${JSON.stringify(key)} names both a step and a step in an inline subworkflow`,
+        `diff key ${JSON.stringify(clash[0])} names both a ${kind} and a ${kind} in an inline subworkflow`,
       );
     }
+    taken.set(kind, new Set([...seen, ...keys]));
+  }
+}
+
+/** Add entries to `target` as own properties, so a key like `__proto__` stays data. */
+function merge<T>(target: Record<string, T>, entries: Iterable<readonly [string, T]>): void {
+  for (const [key, value] of entries) {
     Object.defineProperty(target, key, {
       value,
       enumerable: true,
@@ -659,8 +674,14 @@ function merge<T>(target: Record<string, T>, entries: Iterable<readonly [string,
 }
 
 /** Add one level's differences to `diff`, then recurse into inline subworkflows on both sides. */
-function diffLevel(diff: WorkflowDiff, before: Side, aSide: Side): void {
+function diffLevel(
+  diff: WorkflowDiff,
+  before: Side,
+  aSide: Side,
+  taken: Map<string, Set<string>>,
+): void {
   const bSide = renamed(before, idRenames(before, aSide));
+  claimKeys(taken, bSide, aSide);
 
   diff.inputs.added.push(...onlyIn(aSide.inputs.keys(), bSide.inputs));
   diff.inputs.removed.push(...onlyIn(bSide.inputs.keys(), aSide.inputs));
@@ -720,6 +741,7 @@ function diffLevel(diff: WorkflowDiff, before: Side, aSide: Side): void {
         diff,
         buildSide(bRun.raw, bRun.nf2, `${key}/`),
         buildSide(aRun.raw, aRun.nf2, `${key}/`),
+        taken,
       );
     }
   }
@@ -741,7 +763,7 @@ export function diffWorkflows(before: unknown, after: unknown): WorkflowDiff {
     warnings: [],
     has_changes: false,
   };
-  diffLevel(diff, bSide, aSide);
+  diffLevel(diff, bSide, aSide, new Map());
   const fed = new Set(aSide.edges.filter(isFromInput).map((edge) => edge.source.node));
   diff.unwired_inputs = onlyIn(aSide.inputs.keys(), fed);
   diff.has_changes = [diff.inputs, diff.outputs, diff.steps].some(
