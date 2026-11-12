@@ -13,8 +13,14 @@ import type { NormalizedNativeWorkflow, NormalizedNativeStep } from "./normalize
 import { detectFormat } from "./detect-format.js";
 import { LintContext, type LintResult } from "./linting.js";
 import { format2InputStepType, nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
-import { resolveSourceReference } from "./normalized/labels.js";
+import {
+  format2ShadowedStepIds,
+  format2StepLabelIndices,
+  resolveSourceReference,
+  unresolvedSourceMessage,
+} from "./normalized/labels.js";
 import { nativeInputToFormat2Type } from "./normalized/toFormat2.js";
+import { RUNTIME_VALUE_SOURCE } from "./runtime-markers.js";
 import {
   format2CommentList,
   frameDescription,
@@ -196,34 +202,48 @@ function lintNativeWorkflow(
 // Format2 workflow linting
 // ---------------------------------------------------------------------------
 
-function validateOutputSources(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
-  if (!nf2.outputs || nf2.outputs.length === 0) return;
+/**
+ * Check every step input source and workflow `outputSource` against the
+ * labels Format2 → native conversion resolves them by (inputs by `id`, steps
+ * by `label ?? id`), so a source conversion cannot resolve is an error here
+ * rather than a `null` step id in the converted workflow.
+ */
+function validateSources(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
+  const known = format2StepLabelIndices(nf2);
+  const shadowed = format2ShadowedStepIds(nf2);
+  const unresolvedRef = (source: string): string | null => {
+    const [ref] = resolveSourceReference(source, known);
+    return known.has(ref) || /^\d+$/.test(ref) ? null : ref;
+  };
 
-  // Collect known labels: step labels/ids + input ids
-  const knownLabels = new Set<string>();
-  for (const inp of nf2.inputs) {
-    if (inp.id) knownLabels.add(inp.id);
-    if (inp.label) knownLabels.add(inp.label);
-  }
   for (const step of nf2.steps) {
-    if (step.id) knownLabels.add(step.id);
-    if (step.label) knownLabels.add(step.label);
+    for (const stepInput of step.in) {
+      const sources = stepInput.source == null ? [] : [stepInput.source].flat();
+      for (const source of sources) {
+        if (typeof source !== "string" || source === RUNTIME_VALUE_SOURCE) continue;
+        const ref = unresolvedRef(source);
+        if (ref === null) continue;
+        ctx.error(
+          `Step '${step.label ?? step.id}' input '${stepInput.id}': ` +
+            unresolvedSourceMessage(source, ref, shadowed.get(ref)),
+        );
+      }
+    }
   }
 
-  for (const output of nf2.outputs) {
+  for (const output of nf2.outputs ?? []) {
     const outputSource = output.outputSource;
     if (!outputSource || typeof outputSource !== "string") continue;
-
-    // outputSource is "step_label/output_name" — extract step ref
-    const slashIdx = outputSource.indexOf("/");
-    const stepRef = slashIdx >= 0 ? outputSource.slice(0, slashIdx) : outputSource;
-    if (!knownLabels.has(stepRef)) {
-      const outputId = output.id || "?";
-      ctx.error(
-        `Output '${outputId}' references step '${stepRef}' via outputSource ` +
-          `'${outputSource}', but no step or input with that label exists`,
-      );
-    }
+    const stepRef = unresolvedRef(outputSource);
+    if (stepRef === null) continue;
+    const outputId = output.id || "?";
+    const labelOfId = shadowed.get(stepRef);
+    ctx.error(
+      labelOfId == null
+        ? `Output '${outputId}' references step '${stepRef}' via outputSource ` +
+            `'${outputSource}', but no step or input with that label exists`
+        : `Output '${outputId}': ${unresolvedSourceMessage(outputSource, stepRef, labelOfId)}`,
+    );
   }
 }
 
@@ -397,7 +417,7 @@ function lintFormat2Workflow(
     }
   }
 
-  validateOutputSources(ctx, nf2);
+  validateSources(ctx, nf2);
   validateFrameReferences(ctx, nf2);
   validateInputTypes(ctx, nf2);
   validateReport(ctx, nf2.report);

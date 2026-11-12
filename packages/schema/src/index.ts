@@ -290,6 +290,8 @@ export {
   /** Render identity of a step (`label || id`), shared by detectDraft overlay + visualizers. */
   stepRenderIdentity,
   rawStepRenderIdentity,
+  /** Thrown by Format2 → native conversion for a source naming no step or input. */
+  UnresolvedSourceError,
   type DropReason,
   type DroppedStep,
   type DroppedOutput,

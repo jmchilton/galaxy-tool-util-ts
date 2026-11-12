@@ -56,6 +56,9 @@ export {
 export { flattenCommentData, unflattenCommentData } from "./comments.js";
 export {
   resolveSourceReference,
+  UnresolvedSourceError,
+  unresolvedSourceMessage,
+  format2ShadowedStepIds,
   stepRenderIdentity,
   rawStepRenderIdentity,
   unlabeledNodeId,

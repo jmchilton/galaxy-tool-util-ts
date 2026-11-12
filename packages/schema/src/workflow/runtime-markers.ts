@@ -13,6 +13,12 @@
 export const CONNECTED_VALUE = { __class__: "ConnectedValue" } as const;
 export const RUNTIME_VALUE = { __class__: "RuntimeValue" } as const;
 
+/**
+ * The `in:` source stateful conversion writes for a required data input left
+ * to runtime. It names no step, so source resolution skips it.
+ */
+export const RUNTIME_VALUE_SOURCE = "runtime_value";
+
 export function isConnectedValue(value: unknown): boolean {
   return (
     value != null &&

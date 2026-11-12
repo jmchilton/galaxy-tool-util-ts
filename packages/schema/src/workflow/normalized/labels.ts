@@ -121,6 +121,53 @@ export function resolveSourceReference(
   return [value, "output"];
 }
 
+/**
+ * Steps whose `label` differs from their `id` (the dict key in map form),
+ * keyed by that id. Sources resolve by label, so a source naming one of these
+ * ids resolves to nothing; this is what tells an author which label to use.
+ */
+export function format2ShadowedStepIds(wf: NormalizedFormat2Workflow): Map<string, string> {
+  const shadowed = new Map<string, string>();
+  for (const step of wf.steps) {
+    if (step.label && step.id && step.label !== step.id) shadowed.set(step.id, step.label);
+  }
+  return shadowed;
+}
+
+/**
+ * Why `source` resolves to no step or input, given the step reference `ref`
+ * parsed from it and the label of a step whose id is `ref`, if there is one.
+ */
+export function unresolvedSourceMessage(
+  source: string,
+  ref: string,
+  labelOfId: string | null | undefined,
+): string {
+  if (labelOfId == null)
+    return `Cannot resolve '${source}': no step or input has the label '${ref}'`;
+  const suggestion = source.startsWith(ref) ? labelOfId + source.slice(ref.length) : labelOfId;
+  return (
+    `Cannot resolve '${source}': step '${ref}' has the label '${labelOfId}', and sources ` +
+    `resolve by label. Reference it as '${suggestion}', or set its label to '${ref}'`
+  );
+}
+
+/**
+ * Thrown by Format2 → native conversion for a source that names no step or
+ * input. gxformat2 (Python) fails on the same file with a bare `int()`
+ * ValueError; this names the source instead.
+ */
+export class UnresolvedSourceError extends Error {
+  constructor(
+    readonly source: string,
+    readonly ref: string,
+    readonly labelOfId: string | null,
+  ) {
+    super(unresolvedSourceMessage(source, ref, labelOfId));
+    this.name = "UnresolvedSourceError";
+  }
+}
+
 /** Order index of each input (by `id`) and step (by `label ?? id`) that conversion resolves references against. */
 export function format2StepLabelIndices(wf: NormalizedFormat2Workflow): Map<string, number> {
   const labels = new Map<string, number>();

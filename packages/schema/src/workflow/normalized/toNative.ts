@@ -13,8 +13,15 @@ import type {
 } from "./format2.js";
 import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
 import { format2CommentList, unflattenCommentData, unresolvedFrameReferences } from "./comments.js";
-import { format2StepLabelIndices, isUnlabeled, resolveSourceReference } from "./labels.js";
+import {
+  format2ShadowedStepIds,
+  format2StepLabelIndices,
+  isUnlabeled,
+  resolveSourceReference,
+  UnresolvedSourceError,
+} from "./labels.js";
 import { INPUT_TYPES, inputParameterSchema, inputTypesDeclaring } from "../input-parameter.js";
+import { RUNTIME_VALUE_SOURCE } from "../runtime-markers.js";
 import {
   WorkflowCollectionParameterSchema,
   WorkflowDataParameterSchema,
@@ -39,18 +46,24 @@ const STEP_TYPE_ALIASES: Record<string, string> = {
 
 class ConversionContext {
   labels = new Map<string, number>();
+  /** Step id → label, for steps whose label differs from their id. */
+  shadowedIds = new Map<string, string>();
 
   constructor(readonly options: ToNativeOptions = {}) {}
 
-  stepId(labelOrId: string | number): number {
+  stepId(labelOrId: string | number, source?: string): number {
     const key = String(labelOrId);
     if (this.labels.has(key)) return this.labels.get(key)!;
-    return parseInt(key, 10);
+    if (/^\d+$/.test(key)) return parseInt(key, 10);
+    throw new UnresolvedSourceError(source ?? key, key, this.shadowedIds.get(key) ?? null);
   }
 
   stepOutput(value: string): [number, string] {
+    // shortcut: the runtime placeholder keeps its old NaN (`null`) step id; it has
+    // no native connection, and stateful conversion owns how it should round-trip.
+    if (value === RUNTIME_VALUE_SOURCE) return [NaN, "output"];
     const [labelOrId, outputName] = resolveSourceReference(value, this.labels);
-    return [this.stepId(labelOrId), outputName];
+    return [this.stepId(labelOrId, value), outputName];
   }
 
   childContext(): ConversionContext {
@@ -134,6 +147,7 @@ export function toNative(raw: unknown, options?: ToNativeOptions): NormalizedNat
 
 function _registerLabels(wf: NormalizedFormat2Workflow, ctx: ConversionContext): void {
   for (const [label, idx] of format2StepLabelIndices(wf)) ctx.labels.set(label, idx);
+  ctx.shadowedIds = format2ShadowedStepIds(wf);
 }
 
 // --- Workflow building ---

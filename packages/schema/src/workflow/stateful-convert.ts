@@ -15,7 +15,7 @@ import type {
 import type { NormalizedNativeStep } from "./normalized/native.js";
 import { walkNativeState, walkFormat2State, SKIP_VALUE } from "./walker.js";
 import type { LeafCallback } from "./walker.js";
-import { isConnectedValue, isRuntimeValue } from "./runtime-markers.js";
+import { isConnectedValue, isRuntimeValue, RUNTIME_VALUE_SOURCE } from "./runtime-markers.js";
 import { parseBool, parseNumber, parseStringArray, parseNumberArray } from "./coercions.js";
 
 // --- Scalar coercions ---
@@ -134,7 +134,7 @@ export function convertStateToFormat2(
       if (isRuntimeValue(value)) {
         // Disconnected runtime: keep placeholder only when required; omit when optional.
         if (!isOptionalParam(toolInput)) {
-          inBlock[statePath] = "runtime_value";
+          inBlock[statePath] = RUNTIME_VALUE_SOURCE;
         }
         return SKIP_VALUE;
       }
@@ -167,7 +167,7 @@ export function convertStateToFormat2(
     // Disconnected runtime: keep placeholder only when required; omit when optional.
     if (isRuntimeValue(value)) {
       if (!isOptionalParam(toolInput)) {
-        inBlock[statePath] = "runtime_value";
+        inBlock[statePath] = RUNTIME_VALUE_SOURCE;
       }
       return SKIP_VALUE;
     }
