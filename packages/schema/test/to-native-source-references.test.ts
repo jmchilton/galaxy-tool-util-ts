@@ -101,11 +101,11 @@ describe("toNative source references", () => {
 
 describe("lintFormat2 source references", () => {
   it("reports a step source that names a labelled step by its id", () => {
-    expect(lintErrors(labelShadowsId())).toContain(
+    expect(lintErrors(labelShadowsId())).toEqual([
       "Step 'second' input 'input1': Cannot resolve 'first/out_file1': step 'first' has the " +
         "label 'First concatenation', and sources resolve by label. Reference it as " +
         "'First concatenation/out_file1', or set its label to 'first'",
-    );
+    ]);
   });
 
   it("reports a step source that names no step or input", () => {
