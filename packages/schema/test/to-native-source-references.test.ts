@@ -108,6 +108,12 @@ describe("lintFormat2 source references", () => {
     );
   });
 
+  it("reports a step source that names no step or input", () => {
+    expect(lintErrors(labelShadowsId("missing/out_file1"))).toEqual([
+      "Step 'second' input 'input1': Cannot resolve 'missing/out_file1': no step or input has the label 'missing'",
+    ]);
+  });
+
   it("reports an outputSource that names a labelled step by its id", () => {
     const wf = labelShadowsId("First concatenation/out_file1");
     wf.outputs = { out: { outputSource: "first/out_file1" } };
