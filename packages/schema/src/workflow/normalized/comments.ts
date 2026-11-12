@@ -139,46 +139,68 @@ export function unresolvedFrameReferences(
   const commentLabels = new Set(
     comments.map((c) => c.label).filter((l) => typeof l === "string" && l),
   );
-  const checks = [
-    [
-      "contains_steps",
-      "step or input",
-      "step",
-      stepLabels,
-      wf.inputs.length + wf.steps.length,
-      true,
-    ],
-    ["contains_comments", "comment", "comment", commentLabels, comments.length, false],
-  ] as const;
+  const checks: FrameRefCheck[] = [
+    {
+      field: "contains_steps",
+      labelKind: "step or input",
+      indexNoun: "step",
+      labels: stepLabels,
+      indexCount: wf.inputs.length + wf.steps.length,
+      digitStringsAreIndices: true,
+    },
+    {
+      field: "contains_comments",
+      labelKind: "comment",
+      indexNoun: "comment",
+      labels: commentLabels,
+      indexCount: comments.length,
+      digitStringsAreIndices: false,
+    },
+  ];
 
   const unresolved: UnresolvedFrameReference[] = [];
   comments.forEach((comment, commentIndex) => {
     if (comment.type !== "frame") return;
-    const frame = frameDescription(comment, commentIndex);
-    for (const [field, kind, indexKind, labels, count, digitsIndex] of checks) {
-      entries(comment[field]).forEach((ref, entryIndex) => {
-        let problem: string | null = null;
-        if (typeof ref === "string" && !labels.has(ref)) {
-          if (!(digitsIndex && /^[0-9]+$/.test(ref))) {
-            problem = `unknown ${kind} label '${ref}'`;
-          } else if (Number(ref) >= count) {
-            problem = `out-of-range ${indexKind} index '${ref}'`;
-          }
-        } else if (Number.isInteger(ref) && !((ref as number) >= 0 && (ref as number) < count)) {
-          problem = `out-of-range ${indexKind} index '${ref}'`;
-        }
+    for (const check of checks) {
+      entries(comment[check.field]).forEach((ref, entryIndex) => {
+        const problem = frameRefProblem(check, ref);
         if (problem) {
           unresolved.push({
             commentIndex,
-            field,
+            field: check.field,
             entryIndex,
-            message: `${frame} references ${problem} in ${field}`,
+            message: `${frameDescription(comment, commentIndex)} references ${problem} in ${check.field}`,
           });
         }
       });
     }
   });
   return unresolved;
+}
+
+/** How one frame membership field resolves its entries. */
+interface FrameRefCheck {
+  field: UnresolvedFrameReference["field"];
+  labelKind: string;
+  indexNoun: string;
+  labels: { has(label: string): boolean };
+  indexCount: number;
+  digitStringsAreIndices: boolean;
+}
+
+/** Describe why `ref` doesn't resolve, or `null`; labels win over indices. */
+function frameRefProblem(check: FrameRefCheck, ref: unknown): string | null {
+  if (typeof ref === "string") {
+    if (check.labels.has(ref)) return null;
+    if (!(check.digitStringsAreIndices && /^[0-9]+$/.test(ref))) {
+      return `unknown ${check.labelKind} label '${ref}'`;
+    }
+  } else if (!Number.isInteger(ref)) {
+    return null;
+  }
+  const index = Number(ref);
+  if (index >= 0 && index < check.indexCount) return null;
+  return `out-of-range ${check.indexNoun} index '${ref}'`;
 }
 
 function entries(value: unknown): unknown[] {
