@@ -14,13 +14,11 @@ import { detectFormat } from "./detect-format.js";
 import { LintContext, type LintResult } from "./linting.js";
 import { format2InputStepType, nativeInputLabel, nativeStepLabel } from "./normalized/toNative.js";
 import {
-  format2ShadowedStepIds,
   format2StepLabelIndices,
   resolveSourceReference,
-  unresolvedSourceMessage,
+  unresolvedFormat2Sources,
 } from "./normalized/labels.js";
 import { nativeInputToFormat2Type } from "./normalized/toFormat2.js";
-import { RUNTIME_VALUE_SOURCE } from "./runtime-markers.js";
 import {
   format2CommentList,
   frameDescription,
@@ -203,47 +201,25 @@ function lintNativeWorkflow(
 // ---------------------------------------------------------------------------
 
 /**
- * Check every step input source and workflow `outputSource` against the
- * labels Format2 → native conversion resolves them by (inputs by `id`, steps
- * by `label ?? id`), so a source conversion cannot resolve is an error here
- * rather than a `null` step id in the converted workflow.
+ * Check every step input source and workflow `outputSource` the way Format2 →
+ * native conversion resolves them (`unresolvedFormat2Sources`), so a source
+ * conversion cannot resolve is an error here rather than a failed conversion.
+ * Subworkflows are linted by the caller's own recursion.
  */
 function validateSources(ctx: LintContext, nf2: NormalizedFormat2Workflow): void {
-  const known = format2StepLabelIndices(nf2);
-  const shadowed = format2ShadowedStepIds(nf2);
-  const unresolvedRef = (source: string): string | null => {
-    const [ref] = resolveSourceReference(source, known);
-    return known.has(ref) || /^\d+$/.test(ref) ? null : ref;
-  };
-
-  for (const step of nf2.steps) {
-    for (const stepInput of step.in) {
-      const sources = stepInput.source == null ? [] : [stepInput.source].flat();
-      for (const source of sources) {
-        if (typeof source !== "string" || source === RUNTIME_VALUE_SOURCE) continue;
-        const ref = unresolvedRef(source);
-        if (ref === null) continue;
-        ctx.error(
-          `Step '${step.label ?? step.id}' input '${stepInput.id}': ` +
-            unresolvedSourceMessage(source, ref, shadowed.get(ref)),
-        );
-      }
+  for (const u of unresolvedFormat2Sources(nf2)) {
+    if (u.step !== null) {
+      ctx.error(`Step '${u.step}' input '${u.input}': ${u.message}`);
+    } else if (u.hint.stepLabel != null || u.hint.inputId != null) {
+      ctx.error(`Output '${u.input}': ${u.message}`);
+    } else {
+      // Kept word for word: gxformat2's lint reports an unknown outputSource this way.
+      const [stepRef] = resolveSourceReference(u.source, format2StepLabelIndices(nf2));
+      ctx.error(
+        `Output '${u.input}' references step '${stepRef}' via outputSource ` +
+          `'${u.source}', but no step or input with that label exists`,
+      );
     }
-  }
-
-  for (const output of nf2.outputs ?? []) {
-    const outputSource = output.outputSource;
-    if (!outputSource || typeof outputSource !== "string") continue;
-    const stepRef = unresolvedRef(outputSource);
-    if (stepRef === null) continue;
-    const outputId = output.id || "?";
-    const labelOfId = shadowed.get(stepRef);
-    ctx.error(
-      labelOfId == null
-        ? `Output '${outputId}' references step '${stepRef}' via outputSource ` +
-            `'${outputSource}', but no step or input with that label exists`
-        : `Output '${outputId}': ${unresolvedSourceMessage(outputSource, stepRef, labelOfId)}`,
-    );
   }
 }
 

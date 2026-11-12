@@ -1,3 +1,4 @@
+import type { UnresolvedSource } from "@galaxy-tool-util/schema";
 import type { CollectionTypeDescriptor } from "@galaxy-tool-util/workflow-graph";
 
 export interface ConnectionRef {
@@ -62,6 +63,12 @@ export interface ResolvedStep {
 export interface WorkflowGraph {
   steps: Record<string, ResolvedStep>;
   sortedStepIds: string[];
+  /**
+   * Format2 step input sources that name no step or input (their connections
+   * are left out of `steps`). Validation reports each as an error on the step
+   * holding it; visualizers can ignore them.
+   */
+  unresolvedSources?: UnresolvedSource[];
 }
 
 export type ConnectionStatus = "ok" | "invalid" | "skip";

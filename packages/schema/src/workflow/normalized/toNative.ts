@@ -14,8 +14,10 @@ import type {
 import { isGalaxyUserToolRun, normalizedFormat2 } from "./format2.js";
 import { format2CommentList, unflattenCommentData, unresolvedFrameReferences } from "./comments.js";
 import {
+  format2InputIdsByLabel,
   format2ShadowedStepIds,
   format2StepLabelIndices,
+  isIndexRef,
   isUnlabeled,
   resolveSourceReference,
   UnresolvedSourceError,
@@ -48,22 +50,30 @@ class ConversionContext {
   labels = new Map<string, number>();
   /** Step id → label, for steps whose label differs from their id. */
   shadowedIds = new Map<string, string>();
+  /** Input label → id, for inputs whose label differs from their id. */
+  inputIdsByLabel = new Map<string, string>();
 
   constructor(readonly options: ToNativeOptions = {}) {}
 
+  /** Native step index for a label or index; NaN for an unresolved one in `drop` mode. */
   stepId(labelOrId: string | number, source?: string): number {
     const key = String(labelOrId);
     if (this.labels.has(key)) return this.labels.get(key)!;
-    if (/^\d+$/.test(key)) return parseInt(key, 10);
-    throw new UnresolvedSourceError(source ?? key, key, this.shadowedIds.get(key) ?? null);
+    if (isIndexRef(key)) return parseInt(key, 10);
+    if (this.options.unresolvedSources === "drop") return NaN;
+    const stepLabel = this.shadowedIds.get(key);
+    const inputId = this.inputIdsByLabel.get(key);
+    const hint = stepLabel != null ? { stepLabel } : inputId != null ? { inputId } : {};
+    throw new UnresolvedSourceError(source ?? key, key, hint);
   }
 
-  stepOutput(value: string): [number, string] {
+  /** `display` is the source as the author wrote it, for the error message. */
+  stepOutput(value: string, display: string = value): [number, string] {
     // shortcut: the runtime placeholder keeps its old NaN (`null`) step id; it has
     // no native connection, and stateful conversion owns how it should round-trip.
-    if (value === RUNTIME_VALUE_SOURCE) return [NaN, "output"];
+    if (value === RUNTIME_VALUE_SOURCE && !this.labels.has(value)) return [NaN, "output"];
     const [labelOrId, outputName] = resolveSourceReference(value, this.labels);
-    return [this.stepId(labelOrId, value), outputName];
+    return [this.stepId(labelOrId, display), outputName];
   }
 
   childContext(): ConversionContext {
@@ -121,6 +131,13 @@ const POST_JOB_ACTIONS: Record<string, PJADef> = {
 
 export interface ToNativeOptions {
   /**
+   * A source that names no step or input: `throw` (the default) raises
+   * `UnresolvedSourceError`; `drop` leaves that connection out, for callers
+   * that draw or annotate a workflow and report such sources themselves
+   * (see `unresolvedFormat2Sources`).
+   */
+  unresolvedSources?: "throw" | "drop";
+  /**
    * Per-step callback: given a format2 step and its merged pre-native
    * state dict, return a replacement native tool_state dict, or null to
    * fall back to the default passthrough.
@@ -148,6 +165,7 @@ export function toNative(raw: unknown, options?: ToNativeOptions): NormalizedNat
 function _registerLabels(wf: NormalizedFormat2Workflow, ctx: ConversionContext): void {
   for (const [label, idx] of format2StepLabelIndices(wf)) ctx.labels.set(label, idx);
   ctx.shadowedIds = format2ShadowedStepIds(wf);
+  ctx.inputIdsByLabel = format2InputIdsByLabel(wf);
 }
 
 // --- Workflow building ---
@@ -588,7 +606,9 @@ function _buildInputConnections(
       if (key === "$step") {
         src = value + "/__NO_INPUT_OUTPUT_NAME__";
       }
-      const [stepId, outputName] = ctx.stepOutput(src);
+      const [stepId, outputName] = ctx.stepOutput(src, value);
+      // `drop` mode: leave out a connection whose source resolves to no step.
+      if (Number.isNaN(stepId) && src !== RUNTIME_VALUE_SOURCE) continue;
       const conn: Record<string, unknown> = { id: stepId, output_name: outputName };
       if (isSubworkflow && subworkflowCtx && subworkflowCtx.labels.has(key)) {
         conn.input_subworkflow_step_id = subworkflowCtx.stepId(key);

@@ -292,6 +292,9 @@ export {
   rawStepRenderIdentity,
   /** Thrown by Format2 → native conversion for a source naming no step or input. */
   UnresolvedSourceError,
+  /** Every source conversion cannot resolve, with the step and input that hold it. */
+  unresolvedFormat2Sources,
+  type UnresolvedSource,
   type DropReason,
   type DroppedStep,
   type DroppedOutput,

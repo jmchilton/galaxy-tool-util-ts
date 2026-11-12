@@ -78,6 +78,42 @@ describe("toNative source references", () => {
   });
 });
 
+describe("toNative source references: other forms", () => {
+  it("names a `$step` source as written, without the internal port name", () => {
+    const wf = labelShadowsId("First concatenation/out_file1");
+    (wf.steps as Record<string, Record<string, unknown>>).second.in = { $step: "first" };
+    expect(() => toNative(wf)).toThrow(
+      "Cannot resolve 'first': step 'first' has the label 'First concatenation', and sources " +
+        "resolve by label. Reference it as 'First concatenation', or set its label to 'first'",
+    );
+  });
+
+  it("connects an input that is itself named `runtime_value`", () => {
+    const wf = labelShadowsId("runtime_value");
+    wf.inputs = { runtime_value: { type: "data" } };
+    (wf.steps as Record<string, Record<string, unknown>>).first.in = { input1: "runtime_value" };
+    const native = toNative(wf);
+    expect(native.steps["1"]?.input_connections).toEqual({
+      input1: [{ id: 0, output_name: "output" }],
+    });
+  });
+
+  it("says which id to use for a source naming an input by its label", () => {
+    const wf = labelShadowsId("First concatenation/out_file1");
+    wf.inputs = [{ id: "reads", label: "Reads In", type: "data" }];
+    (wf.steps as Record<string, Record<string, unknown>>).first.in = { input1: "Reads In" };
+    expect(() => toNative(wf)).toThrow(
+      "Cannot resolve 'Reads In': input 'reads' has the label 'Reads In', and sources resolve " +
+        "inputs by id. Reference it as 'reads'",
+    );
+  });
+
+  it("leaves the connection out in `drop` mode", () => {
+    const native = toNative(labelShadowsId(), { unresolvedSources: "drop" });
+    expect(native.steps["2"]?.input_connections).toEqual({});
+  });
+});
+
 describe("lintFormat2 source references", () => {
   it("reports a step source that names a labelled step by its id", () => {
     expect(lintErrors(labelShadowsId())).toContain(

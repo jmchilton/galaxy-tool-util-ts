@@ -14,12 +14,11 @@ import {
   NULL_COLLECTION_TYPE_DESCRIPTION,
   type CollectionTypeDescriptor,
 } from "@galaxy-tool-util/workflow-graph";
-import {
-  UnresolvedSourceError,
-  type ConnectionResult,
-  type ConnectionStepResult,
-  type ConnectionValidationReport,
-  type ResolvedOutputType,
+import type {
+  ConnectionResult,
+  ConnectionStepResult,
+  ConnectionValidationReport,
+  ResolvedOutputType,
 } from "@galaxy-tool-util/schema";
 
 import { buildWorkflowGraph } from "./graph-builder.js";
@@ -31,38 +30,9 @@ export function validateConnectionsReport(
   workflow: unknown,
   getToolInfo: GetToolInfo,
 ): ConnectionValidationReport {
-  let graph;
-  try {
-    graph = buildWorkflowGraph(workflow, getToolInfo);
-  } catch (error) {
-    // A Format2 source naming no step or input: the workflow has no graph to
-    // walk, and Galaxy would refuse it, so report it invalid rather than throw.
-    if (error instanceof UnresolvedSourceError) return unresolvedSourceReport(error);
-    throw error;
-  }
+  const graph = buildWorkflowGraph(workflow, getToolInfo);
   const [result, resolved] = validateConnectionGraph(graph);
   return toConnectionValidationReport(result, resolved);
-}
-
-function unresolvedSourceReport(error: UnresolvedSourceError): ConnectionValidationReport {
-  return {
-    valid: false,
-    step_results: [
-      {
-        step: error.source,
-        label: null,
-        tool_id: null,
-        version: null,
-        step_type: "unresolved_source",
-        map_over: null,
-        connections: [],
-        resolved_outputs: [],
-        errors: [error.message],
-      },
-    ],
-    summary: { ok: 0, invalid: 1, skip: 0 },
-    has_details: true,
-  };
 }
 
 export function toConnectionValidationReport(
