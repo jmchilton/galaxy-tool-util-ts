@@ -5,6 +5,10 @@
  * the EdgeAnnotation map we expect for a workflow with a known data edge.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { readFile } from "node:fs/promises";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parse as parseYaml } from "yaml";
 
 import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
 
@@ -14,6 +18,11 @@ import {
 } from "../src/commands/annotate-connections.js";
 import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
 import { seedAllTools, DATA_TOOL_ID } from "./helpers/fixtures.js";
+
+const FORMAT2_FIXTURES = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../schema/test/fixtures/workflows/format2",
+);
 
 const chainWorkflow = {
   a_galaxy_workflow: "true",
@@ -97,6 +106,20 @@ describe("resolveEdgeAnnotationsWithCache (lifted helper parity)", () => {
       steps: { "0": { id: 0, type: "data_input", label: "in", tool_id: null, tool_state: "{}" } },
     };
     const annotations = await resolveEdgeAnnotationsWithCache(noToolWorkflow, cache);
+    expect(annotations.size).toBe(0);
+  });
+
+  it("returns no annotations for a source that resolves to no step", async () => {
+    const cache = makeNodeToolCache({ cacheDir: ctx.tmpDir });
+    await cache.index.load();
+
+    const text = await readFile(
+      join(FORMAT2_FIXTURES, "synthetic-labeled-step-id-ref.gxwf.yml"),
+      "utf-8",
+    );
+    const workflow = parseYaml(text) as Record<string, unknown>;
+    expect((await resolveEdgeAnnotationsWithCache(workflow, cache)).size).toBe(0);
+    const { annotations } = await resolveEdgeAnnotationsAndSpecsWithCache(workflow, cache);
     expect(annotations.size).toBe(0);
   });
 });

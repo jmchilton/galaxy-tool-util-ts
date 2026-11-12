@@ -7,11 +7,32 @@
  * lookup is direct on their side.
  */
 
+import { UnresolvedSourceError } from "@galaxy-tool-util/schema";
+
+import { validateConnectionGraph } from "./connection-validator.js";
+import type { GetToolInfo } from "./get-tool-info.js";
+import { buildWorkflowGraph } from "./graph-builder.js";
 import type {
   ConnectionValidationResult,
   StepConnectionResult,
   WorkflowConnectionResult,
 } from "./types.js";
+
+/** Edge annotations for a workflow; none when a Format2 source resolves to no step. */
+export function workflowEdgeAnnotations(
+  workflow: unknown,
+  getToolInfo: GetToolInfo,
+): Map<string, EdgeAnnotation> {
+  let graph;
+  try {
+    graph = buildWorkflowGraph(workflow, getToolInfo);
+  } catch (error) {
+    if (error instanceof UnresolvedSourceError) return new Map();
+    throw error;
+  }
+  const [report] = validateConnectionGraph(graph);
+  return buildEdgeAnnotations(report);
+}
 
 export interface EdgeAnnotation {
   sourceStep: string;

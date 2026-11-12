@@ -5,10 +5,8 @@
  */
 
 import {
-  buildEdgeAnnotations,
   buildGetToolInfo as _buildGetToolInfo,
-  buildWorkflowGraph,
-  validateConnectionGraph,
+  workflowEdgeAnnotations,
   type EdgeAnnotation,
 } from "@galaxy-tool-util/connection-validation";
 import type { ToolCache } from "@galaxy-tool-util/core";
@@ -36,9 +34,7 @@ export async function resolveEdgeAnnotationsWithCache(
   cache: ToolCache,
 ): Promise<Map<string, EdgeAnnotation>> {
   const getToolInfo = await buildGetToolInfo(data, cache);
-  const graph = buildWorkflowGraph(data, getToolInfo);
-  const [report] = validateConnectionGraph(graph);
-  return buildEdgeAnnotations(report);
+  return workflowEdgeAnnotations(data, getToolInfo);
 }
 
 export interface ResolvedToolSpec {
@@ -69,7 +65,5 @@ export async function resolveEdgeAnnotationsAndSpecsWithCache(
     specs.set(`${id}@${ver}`, { tool_id: id, tool_version: ver, parsed: r.tool });
     return r.tool;
   });
-  const graph = buildWorkflowGraph(data, getToolInfo);
-  const [report] = validateConnectionGraph(graph);
-  return { annotations: buildEdgeAnnotations(report), specs };
+  return { annotations: workflowEdgeAnnotations(data, getToolInfo), specs };
 }
