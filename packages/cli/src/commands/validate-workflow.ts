@@ -440,6 +440,42 @@ function unmatchedConnectionKeys(
   return Object.keys(remaining).filter((k) => !stepLevel.has(k));
 }
 
+// String literal | comment | backtick | `inputs` with an optional `.name` or `["name"]`.
+const WHEN_TOKEN =
+  /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/.*|\/\*[\s\S]*?\*\/|`|(?<![\w$.])inputs(?![\w$])(?:\s*\.\s*([A-Za-z_$][\w$]*)|\s*\[\s*(?:"([^"\\]*)"|'([^'\\]*)')\s*\])?/g;
+
+/**
+ * Errors for each `inputs.<name>` a `when:` expression reads that Galaxy will
+ * not supply. Galaxy fills `inputs` with the tool's parameters plus the step's
+ * own input names; any other name is `undefined`, so the guard is constant
+ * (#231). Dynamic access (`inputs[expr]`, bare `inputs`, template literals) is
+ * not checked.
+ */
+export function unknownWhenInputErrors(
+  whenExpression: unknown,
+  bundle: ToolParameterBundleModel,
+  state: Record<string, unknown> | null | undefined,
+  inputNames: Iterable<string>,
+): string[] {
+  if (typeof whenExpression !== "string") return [];
+  const known = new Set([...bundle.parameters.map((p) => p.name), ...Object.keys(state ?? {})]);
+  // Galaxy nests `cond|x` step inputs under their root, so the piped name itself is never set.
+  for (const name of inputNames) if (!name.includes("|")) known.add(name);
+  const unknown = new Set<string>();
+  // shortcut: a regex scanner, not a JS tokenizer (misses regex literals); port Galaxy's
+  // whenExpression.ts analyzer if it ever misreads a real expression.
+  for (const [token, dotName, dqName, sqName] of whenExpression.matchAll(WHEN_TOKEN)) {
+    if (token === "`") return [];
+    if (!token.startsWith("inputs")) continue;
+    const name = dotName ?? dqName ?? sqName;
+    if (name === undefined) return [];
+    if (!known.has(name)) unknown.add(name);
+  }
+  return [...unknown].map(
+    (n) => `when expression reads inputs.${n}, but the step has no input or tool parameter "${n}"`,
+  );
+}
+
 function _validateNativeState(
   bundle: ToolParameterBundleModel,
   toolState: Record<string, unknown>,
@@ -448,6 +484,7 @@ function _validateNativeState(
   toolId: string | null,
   toolVersion: string | null,
   whenExpression?: unknown,
+  stepInputNames: Iterable<string> = Object.keys(connections),
 ): StepValidationResult {
   // Skip validation if replacement parameters (${...}) are present in typed fields
   const replacementScan = scanForReplacements(bundle.parameters, toolState);
@@ -467,14 +504,19 @@ function _validateNativeState(
 
   // A connection key that matches no parameter is a defect whichever state block
   // the step carries; the `state` path reports it below and this one must agree.
-  const unmatchedKeys = unmatchedConnectionKeys(remaining, whenExpression);
-  if (unmatchedKeys.length > 0) {
+  const stepErrors = [
+    ...unmatchedConnectionKeys(remaining, whenExpression).map(
+      (k) => `No parameter definition matching connection key "${k}"`,
+    ),
+    ...unknownWhenInputErrors(whenExpression, bundle, toolState, stepInputNames),
+  ];
+  if (stepErrors.length > 0) {
     return {
       step: stepLabel,
       tool_id: toolId,
       version: toolVersion,
       status: "fail",
-      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+      errors: stepErrors,
     };
   }
 
@@ -630,6 +672,7 @@ function _validateFormat2State(
       toolId,
       toolVersion,
       step.when,
+      step.in.map((i) => i.id),
     );
   }
 
@@ -675,14 +718,24 @@ function _validateFormat2State(
     linked: true,
   });
 
-  const unmatchedKeys = unmatchedConnectionKeys(remaining, step.when);
-  if (unmatchedKeys.length > 0) {
+  const stepErrors = [
+    ...unmatchedConnectionKeys(remaining, step.when).map(
+      (k) => `No parameter definition matching connection key "${k}"`,
+    ),
+    ...unknownWhenInputErrors(
+      step.when,
+      bundle,
+      step.state,
+      step.in.map((i) => i.id),
+    ),
+  ];
+  if (stepErrors.length > 0) {
     return {
       step: stepLabel,
       tool_id: toolId,
       version: toolVersion,
       status: "fail",
-      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+      errors: stepErrors,
     };
   }
 

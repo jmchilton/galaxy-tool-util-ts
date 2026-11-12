@@ -139,3 +139,125 @@ describe("gxwf validate: connection keys vs the tool's parameters", () => {
     expect(report.results[0].status).toBe("ok");
   });
 });
+
+/**
+ * Galaxy hands a `when:` expression the step's tool parameters plus its own
+ * input names; any other `inputs.<name>` is `undefined`, so the guard is
+ * constant (#231).
+ */
+describe("gxwf validate: names a `when:` expression reads", () => {
+  let ctx: CliTestContext;
+
+  beforeEach(async () => {
+    ctx = await createCliTestContext("vw-when-refs");
+    await seedAllTools(ctx.tmpDir);
+  });
+
+  afterEach(async () => {
+    await ctx.cleanup();
+  });
+
+  function conditional(
+    when: string,
+    stateKey: "state" | "tool_state" = "state",
+    extraIn: Record<string, unknown> = {},
+  ) {
+    return {
+      class: "GalaxyWorkflow",
+      inputs: { reads: { type: "data" }, run_me: { type: "boolean" } },
+      outputs: {},
+      steps: {
+        consume: {
+          tool_id: DATA_TOOL_ID,
+          tool_version: "1.0",
+          when,
+          in: { input_file: "reads", ...extraIn },
+          out: [{ id: "output" }],
+          [stateKey]: { input_file: { __class__: "ConnectedValue" } },
+        },
+      },
+    };
+  }
+
+  async function validate(
+    doc: unknown,
+    mode?: "json-schema",
+  ): Promise<SingleValidationReport["results"][number]> {
+    const path = join(ctx.tmpDir, "wf.gxwf.yml");
+    await writeFile(path, YAML.stringify(doc));
+    await runValidateWorkflow(path, { cacheDir: ctx.tmpDir, json: true, mode });
+    const out = ctx.logSpy.mock.calls
+      .map((c) => c[0])
+      .filter((s) => typeof s === "string" && s.startsWith("{"))
+      .at(-1);
+    expect(out).toBeDefined();
+    return (JSON.parse(out as string) as SingleValidationReport).results[0];
+  }
+
+  const UNKNOWN =
+    'when expression reads inputs.input_layout, but the step has no input or tool parameter "input_layout"';
+
+  it.each([
+    ["state", undefined],
+    ["tool_state", undefined],
+    ["state", "json-schema"],
+    ["tool_state", "json-schema"],
+  ] as const)("fails an unknown name under %s (mode %s)", async (stateKey, mode) => {
+    const result = await validate(
+      conditional("$(inputs.input_layout == 'single')", stateKey),
+      mode,
+    );
+
+    expect(result.status).toBe("fail");
+    expect(result.errors).toContain(UNKNOWN);
+  });
+
+  it("fails the bracket form too", async () => {
+    const result = await validate(conditional(`$(inputs["input_layout"] == 'single')`));
+
+    expect(result.status).toBe("fail");
+    expect(result.errors).toContain(UNKNOWN);
+  });
+
+  it("accepts a tool parameter left out of state", async () => {
+    const result = await validate(conditional("$(inputs.threshold > 0)"));
+
+    expect(result.status).toBe("ok");
+  });
+
+  it("accepts a step input, connected or default-only", async () => {
+    const connected = await validate(
+      conditional("$(inputs.should_run)", "state", { should_run: "run_me" }),
+    );
+    const defaulted = await validate(
+      conditional("$(inputs.should_run)", "tool_state", { should_run: { default: true } }),
+    );
+
+    expect(connected.status).toBe("ok");
+    expect(defaulted.status).toBe("ok");
+  });
+
+  it("does not accept a piped step input name, which Galaxy nests", async () => {
+    const result = await validate(
+      conditional(`$(inputs["cond|flag"])`, "state", { "cond|flag": { default: true } }),
+    );
+
+    expect(result.errors).toContain(
+      'when expression reads inputs.cond|flag, but the step has no input or tool parameter "cond|flag"',
+    );
+  });
+
+  it("ignores names inside string literals", async () => {
+    const result = await validate(
+      conditional(`$(inputs.threshold > 0 && "inputs.nope" != 'inputs["nope"]')`),
+    );
+
+    expect(result.status).toBe("ok");
+  });
+
+  it("does not guess at dynamic access", async () => {
+    const result = await validate(conditional("$(inputs[key] && inputs.input_layout)"));
+
+    expect(result.status).toBe("ok");
+  });
+});
