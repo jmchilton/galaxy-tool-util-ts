@@ -231,4 +231,31 @@ describe("diffWorkflows input handling", () => {
     expect(Object.keys(diff.steps.added)).toEqual(["__proto__"]);
     expect(JSON.parse(JSON.stringify(diff)).steps.added.__proto__.tool_id).toBe("cat1");
   });
+
+  it("reports a summary's missing raw id as null", () => {
+    const diff = diffWorkflows(
+      diffFixture("synthetic-diff-base.gxwf.yml"),
+      diffFixture("synthetic-diff-removed-step.gxwf.yml"),
+    );
+    expect(diff.steps.removed.trim.id).toBeNull();
+  });
+
+  it("names a step removed inside an inline subworkflow by its path", () => {
+    const text = renderWorkflowDiff(
+      diffWorkflows(
+        diffFixture("synthetic-diff-inline-subworkflow.gxwf.yml"),
+        diffFixture("synthetic-diff-inline-subworkflow-removed-step.gxwf.yml"),
+      ),
+    );
+    expect(text).toContain("Step removed: nested/first [cat1]\n    upstream: nested/inner_reads\n");
+  });
+
+  it("rejects a nested key colliding with a slash-keyed step", () => {
+    const before = diffFixture("synthetic-diff-inline-subworkflow.gxwf.yml") as {
+      steps: Record<string, unknown>;
+    };
+    before.steps["nested/first"] = { tool_id: "cat1", in: { input1: "reads" } };
+    const after = diffFixture("synthetic-diff-inline-subworkflow-removed-step.gxwf.yml");
+    expect(() => diffWorkflows(before, after)).toThrow(/nested\/first/);
+  });
 });

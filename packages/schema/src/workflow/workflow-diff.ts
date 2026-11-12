@@ -2,8 +2,10 @@
  * Structural diff of two Format2 workflows (either may be a `GalaxyWorkflowDraft`).
  *
  * Port of `gxformat2.diff`; the shared cases live in `expectations/diff.yml`.
- * Steps match on their step key ({@link iterateSteps}). `_plan_*` fields never
- * count as changes. Only the top level is compared.
+ * Steps are reported under their step key ({@link iterateSteps}); list-form
+ * steps with the same `id` on both sides match first. Inline subworkflows are
+ * diffed too, their ids prefixed with the parent step key and `/`. `_plan_*`
+ * fields never count as changes.
  */
 
 import {
@@ -14,11 +16,13 @@ import {
 } from "./draft-checks.js";
 import {
   inferredStepType,
+  isGalaxyUserToolRun,
   normalizedFormat2,
   NormalizedFormat2StepOutputSchema,
   type NormalizedFormat2Input,
   type NormalizedFormat2Step,
   type NormalizedFormat2StepOutput,
+  type NormalizedFormat2Workflow,
 } from "./normalized/format2.js";
 import { resolveSourceReference } from "./normalized/labels.js";
 import { isPythonTruthy } from "./coercions.js";
@@ -96,6 +100,8 @@ export interface OutputsDiff {
 /** An added or removed step, with its edges on the side it exists on. */
 export interface StepSummary {
   label: string | null;
+  /** The step's raw `id` as written, or `null`. */
+  id: string | null;
   type: string;
   tool_id: string | null;
   tool_version: string | null;
@@ -182,6 +188,14 @@ interface StepView {
   inDefaults: Map<string, unknown>;
   outActions: Map<string, Record<string, unknown>>;
   planFields: PlanFields;
+  rawId: string | null;
+  inlineRun: InlineRun | null;
+}
+
+/** An inline subworkflow run, raw and normalized. */
+interface InlineRun {
+  raw: Record<string, unknown>;
+  nf2: NormalizedFormat2Workflow;
 }
 
 /** A raw step paired with its normalized form. */
@@ -191,9 +205,9 @@ interface AlignedStep {
   step: NormalizedFormat2Step;
 }
 
-/** One workflow reduced to what the diff compares; maps keep workflow order. */
+/** One workflow (or inline subworkflow, ids prefixed) reduced to what the diff compares; maps keep workflow order. */
 interface Side {
-  isDraft: boolean;
+  listForm: boolean;
   inputs: Map<string, Map<string, unknown>>;
   outputs: Map<string, Ref | null>;
   steps: Map<string, StepView>;
@@ -244,44 +258,73 @@ function loadWorkflow(workflow: unknown): Record<string, unknown> {
   return workflow;
 }
 
-function buildSide(raw: Record<string, unknown>): Side {
-  const nf2 = normalizedFormat2(raw);
+/** Reduce a workflow to a {@link Side}, every step key and input id prefixed with `prefix`. */
+function buildSide(
+  raw: Record<string, unknown>,
+  nf2: NormalizedFormat2Workflow,
+  prefix = "",
+): Side {
   const aligned = alignSteps(raw, nf2.steps as readonly NormalizedFormat2Step[]);
   const listForm = Array.isArray(raw.steps);
   const inputIds = new Set(nf2.inputs.map((inp) => inp.id).filter((id) => id));
-  const resolve = sourceResolver(aligned, inputIds);
+  const resolve = sourceResolver(aligned, inputIds, prefix);
 
   const steps = new Map<string, StepView>();
   const edges: Edge[] = [];
   for (const { key, rawStep, step } of aligned) {
-    steps.set(key, stepView(step, rawStep));
+    steps.set(prefix + key, stepView(step, rawStep));
     for (const stepInput of step.in) {
       if (stepInput.source == null || stepInput.id == null) continue;
       const sources = Array.isArray(stepInput.source) ? stepInput.source : [stepInput.source];
       for (const source of sources) {
-        edges.push({ source: resolve(String(source)), target: key, targetPort: stepInput.id });
+        edges.push({
+          source: resolve(String(source)),
+          target: prefix + key,
+          targetPort: stepInput.id,
+        });
       }
     }
   }
 
   const inputs = new Map<string, Map<string, unknown>>();
   for (const inp of nf2.inputs) {
-    if (inp.id) inputs.set(inp.id, inputFields(inp));
+    if (inp.id) inputs.set(prefix + inp.id, inputFields(inp));
   }
   const outputs = new Map<string, Ref | null>();
   for (const output of nf2.outputs) {
     if (output.id == null) continue;
-    outputs.set(output.id, output.outputSource == null ? null : resolve(output.outputSource));
+    outputs.set(
+      prefix + output.id,
+      output.outputSource == null ? null : resolve(output.outputSource),
+    );
   }
   return {
-    isDraft: isDraftWorkflow(raw),
+    listForm,
     inputs,
     outputs,
     steps,
     edges,
     unlabeledSteps: listForm
-      ? aligned.filter(({ rawStep }) => !hasIdentity(rawStep)).map(({ key }) => key)
+      ? aligned.filter(({ rawStep }) => !hasIdentity(rawStep)).map(({ key }) => prefix + key)
       : [],
+  };
+}
+
+/** This side with step keys renamed per `keys`; input ids are left alone. */
+function renamed(side: Side, keys: Map<string, string>): Side {
+  if (keys.size === 0) return side;
+  const step = (key: string) => keys.get(key) ?? key;
+  const ref = (r: Ref | null): Ref | null =>
+    r == null || r.port == null ? r : { node: step(r.node), port: r.port };
+  return {
+    ...side,
+    outputs: new Map([...side.outputs].map(([id, r]) => [id, ref(r)])),
+    steps: new Map([...side.steps].map(([key, view]) => [step(key), view])),
+    edges: side.edges.map((edge) => ({
+      source: ref(edge.source)!,
+      target: step(edge.target),
+      targetPort: edge.targetPort,
+    })),
   };
 }
 
@@ -309,10 +352,11 @@ function stepId(rawStep: unknown, step: NormalizedFormat2Step): string {
   return isRecord(rawStep) && typeof rawStep.id === "string" ? rawStep.id : step.id;
 }
 
-/** Resolve a source to a step key and port, or an input id with no port; longest label first. */
+/** Resolve a source to a step key and port, or an input id with no port; longest label first, then prefix it. */
 function sourceResolver(
   aligned: readonly AlignedStep[],
   inputIds: Set<string>,
+  prefix: string,
 ): (source: string) => Ref {
   const aliases = new Map<string, string>();
   const setDefault = (alias: string, key: string) => {
@@ -328,8 +372,8 @@ function sourceResolver(
   return (source: string): Ref => {
     const [label, port] = resolveSourceReference(source, knownLabels);
     // An input's only port is `output`; `<input>/output` means `<input>`.
-    if (inputIds.has(label) && port === INPUT_PORT) return { node: label, port: null };
-    return { node: aliases.get(label) ?? label, port };
+    if (inputIds.has(label) && port === INPUT_PORT) return { node: prefix + label, port: null };
+    return { node: prefix + (aliases.get(label) ?? label), port };
   };
 }
 
@@ -382,7 +426,15 @@ function stepView(step: NormalizedFormat2Step, rawStep: unknown): StepView {
     inDefaults,
     outActions: outActions(step),
     planFields,
+    rawId: typeof raw.id === "string" ? raw.id : null,
+    inlineRun: inlineRun(raw.run, step.run),
   };
+}
+
+function inlineRun(rawRun: unknown, run: NormalizedFormat2Step["run"]): InlineRun | null {
+  if (!isRecord(rawRun) || "@import" in rawRun || isGalaxyUserToolRun(rawRun)) return null;
+  if (!isRecord(run) || isGalaxyUserToolRun(run)) return null;
+  return { raw: rawRun, nf2: run as NormalizedFormat2Workflow };
 }
 
 /** Leaf paths of a state dict, nested keys joined by `|`; lists and markers are leaves. */
@@ -504,6 +556,7 @@ function summary(side: Side, key: string): StepSummary {
   const { label, type, tool_id, tool_version } = view.fields;
   return {
     label,
+    id: view.rawId,
     type,
     tool_id,
     tool_version,
@@ -558,11 +611,59 @@ function sameRef(a: Ref | null, b: Ref | null): boolean {
 
 // --- Diff ---------------------------------------------------------------------
 
-/** Compare two parsed Format2 workflows; either may be a draft. */
-export function diffWorkflows(before: unknown, after: unknown): WorkflowDiff {
-  const bSide = buildSide(loadWorkflow(before));
-  const aSide = buildSide(loadWorkflow(after));
+/**
+ * BEFORE -> AFTER keys of list-form steps paired by an `id` unique on each side.
+ *
+ * A pair whose AFTER key is still another BEFORE step's key is dropped, leaving both to key matching.
+ */
+function idRenames(before: Side, after: Side): Map<string, string> {
+  const renames = new Map<string, string>();
+  if (!(before.listForm && after.listForm)) return renames;
+  const bIds = uniqueIds(before);
+  const aIds = uniqueIds(after);
+  for (const [stepId, bKey] of bIds) {
+    const aKey = aIds.get(stepId);
+    if (aKey != null && aKey !== bKey) renames.set(bKey, aKey);
+  }
+  for (;;) {
+    const blocked = [...renames].filter(([, a]) => before.steps.has(a) && !renames.has(a));
+    if (blocked.length === 0) return renames;
+    for (const [b] of blocked) renames.delete(b);
+  }
+}
 
+function uniqueIds(side: Side): Map<string, string> {
+  const keysById = new Map<string, string[]>();
+  for (const [key, view] of side.steps) {
+    if (view.rawId) keysById.set(view.rawId, [...(keysById.get(view.rawId) ?? []), key]);
+  }
+  return new Map(
+    [...keysById].filter(([, keys]) => keys.length === 1).map(([stepId, [key]]) => [stepId, key]),
+  );
+}
+
+function merge<T>(target: Record<string, T>, entries: Iterable<readonly [string, T]>): void {
+  for (const [key, value] of entries) {
+    if (Object.hasOwn(target, key)) {
+      throw new Error(
+        `diff key ${JSON.stringify(key)} names both a step and a step in an inline subworkflow`,
+      );
+    }
+    Object.defineProperty(target, key, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
+/** Add one level's differences to `diff`, then recurse into inline subworkflows on both sides. */
+function diffLevel(diff: WorkflowDiff, before: Side, aSide: Side): void {
+  const bSide = renamed(before, idRenames(before, aSide));
+
+  diff.inputs.added.push(...onlyIn(aSide.inputs.keys(), bSide.inputs));
+  diff.inputs.removed.push(...onlyIn(bSide.inputs.keys(), aSide.inputs));
   const inputChanges: Array<[string, Record<string, ValueChange>]> = [];
   for (const [inputId, bFields] of bSide.inputs) {
     const aFields = aSide.inputs.get(inputId);
@@ -570,12 +671,10 @@ export function diffWorkflows(before: unknown, after: unknown): WorkflowDiff {
     const changed = valueChanges(bFields, aFields);
     if (Object.keys(changed).length > 0) inputChanges.push([inputId, changed]);
   }
-  const inputs: InputsDiff = {
-    added: onlyIn(aSide.inputs.keys(), bSide.inputs),
-    removed: onlyIn(bSide.inputs.keys(), aSide.inputs),
-    changed: keyed(inputChanges),
-  };
+  merge(diff.inputs.changed, inputChanges);
 
+  diff.outputs.added.push(...onlyIn(aSide.outputs.keys(), bSide.outputs));
+  diff.outputs.removed.push(...onlyIn(bSide.outputs.keys(), aSide.outputs));
   const outputChanges: Array<[string, ValueChange]> = [];
   // Refs compare structurally: step `a/b` and port `b` of step `a` render alike.
   for (const [outputId, ref] of bSide.outputs) {
@@ -584,54 +683,74 @@ export function diffWorkflows(before: unknown, after: unknown): WorkflowDiff {
     if (!sameRef(ref, aRef))
       outputChanges.push([outputId, { before: refText(ref), after: refText(aRef) }]);
   }
-  const outputs: OutputsDiff = {
-    added: onlyIn(aSide.outputs.keys(), bSide.outputs),
-    removed: onlyIn(bSide.outputs.keys(), aSide.outputs),
-    changed: keyed(outputChanges),
-  };
+  merge(diff.outputs.changed, outputChanges);
 
+  merge(
+    diff.steps.added,
+    onlyIn(aSide.steps.keys(), bSide.steps).map((key) => [key, summary(aSide, key)] as const),
+  );
+  merge(
+    diff.steps.removed,
+    onlyIn(bSide.steps.keys(), aSide.steps).map((key) => [key, summary(bSide, key)] as const),
+  );
+  const matched = [...aSide.steps.keys()].filter((key) => bSide.steps.has(key));
   const stepChanges: Array<[string, StepChange]> = [];
-  for (const key of aSide.steps.keys()) {
-    if (!bSide.steps.has(key)) continue;
+  for (const key of matched) {
     const change = stepChange(bSide, aSide, key);
     if (change != null) stepChanges.push([key, change]);
   }
-  const steps: StepsDiff = {
-    added: keyed(onlyIn(aSide.steps.keys(), bSide.steps).map((key) => [key, summary(aSide, key)])),
-    removed: keyed(
-      onlyIn(bSide.steps.keys(), aSide.steps).map((key) => [key, summary(bSide, key)]),
-    ),
-    changed: keyed(stepChanges),
-  };
+  merge(diff.steps.changed, stepChanges);
 
-  const fed = new Set(aSide.edges.filter(isFromInput).map((edge) => edge.source.node));
-  const warnings: string[] = [];
   for (const [label, side] of [
     ["BEFORE", bSide],
     ["AFTER", aSide],
   ] as const) {
     if (side.unlabeledSteps.length > 0) {
-      warnings.push(
+      diff.warnings.push(
         `${label} has unlabeled steps matched by position: ${side.unlabeledSteps.join(", ")}`,
       );
     }
   }
-  const hasChanges = [inputs, outputs, steps].some(
+
+  for (const key of matched) {
+    const bRun = bSide.steps.get(key)!.inlineRun;
+    const aRun = aSide.steps.get(key)!.inlineRun;
+    if (bRun != null && aRun != null) {
+      diffLevel(
+        diff,
+        buildSide(bRun.raw, bRun.nf2, `${key}/`),
+        buildSide(aRun.raw, aRun.nf2, `${key}/`),
+      );
+    }
+  }
+}
+
+/** Compare two parsed Format2 workflows; either may be a draft. */
+export function diffWorkflows(before: unknown, after: unknown): WorkflowDiff {
+  const bRaw = loadWorkflow(before);
+  const aRaw = loadWorkflow(after);
+  const bSide = buildSide(bRaw, normalizedFormat2(bRaw));
+  const aSide = buildSide(aRaw, normalizedFormat2(aRaw));
+  const diff: WorkflowDiff = {
+    before_is_draft: isDraftWorkflow(bRaw),
+    after_is_draft: isDraftWorkflow(aRaw),
+    inputs: { added: [], removed: [], changed: {} },
+    outputs: { added: [], removed: [], changed: {} },
+    steps: { added: {}, removed: {}, changed: {} },
+    unwired_inputs: [],
+    warnings: [],
+    has_changes: false,
+  };
+  diffLevel(diff, bSide, aSide);
+  const fed = new Set(aSide.edges.filter(isFromInput).map((edge) => edge.source.node));
+  diff.unwired_inputs = onlyIn(aSide.inputs.keys(), fed);
+  diff.has_changes = [diff.inputs, diff.outputs, diff.steps].some(
     (section) =>
       Object.keys(section.added).length > 0 ||
       Object.keys(section.removed).length > 0 ||
       Object.keys(section.changed).length > 0,
   );
-  return {
-    before_is_draft: bSide.isDraft,
-    after_is_draft: aSide.isDraft,
-    inputs,
-    outputs,
-    steps,
-    unwired_inputs: onlyIn(aSide.inputs.keys(), fed),
-    warnings,
-    has_changes: hasChanges,
-  };
+  return diff;
 }
 
 // --- Rendering ----------------------------------------------------------------
@@ -658,8 +777,10 @@ function stateValue(value: unknown): string {
   return value == null || value === "" ? pyJson(value) : displayValue(value);
 }
 
+/** The key, plus the label when it isn't the key or, for a nested step, its last segment. */
 function stepHeading(key: string, label: string | null): string {
-  return !label || label === key ? key : `${key} (${label})`;
+  const hidden = !label || label === key || label === key.slice(key.lastIndexOf("/") + 1);
+  return hidden ? key : `${key} (${label})`;
 }
 
 function summaryLines(verb: string, key: string, step: StepSummary): string[] {

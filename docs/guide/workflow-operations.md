@@ -19,7 +19,7 @@ Beyond the core five, `gxwf` also provides:
 | Operation | Commands | Purpose |
 |---|---|---|
 | **Draft workflows** | `gxwf draft-validate` · `draft-extract` · `draft-next-step` | Validate, extract, and drive `class: GalaxyWorkflowDraft` (planned/incomplete) workflows |
-| **Workflow diff** | `gxwf diff BEFORE AFTER [--json] [--exit-code]` | Structural diff of two Format2 workflows (either may be a draft): steps matched by step key, `_plan_*` fields reported but not compared; same result shape as gxformat2's `gxwf-diff` |
+| **Workflow diff** | `gxwf diff BEFORE AFTER [--json] [--exit-code]` | Structural diff of two Format2 workflows (either may be a draft): steps matched by step key (list-form steps by `id` first), inline subworkflows diffed with `parent/child` keys, `_plan_*` fields reported but not compared; same result shape as gxformat2's `gxwf-diff` |
 | **Visualization** | `gxwf mermaid` · `gxwf cytoscapejs` | Render a workflow as a Mermaid flowchart or Cytoscape.js graph (JSON/HTML) |
 | **Test-file validation** | `gxwf validate-tests` · `validate-tests-tree` | Check `*-tests.yml` against the Galaxy `Tests` schema (no tool cache needed) |
 | **Tool-source validation** | `gxwf validate-tool-source` · `validate-tool-source-tree` | Validate user-defined tool YAML (`class: GalaxyUserTool` / `GalaxyTool`) |
