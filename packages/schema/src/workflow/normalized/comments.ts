@@ -164,7 +164,7 @@ export function unresolvedFrameReferences(
           } else if (Number(ref) >= count) {
             problem = `out-of-range ${indexKind} index '${ref}'`;
           }
-        } else if (typeof ref === "number" && !(ref >= 0 && ref < count)) {
+        } else if (Number.isInteger(ref) && !((ref as number) >= 0 && (ref as number) < count)) {
           problem = `out-of-range ${indexKind} index '${ref}'`;
         }
         if (problem) {
