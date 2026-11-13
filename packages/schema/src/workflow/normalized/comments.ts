@@ -127,9 +127,9 @@ export function frameDescription(frame: Record<string, unknown>, commentIndex: n
 }
 
 /**
- * Frame string entries matching no step/input label (or comment label) at this level.
+ * Frame entries matching no label, or indexing past the steps/inputs (or comments) at this level.
  *
- * Integer entries and all-digit `contains_steps` strings are indices and pass through.
+ * Labels win; `contains_steps` indices (ints, digit strings) are native step ids: inputs first.
  */
 export function unresolvedFrameReferences(
   wf: NormalizedFormat2Workflow,
@@ -139,33 +139,68 @@ export function unresolvedFrameReferences(
   const commentLabels = new Set(
     comments.map((c) => c.label).filter((l) => typeof l === "string" && l),
   );
+  const checks: FrameRefCheck[] = [
+    {
+      field: "contains_steps",
+      labelKind: "step or input",
+      indexNoun: "step",
+      labels: stepLabels,
+      indexCount: wf.inputs.length + wf.steps.length,
+      digitStringsAreIndices: true,
+    },
+    {
+      field: "contains_comments",
+      labelKind: "comment",
+      indexNoun: "comment",
+      labels: commentLabels,
+      indexCount: comments.length,
+      digitStringsAreIndices: false,
+    },
+  ];
 
   const unresolved: UnresolvedFrameReference[] = [];
   comments.forEach((comment, commentIndex) => {
     if (comment.type !== "frame") return;
-    const frame = frameDescription(comment, commentIndex);
-    entries(comment.contains_steps).forEach((ref, entryIndex) => {
-      if (typeof ref === "string" && !stepLabels.has(ref) && !/^\d+$/.test(ref)) {
-        unresolved.push({
-          commentIndex,
-          field: "contains_steps",
-          entryIndex,
-          message: `${frame} references unknown step or input label '${ref}' in contains_steps`,
-        });
-      }
-    });
-    entries(comment.contains_comments).forEach((ref, entryIndex) => {
-      if (typeof ref === "string" && !commentLabels.has(ref)) {
-        unresolved.push({
-          commentIndex,
-          field: "contains_comments",
-          entryIndex,
-          message: `${frame} references unknown comment label '${ref}' in contains_comments`,
-        });
-      }
-    });
+    for (const check of checks) {
+      entries(comment[check.field]).forEach((ref, entryIndex) => {
+        const problem = frameRefProblem(check, ref);
+        if (problem) {
+          unresolved.push({
+            commentIndex,
+            field: check.field,
+            entryIndex,
+            message: `${frameDescription(comment, commentIndex)} references ${problem} in ${check.field}`,
+          });
+        }
+      });
+    }
   });
   return unresolved;
+}
+
+/** How one frame membership field resolves its entries. */
+interface FrameRefCheck {
+  field: UnresolvedFrameReference["field"];
+  labelKind: string;
+  indexNoun: string;
+  labels: { has(label: string): boolean };
+  indexCount: number;
+  digitStringsAreIndices: boolean;
+}
+
+/** Describe why `ref` doesn't resolve, or `null`; labels win over indices. */
+function frameRefProblem(check: FrameRefCheck, ref: unknown): string | null {
+  if (typeof ref === "string") {
+    if (check.labels.has(ref)) return null;
+    if (!(check.digitStringsAreIndices && /^[0-9]+$/.test(ref))) {
+      return `unknown ${check.labelKind} label '${ref}'`;
+    }
+  } else if (!Number.isInteger(ref)) {
+    return null;
+  }
+  const index = Number(ref);
+  if (index >= 0 && index < check.indexCount) return null;
+  return `out-of-range ${check.indexNoun} index '${ref}'`;
 }
 
 function entries(value: unknown): unknown[] {

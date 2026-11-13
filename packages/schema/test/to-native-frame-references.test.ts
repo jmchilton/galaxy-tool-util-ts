@@ -17,6 +17,30 @@ describe("toNative frame references", () => {
     );
   });
 
+  it("names the frame and index for an out-of-range contains_steps entry", () => {
+    expect(() => toNative(loadFixture("synthetic-frame-index-out-of-range.gxwf.yml"))).toThrow(
+      /^Frame 'Range' references out-of-range step index '2' in contains_steps$/,
+    );
+  });
+
+  it("resolves an all-digit step label as a label even past the index range", () => {
+    const native = toNative(loadFixture("synthetic-frame-digit-label.gxwf.yml"));
+    expect((native.comments as Record<string, unknown>[])[0].child_steps).toEqual([1, 0]);
+  });
+
+  it("flags a digit string longer than any index as out of range", () => {
+    const wf = loadFixture("synthetic-frame-index-out-of-range.gxwf.yml");
+    const huge = "9".repeat(5000);
+    (wf.comments as Record<string, unknown>[])[0].contains_steps = [huge];
+    expect(() => toNative(wf)).toThrow(`out-of-range step index '${huge}'`);
+  });
+
+  it("skips non-integer numeric entries like gxformat2", () => {
+    const wf = loadFixture("synthetic-frame-index-out-of-range.gxwf.yml");
+    (wf.comments as Record<string, unknown>[])[0].contains_steps = [-0.5];
+    expect(() => toNative(wf)).not.toThrow(/out-of-range step index/);
+  });
+
   it("checks frames inside a subworkflow against that subworkflow's labels", () => {
     const wf = loadFixture("synthetic-frame-unknown-step.gxwf.yml");
     const parent = {
