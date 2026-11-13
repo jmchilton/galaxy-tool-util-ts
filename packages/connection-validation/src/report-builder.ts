@@ -69,7 +69,8 @@ export function toConnectionValidationReport(
       resolved_outputs,
       errors: sr.errors,
     };
-    if (sr.label !== undefined && sr.label !== null) stepResult.label = sr.label;
+    // Native workflows spell "no label" as "" as well as null.
+    if (sr.label) stepResult.label = sr.label;
     return stepResult;
   });
 

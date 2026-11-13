@@ -16,7 +16,11 @@ import { toNative } from "@galaxy-tool-util/schema";
 import { runValidateWorkflow, validateFormat2Steps } from "../src/commands/validate-workflow.js";
 import { runDraftValidate } from "../src/commands/draft-validate.js";
 import { runDraftExtract } from "../src/commands/draft-extract.js";
-import { createCliTestContext, type CliTestContext } from "./helpers/cli-test-context.js";
+import {
+  createCliTestContext,
+  jsonOutput,
+  type CliTestContext,
+} from "./helpers/cli-test-context.js";
 
 const FIXTURE = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -25,14 +29,6 @@ const FIXTURE = join(
 
 async function userToolWorkflow(): Promise<Record<string, any>> {
   return YAML.parse(await readFile(FIXTURE, "utf-8"));
-}
-
-function jsonOutput(ctx: CliTestContext): unknown {
-  const out = ctx.logSpy.mock.calls
-    .map((c: unknown[]) => c[0])
-    .find((s: unknown) => typeof s === "string" && s.startsWith("{"));
-  expect(out).toBeDefined();
-  return JSON.parse(out as string);
 }
 
 describe("gxwf validate: embedded GalaxyUserTool step", () => {
@@ -67,7 +63,14 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
       const report = await validate(await userToolWorkflow(), { mode });
 
       expect(report.results).toEqual([
-        { step: "0", tool_id: "cat_user_defined", version: "0.1", status: "ok", errors: [] },
+        {
+          step: "0",
+          label: "udt_cat",
+          tool_id: "cat_user_defined",
+          version: "0.1",
+          status: "ok",
+          errors: [],
+        },
       ]);
       expect(process.exitCode).toBe(0);
     },
@@ -80,7 +83,14 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
       const report = await validate(native, { mode, native: true });
 
       expect(report.results).toEqual([
-        { step: "1", tool_id: "cat_user_defined", version: "0.1", status: "ok", errors: [] },
+        {
+          step: "1",
+          label: "udt_cat",
+          tool_id: "cat_user_defined",
+          version: "0.1",
+          status: "ok",
+          errors: [],
+        },
       ]);
       expect(process.exitCode).toBe(0);
     },
@@ -92,6 +102,7 @@ describe("gxwf validate: embedded GalaxyUserTool step", () => {
     expect(results).toEqual([
       {
         step: "0",
+        label: "udt_cat",
         tool_id: "cat_user_defined",
         version: "0.1",
         status: "skip_no_tool_state",

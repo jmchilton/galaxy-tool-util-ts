@@ -38,6 +38,7 @@ import {
   buildSingleValidationReport,
   SKIP_STATUSES,
   nativeConnectionsFromFormat2In,
+  nativeStepLabel,
 } from "@galaxy-tool-util/schema";
 import type {
   ValidateWorkflowOptions,
@@ -48,6 +49,7 @@ import { isEmptyState } from "./validate-workflow.js";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
 import { embeddedToolDefinition, isEmbeddedTool, resolveEmbeddedTool } from "./embedded-tool.js";
 import { resolveStrictOptions } from "./strict-options.js";
+import { stepName, withParentLabel, withStepLabel } from "./step-label.js";
 
 const Ajv = (Ajv2020 as any).default ?? Ajv2020;
 
@@ -375,6 +377,7 @@ async function _validateNativeWorkflowJsonSchema(
 
   for (const [key, step] of Object.entries(wf.steps)) {
     const stepLabel = prefix ? `${prefix}${key}` : key;
+    const name = stepName(step.label, key, prefix);
 
     if (step.type === "subworkflow" && step.subworkflow) {
       const subResults = await _validateNativeWorkflowJsonSchema(
@@ -383,13 +386,15 @@ async function _validateNativeWorkflowJsonSchema(
         toolSchemaDir,
         `${stepLabel}.`,
       );
-      results.push(...subResults);
+      results.push(...withParentLabel(subResults, name));
       continue;
     }
 
     const embedded = embeddedToolDefinition(step);
     if (embedded) {
-      results.push(_validateEmbeddedNativeStepJsonSchema(step, stepLabel, embedded));
+      results.push(
+        withStepLabel(_validateEmbeddedNativeStepJsonSchema(step, stepLabel, embedded), name),
+      );
       continue;
     }
 
@@ -405,7 +410,7 @@ async function _validateNativeWorkflowJsonSchema(
       cache,
       toolSchemaDir,
     );
-    results.push(result);
+    results.push(withStepLabel(result, name));
   }
 
   return results;
@@ -589,9 +594,12 @@ async function _validateFormat2WorkflowJsonSchema(
   for (let i = 0; i < wf.steps.length; i++) {
     const step = wf.steps[i];
     const stepLabel = prefix ? `${prefix}${i}` : String(i);
+    const name = stepName(nativeStepLabel(step), step.id, prefix);
 
     if (isGalaxyUserToolRun(step.run)) {
-      results.push(_validateEmbeddedFormat2StepJsonSchema(step, stepLabel, step.run));
+      results.push(
+        withStepLabel(_validateEmbeddedFormat2StepJsonSchema(step, stepLabel, step.run), name),
+      );
       continue;
     }
 
@@ -602,7 +610,7 @@ async function _validateFormat2WorkflowJsonSchema(
         toolSchemaDir,
         `${stepLabel}.`,
       );
-      results.push(...subResults);
+      results.push(...withParentLabel(subResults, name));
       continue;
     }
 
@@ -618,7 +626,7 @@ async function _validateFormat2WorkflowJsonSchema(
       cache,
       toolSchemaDir,
     );
-    results.push(result);
+    results.push(withStepLabel(result, name));
   }
 
   return results;

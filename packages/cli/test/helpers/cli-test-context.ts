@@ -6,7 +6,7 @@
  * command that resolves a cache without being handed one finds this empty dir
  * rather than the developer's real `~/.galaxy/tool_info_cache`.
  */
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 import { CACHE_DIR_ENV_VAR } from "@galaxy-tool-util/core/node";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -51,4 +51,13 @@ export async function createCliTestContext(prefix: string): Promise<CliTestConte
       process.exitCode = undefined;
     },
   };
+}
+
+/** The JSON report a `--json` command logged. */
+export function jsonOutput(ctx: CliTestContext): unknown {
+  const out = ctx.logSpy.mock.calls
+    .map((c: unknown[]) => c[0])
+    .find((s: unknown) => typeof s === "string" && s.startsWith("{"));
+  expect(out).toBeDefined();
+  return JSON.parse(out as string);
 }

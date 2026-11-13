@@ -37,6 +37,12 @@ export const SKIP_STATUSES: ReadonlySet<StepStatus> = new Set([
 
 export interface ValidationStepResult {
   step: string;
+  /**
+   * Step label, `outer/inner` inside a subworkflow; absent when the step or an
+   * enclosing step has no label (TS-only enrichment). Unlike `step`, which counts
+   * positions, this names a step the same way in every report.
+   */
+  label?: string;
   tool_id: string | null;
   version: string | null;
   status: StepStatus;
@@ -213,6 +219,26 @@ export interface ConcreteValidationReport {
   ok: boolean | null;
 }
 
+export type ConcreteErrorCheck =
+  | "structure"
+  | "strict_structure"
+  | "strict_encoding"
+  | "strict_state"
+  | "tool_state"
+  | "connections";
+
+/**
+ * One failure of the `--concrete` pass. `label` is null for checks that have no
+ * step and for unlabelled steps. There is deliberately no step number: tool-state
+ * and connection results number the same step differently.
+ */
+export interface ConcreteError {
+  check: ConcreteErrorCheck;
+  label: string | null;
+  tool_id: string | null;
+  message: string;
+}
+
 export interface SingleDraftValidationReport {
   workflow: string;
   ok: boolean;
@@ -221,6 +247,13 @@ export interface SingleDraftValidationReport {
   semantic_errors: DraftValidationDiagnosticReport[];
   warnings: DraftValidationDiagnosticReport[];
   survey: DraftSurveyReport;
+  /**
+   * Every failure behind `concrete.ok === false`, so that it can be explained from
+   * the top level. Present only alongside `concrete`. It can be longer than the
+   * count in `summary`, which counts a failing step once and an invalid connection
+   * report once.
+   */
+  concrete_errors?: ConcreteError[];
   /** Present only when --concrete was requested. */
   concrete?: ConcreteValidationReport;
   summary: string;
@@ -659,7 +692,10 @@ export function buildSingleDraftValidationReport(
     survey: buildDraftSurveyReport(result.survey),
     summary,
   };
-  if (concrete) report.concrete = concrete;
+  if (concrete) {
+    report.concrete_errors = collectConcreteErrors(concrete);
+    report.concrete = concrete;
+  }
   return report;
 }
 
@@ -676,6 +712,41 @@ function concreteErrorCount(c: ConcreteValidationReport): number {
     (c.tool_state?.summary.fail ?? 0) +
     (c.connection_report && !c.connection_report.valid ? 1 : 0)
   );
+}
+
+function collectConcreteErrors(c: ConcreteValidationReport): ConcreteError[] {
+  const stepless = (check: ConcreteErrorCheck, messages: string[] = []): ConcreteError[] =>
+    messages.map((message) => ({ check, label: null, tool_id: null, message }));
+  const stepResults = c.tool_state?.results ?? [];
+  const forStep = (
+    check: ConcreteErrorCheck,
+    step: Pick<ConnectionStepResult, "label" | "tool_id">,
+    message: string,
+  ): ConcreteError => ({ check, label: step.label ?? null, tool_id: step.tool_id, message });
+
+  return [
+    ...stepless("structure", c.structure_errors),
+    ...stepless("strict_structure", c.strict_structure_errors),
+    ...stepless("strict_encoding", c.strict_encoding_errors),
+    // strict_state_errors holds formatted strings; the results still have the label.
+    ...(c.strict_state_errors
+      ? stepResults
+          .filter((r) => SKIP_STATUSES.has(r.status))
+          .map((r) => forStep("strict_state", r, `skipped (${r.status}): ${r.errors.join("; ")}`))
+      : []),
+    ...stepResults
+      .filter((r) => r.status === "fail")
+      .flatMap((r) => r.errors.map((e) => forStep("tool_state", r, e))),
+    // `skip` connections carry errors too, but only `invalid` ones fail the report.
+    ...(c.connection_report?.step_results ?? []).flatMap((r) => [
+      ...r.errors.map((e) => forStep("connections", r, e)),
+      ...r.connections
+        .filter((conn) => conn.status === "invalid")
+        .flatMap((conn) =>
+          conn.errors.map((e) => forStep("connections", r, `${conn.target_input}: ${e}`)),
+        ),
+    ]),
+  ];
 }
 
 export function buildSingleDraftExtractReport(

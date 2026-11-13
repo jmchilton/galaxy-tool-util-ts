@@ -34,6 +34,7 @@
  */
 import { dirname } from "node:path";
 import {
+  SKIP_STATUSES,
   buildSingleDraftValidationReport,
   checkStrictEncoding,
   checkStrictStructure,
@@ -203,7 +204,7 @@ async function runConcretePass(
       summary: summarize(stepResults),
     };
     if (strict.strictState) {
-      const skipped = stepResults.filter((r) => r.status !== "ok" && r.status !== "fail");
+      const skipped = stepResults.filter((r) => SKIP_STATUSES.has(r.status));
       report.strict_state_errors = skipped.map(
         (r) => `${r.step} (${r.tool_id ?? "?"}): skipped (${r.status})`,
       );

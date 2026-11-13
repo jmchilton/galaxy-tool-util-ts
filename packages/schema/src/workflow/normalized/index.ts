@@ -30,7 +30,7 @@ export {
 } from "./native.js";
 
 export { toFormat2, type ToFormat2Options, type Format2StateOverride } from "./toFormat2.js";
-export { toNative, type ToNativeOptions } from "./toNative.js";
+export { toNative, nativeStepLabel, type ToNativeOptions } from "./toNative.js";
 export {
   toFormat2Stateful,
   type StepConversionStatus,
