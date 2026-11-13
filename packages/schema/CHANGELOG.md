@@ -1,5 +1,23 @@
 # @galaxy-tool-util/schema
 
+## 1.16.0
+
+### Minor Changes
+
+- [#217](https://github.com/jmchilton/galaxy-tool-util-ts/pull/217) [`b30808f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/b30808fe5dd1769f66fd9cf69a706ec6cb299b72) Thanks [@jmchilton](https://github.com/jmchilton)! - `nextDraftStep` work items now show the edges around a `TODO_*` port: an in port's sources (`sourced from 'reads'`, `no source: default value`, `no source: unwired`) and the steps consuming an out port (`consumed by 'second/TODO_input'`). `validateDraft` now reports a `TODO_*` input port with no source and no non-null default as a topology error, so `TODO_x: {}` fails `gxwf draft-validate`.
+
+- [#228](https://github.com/jmchilton/galaxy-tool-util-ts/pull/228) [`69e1763`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/69e176395b2ec21abe7654f516f835086654ce10) Thanks [@jmchilton](https://github.com/jmchilton)! - `validateDraft` now reports steps that form a dependency cycle, including a step sourcing its own output, as a topology error, so `gxwf draft-validate` rejects cyclic drafts. Each error names a group of steps that depend on each other through a cycle, not steps merely downstream of one.
+
+- [#233](https://github.com/jmchilton/galaxy-tool-util-ts/pull/233) [`5f81ba0`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/5f81ba02625cd3c26e050c768dbd99999344fd51) Thanks [@jmchilton](https://github.com/jmchilton)! - Add `diffWorkflows` / `renderWorkflowDiff` and the `gxwf diff BEFORE AFTER [--json] [--exit-code]` command: a structural diff of two Format2 workflows (either may be a draft), ported from gxformat2's `gxwf-diff`. Inline subworkflows are diffed too, with step keys and ids prefixed by the parent step key (`nested/first`), and list-form steps pair by `id` first so a relabel is a `label` change. List-form workflow inputs now resolve input type aliases (`File` → `data`) during normalization, as dict-form inputs already did. A `gxwf` command given a missing or unreadable workflow file now prints one `Failed to read <path>: <reason>` line instead of an unhandled stack trace and exits as it does for a parse failure: 2 for `draft-validate`, `draft-extract` and `draft-next-step` (before, 1), 1 for the others.
+
+### Patch Changes
+
+- [#227](https://github.com/jmchilton/galaxy-tool-util-ts/pull/227) [`0e74a2f`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/0e74a2f00689421a493fbade8ba4a080cf12863f) Thanks [@jmchilton](https://github.com/jmchilton)! - Check frame `contains_steps` / `contains_comments` labels. `gxwf lint` reports an entry that names no step, input or comment as a `FrameReferenceNotFound` error and warns on an empty frame (`FrameIsEmpty`). `toNative` and `gxwf convert` fail with the same message instead of writing `child_steps: [null]`.
+
+  Dict-form `comments` now keep an explicit `label` over the map key, matching gxformat2.
+
+- [#237](https://github.com/jmchilton/galaxy-tool-util-ts/pull/237) [`67a88fc`](https://github.com/jmchilton/galaxy-tool-util-ts/commit/67a88fce137682aa286189f81557672928afce1b) Thanks [@jmchilton](https://github.com/jmchilton)! - Range-check frame `contains_steps` / `contains_comments` indices. Integer and all-digit entries past the end of the steps (inputs first) or comments are `FrameReferenceNotFound` lint errors, and `toNative` fails with the same message instead of writing dangling `child_steps` / `child_comments`. A step label still wins over an index.
+
 ## 1.15.0
 
 ### Minor Changes
