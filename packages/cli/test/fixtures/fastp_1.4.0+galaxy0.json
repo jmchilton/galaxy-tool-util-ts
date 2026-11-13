@@ -1,0 +1,1348 @@
+{
+  "id": "fastp",
+  "version": "1.4.0+galaxy0",
+  "name": "fastp",
+  "description": "fast all-in-one preprocessing for FASTQ files",
+  "inputs": [
+    {
+      "name": "single_paired",
+      "parameter_type": "gx_conditional",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "conditional",
+      "test_parameter": {
+        "name": "single_paired_selector",
+        "parameter_type": "gx_select",
+        "hidden": false,
+        "label": "Single-end or paired reads",
+        "help": null,
+        "argument": null,
+        "is_dynamic": false,
+        "optional": false,
+        "type": "select",
+        "options": [
+          {
+            "label": "Single-end",
+            "value": "single",
+            "selected": true
+          },
+          {
+            "label": "Paired Collection",
+            "value": "paired_collection",
+            "selected": false
+          }
+        ],
+        "multiple": false,
+        "validators": []
+      },
+      "whens": [
+        {
+          "discriminator": "single",
+          "parameters": [
+            {
+              "name": "in1",
+              "parameter_type": "gx_data",
+              "hidden": false,
+              "label": "Input 1",
+              "help": "Input FASTQ file #1",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "data",
+              "extensions": [
+                "fastqsanger",
+                "fastqsanger.gz"
+              ],
+              "multiple": false,
+              "min": null,
+              "max": null,
+              "url_default": null
+            },
+            {
+              "name": "adapter_trimming_options",
+              "parameter_type": "gx_section",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "section",
+              "parameters": [
+                {
+                  "name": "disable_adapter_trimming",
+                  "parameter_type": "gx_boolean",
+                  "hidden": false,
+                  "label": "Disable adapter trimming",
+                  "help": "Adapter trimming is enabled by default. If this option is specified, adapter trimming is disabled.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": false,
+                  "type": "boolean",
+                  "value": false,
+                  "truevalue": "-A",
+                  "falsevalue": ""
+                },
+                {
+                  "name": "adapter_sequence1",
+                  "parameter_type": "gx_text",
+                  "hidden": false,
+                  "label": "Adapter sequence for input 1",
+                  "help": "The adapter for read1. For SE data, if not specified, the adapter will be auto-detected. For PE data, this is used if R1/R2 are found not overlapped.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "text",
+                  "area": false,
+                  "value": null,
+                  "default_options": [],
+                  "validators": []
+                }
+              ]
+            },
+            {
+              "name": "global_trimming_options",
+              "parameter_type": "gx_section",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "section",
+              "parameters": [
+                {
+                  "name": "trim_front1",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "Trim front for input 1",
+                  "help": "Trimming how many bases in front for read1, default is 0.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                },
+                {
+                  "name": "trim_tail1",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "Trim tail for input 1",
+                  "help": "Trimming how many bases in tail for read1, default is 0.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                }
+              ]
+            }
+          ],
+          "is_default_when": true
+        },
+        {
+          "discriminator": "paired_collection",
+          "parameters": [
+            {
+              "name": "paired_input",
+              "parameter_type": "gx_data_collection",
+              "hidden": false,
+              "label": "Select paired collection(s)",
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "data_collection",
+              "collection_type": "paired",
+              "extensions": [
+                "fastqsanger",
+                "fastqsanger.gz"
+              ],
+              "value": null
+            },
+            {
+              "name": "merge_reads",
+              "parameter_type": "gx_conditional",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "conditional",
+              "test_parameter": {
+                "name": "merge",
+                "parameter_type": "gx_select",
+                "hidden": false,
+                "label": "Merge forward and revese reads?",
+                "help": null,
+                "argument": null,
+                "is_dynamic": false,
+                "optional": false,
+                "type": "select",
+                "options": [
+                  {
+                    "label": "No",
+                    "value": "",
+                    "selected": false
+                  },
+                  {
+                    "label": "Yes",
+                    "value": "--merge",
+                    "selected": false
+                  }
+                ],
+                "multiple": false,
+                "validators": []
+              },
+              "whens": [
+                {
+                  "discriminator": "--merge",
+                  "parameters": [
+                    {
+                      "name": "include_unmerged",
+                      "parameter_type": "gx_boolean",
+                      "hidden": false,
+                      "label": "Include unmerged outputs into merged output file",
+                      "help": null,
+                      "argument": null,
+                      "is_dynamic": false,
+                      "optional": false,
+                      "type": "boolean",
+                      "value": false,
+                      "truevalue": "--include_unmerged",
+                      "falsevalue": ""
+                    }
+                  ],
+                  "is_default_when": false
+                },
+                {
+                  "discriminator": "",
+                  "parameters": [],
+                  "is_default_when": true
+                }
+              ]
+            },
+            {
+              "name": "adapter_trimming_options",
+              "parameter_type": "gx_section",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "section",
+              "parameters": [
+                {
+                  "name": "disable_adapter_trimming",
+                  "parameter_type": "gx_boolean",
+                  "hidden": false,
+                  "label": "Disable adapter trimming",
+                  "help": "Adapter trimming is enabled by default. If this option is specified, adapter trimming is disabled.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": false,
+                  "type": "boolean",
+                  "value": false,
+                  "truevalue": "-A",
+                  "falsevalue": ""
+                },
+                {
+                  "name": "adapter_sequence1",
+                  "parameter_type": "gx_text",
+                  "hidden": false,
+                  "label": "Adapter sequence for input 1",
+                  "help": "The adapter for read1. For SE data, if not specified, the adapter will be auto-detected. For PE data, this is used if R1/R2 are found not overlapped.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "text",
+                  "area": false,
+                  "value": null,
+                  "default_options": [],
+                  "validators": []
+                },
+                {
+                  "name": "adapter_sequence2",
+                  "parameter_type": "gx_text",
+                  "hidden": false,
+                  "label": "Adapter sequence for input 2",
+                  "help": "The adapter for read2. For SE data, if not specified, the adapter will be auto-detected. For PE data, this is used if R1/R2 are found not overlapped.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "text",
+                  "area": false,
+                  "value": null,
+                  "default_options": [],
+                  "validators": []
+                },
+                {
+                  "name": "detect_adapter_for_pe",
+                  "parameter_type": "gx_boolean",
+                  "hidden": false,
+                  "label": "Adapter sequence auto-detection for paired-end",
+                  "help": null,
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": false,
+                  "type": "boolean",
+                  "value": false,
+                  "truevalue": "--detect_adapter_for_pe",
+                  "falsevalue": ""
+                }
+              ]
+            },
+            {
+              "name": "global_trimming_options",
+              "parameter_type": "gx_section",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "section",
+              "parameters": [
+                {
+                  "name": "trim_front1",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "Trim front for input 1",
+                  "help": "Trimming how many bases in front for read1, default is 0.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                },
+                {
+                  "name": "trim_tail1",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "Trim tail for input 1",
+                  "help": "Trimming how many bases in tail for read1, default is 0.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                },
+                {
+                  "name": "trim_front2",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "Trim front for input 2",
+                  "help": "Trimming how many bases in front for read2. If it's not specified, it will follow read1's settings.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                },
+                {
+                  "name": "trim_tail2",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "Trim tail for input 2",
+                  "help": "Trimming how many bases in tail for read2. If it's not specified, it will follow read1's settings.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                }
+              ]
+            }
+          ],
+          "is_default_when": false
+        }
+      ]
+    },
+    {
+      "name": "overrepresented_sequence_analysis",
+      "parameter_type": "gx_section",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "section",
+      "parameters": [
+        {
+          "name": "overrepresentation_analysis",
+          "parameter_type": "gx_boolean",
+          "hidden": false,
+          "label": "Enable overrepresented analysis",
+          "help": "Enable overrepresented sequence analysis.",
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "boolean",
+          "value": false,
+          "truevalue": "-p",
+          "falsevalue": ""
+        },
+        {
+          "name": "overrepresentation_sampling",
+          "parameter_type": "gx_integer",
+          "hidden": false,
+          "label": "Overrepresentation sampling",
+          "help": "One in (--overrepresentation_sampling) reads will be computed for overrepresentation analysis (1~10000), smaller is slower, default is 20.",
+          "argument": null,
+          "is_dynamic": false,
+          "optional": true,
+          "type": "integer",
+          "value": null,
+          "min": null,
+          "max": null,
+          "validators": []
+        }
+      ]
+    },
+    {
+      "name": "filter_options",
+      "parameter_type": "gx_section",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "section",
+      "parameters": [
+        {
+          "name": "quality_filtering_options",
+          "parameter_type": "gx_section",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "section",
+          "parameters": [
+            {
+              "name": "disable_quality_filtering",
+              "parameter_type": "gx_boolean",
+              "hidden": false,
+              "label": "Disable quality filtering",
+              "help": "Quality filtering is enabled by default. If this option is specified, quality filtering is disabled.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "boolean",
+              "value": false,
+              "truevalue": "-Q",
+              "falsevalue": ""
+            },
+            {
+              "name": "qualified_quality_phred",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": "Qualified quality phred",
+              "help": "The quality value that a base is qualified. Default 15 means phred quality >=Q15 is qualified.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "integer",
+              "value": null,
+              "min": null,
+              "max": null,
+              "validators": []
+            },
+            {
+              "name": "unqualified_percent_limit",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": "Unqualified percent limit",
+              "help": "How many percents of bases are allowed to be unqualified (0~100). Default 40 means 40%.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "integer",
+              "value": null,
+              "min": null,
+              "max": null,
+              "validators": []
+            },
+            {
+              "name": "n_base_limit",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": "N base limit",
+              "help": "If one read's number of N base is >n_base_limit, then this read/pair is discarded. Default is 5.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "integer",
+              "value": null,
+              "min": null,
+              "max": null,
+              "validators": []
+            }
+          ]
+        },
+        {
+          "name": "length_filtering_options",
+          "parameter_type": "gx_section",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "section",
+          "parameters": [
+            {
+              "name": "disable_length_filtering",
+              "parameter_type": "gx_boolean",
+              "hidden": false,
+              "label": "Disable length filtering",
+              "help": "Length filtering is enabled by default. If this option is specified, length filtering is disabled.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "boolean",
+              "value": false,
+              "truevalue": "-L",
+              "falsevalue": ""
+            },
+            {
+              "name": "length_required",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": "Length required",
+              "help": "Reads shorter than this value will be discarded. Default is 15.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "integer",
+              "value": null,
+              "min": null,
+              "max": null,
+              "validators": []
+            },
+            {
+              "name": "length_limit",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": "Maximum length",
+              "help": "Reads longer than this value will be discarded. Default is 0 and means no limitation.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "integer",
+              "value": null,
+              "min": null,
+              "max": null,
+              "validators": []
+            }
+          ]
+        },
+        {
+          "name": "low_complexity_filter",
+          "parameter_type": "gx_section",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "section",
+          "parameters": [
+            {
+              "name": "enable_low_complexity_filter",
+              "parameter_type": "gx_boolean",
+              "hidden": false,
+              "label": "Enable low complexity filter",
+              "help": "The complexity is defined as the percentage of base that is different from its next base, default is No",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "boolean",
+              "value": false,
+              "truevalue": "-y",
+              "falsevalue": ""
+            },
+            {
+              "name": "complexity_threshold",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": "Complexity threshold",
+              "help": "Threshold for low complexity filter (0~100). Default is 30, which means 30% complexity is required.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "integer",
+              "value": null,
+              "min": null,
+              "max": null,
+              "validators": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "duplicated_reads",
+      "parameter_type": "gx_section",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "section",
+      "parameters": [
+        {
+          "name": "handling_options",
+          "parameter_type": "gx_conditional",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "conditional",
+          "test_parameter": {
+            "name": "eval_dups",
+            "parameter_type": "gx_select",
+            "hidden": false,
+            "label": "Enable duplicated reads analysis",
+            "help": "If enabled, calculate and report read duplication statistics. Enabling this is also a prerequisite for optional deduplication of reads. Duplicate detection relies exclusively on exact identity between read sequences (both for SE and PE data). It also increases tool memory requirements and running time moderately. NOTE: the default (no duplication analysis) is different from the command-line tool.",
+            "argument": null,
+            "is_dynamic": false,
+            "optional": false,
+            "type": "select",
+            "options": [
+              {
+                "label": "Enable",
+                "value": "",
+                "selected": false
+              },
+              {
+                "label": "Disable (--dont_eval_duplication)",
+                "value": "--dont_eval_duplication",
+                "selected": true
+              }
+            ],
+            "multiple": false,
+            "validators": []
+          },
+          "whens": [
+            {
+              "discriminator": "--dont_eval_duplication",
+              "parameters": [],
+              "is_default_when": true
+            },
+            {
+              "discriminator": "",
+              "parameters": [
+                {
+                  "name": "dedup",
+                  "parameter_type": "gx_boolean",
+                  "hidden": false,
+                  "label": "Drop duplicate reads/pairs",
+                  "help": null,
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": false,
+                  "type": "boolean",
+                  "value": false,
+                  "truevalue": "--dedup",
+                  "falsevalue": ""
+                }
+              ],
+              "is_default_when": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "read_mod_options",
+      "parameter_type": "gx_section",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "section",
+      "parameters": [
+        {
+          "name": "polyg_tail_trimming",
+          "parameter_type": "gx_conditional",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "conditional",
+          "test_parameter": {
+            "name": "trimming_select",
+            "parameter_type": "gx_select",
+            "hidden": false,
+            "label": "PolyG tail trimming",
+            "help": "This feature is enabled for NextSeq/NovaSeq data by default. NextSeq/NovaSeq data is detected by the machine ID in the FASTQ records.",
+            "argument": null,
+            "is_dynamic": false,
+            "optional": false,
+            "type": "select",
+            "options": [
+              {
+                "label": "Automatic trimming for Illumina NextSeq/NovaSeq data",
+                "value": "",
+                "selected": true
+              },
+              {
+                "label": "Force polyG tail trimming",
+                "value": "-g",
+                "selected": false
+              },
+              {
+                "label": "Disable polyG tail trimming",
+                "value": "-G",
+                "selected": false
+              }
+            ],
+            "multiple": false,
+            "validators": []
+          },
+          "whens": [
+            {
+              "discriminator": "-g",
+              "parameters": [
+                {
+                  "name": "poly_g_min_len",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "PolyG minimum length",
+                  "help": "The minimum length to detect polyG in the read tail. 10 by default.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                }
+              ],
+              "is_default_when": false
+            },
+            {
+              "discriminator": "",
+              "parameters": [
+                {
+                  "name": "poly_g_min_len",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "PolyG minimum length",
+                  "help": "The minimum length to detect polyG in the read tail. 10 by default.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                }
+              ],
+              "is_default_when": true
+            },
+            {
+              "discriminator": "-G",
+              "parameters": [],
+              "is_default_when": false
+            }
+          ]
+        },
+        {
+          "name": "polyx_tail_trimming",
+          "parameter_type": "gx_conditional",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "conditional",
+          "test_parameter": {
+            "name": "polyx_trimming_select",
+            "parameter_type": "gx_select",
+            "hidden": false,
+            "label": "PolyX tail trimming",
+            "help": "Similar to polyG tail trimming. When polyG tail trimming and polyX tail trimming are both enabled, fastp will perform polyG trimming first, then perform polyX trimming. Disabled by default.",
+            "argument": null,
+            "is_dynamic": false,
+            "optional": false,
+            "type": "select",
+            "options": [
+              {
+                "label": "Disable polyX trimming",
+                "value": "",
+                "selected": true
+              },
+              {
+                "label": "Enable polyX tail trimming",
+                "value": "-x",
+                "selected": false
+              }
+            ],
+            "multiple": false,
+            "validators": []
+          },
+          "whens": [
+            {
+              "discriminator": "-x",
+              "parameters": [
+                {
+                  "name": "poly_x_min_len",
+                  "parameter_type": "gx_integer",
+                  "hidden": false,
+                  "label": "PolyX minimum length",
+                  "help": "The minimum length to detect polyX in the read tail. 10 by default.",
+                  "argument": null,
+                  "is_dynamic": false,
+                  "optional": true,
+                  "type": "integer",
+                  "value": null,
+                  "min": null,
+                  "max": null,
+                  "validators": []
+                }
+              ],
+              "is_default_when": false
+            },
+            {
+              "discriminator": "",
+              "parameters": [],
+              "is_default_when": true
+            }
+          ]
+        },
+        {
+          "name": "umi_processing",
+          "parameter_type": "gx_section",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "section",
+          "parameters": [
+            {
+              "name": "umi",
+              "parameter_type": "gx_boolean",
+              "hidden": false,
+              "label": "Enable unique molecular identifer",
+              "help": "Enable unique molecular identifer (UMI) preprocessing.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "boolean",
+              "value": false,
+              "truevalue": "-U",
+              "falsevalue": ""
+            },
+            {
+              "name": "umi_loc",
+              "parameter_type": "gx_text",
+              "hidden": false,
+              "label": "UMI location",
+              "help": "Specify the location of UMI, can be (index1/index2/read1/read2/per_index/per_read, default is none.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "text",
+              "area": false,
+              "value": null,
+              "default_options": [],
+              "validators": []
+            },
+            {
+              "name": "umi_len",
+              "parameter_type": "gx_integer",
+              "hidden": false,
+              "label": "UMI length",
+              "help": "If the UMI is in read1/read2, its length should be provided.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "integer",
+              "value": null,
+              "min": null,
+              "max": null,
+              "validators": []
+            },
+            {
+              "name": "umi_prefix",
+              "parameter_type": "gx_text",
+              "hidden": false,
+              "label": "UMI prefix",
+              "help": "If specified, an underline will be used to connect prefix and UMI (i.e. prefix=UMI, UMI=AATTCG, final=UMI_AATTCG). No prefix by default.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": true,
+              "type": "text",
+              "area": false,
+              "value": null,
+              "default_options": [],
+              "validators": []
+            }
+          ]
+        },
+        {
+          "name": "cutting_by_quality_options",
+          "parameter_type": "gx_section",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "section",
+          "parameters": [
+            {
+              "name": "cut_front_select",
+              "parameter_type": "gx_conditional",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "conditional",
+              "test_parameter": {
+                "name": "cut_front",
+                "parameter_type": "gx_select",
+                "hidden": false,
+                "label": "Cut by quality in front (5')",
+                "help": "Enable per read cutting by quality in front (5'). (WARNING: this will interfere with deduplication of both PE/SE data if performed with downstream tools.)",
+                "argument": null,
+                "is_dynamic": false,
+                "optional": false,
+                "type": "select",
+                "options": [
+                  {
+                    "label": "Yes",
+                    "value": "--cut_front",
+                    "selected": false
+                  },
+                  {
+                    "label": "No",
+                    "value": "",
+                    "selected": true
+                  }
+                ],
+                "multiple": false,
+                "validators": []
+              },
+              "whens": [
+                {
+                  "discriminator": "--cut_front",
+                  "parameters": [
+                    {
+                      "name": "cut_front_window_size",
+                      "parameter_type": "gx_integer",
+                      "hidden": false,
+                      "label": "Cutting window size for cut front",
+                      "help": "The size of the sliding window for sliding window trimming.",
+                      "argument": null,
+                      "is_dynamic": false,
+                      "optional": true,
+                      "type": "integer",
+                      "value": 4,
+                      "min": 1,
+                      "max": 1000,
+                      "validators": []
+                    },
+                    {
+                      "name": "cut_front_mean_quality",
+                      "parameter_type": "gx_integer",
+                      "hidden": false,
+                      "label": "Cutting mean quality for cut front",
+                      "help": "The bases in the sliding window with mean quality below cutting_quality will be cut.",
+                      "argument": null,
+                      "is_dynamic": false,
+                      "optional": true,
+                      "type": "integer",
+                      "value": 20,
+                      "min": 1,
+                      "max": 30,
+                      "validators": []
+                    }
+                  ],
+                  "is_default_when": false
+                },
+                {
+                  "discriminator": "",
+                  "parameters": [],
+                  "is_default_when": true
+                }
+              ]
+            },
+            {
+              "name": "cut_tail_select",
+              "parameter_type": "gx_conditional",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "conditional",
+              "test_parameter": {
+                "name": "cut_tail",
+                "parameter_type": "gx_select",
+                "hidden": false,
+                "label": "Cut by quality in tail (3')",
+                "help": "Enable per read cutting by quality in tail (3'). (WARNING: this will interfere with deduplication of SE data if performed with downstream tools.)",
+                "argument": null,
+                "is_dynamic": false,
+                "optional": false,
+                "type": "select",
+                "options": [
+                  {
+                    "label": "Yes",
+                    "value": "--cut_tail",
+                    "selected": false
+                  },
+                  {
+                    "label": "No",
+                    "value": "",
+                    "selected": true
+                  }
+                ],
+                "multiple": false,
+                "validators": []
+              },
+              "whens": [
+                {
+                  "discriminator": "--cut_tail",
+                  "parameters": [
+                    {
+                      "name": "cut_tail_window_size",
+                      "parameter_type": "gx_integer",
+                      "hidden": false,
+                      "label": "Cutting window size for cut tail",
+                      "help": "The size of the sliding window for sliding window trimming.",
+                      "argument": null,
+                      "is_dynamic": false,
+                      "optional": true,
+                      "type": "integer",
+                      "value": 4,
+                      "min": 1,
+                      "max": 1000,
+                      "validators": []
+                    },
+                    {
+                      "name": "cut_tail_mean_quality",
+                      "parameter_type": "gx_integer",
+                      "hidden": false,
+                      "label": "Cutting mean quality for cut tail",
+                      "help": "The bases in the sliding window with mean quality below cutting_quality will be cut.",
+                      "argument": null,
+                      "is_dynamic": false,
+                      "optional": true,
+                      "type": "integer",
+                      "value": 20,
+                      "min": 1,
+                      "max": 30,
+                      "validators": []
+                    }
+                  ],
+                  "is_default_when": false
+                },
+                {
+                  "discriminator": "",
+                  "parameters": [],
+                  "is_default_when": true
+                }
+              ]
+            },
+            {
+              "name": "cut_right_select",
+              "parameter_type": "gx_conditional",
+              "hidden": false,
+              "label": null,
+              "help": null,
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "conditional",
+              "test_parameter": {
+                "name": "cut_right",
+                "parameter_type": "gx_select",
+                "hidden": false,
+                "label": "Cut by quality in tail (3')",
+                "help": "Move a sliding window from front to tail, if meet one window with mean quality < threshold, drop the bases in the window and the right part, and then stop. (WARNING: this will interfere with deduplication of SE data if performed with downstream tools.)",
+                "argument": null,
+                "is_dynamic": false,
+                "optional": false,
+                "type": "select",
+                "options": [
+                  {
+                    "label": "Yes",
+                    "value": "--cut_right",
+                    "selected": false
+                  },
+                  {
+                    "label": "No",
+                    "value": "",
+                    "selected": true
+                  }
+                ],
+                "multiple": false,
+                "validators": []
+              },
+              "whens": [
+                {
+                  "discriminator": "--cut_right",
+                  "parameters": [
+                    {
+                      "name": "cut_right_window_size",
+                      "parameter_type": "gx_integer",
+                      "hidden": false,
+                      "label": "Cutting window size for cut right",
+                      "help": "The size of the sliding window for sliding window trimming.",
+                      "argument": null,
+                      "is_dynamic": false,
+                      "optional": true,
+                      "type": "integer",
+                      "value": 4,
+                      "min": 1,
+                      "max": 1000,
+                      "validators": []
+                    },
+                    {
+                      "name": "cut_right_mean_quality",
+                      "parameter_type": "gx_integer",
+                      "hidden": false,
+                      "label": "Cutting mean quality for cut right",
+                      "help": "The bases in the sliding window with mean quality below cutting_quality will be cut.",
+                      "argument": null,
+                      "is_dynamic": false,
+                      "optional": true,
+                      "type": "integer",
+                      "value": 20,
+                      "min": 1,
+                      "max": 30,
+                      "validators": []
+                    }
+                  ],
+                  "is_default_when": false
+                },
+                {
+                  "discriminator": "",
+                  "parameters": [],
+                  "is_default_when": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "base_correction_options",
+          "parameter_type": "gx_section",
+          "hidden": false,
+          "label": null,
+          "help": null,
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "section",
+          "parameters": [
+            {
+              "name": "correction",
+              "parameter_type": "gx_boolean",
+              "hidden": false,
+              "label": "Enable base correction",
+              "help": "Enable base correction in overlapped regions (only for PE data), default is disabled.",
+              "argument": null,
+              "is_dynamic": false,
+              "optional": false,
+              "type": "boolean",
+              "value": false,
+              "truevalue": "-c",
+              "falsevalue": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "output_options",
+      "parameter_type": "gx_section",
+      "hidden": false,
+      "label": null,
+      "help": null,
+      "argument": null,
+      "is_dynamic": false,
+      "optional": false,
+      "type": "section",
+      "parameters": [
+        {
+          "name": "report_html",
+          "parameter_type": "gx_boolean",
+          "hidden": false,
+          "label": "Output HTML report",
+          "help": "fastp provides a QC report for the data Before and After filtering within a single HTML page, which enables comparison of the quality statistics changed by the preprocessing step directly",
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "boolean",
+          "value": true,
+          "truevalue": "True",
+          "falsevalue": "False"
+        },
+        {
+          "name": "report_json",
+          "parameter_type": "gx_boolean",
+          "hidden": false,
+          "label": "Output JSON report",
+          "help": "The JSON report contains all the data visualized in the HTML report. The format of the JSON report is manually optimized to be easily readable by humans and is compatible with MultiQC",
+          "argument": null,
+          "is_dynamic": false,
+          "optional": false,
+          "type": "boolean",
+          "value": true,
+          "truevalue": "True",
+          "falsevalue": "False"
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "output_paired_coll",
+      "label": "${tool.name} on ${on_string}: Paired-end output",
+      "hidden": false,
+      "type": "collection",
+      "collection_type": "paired",
+      "collection_type_source": null,
+      "collection_type_from_rules": null,
+      "structured_like": null,
+      "discover_datasets": []
+    },
+    {
+      "name": "unmerged_out_coll",
+      "label": "${tool.name} on ${on_string}: Unmerged filtered",
+      "hidden": false,
+      "type": "collection",
+      "collection_type": "paired",
+      "collection_type_source": null,
+      "collection_type_from_rules": null,
+      "structured_like": null,
+      "discover_datasets": []
+    },
+    {
+      "name": "unpaired_out_coll",
+      "label": "${tool.name} on ${on_string}: Unmerged unfiltered",
+      "hidden": false,
+      "type": "collection",
+      "collection_type": "paired",
+      "collection_type_source": null,
+      "collection_type_from_rules": null,
+      "structured_like": null,
+      "discover_datasets": []
+    },
+    {
+      "name": "out1",
+      "label": "${tool.name} on ${on_string}: Read 1 output",
+      "hidden": false,
+      "type": "data",
+      "format": "data",
+      "format_source": "single_paired|in1",
+      "metadata_source": null,
+      "discover_datasets": [],
+      "from_work_dir": null,
+      "precreate_directory": false
+    },
+    {
+      "name": "report_html",
+      "label": "${tool.name} on ${on_string}: HTML report",
+      "hidden": false,
+      "type": "data",
+      "format": "html",
+      "format_source": null,
+      "metadata_source": null,
+      "discover_datasets": [],
+      "from_work_dir": "fastp.html",
+      "precreate_directory": false
+    },
+    {
+      "name": "report_json",
+      "label": "${tool.name} on ${on_string}: JSON report",
+      "hidden": false,
+      "type": "data",
+      "format": "json",
+      "format_source": null,
+      "metadata_source": null,
+      "discover_datasets": [],
+      "from_work_dir": "fastp.json",
+      "precreate_directory": false
+    },
+    {
+      "name": "merged_reads",
+      "label": "${tool.name} on ${on_string}: Merged reads",
+      "hidden": false,
+      "type": "data",
+      "format": "data",
+      "format_source": "single_paired|paired_input['forward']",
+      "metadata_source": null,
+      "discover_datasets": [],
+      "from_work_dir": null,
+      "precreate_directory": false
+    }
+  ],
+  "citations": [
+    {
+      "type": "doi",
+      "content": "10.1101/274100"
+    }
+  ],
+  "license": null,
+  "profile": "23.1",
+  "edam_operations": [],
+  "edam_topics": [],
+  "xrefs": [
+    {
+      "value": "fastp",
+      "type": "bio.tools"
+    }
+  ],
+  "help": {
+    "format": "restructuredtext",
+    "content": "\n.. class:: infomark\n\n**What it does**\n\nfastp_ is a tool designed to provide fast all-in-one preprocessing for FASTQ files. This tool is developed in C++ with multithreading supported to\nafford high performance.\n\n*Features*\n\n1. Filter out bad (too low quality, too short, or too many N...) and/or duplicate reads\n\n2. Cut low quality bases for per read in its 5' and 3' by evaluating the mean quality from a sliding window (like Trimmomatic but faster)\n\n3. Trim all reads in front and tail\n\n4. Cut adapters. Adapter sequences can be automatically detected, which means you don't have to input the adapter sequences to trim them.\n\n5. Correct mismatched base pairs in overlapped regions of paired end reads, if one base is with high quality while the other is with ultra-low quality\n\n6. Trim polyG in 3' ends, which is commonly seen in NovaSeq/NextSeq data. Trim polyX in 3' ends to remove unwanted polyX tailing (i.e. polyA tailing for mRNA-Seq data)\n\n7. Preprocess unique molecular identifier (UMI) enabled data, shift UMI to sequence name\n\n8. Report JSON format result for further interpreting\n\n9. Visualize quality control and filtering results on a single HTML page (like FASTQC but faster and more informative)\n\n10. Split the output to multiple files (0001.R1.gz, 0002.R1.gz...) to support parallel processing. Two modes can be used, limiting the total split file number, or limiting the lines of each split file (*Not enabled in this Galaxy tool*)\n\n11. Support long reads (data from PacBio / Nanopore devices)\n\n-----\n\n**Inputs**\n\nSingle-end or Paired-end (compressed) fastqsanger files\n\n-----\n\n**Outputs**\n\n    * Processed reads\n    * Merged reads\n    * Unmerged filtered reads, reads that cannot be merged successfully, but both pass all the filters.\n    * Unmerged unfiltered reads, reads that cannot be merged, i.e. **forward** passes filters but **reverse** doesn't.\n\nOptionally, under **Output Options** you can choose to output\n\n    * HTML report (default is Yes)\n    * JSON report (compatible with MultiQC)\n\n.. _fastp: https://github.com/OpenGene/fastp\n\n"
+  }
+}

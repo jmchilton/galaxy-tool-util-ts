@@ -181,6 +181,29 @@ gxwf clean my-workflow.ga --diff
 | `--report-html [file]` | Write HTML report to file (or stdout if omitted) |
 | `--skip-uuid` | Skip stripping `uuid` fields (errors are always stripped) |
 
+### `fill-defaults <file>`
+
+Write an explicit expansion of the static defaults available in each tool step's definition. Use this optional transformation to inspect defaults or export expanded state. Sparse state with defaulted conditional selectors already passes `validate --strict-state`.
+
+Tool definitions come from the local cache or configured tool sources. Connected inputs that are absent stay absent, and existing connection markers are preserved. Runtime-dependent defaults and required data inputs still need to be supplied by Galaxy or workflow connections. This command does not validate the result or guarantee importability into every Galaxy version.
+
+```bash
+gxwf fill-defaults workflow.gxwf.yml --output filled.gxwf.yml
+gxwf validate filled.gxwf.yml --strict-state
+```
+
+| Option | Description |
+|---|---|
+| `--output <file>` | Write filled workflow to file (default: stdout) |
+| `--format <fmt>` | Force format (auto-detected by default) |
+| `--cache-dir <dir>` | Tool cache directory |
+| `--offline` | Read only the local cache |
+| `--galaxy-url <url>` | Extra Galaxy tool source after the ToolShed |
+
+The command reports how many steps changed and writes the expanded workflow to `--output`, or stdout when omitted. Native workflows, format2 workflows, `$graph` entries, inline subworkflows, and embedded tool definitions are supported. Validate the written file separately as shown above.
+
+Unresolved tools, JSON-string state, and external subworkflows produce warnings and are left unchanged. Resolve missing tools, use `gxwf clean` for JSON-string state, or expand external subworkflows before retrying. Connection paths use Galaxy's `|` separator. `/`-separated connection paths are not supported.
+
 ### `lint <file>`
 
 Unified lint combining structural checks, best practices, and tool state validation.
