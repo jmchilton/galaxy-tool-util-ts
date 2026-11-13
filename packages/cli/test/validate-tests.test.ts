@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { cacheKey } from "@galaxy-tool-util/core";
+import { makeNodeToolCache } from "@galaxy-tool-util/core/node";
+import { parseXmlTool } from "@galaxy-tool-util/tool-xml";
 import { runValidateTests } from "../src/commands/validate-tests.js";
 
 describe("runValidateTests", () => {
@@ -157,6 +160,181 @@ steps:
       expect(entry).toBeDefined();
       expect(entry.params.actualType).toBe("string");
       expect(process.exitCode).toBe(1);
+    });
+
+    it.each([
+      ["ftype: fasta", undefined],
+      ["ftype: bam", "workflow_output_datatype"],
+      ["class: Collection", "workflow_output_kind"],
+    ])("checks fixed UDT output with %s", async (assertion, keyword) => {
+      const wf = join(dir, "fasta.gxwf.yml");
+      await writeFile(
+        wf,
+        `class: GalaxyWorkflow
+outputs:
+  result: {outputSource: make_fasta/output1}
+steps:
+  make_fasta:
+    run:
+      class: GalaxyUserTool
+      id: make_fasta
+      name: Make FASTA
+      version: '0.1'
+      container: busybox
+      shell_command: echo ACGT > out.fasta
+      inputs: []
+      outputs:
+        - {name: output1, type: data, format: fasta, from_work_dir: out.fasta}
+    state: {}
+`,
+      );
+      const tests = join(dir, "fasta-tests.yml");
+      await writeFile(
+        tests,
+        `- job: {}
+  outputs:
+    result: {${assertion}}
+`,
+      );
+      await runValidateTests(tests, { workflow: wf, json: true });
+      const report = JSON.parse(logs.join("\n"));
+      expect(report.errors.map((error: { keyword: string }) => error.keyword)).toEqual(
+        keyword ? [keyword] : [],
+      );
+      expect(process.exitCode).toBe(keyword ? 1 : 0);
+    });
+
+    it.each([
+      ["class: Collection, collection_type: list", undefined],
+      ["class: Collection, collection_type: paired", "workflow_output_collection_type"],
+      ["ftype: txt", "workflow_output_kind"],
+    ])("checks collection produced by map-over with %s", async (assertion, keyword) => {
+      const wf = join(dir, "map-over.gxwf.yml");
+      await writeFile(
+        wf,
+        `class: GalaxyWorkflow
+inputs:
+  reads: {type: collection, collection_type: list}
+outputs:
+  result: {outputSource: copy/output1}
+steps:
+  copy:
+    run:
+      class: GalaxyUserTool
+      id: copy_input
+      name: Copy input
+      version: '0.1'
+      container: busybox
+      shell_command: echo example > output.txt
+      inputs:
+        - {name: input1, type: data, format: txt}
+      outputs:
+        - {name: output1, type: data, format: txt, from_work_dir: output.txt}
+    in: {input1: reads}
+    state: {}
+`,
+      );
+      const tests = join(dir, "map-over-tests.yml");
+      await writeFile(
+        tests,
+        `- job:
+    reads: {class: Collection, collection_type: list, elements: []}
+  outputs:
+    result: {${assertion}}
+`,
+      );
+      await runValidateTests(tests, { workflow: wf, json: true });
+      const report = JSON.parse(logs.join("\n"));
+      expect(report.errors.map((error: { keyword: string }) => error.keyword)).toEqual(
+        keyword ? [keyword] : [],
+      );
+      expect(process.exitCode).toBe(keyword ? 1 : 0);
+    });
+
+    it.each([
+      ["tabular", true],
+      ["bam", false],
+      ["custom", true],
+    ])("checks input filetype %s with a datatype registry", async (filetype, valid) => {
+      const wf = join(dir, "input.gxwf.yml");
+      await writeFile(wf, "class: GalaxyWorkflow\ninputs:\n  source: {type: File, format: txt}\n");
+      const tests = join(dir, "input-tests.yml");
+      await writeFile(
+        tests,
+        `- job:
+    source: {class: File, path: input.txt, filetype: ${filetype}}
+  outputs: {}
+`,
+      );
+      const datatypes = join(dir, "datatypes.json");
+      await writeFile(
+        datatypes,
+        JSON.stringify({
+          datatypes: ["txt", "tabular", "bam"],
+          datatypes_mapping: {
+            ext_to_class_name: { txt: "Text", tabular: "Tabular", bam: "Bam" },
+            class_to_classes: { Text: { Text: true }, Tabular: { Text: true }, Bam: { Bam: true } },
+          },
+        }),
+      );
+      await runValidateTests(tests, { workflow: wf, datatypes, json: true });
+      const report = JSON.parse(logs.join("\n"));
+      expect(report.valid).toBe(valid);
+      expect(report.errors.map((error: { keyword: string }) => error.keyword)).toEqual(
+        valid ? [] : ["workflow_input_format"],
+      );
+    });
+
+    it("uses a cached Galaxy wrapper without treating conditional output formats as fixed", async () => {
+      const contents = await readFile(
+        new URL(
+          "../../tool-xml/test/fixtures/tool_parsing/tools/output_format.xml",
+          import.meta.url,
+        ),
+        "utf-8",
+      );
+      const tool = parseXmlTool(contents, () => {
+        throw new Error("The fixture has no imports");
+      });
+      const cacheDir = join(dir, "cache");
+      const cache = makeNodeToolCache({ cacheDir });
+      const coords = cache.resolveToolCoordinates("output_format", "1.0.0");
+      const key = await cacheKey(coords.toolshedUrl, coords.trsToolId, "1.0.0");
+      await cache.saveTool(key, tool, "output_format", "1.0.0", "local");
+
+      const wf = join(dir, "conditional.gxwf.yml");
+      await writeFile(
+        wf,
+        `class: GalaxyWorkflow
+outputs:
+  conditional: {outputSource: step/change_format_output}
+  fixed: {outputSource: step/direct_output}
+steps:
+  step:
+    tool_id: output_format
+    tool_version: '1.0.0'
+    state: {input_text: foo}
+`,
+      );
+      const tests = join(dir, "conditional-tests.yml");
+      await writeFile(
+        tests,
+        `- job: {}
+  outputs:
+    conditional: {ftype: fastqsolexa}
+    fixed: {ftype: bam}
+`,
+      );
+      await runValidateTests(tests, { workflow: wf, cacheDir, json: true });
+      expect(JSON.parse(logs.join("\n")).errors).toEqual([]);
+      logs.length = 0;
+
+      await cache.saveToolSource(key, { contents, language: "xml", macrosExpanded: true });
+      await runValidateTests(tests, { workflow: wf, cacheDir, json: true });
+      const report = JSON.parse(logs.join("\n"));
+      expect(report.errors).toMatchObject([
+        { path: "/0/outputs/fixed/ftype", keyword: "workflow_output_datatype" },
+      ]);
     });
 
     it("reports a readable error when workflow file is missing", async () => {

@@ -89,6 +89,14 @@
       ],
       "options": [
         {
+          "flags": "--datatypes <file>",
+          "description": "Use Galaxy datatype registry JSON (types_and_mapping) to check input filetypes"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Read local tool metadata and XML sources when cross-checking workflow tests"
+        },
+        {
           "flags": "--json",
           "description": "Output structured JSON report"
         },
@@ -694,6 +702,14 @@
         }
       ],
       "options": [
+        {
+          "flags": "--datatypes <file>",
+          "description": "Use Galaxy datatype registry JSON (types_and_mapping) to check input filetypes"
+        },
+        {
+          "flags": "--cache-dir <dir>",
+          "description": "Read local tool metadata and XML sources when cross-checking workflow tests"
+        },
         {
           "flags": "--json",
           "description": "Output structured JSON report"

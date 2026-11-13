@@ -63,3 +63,35 @@ describe("connection_workflows fixture corpus", () => {
     });
   }
 });
+
+it.each([
+  ["paired", "paired"],
+  [null, null],
+])(
+  "resolves the shape of an unconnected subworkflow output from %s",
+  (collectionType, expected) => {
+    const report = validateConnectionsReport(
+      {
+        a_galaxy_workflow: "true",
+        steps: {
+          0: {
+            type: "subworkflow",
+            subworkflow: {
+              steps: {
+                0: {
+                  type: "data_collection_input",
+                  tool_state: { collection_type: collectionType },
+                  workflow_outputs: [{ label: "reads", output_name: "output" }],
+                },
+              },
+            },
+          },
+        },
+      },
+      getToolInfo,
+    );
+    expect(report.step_results[0].resolved_outputs).toEqual([
+      { name: "reads", collection_type: expected },
+    ]);
+  },
+);

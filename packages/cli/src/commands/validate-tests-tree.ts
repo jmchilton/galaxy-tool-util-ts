@@ -17,15 +17,12 @@ import { dirname, join, relative } from "node:path";
 import { parse as parseYaml } from "yaml";
 import {
   checkTestsAgainstWorkflow,
-  extractWorkflowInputs,
-  extractWorkflowOutputs,
-  resolveFormat,
   validateTestsFile,
   type TestFormatDiagnostic,
-  type WorkflowShape,
 } from "@galaxy-tool-util/schema";
+import { loadWorkflowTestShape, type WorkflowTestMetadataOptions } from "./workflow-test-shape.js";
 
-export interface ValidateTestsTreeOptions {
+export interface ValidateTestsTreeOptions extends WorkflowTestMetadataOptions {
   json?: boolean;
   autoWorkflow?: boolean;
 }
@@ -86,21 +83,6 @@ async function findSiblingWorkflow(testsPath: string): Promise<string | undefine
   return undefined;
 }
 
-async function loadWorkflowShape(path: string): Promise<WorkflowShape> {
-  const raw = await readFile(path, "utf-8");
-  const parsed: unknown =
-    path.endsWith(".ga") || path.endsWith(".json") ? JSON.parse(raw) : parseYaml(raw);
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`Workflow ${path} did not parse to an object.`);
-  }
-  const dict = parsed as Record<string, unknown>;
-  const format = resolveFormat(dict);
-  return {
-    inputs: extractWorkflowInputs(dict, format),
-    outputs: extractWorkflowOutputs(dict, format),
-  };
-}
-
 async function discoverTestFiles(root: string): Promise<string[]> {
   const out: string[] = [];
   await walk(root, out);
@@ -131,7 +113,7 @@ async function walk(dir: string, out: string[]): Promise<void> {
 async function validateOne(
   path: string,
   root: string,
-  autoWorkflow: boolean,
+  opts: ValidateTestsTreeOptions,
 ): Promise<TestsTreeFileReport & { loadError?: boolean }> {
   const rel = relative(root, path);
   let parsed: unknown;
@@ -152,12 +134,12 @@ async function validateOne(
   const { valid: schemaValid, errors } = validateTestsFile(parsed);
   const allErrors: TestFormatDiagnostic[] = [...errors];
   let pairedWorkflow: string | undefined;
-  if (autoWorkflow) {
+  if (opts.autoWorkflow) {
     const sibling = await findSiblingWorkflow(path);
     if (sibling) {
       pairedWorkflow = relative(root, sibling);
       try {
-        const shape = await loadWorkflowShape(sibling);
+        const shape = await loadWorkflowTestShape(sibling, opts);
         allErrors.push(...checkTestsAgainstWorkflow(parsed, shape));
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -183,7 +165,7 @@ export async function runValidateTestsTree(
   const paths = await discoverTestFiles(dir);
   const files: (TestsTreeFileReport & { loadError?: boolean })[] = [];
   for (const p of paths) {
-    files.push(await validateOne(p, dir, opts.autoWorkflow === true));
+    files.push(await validateOne(p, dir, opts));
   }
 
   const summary = {

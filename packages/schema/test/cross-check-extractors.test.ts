@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import { checkInputMetadata } from "../src/test-format/cross-check/check-input-metadata.js";
 import {
   extractWorkflowInputs,
   extractWorkflowOutputs,
@@ -104,5 +105,108 @@ describe("format auto-detect via resolveFormat", () => {
   it("auto-detects native when format arg omitted", () => {
     const wf = load("basic.ga");
     expect(extractWorkflowInputs(wf).length).toBe(3);
+  });
+});
+
+describe.each([
+  {
+    format: "format2" as const,
+    workflow: {
+      inputs: {
+        reads: { type: "File", format: ["fasta", "fastqsanger"] },
+        pairs: { type: "collection", collection_type: "list:paired" },
+        samples: "collection",
+        files: { type: ["data"] },
+        unconstrained: { type: "collection", collection_type: null },
+      },
+    },
+  },
+  {
+    format: "native" as const,
+    workflow: {
+      steps: {
+        0: {
+          type: "data_input",
+          label: "reads",
+          tool_state: JSON.stringify({ format: ["fasta", "fastqsanger"] }),
+        },
+        1: {
+          type: "data_collection_input",
+          label: "pairs",
+          tool_state: JSON.stringify({ collection_type: "list:paired" }),
+        },
+        2: {
+          type: "data_collection_input",
+          label: "samples",
+          tool_state: JSON.stringify({}),
+        },
+        3: {
+          type: "data_input",
+          label: "files",
+          tool_state: JSON.stringify({ multiple: true }),
+        },
+        4: {
+          type: "data_collection_input",
+          label: "unconstrained",
+          tool_state: JSON.stringify({ collection_type: null }),
+        },
+      },
+    },
+  },
+])("$format input metadata", ({ format, workflow }) => {
+  const inputs = extractWorkflowInputs(workflow, format);
+
+  it("extracts data formats, declared shape, and default collection shape", () => {
+    expect(inputs).toMatchObject([
+      { name: "reads", formats: ["fasta", "fastqsanger"] },
+      { name: "pairs", collectionType: "list:paired" },
+      { name: "samples", collectionType: "list" },
+      { name: "files", multiple: true },
+      { name: "unconstrained" },
+    ]);
+    expect(inputs[4]!.collectionType).toBeUndefined();
+  });
+
+  it("reports a collection passed to a file input and a file passed to a collection input", () => {
+    const reads = inputs[0]!;
+    const pairs = inputs[1]!;
+    expect(
+      checkInputMetadata(reads, { class: "Collection", collection_type: "list" }, "/0/job/reads"),
+    ).toMatchObject([{ keyword: "workflow_input_kind", path: "/0/job/reads/class" }]);
+    expect(
+      checkInputMetadata(pairs, { class: "File", path: "reads.fasta" }, "/0/job/pairs"),
+    ).toMatchObject([{ keyword: "workflow_input_kind", path: "/0/job/pairs/class" }]);
+    expect(
+      checkInputMetadata(inputs[3]!, [{ class: "File", path: "reads.fasta" }], "/0/job/files"),
+    ).toEqual([]);
+  });
+
+  it("reports mismatched concrete collection shapes and accepts matching ones", () => {
+    const pairs = inputs[1]!;
+    expect(
+      checkInputMetadata(pairs, { class: "Collection", collection_type: "list" }, "/0/job/pairs"),
+    ).toMatchObject([
+      { keyword: "workflow_input_collection_type", path: "/0/job/pairs/collection_type" },
+    ]);
+    expect(
+      checkInputMetadata(
+        pairs,
+        { class: "Collection", collection_type: "list:paired" },
+        "/0/job/pairs",
+      ),
+    ).toEqual([]);
+  });
+
+  it("uses Galaxy datatype knowledge when supplied and leaves unknown formats unchecked", () => {
+    const reads = inputs[0]!;
+    const value = { class: "File", path: "reads.bam", filetype: "bam" };
+    const path = "/0/job/reads";
+    expect(checkInputMetadata(reads, value, path)).toEqual([]);
+    expect(
+      checkInputMetadata(reads, value, path, { inputFormatAccepts: () => false }),
+    ).toMatchObject([{ keyword: "workflow_input_format", path: "/0/job/reads/filetype" }]);
+    expect(checkInputMetadata(reads, value, path, { inputFormatAccepts: () => undefined })).toEqual(
+      [],
+    );
   });
 });

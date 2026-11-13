@@ -29,9 +29,15 @@ export interface WorkflowInput {
   type: WorkflowDataType;
   default?: unknown;
   optional?: boolean;
+  multiple?: boolean;
+  collectionType?: string;
+  formats?: readonly string[];
 }
 
 export interface WorkflowOutput {
+  kind?: "dataset" | "collection";
+  collectionType?: string;
+  format?: string;
   name: string;
   doc?: string;
   uuid?: string;

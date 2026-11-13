@@ -1,4 +1,5 @@
 import type { TestFormatDiagnostic } from "../validate.js";
+import { checkInputMetadata, type InputMetadataOptions } from "./check-input-metadata.js";
 import { isCompatibleType, jsTypeOf } from "./type-compat.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
 
@@ -22,6 +23,7 @@ function asRecord(v: unknown): Record<string, unknown> | undefined {
 export interface WorkflowShape {
   inputs: WorkflowInput[];
   outputs: WorkflowOutput[];
+  inputMetadataOptions?: InputMetadataOptions;
 }
 
 /**
@@ -40,7 +42,7 @@ export function checkTestsAgainstWorkflow(
 ): TestFormatDiagnostic[] {
   if (!Array.isArray(testsDoc)) return [];
   const inputByName = new Map(workflow.inputs.map((i) => [i.name, i]));
-  const outputNames = new Set(workflow.outputs.map((o) => o.name));
+  const outputByName = new Map(workflow.outputs.map((o) => [o.name, o]));
   const diagnostics: TestFormatDiagnostic[] = [];
 
   for (let testIdx = 0; testIdx < testsDoc.length; testIdx++) {
@@ -69,6 +71,15 @@ export function checkTestsAgainstWorkflow(
           keyword: "workflow_input_type",
           params: { input: name, declaredType: declared.type, actualType },
         });
+      } else {
+        diagnostics.push(
+          ...checkInputMetadata(
+            declared,
+            value,
+            jptr([testIdx, "job", name]),
+            workflow.inputMetadataOptions,
+          ),
+        );
       }
     }
 
@@ -85,14 +96,58 @@ export function checkTestsAgainstWorkflow(
       });
     }
 
-    // Outputs: flag assertions for outputs the workflow doesn't declare.
-    for (const name of Object.keys(outputs)) {
-      if (!outputNames.has(name)) {
+    for (const [name, value] of Object.entries(outputs)) {
+      const declared = outputByName.get(name);
+      const path = [testIdx, "outputs", name];
+      if (!declared) {
         diagnostics.push({
-          path: jptr([testIdx, "outputs", name]),
+          path: jptr(path),
           message: `Output '${name}' is not defined in the associated workflow.`,
           keyword: "workflow_output_undefined",
           params: { output: name },
+        });
+        continue;
+      }
+      const assertion = asRecord(value);
+      if (!assertion) continue;
+      const actualKind = assertion.class === "Collection" ? "collection" : "dataset";
+      if (declared.kind && actualKind !== declared.kind) {
+        diagnostics.push({
+          path: jptr(path),
+          message: `Output '${name}' is a ${declared.kind}, but the test expects a ${actualKind}.`,
+          keyword: "workflow_output_kind",
+          params: { output: name, declaredKind: declared.kind, actualKind },
+        });
+        continue;
+      }
+      if (actualKind === "collection") {
+        const collectionType = assertion.collection_type;
+        if (
+          declared.collectionType &&
+          typeof collectionType === "string" &&
+          collectionType !== declared.collectionType
+        ) {
+          diagnostics.push({
+            path: jptr([...path, "collection_type"]),
+            message: `Output '${name}' has collection type '${declared.collectionType}', but the test expects '${collectionType}'.`,
+            keyword: "workflow_output_collection_type",
+            params: {
+              output: name,
+              declaredType: declared.collectionType,
+              actualType: collectionType,
+            },
+          });
+        }
+      } else if (
+        declared.format &&
+        typeof assertion.ftype === "string" &&
+        assertion.ftype !== declared.format
+      ) {
+        diagnostics.push({
+          path: jptr([...path, "ftype"]),
+          message: `Output '${name}' has format '${declared.format}', but the test expects '${assertion.ftype}'.`,
+          keyword: "workflow_output_datatype",
+          params: { output: name, declaredFormat: declared.format, actualFormat: assertion.ftype },
         });
       }
     }

@@ -121,7 +121,10 @@ function _resolveInputStep(
     };
   }
   if (stepType === "data_collection_input") {
-    const collectionType = (toolState.collection_type as string | undefined) ?? "list";
+    const collectionType =
+      toolState.collection_type === undefined
+        ? "list"
+        : (toolState.collection_type as string | null);
     return {
       ..._emptyStep(stepId, null, stepType),
       outputs: {

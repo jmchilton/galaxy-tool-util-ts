@@ -1,3 +1,4 @@
+import { extractInputMetadata } from "./check-input-metadata.js";
 import type { WorkflowInput, WorkflowOutput } from "./types.js";
 
 function asRecord(v: unknown): Record<string, unknown> | undefined {
@@ -13,7 +14,7 @@ function asString(v: unknown): string | undefined {
 function parseInputEntry(name: string, raw: unknown): WorkflowInput {
   // Shorthand: `name: File` or `name: int` — a bare string is the type.
   if (typeof raw === "string") {
-    return { name, type: raw };
+    return { name, type: raw, ...extractInputMetadata({}, raw) };
   }
   const entry = asRecord(raw);
   if (!entry) {
@@ -23,7 +24,7 @@ function parseInputEntry(name: string, raw: unknown): WorkflowInput {
   const doc = asString(entry.doc);
   const optional = typeof entry.optional === "boolean" ? entry.optional : undefined;
   const hasDefault = Object.prototype.hasOwnProperty.call(entry, "default");
-  const out: WorkflowInput = { name, type };
+  const out: WorkflowInput = { name, type, ...extractInputMetadata(entry, type) };
   if (doc !== undefined) out.doc = doc;
   if (optional !== undefined) out.optional = optional;
   if (hasDefault) out.default = entry.default;
