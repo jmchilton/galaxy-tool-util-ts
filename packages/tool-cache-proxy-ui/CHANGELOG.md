@@ -1,5 +1,12 @@
 # @galaxy-tool-util/tool-cache-proxy-ui
 
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @galaxy-tool-util/cache-ui@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes
