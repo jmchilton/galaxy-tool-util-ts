@@ -44,7 +44,7 @@ import type {
   WorkflowFormat,
   StepValidationResult,
 } from "./validate-workflow.js";
-import { isEmptyState } from "./validate-workflow.js";
+import { isEmptyState, unknownWhenInputErrors } from "./validate-workflow.js";
 import { isResolveError, resolveTool } from "./resolve-tool.js";
 import { embeddedToolDefinition, isEmbeddedTool, resolveEmbeddedTool } from "./embedded-tool.js";
 import { resolveStrictOptions } from "./strict-options.js";
@@ -513,6 +513,7 @@ function _validateNativeStateJsonSchema(
   toolVersion: string | null,
   validators: ValidatorLookup,
   whenExpression?: unknown,
+  stepInputNames: Iterable<string> = Object.keys(connections),
 ): StepValidationResult {
   const replacementScan = scanForReplacements(bundle.parameters, toolState);
   if (replacementScan === "yes") {
@@ -530,14 +531,19 @@ function _validateNativeStateJsonSchema(
 
   // Mirrors the linked path below: an unmatched connection key is a defect
   // regardless of which state block the step carries.
-  const unmatchedKeys = unmatchedConnectionKeys(remaining, whenExpression);
-  if (unmatchedKeys.length > 0) {
+  const stepErrors = [
+    ...unmatchedConnectionKeys(remaining, whenExpression).map(
+      (k) => `No parameter definition matching connection key "${k}"`,
+    ),
+    ...unknownWhenInputErrors(whenExpression, bundle, toolState, stepInputNames),
+  ];
+  if (stepErrors.length > 0) {
     return {
       step: stepLabel,
       tool_id: toolId,
       version: toolVersion,
       status: "fail",
-      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+      errors: stepErrors,
     };
   }
 
@@ -696,6 +702,7 @@ function _validateFormat2StateJsonSchema(
       toolVersion,
       validators,
       step.when,
+      step.in.map((i) => i.id),
     );
   }
 
@@ -740,14 +747,24 @@ function _validateFormat2StateJsonSchema(
   const remaining = injectConnectionsIntoState(bundle.parameters, linkedState, connections, {
     linked: true,
   });
-  const unmatchedKeys = unmatchedConnectionKeys(remaining, step.when);
-  if (unmatchedKeys.length > 0) {
+  const stepErrors = [
+    ...unmatchedConnectionKeys(remaining, step.when).map(
+      (k) => `No parameter definition matching connection key "${k}"`,
+    ),
+    ...unknownWhenInputErrors(
+      step.when,
+      bundle,
+      step.state,
+      step.in.map((i) => i.id),
+    ),
+  ];
+  if (stepErrors.length > 0) {
     return {
       step: stepLabel,
       tool_id: toolId,
       version: toolVersion,
       status: "fail",
-      errors: unmatchedKeys.map((k) => `No parameter definition matching connection key "${k}"`),
+      errors: stepErrors,
     };
   }
 
