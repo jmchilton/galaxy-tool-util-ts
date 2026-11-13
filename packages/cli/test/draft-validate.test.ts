@@ -129,6 +129,15 @@ steps: []
     expect(process.exitCode).toBe(2);
   });
 
+  it("exits 2 when the file cannot be read", async () => {
+    const wfPath = join(ctx.tmpDir, "missing.gxwf.yml");
+    await runDraftValidate(wfPath, {});
+
+    expect(joined(ctx.errSpy)).toContain(`Failed to read ${wfPath}`);
+    expect(ctx.logSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(2);
+  });
+
   it("rejects --format native on a draft file with exit 2", async () => {
     const wfPath = await stagedFixture(ctx, "synthetic-draft-tool-step.gxwf.yml");
     await runDraftValidate(wfPath, { format: "native" });

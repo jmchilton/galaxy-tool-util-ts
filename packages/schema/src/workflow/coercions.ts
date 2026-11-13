@@ -1,10 +1,17 @@
 /**
- * Pure scalar coercion parsers shared by state-merge and stateful-convert.
+ * Pure value coercions shared by state-merge, stateful-convert, toNative and workflow-diff.
  *
- * Each function returns the parsed value or `null` when the input can't be
+ * Each `parseX` returns the parsed value or `null` when the input can't be
  * interpreted. Callers choose whether to fall back to the original value
  * (passthrough: `parseX(v) ?? v`) or treat `null` as an error.
  */
+
+/** Python truthiness: `null`, `false`, `0`, `""`, `[]` and `{}` are falsy. */
+export function isPythonTruthy(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object" && value !== null) return Object.keys(value).length > 0;
+  return Boolean(value);
+}
 
 /** Parse boolean or "true"/"false" string → boolean. Case-insensitive. */
 export function parseBool(value: unknown): boolean | null {

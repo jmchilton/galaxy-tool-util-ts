@@ -102,6 +102,20 @@ Pick the next step a downstream agent should work on (or report no remaining wor
 | `--format <fmt>` | Force input format: format2 (default; native is rejected) |
 | `--output-format <fmt>` | Output format: json (default) or markdown (default: `json`) |
 
+### `diff <before> <after>`
+
+Compare two Format2 workflows (either may be a draft): added/removed inputs, outputs and steps, per-step tool, run, state, when, input default, output action and connection changes, and AFTER inputs that feed no step
+
+**Arguments:**
+
+- `<before>` — Workflow before the change (.gxwf.yml)
+- `<after>` — Workflow after the change (.gxwf.yml)
+
+| Option | Description |
+|---|---|
+| `--json` | Print the diff as JSON |
+| `--exit-code` | Exit with status 1 when the workflows differ |
+
 ### `clean <file>`
 
 Strip stale keys and decode legacy tool_state encoding

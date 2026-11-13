@@ -302,6 +302,19 @@ export {
   /** Flip `class: GalaxyWorkflowDraft` → `class: GalaxyWorkflow` on any (sub)workflow now fully concrete. */
   promoteFullyConcreteDrafts,
   type PromoteFullyConcreteDraftsResult,
+  /** Structural diff of two Format2 workflows (either may be a draft); port of gxformat2's `diff_workflows`. */
+  diffWorkflows,
+  /** Plain-text rendering of a WorkflowDiff. */
+  renderWorkflowDiff,
+  type WorkflowDiff,
+  type InputsDiff,
+  type OutputsDiff,
+  type StepsDiff,
+  type StepSummary,
+  type StepChange,
+  type StateChange,
+  type ValueChange,
+  type SetChange,
   type PlanField,
   type StepPath,
   type TodoLocation,

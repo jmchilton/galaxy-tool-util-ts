@@ -14,7 +14,7 @@ import {
 import type { EdgeAnnotation } from "./edge-annotation.js";
 import { edgeAnnotationKey } from "./edge-annotation.js";
 import { ensureFormat2 } from "./normalized/ensure.js";
-import { isGalaxyUserToolRun, type NormalizedFormat2Workflow } from "./normalized/format2.js";
+import { inferredStepType, type NormalizedFormat2Workflow } from "./normalized/format2.js";
 import {
   isUnlabeledStep,
   resolveSourceReference,
@@ -167,10 +167,7 @@ export function workflowToMermaid(
     const displayId = step.id && !isUnlabeledStep(step.id) ? step.id : null;
     const rawLabel = step.label || displayId || (toolId ? `tool:${toolId}` : String(i));
     const label = sanitizeLabel(rawLabel);
-    // An embedded GalaxyUserTool run is a tool, while workflow runs are subworkflows.
-    const stepType = isGalaxyUserToolRun(step.run)
-      ? "tool"
-      : step.type || (step.run != null ? "subworkflow" : "tool");
+    const stepType = inferredStepType(step);
     const shape = STEP_TYPE_SHAPES[stepType] ?? SHAPE_TOOL;
     stepLines.set(stepLabel, nodeLine(nodeId, label, shape));
   });

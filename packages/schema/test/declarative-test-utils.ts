@@ -246,6 +246,8 @@ export interface Assertion {
 
 export interface TestCase {
   fixture: string;
+  /** Second fixture for two-workflow operations (e.g. diff); passed as the second argument. */
+  fixture_after?: string;
   operation: string;
   assertions?: Assertion[];
   graph_properties?: string[];

@@ -200,6 +200,31 @@
       ]
     },
     {
+      "name": "diff",
+      "description": "Compare two Format2 workflows (either may be a draft): added/removed inputs, outputs and steps, per-step tool, run, state, when, input default, output action and connection changes, and AFTER inputs that feed no step",
+      "handler": "diff",
+      "args": [
+        {
+          "raw": "<before>",
+          "description": "Workflow before the change (.gxwf.yml)"
+        },
+        {
+          "raw": "<after>",
+          "description": "Workflow after the change (.gxwf.yml)"
+        }
+      ],
+      "options": [
+        {
+          "flags": "--json",
+          "description": "Print the diff as JSON"
+        },
+        {
+          "flags": "--exit-code",
+          "description": "Exit with status 1 when the workflows differ"
+        }
+      ]
+    },
+    {
       "name": "clean",
       "description": "Strip stale keys and decode legacy tool_state encoding",
       "handler": "clean",
