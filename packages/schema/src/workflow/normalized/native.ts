@@ -10,6 +10,7 @@
 import { Schema } from "effect";
 
 import {
+  BasedOnWorkSchema,
   NativeStepTypeSchema,
   StepPositionSchema,
   ToolShedRepositorySchema,
@@ -38,6 +39,7 @@ export const NormalizedNativeWorkflowSchema = Schema.Struct({
   version: Schema.optional(Schema.NullOr(Schema.Number)),
   license: Schema.optional(Schema.NullOr(Schema.String)),
   release: Schema.optional(Schema.NullOr(Schema.String)),
+  is_based_on: Schema.optional(Schema.NullOr(Schema.Array(BasedOnWorkSchema))),
   uuid: Schema.optional(Schema.NullOr(Schema.String)),
   steps: Schema.Record({
     key: Schema.String,
@@ -99,6 +101,7 @@ export function normalizedNative(raw: unknown): NormalizedNativeWorkflow {
     version: wf.version as number | null | undefined,
     license: wf.license as string | null | undefined,
     release: wf.release as string | null | undefined,
+    is_based_on: wf.is_based_on as NormalizedNativeWorkflow["is_based_on"],
     uuid: wf.uuid as string | null | undefined,
     steps,
     unique_tools: uniqueTools,
@@ -107,6 +110,10 @@ export function normalizedNative(raw: unknown): NormalizedNativeWorkflow {
   // Pass through comments if present (used by toFormat2 conversion)
   if (wf.comments != null) {
     (result as Record<string, unknown>).comments = wf.comments;
+  }
+  // Pass through creator if present (used by toFormat2 conversion)
+  if (wf.creator != null) {
+    (result as Record<string, unknown>).creator = wf.creator;
   }
 
   return result;

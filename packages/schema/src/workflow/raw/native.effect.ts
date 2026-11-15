@@ -53,17 +53,6 @@ export const DocumentedSchema = Schema.Struct({
 });
 export type Documented = typeof DocumentedSchema.Type;
 
-/**
- * Define an enumerated type.
- */
-export const EnumSchemaSchema = Schema.Struct({
-  /** Defines the set of valid symbols. */
-  symbols: Schema.Array(Schema.String),
-  /** Must be `enum` */
-  type: Schema.Literal("enum"),
-});
-export type EnumSchema = typeof EnumSchemaSchema.Type;
-
 export const RecordSchemaSchema = Schema.Struct({
   /** Defines the fields of the record. */
   fields: Schema.optional(
@@ -80,6 +69,17 @@ export const RecordSchemaSchema = Schema.Struct({
   type: Schema.Literal("record"),
 });
 export type RecordSchema = typeof RecordSchemaSchema.Type;
+
+/**
+ * Define an enumerated type.
+ */
+export const EnumSchemaSchema = Schema.Struct({
+  /** Defines the set of valid symbols. */
+  symbols: Schema.Array(Schema.String),
+  /** Must be `enum` */
+  type: Schema.Literal("enum"),
+});
+export type EnumSchema = typeof EnumSchemaSchema.Type;
 
 export const ArraySchemaSchema = Schema.Struct({
   /** Defines the type of the array elements. */
@@ -270,6 +270,102 @@ export const WorkflowTextValidatorSchema = Schema.Struct({
   negate: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
 });
 export type WorkflowTextValidator = typeof WorkflowTextValidatorSchema.Type;
+
+/**
+ * Base fields shared by all creator types, corresponding to schema.org
+Thing properties common to both Person and Organization.
+ */
+export const BaseCreatorSchema = Schema.Struct({
+  /** Full name of the person or organization. */
+  name: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Persistent identifier, typically an ORCID URL (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID. */
+  identifier: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Website or profile URL. */
+  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Email address. May include a ``mailto:`` prefix. */
+  email: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** URL to an image or avatar. */
+  image: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Physical or mailing address. */
+  address: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** An alternate name or alias. */
+  alternateName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Telephone number. */
+  telephone: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Fax number. */
+  faxNumber: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type BaseCreator = typeof BaseCreatorSchema.Type;
+
+/**
+ * A person who created or contributed to the workflow.
+Corresponds to a `schema.org Person <https://schema.org/Person>`_.
+ */
+export const CreatorPersonSchema = Schema.Struct({
+  ...BaseCreatorSchema.fields,
+  /** Creator type discriminator (``Person``). */
+  class: Schema.Literal("Person"),
+  /** Given (first) name. */
+  givenName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Family (last) name. */
+  familyName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
+  honorificPrefix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
+  honorificSuffix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Job title or role. */
+  jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type CreatorPerson = typeof CreatorPersonSchema.Type;
+
+/**
+ * An organization that created or contributed to the workflow.
+Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
+ */
+export const CreatorOrganizationSchema = Schema.Struct({
+  ...BaseCreatorSchema.fields,
+  /** Creator type discriminator (``Organization``). */
+  class: Schema.Literal("Organization"),
+});
+export type CreatorOrganization = typeof CreatorOrganizationSchema.Type;
+
+/**
+ * An upstream work this workflow was derived or adapted from, for instance
+an nf-core pipeline ported to Galaxy. Corresponds to the target of a
+`schema.org isBasedOn <https://schema.org/isBasedOn>`_ relation.
+
+The authors of the upstream work belong in this record's ``creator``,
+not in the workflow-level ``creator``, which credits the people who
+wrote the Galaxy workflow.
+ */
+export const BasedOnWorkSchema = Schema.Struct({
+  /** Name of the upstream work (e.g. ``nf-core/demo``). */
+  name: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** The `schema.org <https://schema.org/>`_ class of the upstream work, e.g. ``SoftwareSourceCode`` or ``ComputationalWorkflow``. Galaxy treats a missing value as ``SoftwareSourceCode``. */
+  class: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** An alternate name or alias of the upstream work. */
+  alternateName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short description of the upstream work. */
+  description: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Persistent identifier of the upstream work, typically a DOI URL (e.g. ``https://doi.org/10.5281/zenodo.12192442``). */
+  identifier: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** HTTP(S) URL of an image or logo for the upstream work. */
+  image: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** HTTP(S) URL of the upstream work, such as its source repository. */
+  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Version of the upstream work the workflow was derived from (e.g. ``1.2.0``). */
+  version: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** SPDX license identifier of the upstream work (e.g. ``MIT``). */
+  license: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Creator(s) of the upstream work. An array of schema.org CreatorPerson or CreatorOrganization objects, distinguished by the ``class`` field (``Person`` or ``Organization``). */
+  creator: Schema.optional(
+    Schema.Union(
+      Schema.Array(Schema.Union(CreatorPersonSchema, CreatorOrganizationSchema)),
+      Schema.Null,
+    ),
+  ),
+});
+export type BasedOnWork = typeof BasedOnWorkSchema.Type;
 
 /**
  * Describes an input parameter on a step. This is metadata about the input,
@@ -468,43 +564,6 @@ export const NativeReportSchema = Schema.Struct({
 export type NativeReport = typeof NativeReportSchema.Type;
 
 /**
- * Base fields shared by all creator types, corresponding to schema.org
-Thing properties common to both Person and Organization.
- */
-export const BaseNativeCreatorSchema = Schema.Struct({
-  /** Full name of the person or organization. */
-  name: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Persistent identifier, typically an ORCID URL (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID. */
-  identifier: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Website or profile URL. */
-  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Email address. May include a ``mailto:`` prefix. */
-  email: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** URL to an image or avatar. */
-  image: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Physical or mailing address. */
-  address: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** An alternate name or alias. */
-  alternateName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Telephone number. */
-  telephone: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Fax number. */
-  faxNumber: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type BaseNativeCreator = typeof BaseNativeCreatorSchema.Type;
-
-/**
- * An organization that created or contributed to the workflow.
-Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
- */
-export const NativeCreatorOrganizationSchema = Schema.Struct({
-  ...BaseNativeCreatorSchema.fields,
-  /** Creator type discriminator (``Organization``). */
-  class: Schema.Literal("Organization"),
-});
-export type NativeCreatorOrganization = typeof NativeCreatorOrganizationSchema.Type;
-
-/**
  * Provenance tracking for workflows imported from external sources.
 Contains either a direct URL or TRS (Tool Registry Service) metadata,
 depending on how the workflow was imported.
@@ -526,27 +585,6 @@ export const NativeSourceMetadataSchema = Schema.Struct({
   trs_url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type NativeSourceMetadata = typeof NativeSourceMetadataSchema.Type;
-
-/**
- * A person who created or contributed to the workflow.
-Corresponds to a `schema.org Person <https://schema.org/Person>`_.
- */
-export const NativeCreatorPersonSchema = Schema.Struct({
-  ...BaseNativeCreatorSchema.fields,
-  /** Creator type discriminator (``Person``). */
-  class: Schema.Literal("Person"),
-  /** Given (first) name. */
-  givenName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Family (last) name. */
-  familyName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
-  honorificPrefix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
-  honorificSuffix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Job title or role. */
-  jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type NativeCreatorPerson = typeof NativeCreatorPersonSchema.Type;
 
 /**
  * A Galaxy native workflow document (.ga format). This is the canonical
@@ -578,13 +616,15 @@ export const NativeGalaxyWorkflowSchema = Schema.Struct({
   license: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
   /** Semantic version for published workflows. */
   release: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Creator(s) of this workflow. An array of schema.org NativeCreatorPerson or NativeCreatorOrganization objects, dispatched via the ``class`` field (``Person`` or ``Organization``). */
+  /** Creator(s) of this workflow. An array of schema.org CreatorPerson or CreatorOrganization objects, dispatched via the ``class`` field (``Person`` or ``Organization``). */
   creator: Schema.optional(
     Schema.Union(
-      Schema.Array(Schema.Union(NativeCreatorPersonSchema, NativeCreatorOrganizationSchema)),
+      Schema.Array(Schema.Union(CreatorPersonSchema, CreatorOrganizationSchema)),
       Schema.Null,
     ),
   ),
+  /** Upstream works this workflow was derived or adapted from (`schema.org isBasedOn <https://schema.org/isBasedOn>`_), e.g. an nf-core pipeline ported to Galaxy. An array of BasedOnWork objects. Galaxy... */
+  is_based_on: Schema.optional(Schema.Union(Schema.Array(BasedOnWorkSchema), Schema.Null)),
   /** Workflow invocation report template. */
   report: Schema.optional(Schema.Union(Schema.Null, NativeReportSchema)),
   /** Detailed workflow description in Markdown. */
@@ -723,15 +763,13 @@ export const NativeStepSchema = Schema.Struct({
 });
 export type NativeStep = typeof NativeStepSchema.Type;
 
-export function isNativeCreatorPerson(
-  v: NativeCreatorPerson | NativeCreatorOrganization,
-): v is NativeCreatorPerson {
+export function isCreatorPerson(v: CreatorPerson | CreatorOrganization): v is CreatorPerson {
   return v?.class === "Person";
 }
 
-export function isNativeCreatorOrganization(
-  v: NativeCreatorPerson | NativeCreatorOrganization,
-): v is NativeCreatorOrganization {
+export function isCreatorOrganization(
+  v: CreatorPerson | CreatorOrganization,
+): v is CreatorOrganization {
   return v?.class === "Organization";
 }
 

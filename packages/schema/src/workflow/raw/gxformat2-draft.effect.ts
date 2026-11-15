@@ -75,17 +75,6 @@ export const DocumentedSchema = Schema.Struct({
 });
 export type Documented = typeof DocumentedSchema.Type;
 
-/**
- * Define an enumerated type.
- */
-export const EnumSchemaSchema = Schema.Struct({
-  /** Defines the set of valid symbols. */
-  symbols: Schema.Array(Schema.String),
-  /** Must be `enum` */
-  type: Schema.Literal("enum"),
-});
-export type EnumSchema = typeof EnumSchemaSchema.Type;
-
 export const RecordSchemaSchema = Schema.Struct({
   /** Defines the fields of the record. */
   fields: Schema.optional(
@@ -102,6 +91,17 @@ export const RecordSchemaSchema = Schema.Struct({
   type: Schema.Literal("record"),
 });
 export type RecordSchema = typeof RecordSchemaSchema.Type;
+
+/**
+ * Define an enumerated type.
+ */
+export const EnumSchemaSchema = Schema.Struct({
+  /** Defines the set of valid symbols. */
+  symbols: Schema.Array(Schema.String),
+  /** Must be `enum` */
+  type: Schema.Literal("enum"),
+});
+export type EnumSchema = typeof EnumSchemaSchema.Type;
 
 export const ArraySchemaSchema = Schema.Struct({
   /** Defines the type of the array elements. */
@@ -203,6 +203,14 @@ export const OutputParameterSchema = Schema.Struct({
 });
 export type OutputParameter = typeof OutputParameterSchema.Type;
 
+export const MinMaxSchema = Schema.Struct({
+  /** Minimum allowed value (inclusive). */
+  min: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+  /** Maximum allowed value (inclusive). */
+  max: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+});
+export type MinMax = typeof MinMaxSchema.Type;
+
 /**
  * This field specifies the location of the step's node when rendered in the workflow editor.
  */
@@ -233,20 +241,10 @@ export const BaseInputParameterSchema = Schema.Struct({
 });
 export type BaseInputParameter = typeof BaseInputParameterSchema.Type;
 
-export const MinMaxSchema = Schema.Struct({
-  /** Minimum allowed value (inclusive). */
-  min: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
-  /** Maximum allowed value (inclusive). */
-  max: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
-});
-export type MinMax = typeof MinMaxSchema.Type;
-
 /**
- * A scalar integer workflow parameter. Normalized gxformat2 output uses
-``type: int``. ``type: integer`` is accepted for compatibility with native
-Galaxy parameter state and Galaxy tool XML terminology.
+ * A float input parameter for a Galaxy workflow.
  */
-export const WorkflowIntegerParameterSchema = Schema.Struct({
+export const WorkflowFloatParameterSchema = Schema.Struct({
   ...BaseInputParameterSchema.fields,
   ...MinMaxSchema.fields,
   /** The unique identifier for this object. */
@@ -258,26 +256,10 @@ export const WorkflowIntegerParameterSchema = Schema.Struct({
   /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
   default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
   position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
-  /** Must be ``integer`` or ``int``. */
-  type: Schema.Literal("integer", "int"),
+  /** Must be ``float``. */
+  type: Schema.Literal("float"),
 });
-export type WorkflowIntegerParameter = typeof WorkflowIntegerParameterSchema.Type;
-
-export const BaseDataParameterSchema = Schema.Struct({
-  ...BaseInputParameterSchema.fields,
-  /** The unique identifier for this object. */
-  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A short, human-readable label of this object. */
-  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A documentation string for this object, or an array of strings which should be concatenated. */
-  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
-  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
-  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
-  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
-  /** Specify datatype extensions for valid input datasets. */
-  format: Schema.optional(Schema.Union(Schema.Null, Schema.Array(Schema.String))),
-});
-export type BaseDataParameter = typeof BaseDataParameterSchema.Type;
+export type WorkflowFloatParameter = typeof WorkflowFloatParameterSchema.Type;
 
 /**
  * Describes one column of a sample-sheet collection input.
@@ -336,6 +318,22 @@ export const RecordFieldDefinitionSchema = Schema.Struct({
 });
 export type RecordFieldDefinition = typeof RecordFieldDefinitionSchema.Type;
 
+export const BaseDataParameterSchema = Schema.Struct({
+  ...BaseInputParameterSchema.fields,
+  /** The unique identifier for this object. */
+  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short, human-readable label of this object. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
+  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
+  /** Specify datatype extensions for valid input datasets. */
+  format: Schema.optional(Schema.Union(Schema.Null, Schema.Array(Schema.String))),
+});
+export type BaseDataParameter = typeof BaseDataParameterSchema.Type;
+
 /**
  * A collection input parameter for a Galaxy workflow - represents a dataset collection.
  */
@@ -366,39 +364,6 @@ export const WorkflowCollectionParameterSchema = Schema.Struct({
 export type WorkflowCollectionParameter = typeof WorkflowCollectionParameterSchema.Type;
 
 /**
- * A float input parameter for a Galaxy workflow.
- */
-export const WorkflowFloatParameterSchema = Schema.Struct({
-  ...BaseInputParameterSchema.fields,
-  ...MinMaxSchema.fields,
-  /** The unique identifier for this object. */
-  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A short, human-readable label of this object. */
-  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A documentation string for this object, or an array of strings which should be concatenated. */
-  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
-  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
-  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
-  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
-  /** Must be ``float``. */
-  type: Schema.Literal("float"),
-});
-export type WorkflowFloatParameter = typeof WorkflowFloatParameterSchema.Type;
-
-/**
- * A `{value, label}` option used in `restrictions` or `suggestions` on a
-text workflow parameter. Plain strings are also accepted in those
-arrays as shorthand for `{value: <str>, label: <str>}`.
- */
-export const WorkflowTextOptionSchema = Schema.Struct({
-  /** Machine value submitted to the connected tool input. */
-  value: Schema.String,
-  /** Human label shown in Galaxy. Defaults to `value` when omitted. */
-  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type WorkflowTextOption = typeof WorkflowTextOptionSchema.Type;
-
-/**
  * A validator restricting values of a text workflow parameter. Persisted
 in native Galaxy as an entry of the input step's `tool_state.validators`.
  */
@@ -413,6 +378,19 @@ export const WorkflowTextValidatorSchema = Schema.Struct({
   negate: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
 });
 export type WorkflowTextValidator = typeof WorkflowTextValidatorSchema.Type;
+
+/**
+ * A `{value, label}` option used in `restrictions` or `suggestions` on a
+text workflow parameter. Plain strings are also accepted in those
+arrays as shorthand for `{value: <str>, label: <str>}`.
+ */
+export const WorkflowTextOptionSchema = Schema.Struct({
+  /** Machine value submitted to the connected tool input. */
+  value: Schema.String,
+  /** Human label shown in Galaxy. Defaults to `value` when omitted. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type WorkflowTextOption = typeof WorkflowTextOptionSchema.Type;
 
 /**
  * A scalar text workflow parameter. Normalized gxformat2 output uses
@@ -448,13 +426,10 @@ export const WorkflowTextParameterSchema = Schema.Struct({
 export type WorkflowTextParameter = typeof WorkflowTextParameterSchema.Type;
 
 /**
- * A data input parameter for a Galaxy workflow. Represents one Galaxy dataset.
-Normalized gxformat2 output uses ``type: data``. ``type: File`` is accepted as
-an alias, but should not be confused with workflow test job syntax where
-``type: File`` means stage a file as test input data.
+ * A boolean input parameter for a Galaxy workflow.
  */
-export const WorkflowDataParameterSchema = Schema.Struct({
-  ...BaseDataParameterSchema.fields,
+export const WorkflowBooleanParameterSchema = Schema.Struct({
+  ...BaseInputParameterSchema.fields,
   /** The unique identifier for this object. */
   id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
   /** A short, human-readable label of this object. */
@@ -464,12 +439,10 @@ export const WorkflowDataParameterSchema = Schema.Struct({
   /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
   default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
   position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
-  /** Controls whether Galaxy allows invocation of the workflow without a user-supplied value for this input. If ``true``, the input may be omitted at invocation time. ``optional`` and ``default`` are in... */
-  optional: Schema.optional(Schema.Union(Schema.Boolean, Schema.Null)),
-  /** Specify valid types of data that may be assigned to this parameter. */
-  type: Schema.optional(Schema.Union(Schema.Literal("data", "File"), Schema.Null)),
+  /** Must be ``boolean``. */
+  type: Schema.Literal("boolean"),
 });
-export type WorkflowDataParameter = typeof WorkflowDataParameterSchema.Type;
+export type WorkflowBooleanParameter = typeof WorkflowBooleanParameterSchema.Type;
 
 /**
  * A color input parameter for a Galaxy workflow. The value is a color
@@ -514,6 +487,52 @@ export const WorkflowDirectoryUriParameterSchema = Schema.Struct({
 export type WorkflowDirectoryUriParameter = typeof WorkflowDirectoryUriParameterSchema.Type;
 
 /**
+ * A data input parameter for a Galaxy workflow. Represents one Galaxy dataset.
+Normalized gxformat2 output uses ``type: data``. ``type: File`` is accepted as
+an alias, but should not be confused with workflow test job syntax where
+``type: File`` means stage a file as test input data.
+ */
+export const WorkflowDataParameterSchema = Schema.Struct({
+  ...BaseDataParameterSchema.fields,
+  /** The unique identifier for this object. */
+  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short, human-readable label of this object. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
+  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
+  /** Controls whether Galaxy allows invocation of the workflow without a user-supplied value for this input. If ``true``, the input may be omitted at invocation time. ``optional`` and ``default`` are in... */
+  optional: Schema.optional(Schema.Union(Schema.Boolean, Schema.Null)),
+  /** Specify valid types of data that may be assigned to this parameter. */
+  type: Schema.optional(Schema.Union(Schema.Literal("data", "File"), Schema.Null)),
+});
+export type WorkflowDataParameter = typeof WorkflowDataParameterSchema.Type;
+
+/**
+ * A scalar integer workflow parameter. Normalized gxformat2 output uses
+``type: int``. ``type: integer`` is accepted for compatibility with native
+Galaxy parameter state and Galaxy tool XML terminology.
+ */
+export const WorkflowIntegerParameterSchema = Schema.Struct({
+  ...BaseInputParameterSchema.fields,
+  ...MinMaxSchema.fields,
+  /** The unique identifier for this object. */
+  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short, human-readable label of this object. */
+  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A documentation string for this object, or an array of strings which should be concatenated. */
+  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
+  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
+  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
+  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
+  /** Must be ``integer`` or ``int``. */
+  type: Schema.Literal("integer", "int"),
+});
+export type WorkflowIntegerParameter = typeof WorkflowIntegerParameterSchema.Type;
+
+/**
  * Describe an output parameter of a workflow.  The parameter must be
 connected to one parameter defined in the workflow that
 will provide the value of the output parameter. It is legal to
@@ -533,25 +552,6 @@ export const WorkflowOutputParameterSchema = Schema.Struct({
   type: Schema.optional(Schema.Union(Schema.Null, GalaxyTypeSchema)),
 });
 export type WorkflowOutputParameter = typeof WorkflowOutputParameterSchema.Type;
-
-/**
- * A boolean input parameter for a Galaxy workflow.
- */
-export const WorkflowBooleanParameterSchema = Schema.Struct({
-  ...BaseInputParameterSchema.fields,
-  /** The unique identifier for this object. */
-  id: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A short, human-readable label of this object. */
-  label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** A documentation string for this object, or an array of strings which should be concatenated. */
-  doc: Schema.optional(Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String))),
-  /** The default value to use for this parameter if the parameter is missing from the input object, or if the value of the parameter in the input object is `null`.  Default values are applied before eva... */
-  default: Schema.optional(Schema.Union(Schema.Null, Schema.Unknown)),
-  position: Schema.optional(Schema.Union(Schema.Null, StepPositionSchema)),
-  /** Must be ``boolean``. */
-  type: Schema.Literal("boolean"),
-});
-export type WorkflowBooleanParameter = typeof WorkflowBooleanParameterSchema.Type;
 
 /**
  * The base executable type in CWL is the `Process` object defined by the
@@ -599,7 +599,6 @@ export const ProcessSchema = Schema.Struct({
       key: Schema.String,
       value: Schema.Union(WorkflowOutputParameterSchema, Schema.String),
     }),
-    Schema.Record({ key: Schema.String, value: Schema.Unknown }),
   ),
 });
 export type Process = typeof ProcessSchema.Type;
@@ -637,6 +636,102 @@ export const ReferencesToolSchema = Schema.Struct({
   tool_version: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type ReferencesTool = typeof ReferencesToolSchema.Type;
+
+/**
+ * Base fields shared by all creator types, corresponding to schema.org
+Thing properties common to both Person and Organization.
+ */
+export const BaseCreatorSchema = Schema.Struct({
+  /** Full name of the person or organization. */
+  name: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Persistent identifier, typically an ORCID URL (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID. */
+  identifier: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Website or profile URL. */
+  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Email address. May include a ``mailto:`` prefix. */
+  email: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** URL to an image or avatar. */
+  image: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Physical or mailing address. */
+  address: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** An alternate name or alias. */
+  alternateName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Telephone number. */
+  telephone: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Fax number. */
+  faxNumber: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type BaseCreator = typeof BaseCreatorSchema.Type;
+
+/**
+ * A person who created or contributed to the workflow.
+Corresponds to a `schema.org Person <https://schema.org/Person>`_.
+ */
+export const CreatorPersonSchema = Schema.Struct({
+  ...BaseCreatorSchema.fields,
+  /** Creator type discriminator (``Person``). */
+  class: Schema.Literal("Person"),
+  /** Given (first) name. */
+  givenName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Family (last) name. */
+  familyName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
+  honorificPrefix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
+  honorificSuffix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Job title or role. */
+  jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type CreatorPerson = typeof CreatorPersonSchema.Type;
+
+/**
+ * An organization that created or contributed to the workflow.
+Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
+ */
+export const CreatorOrganizationSchema = Schema.Struct({
+  ...BaseCreatorSchema.fields,
+  /** Creator type discriminator (``Organization``). */
+  class: Schema.Literal("Organization"),
+});
+export type CreatorOrganization = typeof CreatorOrganizationSchema.Type;
+
+/**
+ * An upstream work this workflow was derived or adapted from, for instance
+an nf-core pipeline ported to Galaxy. Corresponds to the target of a
+`schema.org isBasedOn <https://schema.org/isBasedOn>`_ relation.
+
+The authors of the upstream work belong in this record's ``creator``,
+not in the workflow-level ``creator``, which credits the people who
+wrote the Galaxy workflow.
+ */
+export const BasedOnWorkSchema = Schema.Struct({
+  /** Name of the upstream work (e.g. ``nf-core/demo``). */
+  name: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** The `schema.org <https://schema.org/>`_ class of the upstream work, e.g. ``SoftwareSourceCode`` or ``ComputationalWorkflow``. Galaxy treats a missing value as ``SoftwareSourceCode``. */
+  class: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** An alternate name or alias of the upstream work. */
+  alternateName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** A short description of the upstream work. */
+  description: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Persistent identifier of the upstream work, typically a DOI URL (e.g. ``https://doi.org/10.5281/zenodo.12192442``). */
+  identifier: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** HTTP(S) URL of an image or logo for the upstream work. */
+  image: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** HTTP(S) URL of the upstream work, such as its source repository. */
+  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Version of the upstream work the workflow was derived from (e.g. ``1.2.0``). */
+  version: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** SPDX license identifier of the upstream work (e.g. ``MIT``). */
+  license: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Creator(s) of the upstream work. An array of schema.org CreatorPerson or CreatorOrganization objects, distinguished by the ``class`` field (``Person`` or ``Organization``). */
+  creator: Schema.optional(
+    Schema.Union(
+      Schema.Array(Schema.Union(CreatorPersonSchema, CreatorOrganizationSchema)),
+      Schema.Null,
+    ),
+  ),
+});
+export type BasedOnWork = typeof BasedOnWorkSchema.Type;
 
 /**
  * An input parameter to a Galaxy workflow. This is the catch-all type used
@@ -727,43 +822,6 @@ export const WorkflowStepOutputSchema = Schema.Struct({
 export type WorkflowStepOutput = typeof WorkflowStepOutputSchema.Type;
 
 /**
- * Base fields shared by all creator types, corresponding to schema.org
-Thing properties common to both Person and Organization.
- */
-export const BaseCreatorSchema = Schema.Struct({
-  /** Full name of the person or organization. */
-  name: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Persistent identifier, typically an ORCID URL (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID. */
-  identifier: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Website or profile URL. */
-  url: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Email address. May include a ``mailto:`` prefix. */
-  email: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** URL to an image or avatar. */
-  image: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Physical or mailing address. */
-  address: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** An alternate name or alias. */
-  alternateName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Telephone number. */
-  telephone: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Fax number. */
-  faxNumber: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type BaseCreator = typeof BaseCreatorSchema.Type;
-
-/**
- * An organization that created or contributed to the workflow.
-Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
- */
-export const CreatorOrganizationSchema = Schema.Struct({
-  ...BaseCreatorSchema.fields,
-  /** Creator type discriminator (``Organization``). */
-  class: Schema.Literal("Organization"),
-});
-export type CreatorOrganization = typeof CreatorOrganizationSchema.Type;
-
-/**
  * Base fields shared by all comment types.
  */
 export const BaseCommentSchema = Schema.Struct({
@@ -777,67 +835,6 @@ export const BaseCommentSchema = Schema.Struct({
   label: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
 });
 export type BaseComment = typeof BaseCommentSchema.Type;
-
-/**
- * A Markdown-rendered annotation in the workflow editor.
- */
-export const MarkdownCommentSchema = Schema.Struct({
-  ...BaseCommentSchema.fields,
-  /** Comment type (``markdown``). */
-  type: Schema.Literal("markdown"),
-  /** Markdown content. */
-  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type MarkdownComment = typeof MarkdownCommentSchema.Type;
-
-/**
- * A person who created or contributed to the workflow.
-Corresponds to a `schema.org Person <https://schema.org/Person>`_.
- */
-export const CreatorPersonSchema = Schema.Struct({
-  ...BaseCreatorSchema.fields,
-  /** Creator type discriminator (``Person``). */
-  class: Schema.Literal("Person"),
-  /** Given (first) name. */
-  givenName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Family (last) name. */
-  familyName: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
-  honorificPrefix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
-  honorificSuffix: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Job title or role. */
-  jobTitle: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-});
-export type CreatorPerson = typeof CreatorPersonSchema.Type;
-
-/**
- * A plain text annotation in the workflow editor.
- */
-export const TextCommentSchema = Schema.Struct({
-  ...BaseCommentSchema.fields,
-  /** Comment type (``text``). */
-  type: Schema.Literal("text"),
-  /** The text content. */
-  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
-  /** Whether the text is displayed in bold. */
-  bold: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  /** Whether the text is displayed in italic. */
-  italic: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
-  /** Font size of the text. */
-  text_size: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
-});
-export type TextComment = typeof TextCommentSchema.Type;
-
-/**
- * Definition of an invocation report for this workflow. Currently the only
-field is 'markdown'.
- */
-export const ReportSchema = Schema.Struct({
-  /** Galaxy flavored Markdown to define an invocation report. */
-  markdown: Schema.String,
-});
-export type Report = typeof ReportSchema.Type;
 
 /**
  * A rectangular grouping box that visually contains steps and other comments.
@@ -860,6 +857,16 @@ export const FrameCommentSchema = Schema.Struct({
 export type FrameComment = typeof FrameCommentSchema.Type;
 
 /**
+ * Definition of an invocation report for this workflow. Currently the only
+field is 'markdown'.
+ */
+export const ReportSchema = Schema.Struct({
+  /** Galaxy flavored Markdown to define an invocation report. */
+  markdown: Schema.String,
+});
+export type Report = typeof ReportSchema.Type;
+
+/**
  * A freehand drawn line on the editor canvas.
  */
 export const FreehandCommentSchema = Schema.Struct({
@@ -872,6 +879,36 @@ export const FreehandCommentSchema = Schema.Struct({
   line: Schema.optional(Schema.Union(Schema.Array(Schema.Array(Schema.Number)), Schema.Null)),
 });
 export type FreehandComment = typeof FreehandCommentSchema.Type;
+
+/**
+ * A Markdown-rendered annotation in the workflow editor.
+ */
+export const MarkdownCommentSchema = Schema.Struct({
+  ...BaseCommentSchema.fields,
+  /** Comment type (``markdown``). */
+  type: Schema.Literal("markdown"),
+  /** Markdown content. */
+  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+});
+export type MarkdownComment = typeof MarkdownCommentSchema.Type;
+
+/**
+ * A plain text annotation in the workflow editor.
+ */
+export const TextCommentSchema = Schema.Struct({
+  ...BaseCommentSchema.fields,
+  /** Comment type (``text``). */
+  type: Schema.Literal("text"),
+  /** The text content. */
+  text: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
+  /** Whether the text is displayed in bold. */
+  bold: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  /** Whether the text is displayed in italic. */
+  italic: Schema.optional(Schema.Union(Schema.Null, Schema.Boolean)),
+  /** Font size of the text. */
+  text_size: Schema.optional(Schema.Union(Schema.Null, Schema.Number)),
+});
+export type TextComment = typeof TextCommentSchema.Type;
 
 /**
  * A Galaxy workflow description. This record corresponds to the description of a workflow that should be executable
@@ -945,6 +982,8 @@ export const GalaxyWorkflowSchema = Schema.Struct({
       Schema.Null,
     ),
   ),
+  /** Upstream works this workflow was derived or adapted from (schema.org isBasedOn, https://schema.org/isBasedOn), e.g. an nf-core pipeline ported to Galaxy. Each entry has an optional schema.org ``cla... */
+  is_based_on: Schema.optional(Schema.Union(Schema.Array(BasedOnWorkSchema), Schema.Null)),
   /** Must be a valid license listed at https://spdx.org/licenses/ */
   license: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
   /** If listed should correspond to the release of the workflow in its source reposiory. */
@@ -1123,6 +1162,8 @@ export const GalaxyWorkflowDraftSchema = Schema.Struct({
       Schema.Null,
     ),
   ),
+  /** Upstream works this workflow was derived or adapted from (schema.org isBasedOn, https://schema.org/isBasedOn). */
+  is_based_on: Schema.optional(Schema.Union(Schema.Array(BasedOnWorkSchema), Schema.Null)),
   /** Must be a valid license listed at https://spdx.org/licenses/ */
   license: Schema.optional(Schema.Union(Schema.Null, Schema.String)),
   /** If listed should correspond to the release of the workflow in its source reposiory. */

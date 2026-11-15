@@ -10,6 +10,7 @@
 import { Schema } from "effect";
 
 import { ToolReferenceSchema, type ToolReference } from "./native.js";
+import { BasedOnWorkSchema } from "../raw/gxformat2.effect.js";
 
 // --- Input type alias mapping ---
 // gxformat2 accepts several aliases for input types
@@ -119,6 +120,7 @@ export const NormalizedFormat2WorkflowSchema = Schema.Struct({
   ),
   license: Schema.optional(Schema.NullOr(Schema.String)),
   release: Schema.optional(Schema.NullOr(Schema.String)),
+  is_based_on: Schema.optional(Schema.NullOr(Schema.Array(BasedOnWorkSchema))),
   unique_tools: Schema.Set(ToolReferenceSchema),
 });
 export type NormalizedFormat2Workflow = typeof NormalizedFormat2WorkflowSchema.Type;
@@ -208,6 +210,7 @@ function _normalizeWorkflow(
     report: raw.report as NormalizedFormat2Workflow["report"],
     license: raw.license as string | undefined,
     release: raw.release as string | undefined,
+    is_based_on: raw.is_based_on as NormalizedFormat2Workflow["is_based_on"],
     unique_tools: uniqueTools,
   };
 
