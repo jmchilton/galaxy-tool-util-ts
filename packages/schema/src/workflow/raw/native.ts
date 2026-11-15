@@ -204,6 +204,91 @@ export interface ToolShedRepository {
 }
 
 /**
+ * Base fields shared by all creator types, corresponding to schema.org
+Thing properties common to both Person and Organization.
+ */
+export interface BaseCreator {
+  /** Full name of the person or organization. */
+  name?: null | string;
+  /** Persistent identifier, typically an ORCID URL (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID. */
+  identifier?: null | string;
+  /** Website or profile URL. */
+  url?: null | string;
+  /** Email address. May include a ``mailto:`` prefix. */
+  email?: null | string;
+  /** URL to an image or avatar. */
+  image?: null | string;
+  /** Physical or mailing address. */
+  address?: null | string;
+  /** An alternate name or alias. */
+  alternateName?: null | string;
+  /** Telephone number. */
+  telephone?: null | string;
+  /** Fax number. */
+  faxNumber?: null | string;
+}
+
+/**
+ * A person who created or contributed to the workflow.
+Corresponds to a `schema.org Person <https://schema.org/Person>`_.
+ */
+export interface CreatorPerson extends BaseCreator {
+  /** Creator type discriminator (``Person``). */
+  class: "Person";
+  /** Given (first) name. */
+  givenName?: null | string;
+  /** Family (last) name. */
+  familyName?: null | string;
+  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
+  honorificPrefix?: null | string;
+  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
+  honorificSuffix?: null | string;
+  /** Job title or role. */
+  jobTitle?: null | string;
+}
+
+/**
+ * An organization that created or contributed to the workflow.
+Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
+ */
+export interface CreatorOrganization extends BaseCreator {
+  /** Creator type discriminator (``Organization``). */
+  class: "Organization";
+}
+
+/**
+ * An upstream work this workflow was derived or adapted from, for instance
+an nf-core pipeline ported to Galaxy. Corresponds to the target of a
+`schema.org isBasedOn <https://schema.org/isBasedOn>`_ relation.
+
+The authors of the upstream work belong in this record's ``creator``,
+not in the workflow-level ``creator``, which credits the people who
+wrote the Galaxy workflow.
+ */
+export interface BasedOnWork {
+  /** Name of the upstream work (e.g. ``nf-core/demo``). */
+  name?: null | string;
+  /** The `schema.org <https://schema.org/>`_ class of the upstream work, e.g. ``SoftwareSourceCode`` or ``ComputationalWorkflow``. Galaxy treats a missing value as ``SoftwareSourceCode``. */
+  class?: null | string;
+  /** An alternate name or alias of the upstream work. */
+  alternateName?: null | string;
+  /** A short description of the upstream work. */
+  description?: null | string;
+  /** Persistent identifier of the upstream work, typically a DOI URL (e.g. ``https://doi.org/10.5281/zenodo.12192442``). */
+  identifier?: null | string;
+  /** HTTP(S) URL of an image or logo for the upstream work. */
+  image?: null | string;
+  /** HTTP(S) URL of the upstream work, such as its source repository. */
+  url?: null | string;
+  /** Version of the upstream work the workflow was derived from (e.g. ``1.2.0``). */
+  version?: null | string;
+  /** SPDX license identifier of the upstream work (e.g. ``MIT``). */
+  license?: null | string;
+  /** Creator(s) of the upstream work. An array of schema.org CreatorPerson or CreatorOrganization objects, distinguished by the ``class`` field (``Person`` or ``Organization``). */
+  creator?: Array<CreatorPerson | CreatorOrganization> | null;
+}
+
+/**
  * Describes an input parameter on a step. This is metadata about the input,
 not the connection wiring (which is in ``input_connections``).
  */
@@ -434,59 +519,6 @@ export interface NativeReport {
 }
 
 /**
- * Base fields shared by all creator types, corresponding to schema.org
-Thing properties common to both Person and Organization.
- */
-export interface BaseNativeCreator {
-  /** Full name of the person or organization. */
-  name?: null | string;
-  /** Persistent identifier, typically an ORCID URL (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID. */
-  identifier?: null | string;
-  /** Website or profile URL. */
-  url?: null | string;
-  /** Email address. May include a ``mailto:`` prefix. */
-  email?: null | string;
-  /** URL to an image or avatar. */
-  image?: null | string;
-  /** Physical or mailing address. */
-  address?: null | string;
-  /** An alternate name or alias. */
-  alternateName?: null | string;
-  /** Telephone number. */
-  telephone?: null | string;
-  /** Fax number. */
-  faxNumber?: null | string;
-}
-
-/**
- * A person who created or contributed to the workflow.
-Corresponds to a `schema.org Person <https://schema.org/Person>`_.
- */
-export interface NativeCreatorPerson extends BaseNativeCreator {
-  /** Creator type discriminator (``Person``). */
-  class: "Person";
-  /** Given (first) name. */
-  givenName?: null | string;
-  /** Family (last) name. */
-  familyName?: null | string;
-  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
-  honorificPrefix?: null | string;
-  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
-  honorificSuffix?: null | string;
-  /** Job title or role. */
-  jobTitle?: null | string;
-}
-
-/**
- * An organization that created or contributed to the workflow.
-Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
- */
-export interface NativeCreatorOrganization extends BaseNativeCreator {
-  /** Creator type discriminator (``Organization``). */
-  class: "Organization";
-}
-
-/**
  * Provenance tracking for workflows imported from external sources.
 Contains either a direct URL or TRS (Tool Registry Service) metadata,
 depending on how the workflow was imported.
@@ -537,8 +569,10 @@ export interface NativeGalaxyWorkflow extends HasUUID {
   license?: null | string;
   /** Semantic version for published workflows. */
   release?: null | string;
-  /** Creator(s) of this workflow. An array of schema.org NativeCreatorPerson or NativeCreatorOrganization objects, dispatched via the ``class`` field (``Person`` or ``Organization``). */
-  creator?: Array<NativeCreatorPerson | NativeCreatorOrganization> | null;
+  /** Creator(s) of this workflow. An array of schema.org CreatorPerson or CreatorOrganization objects, dispatched via the ``class`` field (``Person`` or ``Organization``). */
+  creator?: Array<CreatorPerson | CreatorOrganization> | null;
+  /** Upstream works this workflow was derived or adapted from (`schema.org isBasedOn <https://schema.org/isBasedOn>`_), e.g. an nf-core pipeline ported to Galaxy. An array of BasedOnWork objects. Galaxy... */
+  is_based_on?: Array<BasedOnWork> | null;
   /** Workflow invocation report template. */
   report?: null | NativeReport;
   /** Detailed workflow description in Markdown. */
@@ -561,15 +595,13 @@ export interface NativeGalaxyWorkflow extends HasUUID {
   subworkflows?: Record<string, NativeGalaxyWorkflow> | null;
 }
 
-export function isNativeCreatorPerson(
-  v: NativeCreatorPerson | NativeCreatorOrganization,
-): v is NativeCreatorPerson {
+export function isCreatorPerson(v: CreatorPerson | CreatorOrganization): v is CreatorPerson {
   return v?.class === "Person";
 }
 
-export function isNativeCreatorOrganization(
-  v: NativeCreatorPerson | NativeCreatorOrganization,
-): v is NativeCreatorOrganization {
+export function isCreatorOrganization(
+  v: CreatorPerson | CreatorOrganization,
+): v is CreatorOrganization {
   return v?.class === "Organization";
 }
 

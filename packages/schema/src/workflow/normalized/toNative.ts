@@ -173,6 +173,7 @@ function _buildNativeWorkflow(
     uuid: (wf.uuid as string) || _uuid(),
     license: wf.license ?? undefined,
     release: wf.release ?? undefined,
+    is_based_on: wf.is_based_on?.length ? wf.is_based_on : undefined,
     steps: nativeSteps,
     unique_tools: wf.unique_tools,
   };

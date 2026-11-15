@@ -52,11 +52,12 @@ function camelToSnake(name: string): string {
 }
 
 // --- Python field alias mapping ---
-// gxformat2/Galaxy expectations use in_ and type_ (Pydantic aliases for reserved words).
-// In TS objects the actual keys are "in" and "type".
+// gxformat2/Galaxy expectations use in_, type_ and class_ (Pydantic aliases for reserved words).
+// In TS objects the actual keys are "in", "type" and "class".
 export const FIELD_ALIASES: Record<string, string> = {
   in_: "in",
   type_: "type",
+  class_: "class",
   format_version: "format-version",
 };
 

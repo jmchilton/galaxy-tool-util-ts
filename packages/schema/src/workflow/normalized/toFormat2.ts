@@ -108,6 +108,7 @@ function _buildFormat2Workflow(
     uuid: wf.uuid as string | undefined,
     license: wf.license ?? undefined,
     release: wf.release ?? undefined,
+    is_based_on: wf.is_based_on?.length ? wf.is_based_on : undefined,
     unique_tools: wf.unique_tools,
   };
   if (comments) result.comments = comments;

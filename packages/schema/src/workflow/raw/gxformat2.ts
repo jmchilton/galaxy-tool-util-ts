@@ -173,10 +173,7 @@ export interface Process extends Identified, Labeled, Documented {
       >
     | Record<string, unknown>;
   /** Defines the parameters representing the output of the process.  May be used to generate and/or validate the output object. */
-  outputs:
-    | Array<WorkflowOutputParameter>
-    | Record<string, WorkflowOutputParameter | string>
-    | Record<string, unknown>;
+  outputs: Array<WorkflowOutputParameter> | Record<string, WorkflowOutputParameter | string>;
 }
 
 export interface HasUUID {
@@ -295,6 +292,91 @@ export interface ToolShedRepository {
   owner: string;
   /** The URI of the tool shed containing the repository this tool can be found in - typically this should be toolshed.g2.bx.psu.edu. */
   tool_shed: string;
+}
+
+/**
+ * Base fields shared by all creator types, corresponding to schema.org
+Thing properties common to both Person and Organization.
+ */
+export interface BaseCreator {
+  /** Full name of the person or organization. */
+  name?: null | string;
+  /** Persistent identifier, typically an ORCID URL (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID. */
+  identifier?: null | string;
+  /** Website or profile URL. */
+  url?: null | string;
+  /** Email address. May include a ``mailto:`` prefix. */
+  email?: null | string;
+  /** URL to an image or avatar. */
+  image?: null | string;
+  /** Physical or mailing address. */
+  address?: null | string;
+  /** An alternate name or alias. */
+  alternateName?: null | string;
+  /** Telephone number. */
+  telephone?: null | string;
+  /** Fax number. */
+  faxNumber?: null | string;
+}
+
+/**
+ * A person who created or contributed to the workflow.
+Corresponds to a `schema.org Person <https://schema.org/Person>`_.
+ */
+export interface CreatorPerson extends BaseCreator {
+  /** Creator type discriminator (``Person``). */
+  class: "Person";
+  /** Given (first) name. */
+  givenName?: null | string;
+  /** Family (last) name. */
+  familyName?: null | string;
+  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
+  honorificPrefix?: null | string;
+  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
+  honorificSuffix?: null | string;
+  /** Job title or role. */
+  jobTitle?: null | string;
+}
+
+/**
+ * An organization that created or contributed to the workflow.
+Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
+ */
+export interface CreatorOrganization extends BaseCreator {
+  /** Creator type discriminator (``Organization``). */
+  class: "Organization";
+}
+
+/**
+ * An upstream work this workflow was derived or adapted from, for instance
+an nf-core pipeline ported to Galaxy. Corresponds to the target of a
+`schema.org isBasedOn <https://schema.org/isBasedOn>`_ relation.
+
+The authors of the upstream work belong in this record's ``creator``,
+not in the workflow-level ``creator``, which credits the people who
+wrote the Galaxy workflow.
+ */
+export interface BasedOnWork {
+  /** Name of the upstream work (e.g. ``nf-core/demo``). */
+  name?: null | string;
+  /** The `schema.org <https://schema.org/>`_ class of the upstream work, e.g. ``SoftwareSourceCode`` or ``ComputationalWorkflow``. Galaxy treats a missing value as ``SoftwareSourceCode``. */
+  class?: null | string;
+  /** An alternate name or alias of the upstream work. */
+  alternateName?: null | string;
+  /** A short description of the upstream work. */
+  description?: null | string;
+  /** Persistent identifier of the upstream work, typically a DOI URL (e.g. ``https://doi.org/10.5281/zenodo.12192442``). */
+  identifier?: null | string;
+  /** HTTP(S) URL of an image or logo for the upstream work. */
+  image?: null | string;
+  /** HTTP(S) URL of the upstream work, such as its source repository. */
+  url?: null | string;
+  /** Version of the upstream work the workflow was derived from (e.g. ``1.2.0``). */
+  version?: null | string;
+  /** SPDX license identifier of the upstream work (e.g. ``MIT``). */
+  license?: null | string;
+  /** Creator(s) of the upstream work. An array of schema.org CreatorPerson or CreatorOrganization objects, distinguished by the ``class`` field (``Person`` or ``Organization``). */
+  creator?: Array<CreatorPerson | CreatorOrganization> | null;
 }
 
 export interface BaseInputParameter extends InputParameter, HasStepPosition {
@@ -695,59 +777,6 @@ export interface FreehandComment extends BaseComment {
 }
 
 /**
- * Base fields shared by all creator types, corresponding to schema.org
-Thing properties common to both Person and Organization.
- */
-export interface BaseCreator {
-  /** Full name of the person or organization. */
-  name?: null | string;
-  /** Persistent identifier, typically an ORCID URL (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID. */
-  identifier?: null | string;
-  /** Website or profile URL. */
-  url?: null | string;
-  /** Email address. May include a ``mailto:`` prefix. */
-  email?: null | string;
-  /** URL to an image or avatar. */
-  image?: null | string;
-  /** Physical or mailing address. */
-  address?: null | string;
-  /** An alternate name or alias. */
-  alternateName?: null | string;
-  /** Telephone number. */
-  telephone?: null | string;
-  /** Fax number. */
-  faxNumber?: null | string;
-}
-
-/**
- * A person who created or contributed to the workflow.
-Corresponds to a `schema.org Person <https://schema.org/Person>`_.
- */
-export interface CreatorPerson extends BaseCreator {
-  /** Creator type discriminator (``Person``). */
-  class: "Person";
-  /** Given (first) name. */
-  givenName?: null | string;
-  /** Family (last) name. */
-  familyName?: null | string;
-  /** Honorific prefix (e.g. ``Dr``, ``Prof``). */
-  honorificPrefix?: null | string;
-  /** Honorific suffix (e.g. ``M.D.``, ``PhD``). */
-  honorificSuffix?: null | string;
-  /** Job title or role. */
-  jobTitle?: null | string;
-}
-
-/**
- * An organization that created or contributed to the workflow.
-Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
- */
-export interface CreatorOrganization extends BaseCreator {
-  /** Creator type discriminator (``Organization``). */
-  class: "Organization";
-}
-
-/**
  * A Galaxy workflow description. This record corresponds to the description of a workflow that should be executable
 on a Galaxy server that includes the contained tool definitions.
 
@@ -782,6 +811,8 @@ export interface GalaxyWorkflow extends Process, HasUUID {
     | null;
   /** Workflow creators. Can be schema.org Person (https://schema.org/Person) or Organization (https://schema.org/Organization) entities. */
   creator?: Array<CreatorPerson | CreatorOrganization> | null;
+  /** Upstream works this workflow was derived or adapted from (schema.org isBasedOn, https://schema.org/isBasedOn), e.g. an nf-core pipeline ported to Galaxy. Each entry has an optional schema.org ``cla... */
+  is_based_on?: Array<BasedOnWork> | null;
   /** Must be a valid license listed at https://spdx.org/licenses/ */
   license?: null | string;
   /** If listed should correspond to the release of the workflow in its source reposiory. */

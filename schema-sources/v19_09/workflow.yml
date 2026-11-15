@@ -886,138 +886,6 @@ $graph:
     - FreehandComment
   doc: A visual annotation in the workflow editor, discriminated by type.
 
-# --- Creator type discriminators ---
-
-- name: CreatorPersonType
-  type: enum
-  symbols:
-    - Person
-  doc: "Discriminator for schema.org Person creators."
-
-- name: CreatorOrganizationType
-  type: enum
-  symbols:
-    - Organization
-  doc: "Discriminator for schema.org Organization creators."
-
-# --- Creator base and types ---
-
-- name: BaseCreator
-  type: record
-  abstract: true
-  doc: |
-    Base fields shared by all creator types, corresponding to schema.org
-    Thing properties common to both Person and Organization.
-  fields:
-    - name: name
-      type: string?
-      jsonldPredicate: "@id"
-      doc: |
-        Full name of the person or organization.
-    - name: identifier
-      type: string?
-      doc: |
-        Persistent identifier, typically an ORCID URL
-        (e.g. ``https://orcid.org/0000-0001-2345-6789``) or bare ORCID.
-    - name: url
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:Creator/url"
-      doc: |
-        Website or profile URL.
-    - name: email
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:Creator/email"
-      doc: |
-        Email address. May include a ``mailto:`` prefix.
-    - name: image
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:Creator/image"
-      doc: |
-        URL to an image or avatar.
-    - name: address
-      type: string?
-      doc: |
-        Physical or mailing address.
-    - name: alternateName
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:Creator/alternateName"
-      doc: |
-        An alternate name or alias.
-    - name: telephone
-      type: string?
-      doc: |
-        Telephone number.
-    - name: faxNumber
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:Creator/faxNumber"
-      doc: |
-        Fax number.
-
-- name: CreatorPerson
-  type: record
-  extends: BaseCreator
-  doc: |
-    A person who created or contributed to the workflow.
-    Corresponds to a `schema.org Person <https://schema.org/Person>`_.
-  fields:
-    - name: class
-      type: CreatorPersonType
-      jsonldPredicate:
-        "_id": "@type"
-        "_type": "@vocab"
-      doc: |
-        Creator type discriminator (``Person``).
-    - name: givenName
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:CreatorPerson/givenName"
-      doc: |
-        Given (first) name.
-    - name: familyName
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:CreatorPerson/familyName"
-      doc: |
-        Family (last) name.
-    - name: honorificPrefix
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:CreatorPerson/honorificPrefix"
-      doc: |
-        Honorific prefix (e.g. ``Dr``, ``Prof``).
-    - name: honorificSuffix
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:CreatorPerson/honorificSuffix"
-      doc: |
-        Honorific suffix (e.g. ``M.D.``, ``PhD``).
-    - name: jobTitle
-      type: string?
-      jsonldPredicate:
-        _id: "gxformat2:CreatorPerson/jobTitle"
-      doc: |
-        Job title or role.
-
-- name: CreatorOrganization
-  type: record
-  extends: BaseCreator
-  doc: |
-    An organization that created or contributed to the workflow.
-    Corresponds to a `schema.org Organization <https://schema.org/Organization>`_.
-  fields:
-    - name: class
-      type: CreatorOrganizationType
-      jsonldPredicate:
-        "_id": "@type"
-        "_type": "@vocab"
-      doc: |
-        Creator type discriminator (``Organization``).
-
 - name: GalaxyWorkflow
   type: record
   extends:
@@ -1093,6 +961,18 @@ $graph:
       doc: |
         Workflow creators. Can be schema.org Person (https://schema.org/Person)
         or Organization (https://schema.org/Organization) entities.
+    - name: is_based_on
+      type: Any?
+      pydantic:type: "list[BasedOnWork] | None"
+      doc: |
+        Upstream works this workflow was derived or adapted from
+        (schema.org isBasedOn, https://schema.org/isBasedOn), e.g. an nf-core
+        pipeline ported to Galaxy. Each entry has an optional schema.org
+        ``class`` (default ``SoftwareSourceCode``), ``name``, ``alternateName``,
+        ``description``, ``identifier``, ``image``, ``url``, ``version``,
+        ``license`` (SPDX) and ``creator`` (a list of Person or Organization
+        entities, as for the workflow-level ``creator``). Credit upstream
+        authors here rather than in the workflow-level ``creator``.
     - name: license
       type: string?
       doc: Must be a valid license listed at https://spdx.org/licenses/
